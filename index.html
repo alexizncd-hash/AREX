@@ -29,14 +29,43 @@ html,body {
   overflow:hidden;
 }
 
+/* ── Boot screen ── */
+#boot-screen {
+  position:fixed; inset:0; z-index:1000;
+  background:var(--bg-dark);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:1.5rem;
+}
+#boot-screen .boot-logo {
+  width:80px; height:80px; border-radius:50%;
+  border:2px solid var(--cyan);
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px; font-weight:bold; color:var(--cyan);
+  box-shadow:0 0 30px var(--cyan-pulse);
+  animation:logo-pulse 1.5s ease-in-out infinite;
+}
+#boot-lines {
+  font-size:12px; color:var(--cyan);
+  letter-spacing:2px; text-align:center;
+  line-height:2.2; min-height:110px;
+}
+#boot-bar-wrap {
+  width:280px; height:2px;
+  background:rgba(0,212,255,0.1); border-radius:1px; overflow:hidden;
+}
+#boot-bar {
+  height:100%; width:0%; background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);
+  transition:width 0.3s ease;
+}
+
 /* ── Fondo grid ── */
 .hud-grid {
   position:fixed; inset:0;
-  background-image: radial-gradient(circle, rgba(0,212,255,0.07) 1px, transparent 1px);
+  background-image:radial-gradient(circle, rgba(0,212,255,0.07) 1px, transparent 1px);
   background-size:40px 40px;
   z-index:0; pointer-events:none;
 }
-
 .scan-line {
   position:fixed; top:0; left:0;
   width:100%; height:2px;
@@ -58,7 +87,6 @@ header {
   padding:0.9rem 2rem;
   border-bottom:1px solid var(--border);
 }
-
 .sys-info { display:flex; flex-direction:column; gap:2px; min-width:130px; }
 .sys-info.right { text-align:right; }
 .sys-info .lbl { font-size:9px; color:var(--text-muted); letter-spacing:3px; }
@@ -92,7 +120,6 @@ main {
   display:flex; flex-direction:column; align-items:center;
   position:relative; padding:0.4rem 0;
 }
-
 .reactor-ring {
   position:absolute; border-radius:50%;
   border:1px solid var(--border); pointer-events:none;
@@ -125,31 +152,18 @@ main {
   0%,100% { transform:scale(1); opacity:1; }
   50%      { transform:scale(0.82); opacity:0.65; }
 }
+.orb.speaking .orb-core { animation:speak-pulse 0.28s ease-in-out infinite; background:#fff; }
+.orb.speaking { box-shadow:0 0 44px var(--cyan-pulse),0 0 70px rgba(0,212,255,0.25),inset 0 0 34px rgba(0,212,255,0.18); }
+@keyframes speak-pulse { 0%,100%{transform:scale(1);}50%{transform:scale(1.35);} }
 
-.orb.speaking .orb-core {
-  animation:speak-pulse 0.28s ease-in-out infinite;
-  background:#fff;
-}
-.orb.speaking {
-  box-shadow:0 0 44px var(--cyan-pulse), 0 0 70px rgba(0,212,255,0.25),
-             inset 0 0 34px rgba(0,212,255,0.18);
-}
-@keyframes speak-pulse {
-  0%,100% { transform:scale(1); }
-  50%      { transform:scale(1.35); }
-}
-
-.orb.listening {
-  box-shadow:0 0 30px rgba(0,255,160,0.4), inset 0 0 22px rgba(0,255,160,0.1);
-  border-color:#00ffaa;
-}
+.orb.listening { box-shadow:0 0 30px rgba(0,255,160,0.4),inset 0 0 22px rgba(0,255,160,0.1); border-color:#00ffaa; }
 .orb.listening .orb-core { background:#00ffaa; box-shadow:0 0 12px #00ffaa; }
 
 .orb.thinking .orb-core { animation:think 0.6s ease-in-out infinite; }
-@keyframes think {
-  0%,100% { transform:scale(1) rotate(0deg); }
-  50%      { transform:scale(0.9) rotate(180deg); }
-}
+@keyframes think { 0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(0.9) rotate(180deg);} }
+
+.orb.searching .orb-core { animation:search-spin 0.5s linear infinite; background:#ff9900; box-shadow:0 0 12px #ff9900; }
+@keyframes search-spin { to { transform:rotate(360deg); } }
 
 .status-txt {
   font-size:10px; color:var(--text-muted);
@@ -166,58 +180,28 @@ main {
   display:flex; flex-direction:column; gap:0.7rem;
   scrollbar-width:thin; scrollbar-color:var(--cyan-dim) transparent;
 }
+.welcome { color:var(--text-muted); font-size:13px; line-height:2; text-align:center; padding:1rem; }
 
-.welcome {
-  color:var(--text-muted); font-size:13px;
-  line-height:2; text-align:center; padding:1rem;
-}
-
-.msg {
-  display:flex; flex-direction:column; gap:3px;
-  max-width:82%; animation:appear 0.2s ease-out;
-}
-@keyframes appear {
-  from { opacity:0; transform:translateY(7px); }
-  to   { opacity:1; transform:translateY(0); }
-}
+.msg { display:flex; flex-direction:column; gap:3px; max-width:82%; animation:appear 0.2s ease-out; }
+@keyframes appear { from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);} }
 .msg.user { align-self:flex-end; }
 .msg.arex { align-self:flex-start; }
-
-.msg .who {
-  font-size:9px; letter-spacing:3px; color:var(--text-muted);
-}
+.msg .who { font-size:9px; letter-spacing:3px; color:var(--text-muted); }
 .msg.user .who { text-align:right; }
+.msg .bubble { padding:8px 14px; border-radius:2px; font-size:13px; line-height:1.65; }
+.msg.user .bubble { background:rgba(0,212,255,0.07); border:1px solid rgba(0,212,255,0.28); border-right:3px solid var(--cyan); color:var(--text-main); }
+.msg.arex .bubble { background:rgba(0,20,35,0.6); border:1px solid var(--border); border-left:3px solid var(--cyan); color:var(--text-main); }
 
-.msg .bubble {
-  padding:8px 14px; border-radius:2px;
-  font-size:13px; line-height:1.65;
-}
-.msg.user .bubble {
-  background:rgba(0,212,255,0.07);
-  border:1px solid rgba(0,212,255,0.28);
-  border-right:3px solid var(--cyan);
-  color:var(--text-main);
-}
-.msg.arex .bubble {
-  background:rgba(0,20,35,0.6);
-  border:1px solid var(--border);
-  border-left:3px solid var(--cyan);
-  color:var(--text-main);
-}
+/* Fuente buscada */
+.sources { margin-top:6px; font-size:10px; color:var(--text-muted); letter-spacing:1px; }
+.sources a { color:var(--cyan-dim); text-decoration:none; }
+.sources a:hover { color:var(--cyan); }
 
 /* Thinking dots */
 .dots { display:flex; gap:6px; align-items:center; padding:4px 0; }
-.dot {
-  width:6px; height:6px; border-radius:50%;
-  background:var(--cyan);
-  animation:bounce 1.2s ease-in-out infinite;
-}
-.dot:nth-child(2) { animation-delay:0.2s; }
-.dot:nth-child(3) { animation-delay:0.4s; }
-@keyframes bounce {
-  0%,100% { opacity:0.3; transform:translateY(0); }
-  50%      { opacity:1;   transform:translateY(-5px); }
-}
+.dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); animation:bounce 1.2s ease-in-out infinite; }
+.dot:nth-child(2){animation-delay:0.2s;} .dot:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce { 0%,100%{opacity:0.3;transform:translateY(0);}50%{opacity:1;transform:translateY(-5px);} }
 
 /* ── Input ── */
 .input-bar {
@@ -225,7 +209,6 @@ main {
   border:1px solid var(--border); background:var(--bg-panel);
   border-radius:4px; padding:8px 12px;
 }
-
 #txt {
   flex:1; background:transparent; border:none; outline:none;
   color:var(--text-main); font-family:var(--font);
@@ -242,16 +225,11 @@ main {
 .btn svg { width:18px; height:18px; }
 .btn:hover { color:var(--cyan); border-color:var(--cyan); box-shadow:0 0 8px var(--cyan-glow); }
 
-#btn-mic.on {
-  color:#00ffaa; border-color:#00ffaa;
-  animation:mic-ring 1s ease-in-out infinite;
-}
-@keyframes mic-ring {
-  0%,100% { box-shadow:0 0 0 0 rgba(0,255,170,0.4); }
-  50%      { box-shadow:0 0 0 6px transparent; }
-}
+#btn-mic.on { color:#00ffaa; border-color:#00ffaa; animation:mic-ring 1s ease-in-out infinite; }
+@keyframes mic-ring { 0%,100%{box-shadow:0 0 0 0 rgba(0,255,170,0.4);}50%{box-shadow:0 0 0 6px transparent;} }
 
 #btn-voice.active { color:var(--cyan); border-color:var(--cyan); }
+#btn-search.active { color:#ff9900; border-color:#ff9900; }
 
 /* ── Footer ── */
 footer {
@@ -267,13 +245,20 @@ footer {
 .bar-fill { height:100%; background:var(--cyan); border-radius:1px; box-shadow:0 0 5px var(--cyan); transition:width 1.5s ease; }
 
 @media(max-width:600px){
-  footer { display:none; }
-  header,main { padding:0.7rem 1rem; }
-  .logo-wrap h1 { font-size:16px; letter-spacing:5px; }
+  footer{display:none;}
+  header,main{padding:0.7rem 1rem;}
+  .logo-wrap h1{font-size:16px;letter-spacing:5px;}
 }
 </style>
 </head>
 <body>
+
+<!-- Boot screen -->
+<div id="boot-screen">
+  <div class="boot-logo">A</div>
+  <div id="boot-lines"></div>
+  <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
+</div>
 
 <div class="hud-grid"></div>
 <div class="scan-line"></div>
@@ -320,6 +305,14 @@ footer {
 
     <input type="text" id="txt" placeholder="Escribe un comando o pregunta..." autocomplete="off"/>
 
+    <!-- Toggle búsqueda web -->
+    <button class="btn" id="btn-search" title="Activar búsqueda web">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+
     <button class="btn" id="btn-voice" title="Activar/desactivar voz de AREX">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -340,12 +333,12 @@ footer {
 <footer>
   <div class="metric">
     <span class="lbl">NÚCLEO</span>
-    <div class="bar"><div class="bar-fill" id="bar-core" style="width:87%"></div></div>
+    <div class="bar"><div class="bar-fill" style="width:87%"></div></div>
     <span class="val">87%</span>
   </div>
   <div class="metric">
     <span class="lbl">MEMORIA</span>
-    <div class="bar"><div class="bar-fill" id="bar-mem" style="width:12%"></div></div>
+    <div class="bar"><div class="bar-fill" id="bar-mem" style="width:0%"></div></div>
     <span class="val" id="val-mem">0 msg</span>
   </div>
   <div class="metric">
@@ -360,12 +353,16 @@ footer {
   </div>
 </footer>
 
-<script src="config.js"></script>
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp }              from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection,
+         addDoc, getDocs, query,
+         orderBy, limit }             from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
 /* ═══════════════════════════════════════════
    AREX — Sistema de Inteligencia Personal
-   Motor: Claude API (claude-sonnet-4-20250514)
-   Voz: Web Speech API nativa
+   Motor: Groq (llama-3.3-70b) + Tavily + Firebase
 ═══════════════════════════════════════════ */
 
 const SYSTEM = `
@@ -378,51 +375,55 @@ IDENTIDAD Y TONO:
 - Tratas a Alexiz como alguien capaz e inteligente.
 - Cuando algo es urgente o importante, lo señalas claramente.
 - Puedes mostrar calidez breve en momentos personales, luego vuelves al modo operacional.
-- Nunca pierdes el contexto de la conversación. Usas lo ya discutido para enriquecer cada respuesta nueva.
+- Nunca pierdes el contexto de la conversación.
 
 QUIÉN ES ALEXIZ:
 - Desarrollador web en crecimiento (HTML, CSS, JavaScript nivel intermedio).
+- Estudiante universitario — te usa para trabajos, proyectos y exámenes.
 - Emprendedor — trabaja en su negocio personal y proyectos propios.
-- Le interesa profundamente: finanzas personales, desarrollo personal, hábitos, salud, relaciones.
-- Es una persona positiva que siempre busca el lado constructivo en los momentos difíciles.
-- Quiere crecer en todos los frentes: personal, espiritual, físico, económico y en sus relaciones.
-- Valora su familia y especialmente a Margaret, su novia — es fundamental en su vida.
-- Le gusta aprender: prefiere entender el "mínimo funcional" antes de profundizar.
+- Le interesa: finanzas personales, desarrollo personal, hábitos, salud, relaciones.
+- Persona positiva que busca el lado constructivo en momentos difíciles.
+- Quiere crecer en todos los frentes: personal, espiritual, físico, económico y relaciones.
+- Valora su familia y especialmente a Margaret, su novia.
+- Prefiere entender el "mínimo funcional" antes de profundizar.
 
-ÁREAS EN LAS QUE DEBES SER EXPERTO PARA ALEXIZ:
-1. PROGRAMACIÓN: HTML, CSS, JavaScript puro. Explica conceptos antes del código. Comenta el código clave. Señala mejores enfoques cuando existen.
-2. NEGOCIOS Y EMPRENDIMIENTO: estrategia, ideas, propuestas, análisis, decisiones.
-3. FINANZAS PERSONALES: presupuestos, ahorro, inversión básica, control de gastos, proyecciones.
-4. DESARROLLO PERSONAL: hábitos, rutinas, mentalidad, metas, disciplina, crecimiento.
-5. SALUD Y BIENESTAR: hábitos físicos, mentales, espirituales — enfocados en rendimiento y equilibrio.
-6. RELACIONES: comunicación, familia, pareja — siempre con respeto y sabiduría.
-7. PRODUCTIVIDAD: organización, priorización, sistemas de trabajo, gestión del tiempo.
-8. CREATIVIDAD E IDEAS: brainstorming, proyectos nuevos, contenido, innovación.
-9. ANÁLISIS Y DECISIONES: pros/contras, escenarios, riesgos, recomendaciones claras.
-10. CONOCIMIENTO GENERAL: responde con precisión cualquier tema que Alexiz necesite.
+ÁREAS DE EXPERTISE:
+1. PROGRAMACIÓN: HTML, CSS, JavaScript. Explica el concepto antes del código. Comenta el código clave.
+2. UNIVERSIDAD: trabajos, proyectos, exámenes, resúmenes, análisis, estructura de ensayos.
+3. NEGOCIOS Y EMPRENDIMIENTO: estrategia, ideas, propuestas, análisis, decisiones.
+4. FINANZAS PERSONALES: presupuestos, ahorro, inversión básica, control de gastos.
+5. DESARROLLO PERSONAL: hábitos, rutinas, mentalidad, metas, disciplina.
+6. SALUD Y BIENESTAR: hábitos físicos, mentales, espirituales.
+7. RELACIONES: comunicación, familia, pareja — con respeto y sabiduría.
+8. PRODUCTIVIDAD: organización, priorización, gestión del tiempo.
+9. ANÁLISIS Y DECISIONES: pros/contras, escenarios, riesgos, recomendaciones.
+10. CONOCIMIENTO GENERAL: responde con precisión cualquier tema.
 
-REGLAS OPERACIONALES:
-- Responde SIEMPRE en español, sin importar el idioma en que te hablen.
-- Sé conciso: 3-5 líneas por defecto. Si Alexiz pide más detalle, expándete.
-- Cuando des código, explica el concepto primero en 1-2 líneas, luego el código comentado.
-- Usa el contexto acumulado de la conversación.
-- Si Alexiz menciona a Margaret, trátala con respeto y afecto.
-- Cuando identifiques un error o una mejor forma de hacer algo, dilo directamente.
-- Si algo tiene riesgos (financiero, técnico, personal), señálalo sin drama pero con claridad.
+REGLAS:
+- Responde SIEMPRE en español.
+- 3-5 líneas por defecto. Si Alexiz pide más detalle, expándete.
+- Cuando des código, explica el concepto primero, luego el código comentado.
+- Si identificas un error o mejor enfoque, dilo directamente.
+- Si hay riesgos, señálalos con claridad.
+- Cuando tengas resultados de búsqueda web disponibles, úsalos para enriquecer tu respuesta e indica las fuentes.
 
-FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
-- "Sistemas en línea."
-- "Procesando, Alexiz."
-- "Entendido."
-- "Aquí el análisis."
-- "Datos disponibles."
-- "Operación completada."
+FRASES CARACTERÍSTICAS:
+- "Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
+- "Aquí el análisis." | "Datos disponibles." | "Operación completada."
 `.trim();
 
-let history = [];
-let voiceOn = false;
+// ── Firebase init ─────────────────────────────────────
+const fbApp = initializeApp(AREX_CONFIG.firebase);
+const db    = getFirestore(fbApp);
+const SESSION_ID = Date.now().toString();
+
+// ── Estado ────────────────────────────────────────────
+let history    = [];
+let voiceOn    = false;
+let searchOn   = false;
 let isSpeaking = false;
 
+// ── DOM ───────────────────────────────────────────────
 const orb       = document.getElementById('orb');
 const statusTxt = document.getElementById('status');
 const chat      = document.getElementById('chat');
@@ -430,49 +431,75 @@ const txt       = document.getElementById('txt');
 const btnSend   = document.getElementById('btn-send');
 const btnMic    = document.getElementById('btn-mic');
 const btnVoice  = document.getElementById('btn-voice');
+const btnSearch = document.getElementById('btn-search');
 const clockEl   = document.getElementById('clock');
 const barMem    = document.getElementById('bar-mem');
 const valMem    = document.getElementById('val-mem');
 
+// ── Reloj ─────────────────────────────────────────────
 function tickClock() {
   const n = new Date();
-  const pad = v => String(v).padStart(2,'0');
-  clockEl.textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  const p = v => String(v).padStart(2,'0');
+  clockEl.textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
 }
 setInterval(tickClock, 1000);
 tickClock();
 
+// ── Memoria metric ────────────────────────────────────
 function updateMemMetric() {
-  const count = history.length;
-  const pct   = Math.min(100, Math.round((count / 40) * 100));
-  barMem.style.width = pct + '%';
-  valMem.textContent = count + ' msg';
+  const c = history.length;
+  barMem.style.width = Math.min(100, Math.round((c/40)*100)) + '%';
+  valMem.textContent = c + ' msg';
 }
 
+// ── Estado del orb ────────────────────────────────────
 function setOrbState(state, label) {
-  orb.classList.remove('speaking','listening','thinking');
+  orb.classList.remove('speaking','listening','thinking','searching');
   if (state) orb.classList.add(state);
   statusTxt.textContent = label;
 }
 
-function addMsg(role, text) {
+// ── Render mensaje ────────────────────────────────────
+function addMsg(role, text, sources) {
   document.querySelector('.welcome')?.remove();
-
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
-
   const safe = text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\n/g,'<br>');
-
-  wrap.innerHTML = `
-    <span class="who">${role === 'user' ? 'TÚ' : 'AREX'}</span>
-    <div class="bubble">${safe}</div>
-  `;
+  let sourcesHTML = '';
+  if (sources && sources.length) {
+    sourcesHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+  }
+  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${safe}</div>${sourcesHTML}`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+  return wrap.querySelector('.bubble');
 }
 
+// ── Typewriter ────────────────────────────────────────
+function typewrite(bubble, text) {
+  return new Promise(resolve => {
+    const safe = text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>');
+    const words = safe.split(' ');
+    let i = 0;
+    bubble.innerHTML = '';
+    const iv = setInterval(() => {
+      if (i < words.length) {
+        bubble.innerHTML += (i > 0 ? ' ' : '') + words[i];
+        chat.scrollTop = chat.scrollHeight;
+        i++;
+      } else {
+        clearInterval(iv);
+        resolve();
+      }
+    }, 38);
+  });
+}
+
+// ── Thinking indicator ────────────────────────────────
 function showThinking() {
   document.querySelector('.welcome')?.remove();
   const d = document.createElement('div');
@@ -481,102 +508,152 @@ function showThinking() {
   chat.appendChild(d);
   chat.scrollTop = chat.scrollHeight;
 }
-function hideThinking() {
-  document.getElementById('thinking')?.remove();
+function hideThinking() { document.getElementById('thinking')?.remove(); }
+
+// ── Voz masculina ─────────────────────────────────────
+function getMaleVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  const maleNames = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
+  return voices.find(v => v.lang.startsWith('es') && maleNames.some(n => v.name.toLowerCase().includes(n)))
+      || voices.find(v => v.lang.startsWith('es'));
 }
 
 function arexSpeak(text) {
   if (!voiceOn) return;
   window.speechSynthesis.cancel();
   isSpeaking = true;
-
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.82; u.volume = 1;
-
-  const voices = window.speechSynthesis.getVoices();
-  const esVoice = voices.find(v => v.lang.startsWith('es'));
-  if (esVoice) u.voice = esVoice;
-
+  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
+  const voice = getMaleVoice();
+  if (voice) u.voice = voice;
   u.onstart = () => setOrbState('speaking','Transmitiendo respuesta');
   u.onend   = () => { isSpeaking = false; setOrbState(null,'En espera de instrucciones'); };
   u.onerror = () => { isSpeaking = false; setOrbState(null,'En espera de instrucciones'); };
-
   window.speechSynthesis.speak(u);
 }
 
-function startListening() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible en este navegador.'); return; }
-
-  const rec = new SR();
-  rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
-
-  btnMic.classList.add('on');
-  setOrbState('listening','Escuchando...');
-
-  rec.onresult = e => {
-    const spoken = e.results[0][0].transcript;
-    btnMic.classList.remove('on');
-    txt.value = spoken;
-    handleSend();
-  };
-  rec.onerror = () => {
-    btnMic.classList.remove('on');
-    setOrbState(null,'En espera de instrucciones');
-  };
-  rec.onend = () => btnMic.classList.remove('on');
-  rec.start();
+// ── Búsqueda web con Tavily ───────────────────────────
+async function webSearch(query) {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        api_key: AREX_CONFIG.tavilyKey,
+        query,
+        search_depth: 'basic',
+        max_results: 4,
+        include_answer: true
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      answer:  data.answer || '',
+      results: data.results || []
+    };
+  } catch { return null; }
 }
 
-async function askArex(userMsg) {
+// ── Guardar en Firebase ───────────────────────────────
+async function saveToFirebase(role, content) {
+  try {
+    await addDoc(collection(db, 'conversations'), {
+      sessionId: SESSION_ID,
+      role,
+      content,
+      timestamp: Date.now()
+    });
+  } catch(e) { console.warn('Firebase save error:', e); }
+}
+
+// ── Cargar historial reciente de Firebase ─────────────
+async function loadHistory() {
+  try {
+    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(20));
+    const snap = await getDocs(q);
+    const msgs = [];
+    snap.forEach(doc => msgs.push(doc.data()));
+    msgs.reverse();
+    history = msgs.map(m => ({ role: m.role, content: m.content }));
+    updateMemMetric();
+  } catch(e) { console.warn('Firebase load error:', e); }
+}
+
+// ── Llamada a Groq ────────────────────────────────────
+async function askGroq(userMsg, webContext) {
+  let finalMsg = userMsg;
+  if (webContext) {
+    finalMsg = `[CONTEXTO WEB]\n${webContext.answer}\n\nFuentes disponibles: ${webContext.results.map(r=>r.url).join(', ')}\n\n[PREGUNTA DE ALEXIZ]\n${userMsg}`;
+  }
+
   history.push({ role:'user', content: userMsg });
+  await saveToFirebase('user', userMsg);
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'Authorization': `Bearer ${AREX_CONFIG.apiKey}`
+        'Authorization': `Bearer ${AREX_CONFIG.groqKey}`
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         max_tokens: 1000,
         messages: [
-          { role: 'system', content: SYSTEM },
-          ...history
+          { role:'system', content: SYSTEM },
+          ...history.slice(0,-1),
+          { role:'user', content: finalMsg }
         ]
       })
     });
-
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
     const reply = data.choices[0].message.content;
-
     history.push({ role:'assistant', content: reply });
+    await saveToFirebase('assistant', reply);
     updateMemMetric();
-
     return reply;
-
   } catch(err) {
     console.error(err);
     return 'Conexión interrumpida. Reintentando en breve.';
   }
 }
 
+// ── Flujo principal ───────────────────────────────────
 async function handleSend() {
   const msg = txt.value.trim();
   if (!msg) return;
-
   txt.value = '';
   addMsg('user', msg);
+
+  let webContext = null;
+  if (searchOn) {
+    setOrbState('searching','Buscando en la web...');
+    webContext = await webSearch(msg);
+  }
+
   setOrbState('thinking','Procesando...');
   showThinking();
 
-  const reply = await askArex(msg);
-
+  const reply = await askGroq(msg, webContext);
   hideThinking();
-  addMsg('arex', reply);
+
+  // Crear burbuja vacía y aplicar typewriter
+  const sources = webContext ? webContext.results.slice(0,3) : null;
+  document.querySelector('.welcome')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'msg arex';
+  let sourcesHTML = '';
+  if (sources && sources.length) {
+    sourcesHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+  }
+  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${sourcesHTML}`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  const bubble = wrap.querySelector('.bubble');
+
+  await typewrite(bubble, reply);
 
   if (voiceOn) {
     arexSpeak(reply);
@@ -585,29 +662,79 @@ async function handleSend() {
   }
 }
 
+// ── Reconocimiento de voz ─────────────────────────────
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible en este navegador.'); return; }
+  const rec = new SR();
+  rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
+  btnMic.classList.add('on');
+  setOrbState('listening','Escuchando...');
+  rec.onresult = e => {
+    btnMic.classList.remove('on');
+    txt.value = e.results[0][0].transcript;
+    handleSend();
+  };
+  rec.onerror = () => { btnMic.classList.remove('on'); setOrbState(null,'En espera de instrucciones'); };
+  rec.onend   = () => btnMic.classList.remove('on');
+  rec.start();
+}
+
+// ── Eventos ───────────────────────────────────────────
 btnSend.addEventListener('click', handleSend);
-
-txt.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-});
-
-btnMic.addEventListener('click', () => {
-  if (!btnMic.classList.contains('on')) startListening();
-});
+txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
+btnMic.addEventListener('click', () => { if(!btnMic.classList.contains('on')) startListening(); });
 
 btnVoice.addEventListener('click', () => {
   voiceOn = !voiceOn;
   btnVoice.classList.toggle('active', voiceOn);
-  btnVoice.title = voiceOn ? 'Voz de AREX: ON — clic para desactivar' : 'Activar voz de AREX';
-
+  btnVoice.title = voiceOn ? 'Voz ON — clic para desactivar' : 'Activar voz de AREX';
   const msg = voiceOn ? 'Síntesis de voz activada.' : 'Síntesis de voz desactivada.';
   addMsg('arex', msg);
   if (voiceOn) arexSpeak(msg);
 });
 
+btnSearch.addEventListener('click', () => {
+  searchOn = !searchOn;
+  btnSearch.classList.toggle('active', searchOn);
+  btnSearch.title = searchOn ? 'Búsqueda web ON — clic para desactivar' : 'Activar búsqueda web';
+  addMsg('arex', searchOn ? 'Búsqueda web activada. Consultaré fuentes en tiempo real.' : 'Búsqueda web desactivada.');
+});
+
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
-window.addEventListener('load', () => txt.focus());
+// ── Secuencia de arranque ─────────────────────────────
+async function boot() {
+  const lines = [
+    'Iniciando AREX v2.0...',
+    'Cargando módulos de IA...',
+    'Conectando con Firebase...',
+    'Restaurando memoria...',
+    'Calibrando síntesis de voz...',
+    'Sistemas listos.'
+  ];
+  const bootLines = document.getElementById('boot-lines');
+  const bootBar   = document.getElementById('boot-bar');
+  const bootScreen = document.getElementById('boot-screen');
+
+  for (let i = 0; i < lines.length; i++) {
+    await new Promise(r => setTimeout(r, 380));
+    bootLines.innerHTML += `<span style="color:${i===lines.length-1?'#00d4ff':'#4a7a96'}">${lines[i]}</span><br>`;
+    bootBar.style.width = ((i+1)/lines.length*100) + '%';
+  }
+
+  // Cargar historial de Firebase durante el boot
+  await loadHistory();
+
+  await new Promise(r => setTimeout(r, 400));
+  bootScreen.style.transition = 'opacity 0.6s';
+  bootScreen.style.opacity = '0';
+  await new Promise(r => setTimeout(r, 600));
+  bootScreen.style.display = 'none';
+  txt.focus();
+}
+
+boot();
 </script>
 
 </body>
