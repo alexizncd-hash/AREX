@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AREX — Sistema de Inteligencia Personal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       CAPA DE FONDO: Grid HUD animado
+  ═══════════════════════════════════════════ -->
+
+  <div class="hud-grid"></div>
+  <div class="scan-line"></div>
+
+  <!-- ═══════════════════════════════════════════
+       ENCABEZADO: Info del sistema (esquinas)
+  ═══════════════════════════════════════════ -->
+
+  <header class="hud-header">
+    <div class="sys-info left">
+      <span class="label">SISTEMA</span>
+      <span class="value" id="sys-status">ACTIVO</span>
+    </div>
+    <div class="logo-title">
+      <div class="logo-ring">
+        <div class="logo-inner">A</div>
+      </div>
+      <h1>AREX</h1>
+    </div>
+    <div class="sys-info right">
+      <span class="label">HORA</span>
+      <span class="value" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       NÚCLEO CENTRAL: Reactor (orb) de AREX
+  ═══════════════════════════════════════════ -->
+
+  <main class="main-panel">
+
+    <!-- Orb central que pulsa cuando AREX habla -->
+    <div class="reactor-container">
+      <div class="reactor-ring outer"></div>
+      <div class="reactor-ring middle"></div>
+      <div class="reactor-orb" id="orb">
+        <div class="orb-core"></div>
+        <div class="orb-glow"></div>
+      </div>
+      <!-- Texto de estado de AREX -->
+      <p class="status-text" id="arex-status">En espera de instrucciones</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         HISTORIAL DE CONVERSACIÓN
+    ═══════════════════════════════════════ -->
+    <section class="chat-panel" id="chat-panel">
+      <!-- Los mensajes se insertan aquí con JavaScript -->
+      <div class="chat-welcome">
+        <p>Bienvenido. Soy <strong>AREX</strong>.</p>
+        <p>Sistema de inteligencia personal — listo para asistirte.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════
+         CONTROLES DE INPUT
+    ═══════════════════════════════════════ -->
+    <div class="input-panel">
+
+      <!-- Botón de micrófono (voz) -->
+      <button class="btn-mic" id="btn-mic" title="Hablar con AREX">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8" y1="22" x2="16" y2="22"/>
+        </svg>
+      </button>
+
+      <!-- Campo de texto -->
+      <div class="input-wrapper">
+        <input
+          type="text"
+          id="user-input"
+          class="arex-input"
+          placeholder="Escribe un comando o pregunta..."
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Botón de enviar -->
+      <button class="btn-send" id="btn-send" title="Enviar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       PIE: Métricas del sistema (decorativas)
+  ═══════════════════════════════════════════ -->
+
+  <footer class="hud-footer">
+    <div class="metric">
+      <span class="label">NÚCLEO</span>
+      <div class="bar"><div class="bar-fill" style="width: 87%"></div></div>
+      <span class="value">87%</span>
+    </div>
+    <div class="metric">
+      <span class="label">MEMORIA</span>
+      <div class="bar"><div class="bar-fill" style="width: 64%"></div></div>
+      <span class="value">64%</span>
+    </div>
+    <div class="metric">
+      <span class="label">RED</span>
+      <div class="bar"><div class="bar-fill" style="width: 100%"></div></div>
+      <span class="value">ONLINE</span>
+    </div>
+    <div class="metric">
+      <span class="label">USUARIO</span>
+      <div class="bar"><div class="bar-fill" style="width: 100%"></div></div>
+      <span class="value">ALEXIZ</span>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="jarvis.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
