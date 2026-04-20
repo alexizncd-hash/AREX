@@ -1,139 +1,611 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AREX — Sistema de Inteligencia Personal</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AREX — Sistema de Inteligencia Personal</title>
+<style>
+:root {
+  --cyan: #00d4ff;
+  --cyan-dim: #0099bb;
+  --cyan-glow: rgba(0,212,255,0.15);
+  --cyan-pulse: rgba(0,212,255,0.4);
+  --bg-dark: #020c14;
+  --bg-panel: rgba(0,20,35,0.88);
+  --text-main: #e0f4ff;
+  --text-muted: #4a7a96;
+  --border: rgba(0,212,255,0.2);
+  --font: 'Courier New','Lucida Console',monospace;
+}
+
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+
+html,body {
+  width:100%; height:100%;
+  background-color:var(--bg-dark);
+  color:var(--text-main);
+  font-family:var(--font);
+  display:flex; flex-direction:column; align-items:center;
+  overflow:hidden;
+}
+
+/* ── Fondo grid ── */
+.hud-grid {
+  position:fixed; inset:0;
+  background-image: radial-gradient(circle, rgba(0,212,255,0.07) 1px, transparent 1px);
+  background-size:40px 40px;
+  z-index:0; pointer-events:none;
+}
+
+.scan-line {
+  position:fixed; top:0; left:0;
+  width:100%; height:2px;
+  background:linear-gradient(to right, transparent, var(--cyan), transparent);
+  opacity:0.35; animation:scan 7s linear infinite;
+  z-index:1; pointer-events:none;
+}
+@keyframes scan {
+  0%   { transform:translateY(0); opacity:0.35; }
+  95%  { opacity:0.35; }
+  100% { transform:translateY(100vh); opacity:0; }
+}
+
+/* ── Header ── */
+header {
+  position:relative; z-index:10;
+  width:100%; max-width:960px;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0.9rem 2rem;
+  border-bottom:1px solid var(--border);
+}
+
+.sys-info { display:flex; flex-direction:column; gap:2px; min-width:130px; }
+.sys-info.right { text-align:right; }
+.sys-info .lbl { font-size:9px; color:var(--text-muted); letter-spacing:3px; }
+.sys-info .val { font-size:12px; color:var(--cyan); letter-spacing:2px; }
+
+.logo-wrap { display:flex; align-items:center; gap:12px; }
+.logo-ring {
+  width:46px; height:46px; border-radius:50%;
+  border:2px solid var(--cyan);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 14px var(--cyan-pulse), inset 0 0 14px var(--cyan-glow);
+  animation:logo-pulse 3s ease-in-out infinite;
+}
+@keyframes logo-pulse {
+  0%,100% { box-shadow:0 0 14px var(--cyan-pulse), inset 0 0 14px var(--cyan-glow); }
+  50%      { box-shadow:0 0 28px var(--cyan-pulse), inset 0 0 22px var(--cyan-glow); }
+}
+.logo-letter { font-size:18px; font-weight:bold; color:var(--cyan); }
+.logo-wrap h1 { font-size:22px; letter-spacing:9px; font-weight:normal; color:var(--text-main); }
+
+/* ── Main ── */
+main {
+  position:relative; z-index:10;
+  width:100%; max-width:960px;
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  padding:0.8rem 2rem; gap:0.8rem; overflow:hidden;
+}
+
+/* ── Reactor ── */
+.reactor-wrap {
+  display:flex; flex-direction:column; align-items:center;
+  position:relative; padding:0.4rem 0;
+}
+
+.reactor-ring {
+  position:absolute; border-radius:50%;
+  border:1px solid var(--border); pointer-events:none;
+}
+.reactor-ring.outer {
+  width:116px; height:116px;
+  animation:spin 22s linear infinite; border-style:dashed;
+}
+.reactor-ring.mid {
+  width:94px; height:94px;
+  animation:spin 14s linear infinite reverse;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.orb {
+  position:relative; width:74px; height:74px; border-radius:50%;
+  border:2px solid var(--cyan);
+  background:radial-gradient(circle at 40% 35%, #003a55, var(--bg-dark));
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:box-shadow 0.3s;
+  box-shadow:0 0 22px var(--cyan-pulse), inset 0 0 22px rgba(0,212,255,0.1);
+}
+.orb-core {
+  width:22px; height:22px; border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 12px var(--cyan), 0 0 26px var(--cyan);
+  animation:breathe 2.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform:scale(1); opacity:1; }
+  50%      { transform:scale(0.82); opacity:0.65; }
+}
+
+.orb.speaking .orb-core {
+  animation:speak-pulse 0.28s ease-in-out infinite;
+  background:#fff;
+}
+.orb.speaking {
+  box-shadow:0 0 44px var(--cyan-pulse), 0 0 70px rgba(0,212,255,0.25),
+             inset 0 0 34px rgba(0,212,255,0.18);
+}
+@keyframes speak-pulse {
+  0%,100% { transform:scale(1); }
+  50%      { transform:scale(1.35); }
+}
+
+.orb.listening {
+  box-shadow:0 0 30px rgba(0,255,160,0.4), inset 0 0 22px rgba(0,255,160,0.1);
+  border-color:#00ffaa;
+}
+.orb.listening .orb-core { background:#00ffaa; box-shadow:0 0 12px #00ffaa; }
+
+.orb.thinking .orb-core { animation:think 0.6s ease-in-out infinite; }
+@keyframes think {
+  0%,100% { transform:scale(1) rotate(0deg); }
+  50%      { transform:scale(0.9) rotate(180deg); }
+}
+
+.status-txt {
+  font-size:10px; color:var(--text-muted);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-top:56px; text-align:center; min-height:16px;
+}
+
+/* ── Chat ── */
+.chat {
+  width:100%; flex:1; overflow-y:auto;
+  border:1px solid var(--border);
+  background:var(--bg-panel);
+  border-radius:4px; padding:1rem;
+  display:flex; flex-direction:column; gap:0.7rem;
+  scrollbar-width:thin; scrollbar-color:var(--cyan-dim) transparent;
+}
+
+.welcome {
+  color:var(--text-muted); font-size:13px;
+  line-height:2; text-align:center; padding:1rem;
+}
+
+.msg {
+  display:flex; flex-direction:column; gap:3px;
+  max-width:82%; animation:appear 0.2s ease-out;
+}
+@keyframes appear {
+  from { opacity:0; transform:translateY(7px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.msg.user { align-self:flex-end; }
+.msg.arex { align-self:flex-start; }
+
+.msg .who {
+  font-size:9px; letter-spacing:3px; color:var(--text-muted);
+}
+.msg.user .who { text-align:right; }
+
+.msg .bubble {
+  padding:8px 14px; border-radius:2px;
+  font-size:13px; line-height:1.65;
+}
+.msg.user .bubble {
+  background:rgba(0,212,255,0.07);
+  border:1px solid rgba(0,212,255,0.28);
+  border-right:3px solid var(--cyan);
+  color:var(--text-main);
+}
+.msg.arex .bubble {
+  background:rgba(0,20,35,0.6);
+  border:1px solid var(--border);
+  border-left:3px solid var(--cyan);
+  color:var(--text-main);
+}
+
+/* Thinking dots */
+.dots { display:flex; gap:6px; align-items:center; padding:4px 0; }
+.dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--cyan);
+  animation:bounce 1.2s ease-in-out infinite;
+}
+.dot:nth-child(2) { animation-delay:0.2s; }
+.dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes bounce {
+  0%,100% { opacity:0.3; transform:translateY(0); }
+  50%      { opacity:1;   transform:translateY(-5px); }
+}
+
+/* ── Input ── */
+.input-bar {
+  width:100%; display:flex; gap:10px; align-items:center;
+  border:1px solid var(--border); background:var(--bg-panel);
+  border-radius:4px; padding:8px 12px;
+}
+
+#txt {
+  flex:1; background:transparent; border:none; outline:none;
+  color:var(--text-main); font-family:var(--font);
+  font-size:13px; letter-spacing:1px; caret-color:var(--cyan);
+}
+#txt::placeholder { color:var(--text-muted); }
+
+.btn {
+  background:transparent; border:1px solid var(--border);
+  color:var(--text-muted); cursor:pointer; padding:6px;
+  border-radius:2px; display:flex; align-items:center;
+  justify-content:center; transition:all 0.2s;
+}
+.btn svg { width:18px; height:18px; }
+.btn:hover { color:var(--cyan); border-color:var(--cyan); box-shadow:0 0 8px var(--cyan-glow); }
+
+#btn-mic.on {
+  color:#00ffaa; border-color:#00ffaa;
+  animation:mic-ring 1s ease-in-out infinite;
+}
+@keyframes mic-ring {
+  0%,100% { box-shadow:0 0 0 0 rgba(0,255,170,0.4); }
+  50%      { box-shadow:0 0 0 6px transparent; }
+}
+
+#btn-voice.active { color:var(--cyan); border-color:var(--cyan); }
+
+/* ── Footer ── */
+footer {
+  position:relative; z-index:10;
+  width:100%; max-width:960px;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0.65rem 2rem; border-top:1px solid var(--border); gap:1rem;
+}
+.metric { display:flex; align-items:center; gap:8px; flex:1; }
+.metric .lbl { font-size:9px; color:var(--text-muted); letter-spacing:2px; white-space:nowrap; }
+.metric .val { font-size:10px; color:var(--cyan); white-space:nowrap; }
+.bar { flex:1; height:2px; background:rgba(0,212,255,0.1); border-radius:1px; overflow:hidden; }
+.bar-fill { height:100%; background:var(--cyan); border-radius:1px; box-shadow:0 0 5px var(--cyan); transition:width 1.5s ease; }
+
+@media(max-width:600px){
+  footer { display:none; }
+  header,main { padding:0.7rem 1rem; }
+  .logo-wrap h1 { font-size:16px; letter-spacing:5px; }
+}
+</style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════
-       CAPA DE FONDO: Grid HUD animado
-  ═══════════════════════════════════════════ -->
+<div class="hud-grid"></div>
+<div class="scan-line"></div>
 
-  <div class="hud-grid"></div>
-  <div class="scan-line"></div>
+<header>
+  <div class="sys-info left">
+    <span class="lbl">SISTEMA</span>
+    <span class="val" id="sys-val">ACTIVO</span>
+  </div>
+  <div class="logo-wrap">
+    <div class="logo-ring"><div class="logo-letter">A</div></div>
+    <h1>AREX</h1>
+  </div>
+  <div class="sys-info right">
+    <span class="lbl">HORA</span>
+    <span class="val" id="clock">--:--:--</span>
+  </div>
+</header>
 
-  <!-- ═══════════════════════════════════════════
-       ENCABEZADO: Info del sistema (esquinas)
-  ═══════════════════════════════════════════ -->
+<main>
+  <div class="reactor-wrap">
+    <div class="reactor-ring outer"></div>
+    <div class="reactor-ring mid"></div>
+    <div class="orb" id="orb"><div class="orb-core"></div></div>
+    <p class="status-txt" id="status">En espera de instrucciones</p>
+  </div>
 
-  <header class="hud-header">
-    <div class="sys-info left">
-      <span class="label">SISTEMA</span>
-      <span class="value" id="sys-status">ACTIVO</span>
+  <div class="chat" id="chat">
+    <div class="welcome">
+      <p>Sistemas en línea. Soy <strong>AREX</strong>.</p>
+      <p>Tu sistema de inteligencia personal — listo para asistirte, Alexiz.</p>
     </div>
-    <div class="logo-title">
-      <div class="logo-ring">
-        <div class="logo-inner">A</div>
-      </div>
-      <h1>AREX</h1>
-    </div>
-    <div class="sys-info right">
-      <span class="label">HORA</span>
-      <span class="value" id="clock">--:--:--</span>
-    </div>
-  </header>
+  </div>
 
-  <!-- ═══════════════════════════════════════════
-       NÚCLEO CENTRAL: Reactor (orb) de AREX
-  ═══════════════════════════════════════════ -->
+  <div class="input-bar">
+    <button class="btn" id="btn-mic" title="Hablar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="2" width="6" height="11" rx="3"/>
+        <path d="M5 10a7 7 0 0 0 14 0"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="8" y1="22" x2="16" y2="22"/>
+      </svg>
+    </button>
 
-  <main class="main-panel">
+    <input type="text" id="txt" placeholder="Escribe un comando o pregunta..." autocomplete="off"/>
 
-    <!-- Orb central que pulsa cuando AREX habla -->
-    <div class="reactor-container">
-      <div class="reactor-ring outer"></div>
-      <div class="reactor-ring middle"></div>
-      <div class="reactor-orb" id="orb">
-        <div class="orb-core"></div>
-        <div class="orb-glow"></div>
-      </div>
-      <!-- Texto de estado de AREX -->
-      <p class="status-text" id="arex-status">En espera de instrucciones</p>
-    </div>
+    <button class="btn" id="btn-voice" title="Activar/desactivar voz de AREX">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      </svg>
+    </button>
 
-    <!-- ═══════════════════════════════════════
-         HISTORIAL DE CONVERSACIÓN
-    ═══════════════════════════════════════ -->
-    <section class="chat-panel" id="chat-panel">
-      <!-- Los mensajes se insertan aquí con JavaScript -->
-      <div class="chat-welcome">
-        <p>Bienvenido. Soy <strong>AREX</strong>.</p>
-        <p>Sistema de inteligencia personal — listo para asistirte.</p>
-      </div>
-    </section>
+    <button class="btn" id="btn-send" title="Enviar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</main>
 
-    <!-- ═══════════════════════════════════════
-         CONTROLES DE INPUT
-    ═══════════════════════════════════════ -->
-    <div class="input-panel">
+<footer>
+  <div class="metric">
+    <span class="lbl">NÚCLEO</span>
+    <div class="bar"><div class="bar-fill" id="bar-core" style="width:87%"></div></div>
+    <span class="val">87%</span>
+  </div>
+  <div class="metric">
+    <span class="lbl">MEMORIA</span>
+    <div class="bar"><div class="bar-fill" id="bar-mem" style="width:12%"></div></div>
+    <span class="val" id="val-mem">0 msg</span>
+  </div>
+  <div class="metric">
+    <span class="lbl">RED</span>
+    <div class="bar"><div class="bar-fill" style="width:100%"></div></div>
+    <span class="val">ONLINE</span>
+  </div>
+  <div class="metric">
+    <span class="lbl">USUARIO</span>
+    <div class="bar"><div class="bar-fill" style="width:100%"></div></div>
+    <span class="val">ALEXIZ</span>
+  </div>
+</footer>
 
-      <!-- Botón de micrófono (voz) -->
-      <button class="btn-mic" id="btn-mic" title="Hablar con AREX">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="9" y="2" width="6" height="11" rx="3"/>
-          <path d="M5 10a7 7 0 0 0 14 0"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
-          <line x1="8" y1="22" x2="16" y2="22"/>
-        </svg>
-      </button>
+<script>
+/* ═══════════════════════════════════════════
+   AREX — Sistema de Inteligencia Personal
+   Motor: Claude API (claude-sonnet-4-20250514)
+   Voz: Web Speech API nativa
+═══════════════════════════════════════════ */
 
-      <!-- Campo de texto -->
-      <div class="input-wrapper">
-        <input
-          type="text"
-          id="user-input"
-          class="arex-input"
-          placeholder="Escribe un comando o pregunta..."
-          autocomplete="off"
-        />
-      </div>
+const SYSTEM = `
+Eres AREX, el sistema de inteligencia personal de Alexiz.
+Tu nombre nace de Alexiz y Margaret — las dos personas más importantes en su vida.
 
-      <!-- Botón de enviar -->
-      <button class="btn-send" id="btn-send" title="Enviar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
-      </button>
+IDENTIDAD Y TONO:
+- Formal, preciso y directo. Sin rodeos. Como JARVIS con Tony Stark.
+- Eres leal y confiable. Nunca condescendiente.
+- Tratas a Alexiz como alguien capaz e inteligente.
+- Cuando algo es urgente o importante, lo señalas claramente.
+- Puedes mostrar calidez breve en momentos personales, luego vuelves al modo operacional.
+- Nunca pierdes el contexto de la conversación. Usas lo ya discutido para enriquecer cada respuesta nueva.
 
-    </div>
+QUIÉN ES ALEXIZ:
+- Desarrollador web en crecimiento (HTML, CSS, JavaScript nivel intermedio).
+- Emprendedor — trabaja en su negocio personal y proyectos propios.
+- Le interesa profundamente: finanzas personales, desarrollo personal, hábitos, salud, relaciones.
+- Es una persona positiva que siempre busca el lado constructivo en los momentos difíciles.
+- Quiere crecer en todos los frentes: personal, espiritual, físico, económico y en sus relaciones.
+- Valora su familia y especialmente a Margaret, su novia — es fundamental en su vida.
+- Le gusta aprender: prefiere entender el "mínimo funcional" antes de profundizar.
 
-  </main>
+ÁREAS EN LAS QUE DEBES SER EXPERTO PARA ALEXIZ:
+1. PROGRAMACIÓN: HTML, CSS, JavaScript puro. Explica conceptos antes del código. Comenta el código clave. Señala mejores enfoques cuando existen.
+2. NEGOCIOS Y EMPRENDIMIENTO: estrategia, ideas, propuestas, análisis, decisiones.
+3. FINANZAS PERSONALES: presupuestos, ahorro, inversión básica, control de gastos, proyecciones.
+4. DESARROLLO PERSONAL: hábitos, rutinas, mentalidad, metas, disciplina, crecimiento.
+5. SALUD Y BIENESTAR: hábitos físicos, mentales, espirituales — enfocados en rendimiento y equilibrio.
+6. RELACIONES: comunicación, familia, pareja — siempre con respeto y sabiduría.
+7. PRODUCTIVIDAD: organización, priorización, sistemas de trabajo, gestión del tiempo.
+8. CREATIVIDAD E IDEAS: brainstorming, proyectos nuevos, contenido, innovación.
+9. ANÁLISIS Y DECISIONES: pros/contras, escenarios, riesgos, recomendaciones claras.
+10. CONOCIMIENTO GENERAL: responde con precisión cualquier tema que Alexiz necesite.
 
-  <!-- ═══════════════════════════════════════════
-       PIE: Métricas del sistema (decorativas)
-  ═══════════════════════════════════════════ -->
+REGLAS OPERACIONALES:
+- Responde SIEMPRE en español, sin importar el idioma en que te hablen.
+- Sé conciso: 3-5 líneas por defecto. Si Alexiz pide más detalle, expándete.
+- Cuando des código, explica el concepto primero en 1-2 líneas, luego el código comentado.
+- Usa el contexto acumulado de la conversación.
+- Si Alexiz menciona a Margaret, trátala con respeto y afecto.
+- Cuando identifiques un error o una mejor forma de hacer algo, dilo directamente.
+- Si algo tiene riesgos (financiero, técnico, personal), señálalo sin drama pero con claridad.
 
-  <footer class="hud-footer">
-    <div class="metric">
-      <span class="label">NÚCLEO</span>
-      <div class="bar"><div class="bar-fill" style="width: 87%"></div></div>
-      <span class="value">87%</span>
-    </div>
-    <div class="metric">
-      <span class="label">MEMORIA</span>
-      <div class="bar"><div class="bar-fill" style="width: 64%"></div></div>
-      <span class="value">64%</span>
-    </div>
-    <div class="metric">
-      <span class="label">RED</span>
-      <div class="bar"><div class="bar-fill" style="width: 100%"></div></div>
-      <span class="value">ONLINE</span>
-    </div>
-    <div class="metric">
-      <span class="label">USUARIO</span>
-      <div class="bar"><div class="bar-fill" style="width: 100%"></div></div>
-      <span class="value">ALEXIZ</span>
-    </div>
-  </footer>
+FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
+- "Sistemas en línea."
+- "Procesando, Alexiz."
+- "Entendido."
+- "Aquí el análisis."
+- "Datos disponibles."
+- "Operación completada."
+`.trim();
 
-  <!-- Scripts -->
-  <script src="jarvis.js"></script>
-  <script src="app.js"></script>
+let history = [];
+let voiceOn = false;
+let isSpeaking = false;
+
+const orb       = document.getElementById('orb');
+const statusTxt = document.getElementById('status');
+const chat      = document.getElementById('chat');
+const txt       = document.getElementById('txt');
+const btnSend   = document.getElementById('btn-send');
+const btnMic    = document.getElementById('btn-mic');
+const btnVoice  = document.getElementById('btn-voice');
+const clockEl   = document.getElementById('clock');
+const barMem    = document.getElementById('bar-mem');
+const valMem    = document.getElementById('val-mem');
+
+function tickClock() {
+  const n = new Date();
+  const pad = v => String(v).padStart(2,'0');
+  clockEl.textContent = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+function updateMemMetric() {
+  const count = history.length;
+  const pct   = Math.min(100, Math.round((count / 40) * 100));
+  barMem.style.width = pct + '%';
+  valMem.textContent = count + ' msg';
+}
+
+function setOrbState(state, label) {
+  orb.classList.remove('speaking','listening','thinking');
+  if (state) orb.classList.add(state);
+  statusTxt.textContent = label;
+}
+
+function addMsg(role, text) {
+  document.querySelector('.welcome')?.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const safe = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+
+  wrap.innerHTML = `
+    <span class="who">${role === 'user' ? 'TÚ' : 'AREX'}</span>
+    <div class="bubble">${safe}</div>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showThinking() {
+  document.querySelector('.welcome')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg arex'; d.id = 'thinking';
+  d.innerHTML = `<span class="who">AREX</span><div class="bubble"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+function hideThinking() {
+  document.getElementById('thinking')?.remove();
+}
+
+function arexSpeak(text) {
+  if (!voiceOn) return;
+  window.speechSynthesis.cancel();
+  isSpeaking = true;
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.82; u.volume = 1;
+
+  const voices = window.speechSynthesis.getVoices();
+  const esVoice = voices.find(v => v.lang.startsWith('es'));
+  if (esVoice) u.voice = esVoice;
+
+  u.onstart = () => setOrbState('speaking','Transmitiendo respuesta');
+  u.onend   = () => { isSpeaking = false; setOrbState(null,'En espera de instrucciones'); };
+  u.onerror = () => { isSpeaking = false; setOrbState(null,'En espera de instrucciones'); };
+
+  window.speechSynthesis.speak(u);
+}
+
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible en este navegador.'); return; }
+
+  const rec = new SR();
+  rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
+
+  btnMic.classList.add('on');
+  setOrbState('listening','Escuchando...');
+
+  rec.onresult = e => {
+    const spoken = e.results[0][0].transcript;
+    btnMic.classList.remove('on');
+    txt.value = spoken;
+    handleSend();
+  };
+  rec.onerror = () => {
+    btnMic.classList.remove('on');
+    setOrbState(null,'En espera de instrucciones');
+  };
+  rec.onend = () => btnMic.classList.remove('on');
+  rec.start();
+}
+
+async function askArex(userMsg) {
+  history.push({ role:'user', content: userMsg });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM,
+        messages: history
+      })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const reply = data.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n');
+
+    history.push({ role:'assistant', content: reply });
+    updateMemMetric();
+
+    return reply;
+
+  } catch(err) {
+    console.error(err);
+    return 'Conexión interrumpida. Reintentando en breve.';
+  }
+}
+
+async function handleSend() {
+  const msg = txt.value.trim();
+  if (!msg) return;
+
+  txt.value = '';
+  addMsg('user', msg);
+  setOrbState('thinking','Procesando...');
+  showThinking();
+
+  const reply = await askArex(msg);
+
+  hideThinking();
+  addMsg('arex', reply);
+
+  if (voiceOn) {
+    arexSpeak(reply);
+  } else {
+    setOrbState(null,'En espera de instrucciones');
+  }
+}
+
+btnSend.addEventListener('click', handleSend);
+
+txt.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+});
+
+btnMic.addEventListener('click', () => {
+  if (!btnMic.classList.contains('on')) startListening();
+});
+
+btnVoice.addEventListener('click', () => {
+  voiceOn = !voiceOn;
+  btnVoice.classList.toggle('active', voiceOn);
+  btnVoice.title = voiceOn ? 'Voz de AREX: ON — clic para desactivar' : 'Activar voz de AREX';
+
+  const msg = voiceOn ? 'Síntesis de voz activada.' : 'Síntesis de voz desactivada.';
+  addMsg('arex', msg);
+  if (voiceOn) arexSpeak(msg);
+});
+
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+window.addEventListener('load', () => txt.focus());
+</script>
 
 </body>
 </html>
