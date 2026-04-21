@@ -51,6 +51,30 @@ function setupSaveHandler() {
   });
 }
 
+/* ── Contexto personal ──────────────────────────────── */
+function loadPersonalContext() {
+  const saved = localStorage.getItem('arex_context');
+  return saved ? JSON.parse(saved) : {};
+}
+function savePersonalContext(ctx) {
+  localStorage.setItem('arex_context', JSON.stringify(ctx));
+}
+function buildContextSection() {
+  const ctx = loadPersonalContext();
+  const parts = [];
+  if (ctx.proyectos)  parts.push(`PROYECTOS ACTIVOS:\n${ctx.proyectos}`);
+  if (ctx.universidad) parts.push(`UNIVERSIDAD:\n${ctx.universidad}`);
+  if (ctx.metas)      parts.push(`METAS ACTUALES:\n${ctx.metas}`);
+  if (ctx.datos)      parts.push(`DATOS FIJOS:\n${ctx.datos}`);
+  if (!parts.length) return '';
+  return `\n\nCONTEXTO PERSONAL (actualizado por Alexiz):\n${parts.join('\n\n')}`;
+}
+function updateCtxBadge() {
+  const ctx = loadPersonalContext();
+  const hasCtx = !!(ctx.proyectos || ctx.universidad || ctx.metas || ctx.datos);
+  ctxBadge.classList.toggle('hidden', !hasCtx);
+}
+
 /* ── System prompt ──────────────────────────────────── */
 const SYSTEM_BASE = `
 Eres AREX, el sistema de inteligencia personal de Alexiz.
@@ -170,7 +194,9 @@ const noteInput    = document.getElementById('note-input');
 const modalStats   = document.getElementById('modal-stats');
 const modalHelp    = document.getElementById('modal-help');
 const modalConfig  = document.getElementById('modal-config');
+const modalContext = document.getElementById('modal-context');
 const statsGrid    = document.getElementById('stats-grid');
+const ctxBadge     = document.getElementById('ctx-badge');
 
 /* ── Reloj ──────────────────────────────────────────── */
 function tickClock() {
@@ -394,7 +420,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '');
+  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '') + buildContextSection();
   let messages = [...history];
 
   if (webCtx) {
@@ -679,6 +705,17 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'contexto': {
+      const ctx = loadPersonalContext();
+      document.getElementById('ctx-proyectos').value  = ctx.proyectos  || '';
+      document.getElementById('ctx-universidad').value = ctx.universidad || '';
+      document.getElementById('ctx-metas').value      = ctx.metas      || '';
+      document.getElementById('ctx-datos').value      = ctx.datos      || '';
+      document.getElementById('ctx-ok').classList.add('hidden');
+      modalContext.classList.remove('hidden');
+      break;
+    }
+
     case 'config': {
       const fb = AREX_CONFIG.firebase || {};
       document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
@@ -816,10 +853,24 @@ noteInput.addEventListener('keydown', async e => {
 });
 
 // Modales
-document.getElementById('btn-close-stats').addEventListener('click',  () => modalStats.classList.add('hidden'));
-document.getElementById('btn-close-help').addEventListener('click',   () => modalHelp.classList.add('hidden'));
-document.getElementById('btn-close-config').addEventListener('click', () => modalConfig.classList.add('hidden'));
-[modalStats, modalHelp, modalConfig].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+document.getElementById('btn-close-stats').addEventListener('click',   () => modalStats.classList.add('hidden'));
+document.getElementById('btn-close-help').addEventListener('click',    () => modalHelp.classList.add('hidden'));
+document.getElementById('btn-close-config').addEventListener('click',  () => modalConfig.classList.add('hidden'));
+document.getElementById('btn-close-context').addEventListener('click', () => modalContext.classList.add('hidden'));
+[modalStats, modalHelp, modalConfig, modalContext].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+
+// Guardar contexto personal
+document.getElementById('ctx-save').addEventListener('click', () => {
+  const ctx = {
+    proyectos:   document.getElementById('ctx-proyectos').value.trim(),
+    universidad: document.getElementById('ctx-universidad').value.trim(),
+    metas:       document.getElementById('ctx-metas').value.trim(),
+    datos:       document.getElementById('ctx-datos').value.trim()
+  };
+  savePersonalContext(ctx);
+  updateCtxBadge();
+  document.getElementById('ctx-ok').classList.remove('hidden');
+});
 
 // Guardar config desde modal /config
 document.getElementById('cfg2-save').addEventListener('click', () => {
@@ -876,6 +927,7 @@ async function boot() {
 
   await loadHistory();
   await requestNotifPerm();
+  updateCtxBadge();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';

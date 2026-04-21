@@ -340,6 +340,44 @@ footer {
 .cfg-input::placeholder { color:var(--text-muted); }
 .cfg-input:focus { border-color:var(--cyan); }
 
+/* ── Contexto personal ──────────────────────────────── */
+.ctx-badge {
+  font-size:8px; letter-spacing:2px; color:var(--green);
+  border:1px solid var(--green); padding:1px 4px; border-radius:2px;
+  margin-left:6px; vertical-align:middle;
+  box-shadow:0 0 6px rgba(0,255,170,0.3);
+}
+.ctx-desc {
+  font-size:11px; color:var(--text-muted); margin-bottom:1rem;
+  line-height:1.6; letter-spacing:0.5px;
+}
+.ctx-section { margin-bottom:0.9rem; }
+.ctx-label {
+  display:block; font-size:9px; color:var(--text-muted);
+  letter-spacing:2px; margin-bottom:0.4rem;
+}
+.ctx-area {
+  width:100%; min-height:64px; resize:vertical;
+  background:rgba(0,212,255,0.04); border:1px solid var(--border);
+  border-radius:2px; padding:8px 10px; color:var(--text-main);
+  font-family:var(--font); font-size:12px; outline:none;
+  caret-color:var(--cyan); line-height:1.5; letter-spacing:0.5px;
+}
+.ctx-area::placeholder { color:var(--text-muted); }
+.ctx-area:focus { border-color:var(--cyan); }
+.ctx-btn {
+  width:100%; margin-top:0.3rem;
+  background:transparent; border:1px solid var(--cyan); color:var(--cyan);
+  font-family:var(--font); font-size:12px; letter-spacing:3px;
+  padding:10px; cursor:pointer; border-radius:2px;
+  transition:background 0.2s;
+}
+.ctx-btn:hover { background:rgba(0,212,255,0.08); }
+.ctx-ok {
+  margin-top:0.6rem; font-size:11px; color:var(--green);
+  text-align:center; letter-spacing:1px;
+}
+
 /* ── Markdown en burbujas AREX ─────────────────────── */
 .msg.arex .bubble h1,
 .msg.arex .bubble h2,

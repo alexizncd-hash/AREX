@@ -84,6 +84,7 @@
         <div class="cmd-group-title">HERRAMIENTAS</div>
         <div class="cmd-row"><code>/notas</code><span>Abre/cierra panel de notas</span></div>
         <div class="cmd-row"><code>/stats</code><span>Estadísticas de uso</span></div>
+        <div class="cmd-row"><code>/contexto</code><span>Panel de contexto personal (proyectos, metas, universidad)</span></div>
         <div class="cmd-row"><code>/config</code><span>Cambiar API keys y configuración</span></div>
         <div class="cmd-row"><code>/ayuda</code><span>Esta pantalla</span></div>
       </div>
@@ -131,6 +132,37 @@
   </div>
 </div>
 
+<!-- ── Modal: Contexto personal ── -->
+<div id="modal-context" class="modal hidden">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-header">
+      <span>CONTEXTO PERSONAL</span>
+      <button class="btn-close" id="btn-close-context">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="ctx-desc">Esta información se inyecta automáticamente en cada respuesta de AREX. No necesitas repetirla.</p>
+      <div class="ctx-section">
+        <label class="ctx-label">PROYECTOS ACTIVOS</label>
+        <textarea id="ctx-proyectos" class="ctx-area" placeholder="Ej: App web de finanzas personales (React), tienda online de ropa..."></textarea>
+      </div>
+      <div class="ctx-section">
+        <label class="ctx-label">UNIVERSIDAD</label>
+        <textarea id="ctx-universidad" class="ctx-area" placeholder="Ej: Semestre 4 — Cálculo II, Física I, Programación Web. Entrega de proyecto final: 15 jun..."></textarea>
+      </div>
+      <div class="ctx-section">
+        <label class="ctx-label">METAS ACTUALES</label>
+        <textarea id="ctx-metas" class="ctx-area" placeholder="Ej: Terminar semestre con promedio 8.5+, lanzar negocio en julio, ahorrar $500 este mes..."></textarea>
+      </div>
+      <div class="ctx-section">
+        <label class="ctx-label">DATOS FIJOS</label>
+        <textarea id="ctx-datos" class="ctx-area" placeholder="Cualquier dato que AREX debe recordar siempre: herramientas que usas, contexto del negocio, preferencias..."></textarea>
+      </div>
+      <button id="ctx-save" class="ctx-btn">GUARDAR CONTEXTO</button>
+      <div id="ctx-ok" class="ctx-ok hidden">Contexto guardado. Activo en la próxima respuesta.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Fondo ── -->
 <div class="hud-grid"></div>
 <div class="scan-line"></div>
@@ -140,6 +172,7 @@
   <div class="sys-info left">
     <span class="lbl">SISTEMA</span>
     <span class="val" id="sys-val">ACTIVO</span>
+    <span class="ctx-badge hidden" id="ctx-badge" title="Contexto personal activo">CTX</span>
   </div>
   <div class="logo-wrap">
     <div class="logo-ring"><div class="logo-letter">A</div></div>
