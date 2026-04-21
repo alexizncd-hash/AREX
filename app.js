@@ -374,7 +374,7 @@ async function callGroq(webCtx) {
     body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 1500 : 1000,
       messages: [{ role:'system', content: systemPrompt }, ...messages] })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   return data.choices[0].message.content;
 }
@@ -392,7 +392,7 @@ async function analyzeImage(dataURL, question) {
       ]}]
     })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   return data.choices[0].message.content;
 }
@@ -669,7 +669,11 @@ async function handleSend() {
 
   } catch(err) {
     hideThinking();
-    addMsg('arex','Conexión interrumpida. Verifica tu conexión e intenta de nuevo.');
+    const msg = err.message?.includes('401') ? 'API Key inválida o revocada. Ve a console.groq.com y genera una nueva key.' :
+                err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento e intenta de nuevo.' :
+                err.message?.includes('Failed to fetch') ? 'Sin conexión a internet o CORS bloqueado.' :
+                `Error: ${err.message}`;
+    addMsg('arex', msg);
     setOrb(null,'En espera de instrucciones');
     console.error(err);
   }
