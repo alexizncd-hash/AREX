@@ -109,12 +109,14 @@ MODO EXAMEN ACTIVO:
 
 /* ── Firebase (opcional) ────────────────────────────── */
 let db = null;
+let fbInitialized = false;
 const SESSION = Date.now().toString();
 function initFirebase() {
-  if (!AREX_CONFIG.firebase?.apiKey) return;
+  if (fbInitialized || !AREX_CONFIG.firebase?.apiKey) return;
   try {
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
+    fbInitialized = true;
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
@@ -265,6 +267,7 @@ function startListening() {
 
 /* ── Búsqueda web Tavily ────────────────────────────── */
 async function webSearch(q) {
+  if (!AREX_CONFIG.tavilyKey) return null;
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method:'POST',
@@ -331,6 +334,9 @@ async function handleFile(file) {
       history.push({ role:'user', content: `[PDF: ${file.name}]\n\n${text}\n\nAnaliza este documento y dime los puntos más importantes.` });
       await saveMsg('user', `[PDF adjunto: ${file.name}]`);
       reply = await callGroq();
+      history.push({ role:'assistant', content: reply });
+      await saveMsg('assistant', reply);
+      updateMemMetric();
     } else {
       const dataURL = await resizeImage(file);
       reply = await analyzeImage(dataURL, txt.value.trim() || 'Analiza esta imagen detalladamente.');
@@ -441,7 +447,7 @@ function renderNote(id, text, ts) {
   const time = new Date(ts).toLocaleDateString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
   el.innerHTML = `<div class="note-text">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="note-time">${time}</div><button class="btn-del" title="Eliminar">✕</button>`;
   el.querySelector('.btn-del').onclick = async () => {
-    await deleteDoc(doc(db,'notes',id));
+    if (db) await deleteDoc(doc(db,'notes',id)).catch(()=>{});
     el.remove();
   };
   notesList.prepend(el);
@@ -670,11 +676,11 @@ async function handleSend() {
 
   } catch(err) {
     hideThinking();
-    const msg = err.message?.includes('401') ? 'API Key inválida o revocada. Ve a console.groq.com y genera una nueva key.' :
-                err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento e intenta de nuevo.' :
-                err.message?.includes('Failed to fetch') ? 'Sin conexión a internet o CORS bloqueado.' :
-                `Error: ${err.message}`;
-    addMsg('arex', msg);
+    const errMsg = err.message?.includes('401') ? 'API Key inválida o revocada. Ve a console.groq.com y genera una nueva key.' :
+                   err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento e intenta de nuevo.' :
+                   err.message?.includes('Failed to fetch') ? 'Sin conexión a internet o CORS bloqueado.' :
+                   `Error: ${err.message}`;
+    addMsg('arex', errMsg);
     setOrb(null,'En espera de instrucciones');
     console.error(err);
   }
@@ -694,6 +700,10 @@ btnVoice.addEventListener('click', () => {
 });
 
 btnSearch.addEventListener('click', () => {
+  if (!searchOn && !AREX_CONFIG.tavilyKey) {
+    addMsg('arex','Tavily API Key no configurada. Agrega tu clave en la configuración para activar la búsqueda web.');
+    return;
+  }
   searchOn = !searchOn;
   btnSearch.classList.toggle('active', searchOn);
   addMsg('arex', searchOn ? 'Búsqueda web activada. Consultaré fuentes en tiempo real.' : 'Búsqueda web desactivada.');
