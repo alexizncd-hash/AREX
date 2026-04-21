@@ -84,6 +84,7 @@
         <div class="cmd-group-title">HERRAMIENTAS</div>
         <div class="cmd-row"><code>/notas</code><span>Abre/cierra panel de notas</span></div>
         <div class="cmd-row"><code>/stats</code><span>Estadísticas de uso</span></div>
+        <div class="cmd-row"><code>/config</code><span>Cambiar API keys y configuración</span></div>
         <div class="cmd-row"><code>/ayuda</code><span>Esta pantalla</span></div>
       </div>
       <div class="cmd-group">
@@ -97,6 +98,34 @@
         <div class="cmd-row"><span>PDF — extrae texto y analiza (máx. 10 págs)</span></div>
         <div class="cmd-row"><span>Imagen — análisis visual con IA</span></div>
         <div class="cmd-row"><span>También puedes arrastrar y soltar en el chat</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Config ── -->
+<div id="modal-config" class="modal hidden">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-header">
+      <span>CONFIGURACIÓN</span>
+      <button class="btn-close" id="btn-close-config">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:0.7rem;">
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;">GROQ (requerido)</div>
+        <input id="cfg2-groq"   class="cfg-input" placeholder="Groq API Key  gsk_..." type="password"/>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">BÚSQUEDA WEB (opcional)</div>
+        <input id="cfg2-tavily" class="cfg-input" placeholder="Tavily API Key  tvly-..." type="password"/>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">FIREBASE (opcional — memoria permanente)</div>
+        <input id="cfg2-fb-key"     class="cfg-input" placeholder="Firebase apiKey"/>
+        <input id="cfg2-fb-domain"  class="cfg-input" placeholder="Firebase authDomain"/>
+        <input id="cfg2-fb-project" class="cfg-input" placeholder="Firebase projectId"/>
+        <input id="cfg2-fb-bucket"  class="cfg-input" placeholder="Firebase storageBucket"/>
+        <input id="cfg2-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
+        <input id="cfg2-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
+        <button id="cfg2-save" style="margin-top:0.5rem;background:transparent;border:1px solid #00d4ff;color:#00d4ff;font-family:monospace;font-size:12px;letter-spacing:3px;padding:10px;cursor:pointer;border-radius:2px;">GUARDAR</button>
+        <div id="cfg2-ok"    style="font-size:11px;color:#00d4ff;text-align:center;display:none;letter-spacing:1px;">CONFIGURACIÓN GUARDADA. RECARGA LA PÁGINA.</div>
+        <div id="cfg2-error" style="font-size:11px;color:#ff4444;text-align:center;display:none;">La Groq API Key es requerida.</div>
       </div>
     </div>
   </div>

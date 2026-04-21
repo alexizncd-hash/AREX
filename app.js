@@ -154,6 +154,7 @@ const notesList    = document.getElementById('notes-list');
 const noteInput    = document.getElementById('note-input');
 const modalStats   = document.getElementById('modal-stats');
 const modalHelp    = document.getElementById('modal-help');
+const modalConfig  = document.getElementById('modal-config');
 const statsGrid    = document.getElementById('stats-grid');
 
 /* ── Reloj ──────────────────────────────────────────── */
@@ -658,6 +659,22 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'config': {
+      const fb = AREX_CONFIG.firebase || {};
+      document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
+      document.getElementById('cfg2-tavily').value  = AREX_CONFIG.tavilyKey || '';
+      document.getElementById('cfg2-fb-key').value     = fb.apiKey            || '';
+      document.getElementById('cfg2-fb-domain').value  = fb.authDomain        || '';
+      document.getElementById('cfg2-fb-project').value = fb.projectId         || '';
+      document.getElementById('cfg2-fb-bucket').value  = fb.storageBucket     || '';
+      document.getElementById('cfg2-fb-sender').value  = fb.messagingSenderId || '';
+      document.getElementById('cfg2-fb-app').value     = fb.appId             || '';
+      document.getElementById('cfg2-ok').style.display    = 'none';
+      document.getElementById('cfg2-error').style.display = 'none';
+      modalConfig.classList.remove('hidden');
+      break;
+    }
+
     default:
       addMsg('arex',`Comando no reconocido: /${name}. Escribe /ayuda para ver los disponibles.`);
   }
@@ -779,9 +796,33 @@ noteInput.addEventListener('keydown', async e => {
 });
 
 // Modales
-document.getElementById('btn-close-stats').addEventListener('click', () => modalStats.classList.add('hidden'));
-document.getElementById('btn-close-help').addEventListener('click',  () => modalHelp.classList.add('hidden'));
-[modalStats, modalHelp].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+document.getElementById('btn-close-stats').addEventListener('click',  () => modalStats.classList.add('hidden'));
+document.getElementById('btn-close-help').addEventListener('click',   () => modalHelp.classList.add('hidden'));
+document.getElementById('btn-close-config').addEventListener('click', () => modalConfig.classList.add('hidden'));
+[modalStats, modalHelp, modalConfig].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+
+// Guardar config desde modal /config
+document.getElementById('cfg2-save').addEventListener('click', () => {
+  const groq = document.getElementById('cfg2-groq').value.trim();
+  if (!groq) { document.getElementById('cfg2-error').style.display = 'block'; return; }
+  document.getElementById('cfg2-error').style.display = 'none';
+  const fbKey = document.getElementById('cfg2-fb-key').value.trim();
+  const config = {
+    groqKey:   groq,
+    tavilyKey: document.getElementById('cfg2-tavily').value.trim() || '',
+    firebase:  fbKey ? {
+      apiKey:            fbKey,
+      authDomain:        document.getElementById('cfg2-fb-domain').value.trim(),
+      projectId:         document.getElementById('cfg2-fb-project').value.trim(),
+      storageBucket:     document.getElementById('cfg2-fb-bucket').value.trim(),
+      messagingSenderId: document.getElementById('cfg2-fb-sender').value.trim(),
+      appId:             document.getElementById('cfg2-fb-app').value.trim()
+    } : null
+  };
+  localStorage.setItem('arex_config', JSON.stringify(config));
+  window.AREX_CONFIG = config;
+  document.getElementById('cfg2-ok').style.display = 'block';
+});
 
 // Voces
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
