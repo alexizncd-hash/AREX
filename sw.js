@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
   if (url.includes('groq.com') || url.includes('tavily') ||
       url.includes('firebase') || url.includes('gstatic') ||
-      url.includes('cdnjs')) return;
+      url.includes('cdnjs') || url.includes('jsdelivr')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))

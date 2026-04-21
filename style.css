@@ -340,6 +340,62 @@ footer {
 .cfg-input::placeholder { color:var(--text-muted); }
 .cfg-input:focus { border-color:var(--cyan); }
 
+/* ── Markdown en burbujas AREX ─────────────────────── */
+.msg.arex .bubble h1,
+.msg.arex .bubble h2,
+.msg.arex .bubble h3 {
+  color:var(--cyan); margin:0.7rem 0 0.3rem; font-size:12px;
+  letter-spacing:2px; text-transform:uppercase;
+  border-bottom:1px solid rgba(0,212,255,0.15); padding-bottom:4px;
+}
+.msg.arex .bubble h1 { font-size:13px; }
+.msg.arex .bubble p  { margin:0.25rem 0; }
+.msg.arex .bubble ul,
+.msg.arex .bubble ol { margin:0.3rem 0 0.3rem 1.2rem; padding:0; }
+.msg.arex .bubble li { margin:0.15rem 0; line-height:1.6; }
+.msg.arex .bubble strong { color:#e0f4ff; }
+.msg.arex .bubble em { color:#8ab4c8; font-style:italic; }
+.msg.arex .bubble hr {
+  border:none; border-top:1px solid rgba(0,212,255,0.15); margin:0.5rem 0;
+}
+.msg.arex .bubble blockquote {
+  border-left:3px solid var(--cyan); margin:0.5rem 0;
+  padding:0.2rem 0.8rem; color:var(--text-muted); font-style:italic;
+}
+.msg.arex .bubble a { color:var(--cyan); text-decoration:underline; }
+
+/* Código inline */
+.msg.arex .bubble code {
+  background:#041824; color:var(--cyan);
+  padding:1px 6px; border-radius:3px;
+  font-family:var(--font); font-size:11px;
+  border:1px solid rgba(0,212,255,0.2);
+}
+/* Bloque de código */
+.msg.arex .bubble pre {
+  background:#020c14; border:1px solid rgba(0,212,255,0.15);
+  border-radius:4px; padding:0.75rem; overflow-x:auto; margin:0.5rem 0;
+  position:relative;
+}
+.msg.arex .bubble pre code {
+  background:transparent; border:none;
+  padding:0; color:inherit; font-size:12px; line-height:1.6;
+}
+/* Tablas */
+.msg.arex .bubble table {
+  width:100%; border-collapse:collapse; margin:0.5rem 0; font-size:11px;
+}
+.msg.arex .bubble th {
+  background:#041824; color:var(--cyan); padding:4px 10px;
+  border:1px solid rgba(0,212,255,0.2); letter-spacing:1px; text-align:left;
+}
+.msg.arex .bubble td {
+  padding:4px 10px; border:1px solid rgba(0,212,255,0.1); color:#8ab4c8;
+}
+.msg.arex .bubble tr:nth-child(even) td { background:rgba(0,212,255,0.03); }
+/* Override highlight.js background para que herede */
+.msg.arex .bubble pre .hljs { background:transparent; padding:0; }
+
 /* ── Responsive ─────────────────────────────────────── */
 @media(max-width:600px){
   footer { display:none; }

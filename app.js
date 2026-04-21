@@ -120,6 +120,21 @@ function initFirebase() {
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
+/* ── Markdown ───────────────────────────────────────── */
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+function renderMarkdown(text) {
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+  return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR:['target','rel','class'] });
+}
+function applyHighlight(el) {
+  if (typeof hljs === 'undefined') return;
+  el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+}
+
 /* ── PDF.js worker ──────────────────────────────────── */
 if (typeof pdfjsLib !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -184,35 +199,40 @@ function addMsg(role, text, sources) {
   document.querySelector('.welcome')?.remove();
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
-  const safe = text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
+  const contentHTML = role === 'user'
+    ? text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+    : renderMarkdown(text);
   let srcHTML = '';
   if (sources?.length) {
     srcHTML = `<div class="sources">FUENTES: ${
       sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
     }</div>`;
   }
-  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${safe}</div>${srcHTML}`;
+  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${srcHTML}`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
+  if (role !== 'user') applyHighlight(wrap);
   return wrap.querySelector('.bubble');
 }
 
 /* ── Typewriter ─────────────────────────────────────── */
 function typewrite(bubble, text) {
   return new Promise(resolve => {
-    const safe = text
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\n/g,'<br>');
-    const words = safe.split(' ');
+    const words = text.split(' ');
     let i = 0;
-    bubble.innerHTML = '';
+    bubble.textContent = '';
     const iv = setInterval(() => {
       if (i < words.length) {
-        bubble.innerHTML += (i > 0 ? ' ' : '') + words[i++];
+        bubble.textContent = words.slice(0, i + 1).join(' ');
+        i++;
         chat.scrollTop = chat.scrollHeight;
-      } else { clearInterval(iv); resolve(); }
+      } else {
+        clearInterval(iv);
+        bubble.innerHTML = renderMarkdown(text);
+        applyHighlight(bubble);
+        chat.scrollTop = chat.scrollHeight;
+        resolve();
+      }
     }, 36);
   });
 }
