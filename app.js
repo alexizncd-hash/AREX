@@ -19,14 +19,14 @@ function loadConfig() {
 }
 
 function showSetup() {
-  const setup = document.getElementById('setup-screen');
-  const bootScreen = document.getElementById('boot-screen');
-  setup.style.display = 'flex';
-  bootScreen.style.display = 'none';
+  document.getElementById('setup-screen').classList.remove('hidden');
+  document.getElementById('boot-screen').style.display = 'none';
+}
 
+function setupSaveHandler() {
   document.getElementById('cfg-save').addEventListener('click', () => {
     const groq = document.getElementById('cfg-groq').value.trim();
-    if (!groq) { document.getElementById('cfg-error').style.display='block'; return; }
+    if (!groq) { document.getElementById('cfg-error').style.display = 'block'; return; }
     document.getElementById('cfg-error').style.display = 'none';
 
     const fbKey     = document.getElementById('cfg-fb-key').value.trim();
@@ -44,8 +44,9 @@ function showSetup() {
     };
     localStorage.setItem('arex_config', JSON.stringify(config));
     window.AREX_CONFIG = config;
-    setup.style.display = 'none';
-    bootScreen.style.display = 'flex';
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('boot-screen').style.display = 'flex';
+    initFirebase();
     boot();
   });
 }
@@ -771,7 +772,9 @@ async function boot() {
   txt.focus();
 }
 
-// Punto de entrada
+// Punto de entrada — siempre registrar el handler del setup
+setupSaveHandler();
+
 if (loadConfig()) {
   initFirebase();
   boot();
