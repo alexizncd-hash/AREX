@@ -115,14 +115,15 @@ Para cambiarlas desde cualquier dispositivo, escribe `/config` en el chat.
 - [x] **Fase 12** — Auto-resumen de conversación al llegar a 30 mensajes
 - [x] **Fase 13** — PWA instalable (Service Worker + manifest)
 - [x] **Fase 14** — Setup screen + `/config` (gestión de keys desde la app, sin consola)
+- [x] **Fase 15** — Renderizado de Markdown (marked.js + DOMPurify + highlight.js `atom-one-dark`)
+- [x] **Fase 17** — Panel de contexto personal `/contexto` (proyectos, universidad, metas, datos fijos inyectados en cada prompt)
 
 ### Próximo
 
-- [ ] **Fase 15** — Renderizado de Markdown en el chat (código con syntax highlight, listas, negrita, tablas)
-- [ ] **Fase 16** — Sesiones múltiples (guardar y cambiar entre conversaciones anteriores)
-- [ ] **Fase 17** — Panel de contexto personal (datos fijos que AREX siempre recuerda: proyectos, metas, fechas)
+- [ ] **Fase 16** — Sesiones múltiples (guardar y cambiar entre conversaciones — pendiente para etapa avanzada)
 - [ ] **Fase 18** — Comandos rápidos personalizables (atajos a prompts frecuentes)
 - [ ] **Fase 19** — Resumen automático de URLs (pegar un link y AREX lo analiza)
+- [ ] **Fase 20** — Ventana de código en vivo (editor + preview HTML/CSS/JS en tiempo real)
 
 ---
 

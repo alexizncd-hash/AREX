@@ -146,7 +146,7 @@ function initFirebase() {
 
 /* ── Markdown ───────────────────────────────────────── */
 if (typeof marked !== 'undefined') {
-  marked.setOptions({ breaks: true, gfm: true });
+  marked.use({ breaks: true, gfm: true });
 }
 function renderMarkdown(text) {
   if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
@@ -483,7 +483,12 @@ async function loadHistory() {
     history = msgs.map(m => ({ role:m.role, content:m.content }));
     updateMemMetric();
     if (history.length > 0) {
-      history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'arex', m.content));
+      history.forEach(m => {
+        const display = m.content
+          .replace(/^\[Resumen de conversación anterior\]\n/, '📋 **Resumen de sesión anterior:**\n')
+          .replace(/^\[Resumen\]\n/, '📋 **Resumen:**\n');
+        addMsg(m.role === 'user' ? 'user' : 'arex', display);
+      });
     }
   } catch(e) { console.warn('Firebase loadHistory:', e); }
 }
@@ -637,7 +642,9 @@ async function handleCommand(cmd) {
       break;
 
     case 'resumir': {
+      if (isBusy) { addMsg('arex','Espera a que AREX termine de procesar antes de resumir.'); break; }
       if (history.length < 4) { addMsg('arex','No hay suficiente conversación para resumir.'); break; }
+      isBusy = true;
       setOrb('thinking','Generando resumen...');
       showThinking();
       try {
@@ -649,6 +656,7 @@ async function handleCommand(cmd) {
               history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
             }` }] })
         });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
         const data = await res.json();
         const summaryText = data.choices[0].message.content;
         history.push({ role:'assistant', content: `[Resumen]\n${summaryText}` });
@@ -661,7 +669,13 @@ async function handleCommand(cmd) {
         chat.appendChild(wrap);
         await typewrite(wrap.querySelector('.bubble'), summaryText);
         setOrb(null,'En espera de instrucciones');
-      } catch { hideThinking(); addMsg('arex','Error al generar el resumen.'); setOrb(null,'En espera de instrucciones'); }
+      } catch(e) {
+        hideThinking();
+        addMsg('arex', e.message?.includes('401') ? 'API Key inválida.' : `Error al generar el resumen: ${e.message}`);
+        setOrb(null,'En espera de instrucciones');
+      } finally {
+        isBusy = false;
+      }
       break;
     }
 
