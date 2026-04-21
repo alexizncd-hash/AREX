@@ -118,10 +118,11 @@ Para cambiarlas desde cualquier dispositivo, escribe `/config` en el chat.
 - [x] **Fase 15** — Renderizado de Markdown (marked.js + DOMPurify + highlight.js `atom-one-dark`)
 - [x] **Fase 17** — Panel de contexto personal `/contexto` (proyectos, universidad, metas, datos fijos inyectados en cada prompt)
 
+- [x] **Fase 18** — Comandos rápidos `/atajos` (hasta 15 atajos con soporte `{args}`, validación de nombres reservados)
+
 ### Próximo
 
 - [ ] **Fase 16** — Sesiones múltiples (guardar y cambiar entre conversaciones — pendiente para etapa avanzada)
-- [ ] **Fase 18** — Comandos rápidos personalizables (atajos a prompts frecuentes)
 - [ ] **Fase 19** — Resumen automático de URLs (pegar un link y AREX lo analiza)
 - [ ] **Fase 20** — Ventana de código en vivo (editor + preview HTML/CSS/JS en tiempo real)
 

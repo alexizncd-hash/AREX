@@ -51,6 +51,46 @@ function setupSaveHandler() {
   });
 }
 
+/* ── Atajos personalizados ──────────────────────────── */
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos'];
+
+function loadAtalos() {
+  const saved = localStorage.getItem('arex_atajos');
+  return saved ? JSON.parse(saved) : [];
+}
+function saveAtalos(arr) {
+  localStorage.setItem('arex_atajos', JSON.stringify(arr));
+}
+function renderAtajosList() {
+  const list = document.getElementById('atajos-list');
+  const arr = loadAtalos();
+  if (!arr.length) {
+    list.innerHTML = '<div class="atajo-empty">Sin atajos definidos. Crea tu primero abajo.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  arr.forEach((a, i) => {
+    const el = document.createElement('div');
+    el.className = 'atajo-item';
+    const preview = a.prompt.length > 90 ? a.prompt.slice(0,90) + '…' : a.prompt;
+    el.innerHTML = `
+      <div class="atajo-header">
+        <code class="atajo-cmd">/${a.name}</code>
+        ${a.desc ? `<span class="atajo-desc-label">${a.desc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>` : '<span class="atajo-desc-label"></span>'}
+        <button class="atajo-del" title="Eliminar">✕</button>
+      </div>
+      <div class="atajo-prompt-preview">${preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    `;
+    el.querySelector('.atajo-del').onclick = () => {
+      const current = loadAtalos();
+      current.splice(i, 1);
+      saveAtalos(current);
+      renderAtajosList();
+    };
+    list.appendChild(el);
+  });
+}
+
 /* ── Contexto personal ──────────────────────────────── */
 function loadPersonalContext() {
   const saved = localStorage.getItem('arex_context');
@@ -195,6 +235,7 @@ const modalStats   = document.getElementById('modal-stats');
 const modalHelp    = document.getElementById('modal-help');
 const modalConfig  = document.getElementById('modal-config');
 const modalContext = document.getElementById('modal-context');
+const modalAtalos  = document.getElementById('modal-atajos');
 const statsGrid    = document.getElementById('stats-grid');
 const ctxBadge     = document.getElementById('ctx-badge');
 
@@ -614,8 +655,30 @@ function parseReminder(args) {
 async function handleCommand(cmd) {
   const [name, ...rest] = cmd.slice(1).trim().split(' ');
   const args = rest.join(' ');
+  const nameLow = name.toLowerCase();
 
-  switch (name.toLowerCase()) {
+  // Resolver atajos personalizados antes del switch
+  if (!RESERVED_CMDS.includes(nameLow)) {
+    const atajo = loadAtalos().find(a => a.name === nameLow);
+    if (atajo) {
+      if (atajo.prompt.includes('{args}')) {
+        if (args) {
+          txt.value = atajo.prompt.replace(/\{args\}/g, args);
+        } else {
+          // Sin args: pre-rellenar el input para que el usuario complete
+          txt.value = atajo.prompt.replace(/\{args\}/g, '');
+          txt.focus();
+          return;
+        }
+      } else {
+        txt.value = args ? `${atajo.prompt} ${args}` : atajo.prompt;
+      }
+      await handleSend();
+      return;
+    }
+  }
+
+  switch (nameLow) {
     case 'ayuda':
       modalHelp.classList.remove('hidden');
       break;
@@ -718,6 +781,15 @@ async function handleCommand(cmd) {
       addMsg('arex', `Recordatorio programado: "${parsed.msg}" en ${mins < 60 ? mins+' minutos' : (mins/60).toFixed(1)+' horas'}.`);
       break;
     }
+
+    case 'atajos':
+      renderAtajosList();
+      document.getElementById('atajo-name').value   = '';
+      document.getElementById('atajo-desc').value   = '';
+      document.getElementById('atajo-prompt').value = '';
+      document.getElementById('atajo-error').style.display = 'none';
+      modalAtalos.classList.remove('hidden');
+      break;
 
     case 'contexto': {
       const ctx = loadPersonalContext();
@@ -871,7 +943,35 @@ document.getElementById('btn-close-stats').addEventListener('click',   () => mod
 document.getElementById('btn-close-help').addEventListener('click',    () => modalHelp.classList.add('hidden'));
 document.getElementById('btn-close-config').addEventListener('click',  () => modalConfig.classList.add('hidden'));
 document.getElementById('btn-close-context').addEventListener('click', () => modalContext.classList.add('hidden'));
-[modalStats, modalHelp, modalConfig, modalContext].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+document.getElementById('btn-close-atajos').addEventListener('click',  () => modalAtalos.classList.add('hidden'));
+[modalStats, modalHelp, modalConfig, modalContext, modalAtalos].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+
+// Agregar atajo personalizado
+document.getElementById('atajo-add').addEventListener('click', () => {
+  const errorEl  = document.getElementById('atajo-error');
+  const rawName  = document.getElementById('atajo-name').value.trim().toLowerCase().replace(/^\/+/, '');
+  const desc     = document.getElementById('atajo-desc').value.trim();
+  const prompt   = document.getElementById('atajo-prompt').value.trim();
+
+  const show = msg => { errorEl.textContent = msg; errorEl.style.display = 'block'; };
+  if (!rawName)                          return show('El nombre del atajo es requerido.');
+  if (!/^[a-z0-9\-]+$/.test(rawName))   return show('Solo letras minúsculas, números y guiones.');
+  if (!prompt)                           return show('El prompt es requerido.');
+  if (RESERVED_CMDS.includes(rawName))  return show(`"/${rawName}" es un comando reservado del sistema.`);
+
+  const arr = loadAtalos();
+  if (arr.find(a => a.name === rawName)) return show(`El atajo "/${rawName}" ya existe.`);
+  if (arr.length >= 15)                  return show('Máximo 15 atajos personalizados.');
+
+  arr.push({ name: rawName, desc, prompt });
+  saveAtalos(arr);
+  renderAtajosList();
+
+  document.getElementById('atajo-name').value   = '';
+  document.getElementById('atajo-desc').value   = '';
+  document.getElementById('atajo-prompt').value = '';
+  errorEl.style.display = 'none';
+});
 
 // Guardar contexto personal
 document.getElementById('ctx-save').addEventListener('click', () => {

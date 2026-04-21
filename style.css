@@ -340,6 +340,38 @@ footer {
 .cfg-input::placeholder { color:var(--text-muted); }
 .cfg-input:focus { border-color:var(--cyan); }
 
+/* ── Atajos personalizados ──────────────────────────── */
+.atajo-item {
+  border:1px solid var(--border); border-radius:3px;
+  padding:0.6rem 0.8rem; margin-bottom:0.5rem;
+  background:rgba(0,212,255,0.03);
+}
+.atajo-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.atajo-cmd {
+  color:var(--cyan); background:rgba(0,212,255,0.08);
+  padding:1px 6px; border-radius:2px; font-size:12px; white-space:nowrap;
+}
+.atajo-desc-label { font-size:10px; color:var(--text-muted); flex:1; letter-spacing:0.5px; }
+.atajo-del {
+  background:transparent; border:none; color:var(--text-muted);
+  cursor:pointer; font-size:12px; padding:2px 6px; margin-left:auto;
+  transition:color 0.15s;
+}
+.atajo-del:hover { color:#ff4444; }
+.atajo-prompt-preview {
+  font-size:10px; color:var(--text-muted);
+  letter-spacing:0.5px; line-height:1.5;
+  word-break:break-word;
+}
+.atajo-empty {
+  font-size:11px; color:var(--text-muted);
+  text-align:center; padding:1rem; letter-spacing:1px;
+}
+.atajo-form {
+  margin-top:1rem; padding-top:1rem;
+  border-top:1px solid var(--border);
+}
+
 /* ── Contexto personal ──────────────────────────────── */
 .ctx-badge {
   font-size:8px; letter-spacing:2px; color:var(--green);
