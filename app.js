@@ -9,6 +9,47 @@ import { getFirestore, collection, addDoc, getDocs,
          doc, setDoc, getDoc, increment }
   from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
+/* ── Carga de configuración ─────────────────────────── */
+// Prioridad: config.js (local) → localStorage → pantalla de setup
+function loadConfig() {
+  if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
+  const saved = localStorage.getItem('arex_config');
+  if (saved) { window.AREX_CONFIG = JSON.parse(saved); return true; }
+  return false;
+}
+
+function showSetup() {
+  const setup = document.getElementById('setup-screen');
+  const bootScreen = document.getElementById('boot-screen');
+  setup.style.display = 'flex';
+  bootScreen.style.display = 'none';
+
+  document.getElementById('cfg-save').addEventListener('click', () => {
+    const groq = document.getElementById('cfg-groq').value.trim();
+    if (!groq) { document.getElementById('cfg-error').style.display='block'; return; }
+    document.getElementById('cfg-error').style.display = 'none';
+
+    const fbKey     = document.getElementById('cfg-fb-key').value.trim();
+    const fbDomain  = document.getElementById('cfg-fb-domain').value.trim();
+    const fbProject = document.getElementById('cfg-fb-project').value.trim();
+    const fbBucket  = document.getElementById('cfg-fb-bucket').value.trim();
+    const fbSender  = document.getElementById('cfg-fb-sender').value.trim();
+    const fbApp     = document.getElementById('cfg-fb-app').value.trim();
+
+    const config = {
+      groqKey:   groq,
+      tavilyKey: document.getElementById('cfg-tavily').value.trim() || '',
+      firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
+                           storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
+    };
+    localStorage.setItem('arex_config', JSON.stringify(config));
+    window.AREX_CONFIG = config;
+    setup.style.display = 'none';
+    bootScreen.style.display = 'flex';
+    boot();
+  });
+}
+
 /* ── System prompt ──────────────────────────────────── */
 const SYSTEM_BASE = `
 Eres AREX, el sistema de inteligencia personal de Alexiz.
@@ -65,10 +106,16 @@ MODO EXAMEN ACTIVO:
 - Explica el razonamiento paso a paso.
 - Al final resume los puntos clave en 3-5 bullets.`;
 
-/* ── Firebase ───────────────────────────────────────── */
-const fbApp     = initializeApp(AREX_CONFIG.firebase);
-const db        = getFirestore(fbApp);
-const SESSION   = Date.now().toString();
+/* ── Firebase (opcional) ────────────────────────────── */
+let db = null;
+const SESSION = Date.now().toString();
+function initFirebase() {
+  if (!AREX_CONFIG.firebase?.apiKey) return;
+  try {
+    const fbApp = initializeApp(AREX_CONFIG.firebase);
+    db = getFirestore(fbApp);
+  } catch(e) { console.warn('Firebase init:', e); }
+}
 
 /* ── PDF.js worker ──────────────────────────────────── */
 if (typeof pdfjsLib !== 'undefined') {
@@ -352,6 +399,7 @@ async function analyzeImage(dataURL, question) {
 
 /* ── Firebase: guardar mensaje ──────────────────────── */
 async function saveMsg(role, content) {
+  if (!db) return;
   try {
     await addDoc(collection(db,'conversations'), { sessionId:SESSION, role, content, timestamp:Date.now() });
   } catch(e) { console.warn('Firebase saveMsg:', e); }
@@ -359,6 +407,7 @@ async function saveMsg(role, content) {
 
 /* ── Firebase: cargar historial ─────────────────────── */
 async function loadHistory() {
+  if (!db) return;
   try {
     const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(20));
     const snap = await getDocs(q);
@@ -372,10 +421,12 @@ async function loadHistory() {
 
 /* ── Firebase: notas ────────────────────────────────── */
 async function saveNote(text) {
+  if (!db) return 'local_' + Date.now();
   const ref = await addDoc(collection(db,'notes'), { text, timestamp:Date.now() });
   return ref.id;
 }
 async function loadNotes() {
+  if (!db) { addMsg('arex','Firebase no configurado. Las notas no persisten entre sesiones.'); return; }
   try {
     const q = query(collection(db,'notes'), orderBy('timestamp','desc'));
     const snap = await getDocs(q);
@@ -397,6 +448,7 @@ function renderNote(id, text, ts) {
 
 /* ── Firebase: estadísticas ─────────────────────────── */
 async function updateStats(type) {
+  if (!db) return;
   const today = new Date().toISOString().slice(0,10);
   try {
     const globalRef = doc(db,'stats','global');
@@ -413,6 +465,7 @@ async function updateStats(type) {
   } catch(e) { console.warn('Firebase stats:', e); }
 }
 async function loadStats() {
+  if (!db) return { g:{}, d:{} };
   const today = new Date().toISOString().slice(0,10);
   try {
     const [gSnap, dSnap] = await Promise.all([
@@ -714,4 +767,10 @@ async function boot() {
   txt.focus();
 }
 
-boot();
+// Punto de entrada
+if (loadConfig()) {
+  initFirebase();
+  boot();
+} else {
+  showSetup();
+}

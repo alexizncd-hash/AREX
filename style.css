@@ -329,6 +329,17 @@ footer {
 .cmd-row code { color:var(--cyan); background:rgba(0,212,255,0.08); padding:1px 6px; border-radius:2px; white-space:nowrap; }
 .cmd-row span { color:var(--text-muted); }
 
+/* ── Setup screen ───────────────────────────────────── */
+.cfg-input {
+  width:100%; background:rgba(0,212,255,0.04);
+  border:1px solid var(--border); border-radius:2px;
+  padding:9px 12px; color:var(--text-main);
+  font-family:var(--font); font-size:12px; outline:none;
+  caret-color:var(--cyan); letter-spacing:1px;
+}
+.cfg-input::placeholder { color:var(--text-muted); }
+.cfg-input:focus { border-color:var(--cyan); }
+
 /* ── Responsive ─────────────────────────────────────── */
 @media(max-width:600px){
   footer { display:none; }
