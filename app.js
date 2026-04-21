@@ -127,11 +127,12 @@ if (typeof pdfjsLib !== 'undefined') {
 }
 
 /* ── Estado global ──────────────────────────────────── */
-let history   = [];
-let voiceOn   = false;
-let searchOn  = false;
-let examMode  = false;
+let history    = [];
+let voiceOn    = false;
+let searchOn   = false;
+let examMode   = false;
 let isSpeaking = false;
+let isBusy     = false;
 
 /* ── DOM ────────────────────────────────────────────── */
 const orb          = document.getElementById('orb');
@@ -188,7 +189,7 @@ function addMsg(role, text, sources) {
   let srcHTML = '';
   if (sources?.length) {
     srcHTML = `<div class="sources">FUENTES: ${
-      sources.map((s,i) => `<a href="${s.url}" target="_blank">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
+      sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
     }</div>`;
   }
   wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${safe}</div>${srcHTML}`;
@@ -254,10 +255,10 @@ function startListening() {
   rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
   btnMic.classList.add('on');
   setOrb('listening','Escuchando...');
-  rec.onresult = e => {
+  rec.onresult = async e => {
     btnMic.classList.remove('on');
     txt.value = e.results[0][0].transcript;
-    updateStats('voice');
+    await updateStats('voice');
     handleSend();
   };
   rec.onerror = () => { btnMic.classList.remove('on'); setOrb(null,'En espera de instrucciones'); };
@@ -282,6 +283,7 @@ async function webSearch(q) {
 
 /* ── Procesamiento de archivos ──────────────────────── */
 async function extractPDF(file) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js no disponible. Recarga la página.');
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   let text = '';
@@ -295,7 +297,7 @@ async function extractPDF(file) {
 }
 
 async function resizeImage(file) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -306,6 +308,7 @@ async function resizeImage(file) {
       URL.revokeObjectURL(url);
       resolve(c.toDataURL('image/jpeg', 0.82));
     };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo cargar la imagen.')); };
     img.src = url;
   });
 }
@@ -315,17 +318,20 @@ async function handleFile(file) {
   const isImg = file.type.startsWith('image/');
   if (!isPDF && !isImg) { addMsg('arex','Formato no soportado. Usa PDF o imagen (JPG, PNG, WEBP).'); return; }
 
+  if (isBusy) { addMsg('arex','Espera a que AREX termine de procesar.'); return; }
+  isBusy = true;
+
   // Mostrar burbuja de archivo
   document.querySelector('.welcome')?.remove();
+  const safeName = file.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const wrap = document.createElement('div');
   wrap.className = 'msg user file';
-  wrap.innerHTML = `<span class="who">TÚ</span><div class="bubble">📎 ${file.name}</div>`;
+  wrap.innerHTML = `<span class="who">TÚ</span><div class="bubble">📎 ${safeName}</div>`;
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
 
   setOrb('thinking', isPDF ? 'Procesando PDF...' : 'Analizando imagen...');
   showThinking();
-  await updateStats('file');
 
   try {
     let reply;
@@ -347,6 +353,7 @@ async function handleFile(file) {
       await saveMsg('assistant', reply);
       updateMemMetric();
     }
+    await updateStats('file');
     hideThinking();
     const wrap2 = document.createElement('div');
     wrap2.className = 'msg arex';
@@ -356,9 +363,11 @@ async function handleFile(file) {
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
   } catch(e) {
     hideThinking();
-    addMsg('arex','Error al procesar el archivo. Intenta de nuevo.');
+    addMsg('arex',`Error al procesar el archivo: ${e.message}`);
     setOrb(null,'En espera de instrucciones');
     console.error(e);
+  } finally {
+    isBusy = false;
   }
 }
 
@@ -369,9 +378,12 @@ async function callGroq(webCtx) {
 
   if (webCtx) {
     const last = messages[messages.length - 1];
+    const webSection = webCtx.answer
+      ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n`
+      : '';
     messages[messages.length - 1] = {
       ...last,
-      content: `[CONTEXTO WEB]\n${webCtx.answer}\n\n[PREGUNTA]\n${last.content}`
+      content: `${webSection}[PREGUNTA]\n${last.content}`
     };
   }
 
@@ -423,6 +435,9 @@ async function loadHistory() {
     msgs.reverse();
     history = msgs.map(m => ({ role:m.role, content:m.content }));
     updateMemMetric();
+    if (history.length > 0) {
+      history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'arex', m.content));
+    }
   } catch(e) { console.warn('Firebase loadHistory:', e); }
 }
 
@@ -433,7 +448,16 @@ async function saveNote(text) {
   return ref.id;
 }
 async function loadNotes() {
-  if (!db) { addMsg('arex','Firebase no configurado. Las notas no persisten entre sesiones.'); return; }
+  if (!db) {
+    if (!notesList.querySelector('.no-db-msg')) {
+      const d = document.createElement('div');
+      d.className = 'no-db-msg';
+      d.style.cssText = 'font-size:10px;color:#4a7a96;text-align:center;padding:1rem;letter-spacing:1px;';
+      d.textContent = 'Sin Firebase — las notas solo persisten esta sesión.';
+      notesList.appendChild(d);
+    }
+    return;
+  }
   try {
     const q = query(collection(db,'notes'), orderBy('timestamp','desc'));
     const snap = await getDocs(q);
@@ -497,6 +521,7 @@ async function autoSummarize() {
         }` }]
       })
     });
+    if (!res.ok) return;
     const data = await res.json();
     const summary = data.choices[0].message.content;
     history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...history.slice(-4)];
@@ -547,7 +572,13 @@ async function handleCommand(cmd) {
       chat.innerHTML = '';
       history = [];
       updateMemMetric();
-      addMsg('arex','Chat limpiado. Historial local borrado.');
+      if (db) {
+        try {
+          const qSnap = await getDocs(collection(db,'conversations'));
+          await Promise.all(qSnap.docs.map(d => deleteDoc(d.ref)));
+        } catch(e) { console.warn('limpiar Firebase:', e); }
+      }
+      addMsg('arex','Chat limpiado. Historial borrado.');
       break;
 
     case 'examen':
@@ -572,12 +603,16 @@ async function handleCommand(cmd) {
             }` }] })
         });
         const data = await res.json();
+        const summaryText = data.choices[0].message.content;
+        history.push({ role:'assistant', content: `[Resumen]\n${summaryText}` });
+        await saveMsg('assistant', `[Resumen]\n${summaryText}`);
+        updateMemMetric();
         hideThinking();
         const wrap = document.createElement('div');
         wrap.className = 'msg arex';
         wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>`;
         chat.appendChild(wrap);
-        await typewrite(wrap.querySelector('.bubble'), data.choices[0].message.content);
+        await typewrite(wrap.querySelector('.bubble'), summaryText);
         setOrb(null,'En espera de instrucciones');
       } catch { hideThinking(); addMsg('arex','Error al generar el resumen.'); setOrb(null,'En espera de instrucciones'); }
       break;
@@ -630,11 +665,15 @@ async function handleCommand(cmd) {
 
 /* ── Flujo principal ────────────────────────────────── */
 async function handleSend() {
+  if (isBusy) return;
   const msg = txt.value.trim();
   if (!msg) return;
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
+
+  isBusy = true;
+  btnSend.disabled = true;
 
   addMsg('user', msg);
   history.push({ role:'user', content: msg });
@@ -645,7 +684,7 @@ async function handleSend() {
   if (searchOn) {
     setOrb('searching','Buscando en la web...');
     webCtx = await webSearch(msg);
-    await updateStats('search');
+    if (webCtx) await updateStats('search');
   }
 
   setOrb('thinking','Procesando...');
@@ -659,13 +698,13 @@ async function handleSend() {
     updateMemMetric();
 
     hideThinking();
-    const sources = webCtx ? webCtx.results.slice(0,3) : null;
+    const sources = webCtx?.results?.slice(0,3) || null;
     document.querySelector('.welcome')?.remove();
     const wrap = document.createElement('div');
     wrap.className = 'msg arex';
     let srcHTML = '';
     if (sources?.length) {
-      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
     }
     wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
     chat.appendChild(wrap);
@@ -683,6 +722,9 @@ async function handleSend() {
     addMsg('arex', errMsg);
     setOrb(null,'En espera de instrucciones');
     console.error(err);
+  } finally {
+    isBusy = false;
+    btnSend.disabled = false;
   }
 }
 
