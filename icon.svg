@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#020c14"/>
+  <circle cx="96" cy="96" r="72" fill="none" stroke="#00d4ff" stroke-width="3"/>
+  <circle cx="96" cy="96" r="52" fill="none" stroke="#00d4ff" stroke-width="1" stroke-dasharray="6,4"/>
+  <circle cx="96" cy="96" r="22" fill="#00d4ff"/>
+  <circle cx="96" cy="96" r="14" fill="#020c14"/>
+  <text x="96" y="178" text-anchor="middle" fill="#00d4ff" font-family="monospace" font-size="13" letter-spacing="5">AREX</text>
+</svg>
