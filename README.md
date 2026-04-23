@@ -64,7 +64,8 @@ arex/
 | `/resumir` | Resume la conversación actual con IA |
 | `/exportar` | Descarga la conversación como `.txt` |
 | `/examen` | Activa/desactiva modo examen (respuestas detalladas) |
-| `/notas` | Abre/cierra el panel de notas persistentes |
+| `/notas` | Abre/cierra el panel de notas con categorías |
+| `/memoria` | Gestiona la memoria permanente (hasta 20 entradas) |
 | `/stats` | Muestra estadísticas de uso |
 | `/recordar 30min estudiar` | Recordatorio en 30 minutos |
 | `/recordar 2h entregar tarea` | Recordatorio en 2 horas |
@@ -120,6 +121,11 @@ Para cambiarlas desde cualquier dispositivo, escribe `/config` en el chat.
 
 - [x] **Fase 18** — Comandos rápidos `/atajos` (hasta 15 atajos con soporte `{args}`, validación de nombres reservados)
 - [x] **Fase 19** — Análisis automático de URLs (pegar un link = AREX extrae y resume el contenido; doble fallback Tavily extract → search)
+- [x] **Fase 21** — Múltiples URLs (pegar varias URLs o URL + pregunta = análisis comparativo simultáneo)
+- [x] **Fase 22** — Comandos de voz del sistema (voz activa `/limpiar`, `/examen`, `/notas`, `/exportar`, `/stats`, `/resumir`, búsqueda web)
+- [x] **Fase 23** — Auto-búsqueda por contexto (AREX detecta palabras clave de datos en tiempo real y activa Tavily automáticamente)
+- [x] **Fase 24** — Memoria permanente `/memoria` (hasta 20 entradas inyectadas en cada respuesta, editables desde el chat)
+- [x] **Fase 25** — Notas con categorías (General, Estudio, Ideas, Trabajo, Personal) y filtro por categoría en el panel
 
 ### Próximo
 

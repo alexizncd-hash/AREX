@@ -44,8 +44,23 @@
     <span class="panel-title">NOTAS</span>
     <button class="btn-close" id="btn-close-notes">✕</button>
   </div>
+  <div id="notes-filter-bar" class="notes-filter-bar">
+    <button class="nf-btn active" data-cat="all">Todo</button>
+    <button class="nf-btn" data-cat="General">General</button>
+    <button class="nf-btn" data-cat="Estudio">Estudio</button>
+    <button class="nf-btn" data-cat="Ideas">Ideas</button>
+    <button class="nf-btn" data-cat="Trabajo">Trabajo</button>
+    <button class="nf-btn" data-cat="Personal">Personal</button>
+  </div>
   <div id="notes-list" class="notes-list"></div>
   <div class="notes-input-wrap">
+    <select id="note-cat-select" class="note-cat-select">
+      <option value="General">General</option>
+      <option value="Estudio">Estudio</option>
+      <option value="Ideas">Ideas</option>
+      <option value="Trabajo">Trabajo</option>
+      <option value="Personal">Personal</option>
+    </select>
     <input type="text" id="note-input" placeholder="Nueva nota..." autocomplete="off"/>
     <button class="btn-add" id="btn-add-note">+</button>
   </div>
@@ -84,7 +99,8 @@
       </div>
       <div class="cmd-group">
         <div class="cmd-group-title">HERRAMIENTAS</div>
-        <div class="cmd-row"><code>/notas</code><span>Abre/cierra panel de notas</span></div>
+        <div class="cmd-row"><code>/notas</code><span>Panel de notas con categorías (General, Estudio, Ideas, Trabajo, Personal)</span></div>
+        <div class="cmd-row"><code>/memoria</code><span>Memoria permanente — datos que AREX recuerda en cada respuesta</span></div>
         <div class="cmd-row"><code>/stats</code><span>Estadísticas de uso</span></div>
         <div class="cmd-row"><code>/contexto</code><span>Panel de contexto personal (proyectos, metas, universidad)</span></div>
         <div class="cmd-row"><code>/atajos</code><span>Crear y gestionar comandos rápidos personalizados</span></div>
@@ -105,8 +121,14 @@
       </div>
       <div class="cmd-group">
         <div class="cmd-group-title">ANÁLISIS DE URLS</div>
-        <div class="cmd-row"><span>Pega una URL sola en el chat — AREX extrae y resume el contenido automáticamente</span></div>
+        <div class="cmd-row"><span>URL sola → AREX extrae y resume el contenido automáticamente</span></div>
+        <div class="cmd-row"><span>Múltiples URLs → análisis comparativo de todos los enlaces</span></div>
+        <div class="cmd-row"><span>URL + pregunta → AREX responde sobre el contenido del enlace</span></div>
         <div class="cmd-row"><span>Requiere Tavily API Key configurada</span></div>
+      </div>
+      <div class="cmd-group">
+        <div class="cmd-group-title">AUTO-BÚSQUEDA</div>
+        <div class="cmd-row"><span>AREX detecta automáticamente cuándo necesita datos en tiempo real (precios, noticias, clima, etc.) y activa la búsqueda sin que lo pidas</span></div>
       </div>
     </div>
   </div>
@@ -192,6 +214,25 @@
       </div>
       <button id="ctx-save" class="ctx-btn">GUARDAR CONTEXTO</button>
       <div id="ctx-ok" class="ctx-ok hidden">Contexto guardado. Activo en la próxima respuesta.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Memoria permanente ── -->
+<div id="modal-memoria" class="modal hidden">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <div class="modal-header">
+      <span>MEMORIA PERMANENTE</span>
+      <button class="btn-close" id="btn-close-memoria">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="ctx-desc">Estos datos se inyectan en <em>cada</em> respuesta de AREX. Úsala para información que no quieres repetir nunca: preferencias, restricciones, contexto fijo.</p>
+      <div id="memoria-list" class="memoria-list"></div>
+      <div class="memoria-input-row">
+        <input id="memoria-input" class="cfg-input" placeholder="Ej: Siempre responde con ejemplos de código JavaScript" autocomplete="off"/>
+        <button id="memoria-add" class="ctx-btn" style="min-width:100px;">AGREGAR</button>
+      </div>
+      <div style="font-size:9px;color:#4a7a96;letter-spacing:1px;margin-top:6px;text-align:right;">Máximo 20 entradas</div>
     </div>
   </div>
 </div>

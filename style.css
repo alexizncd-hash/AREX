@@ -271,9 +271,8 @@ footer {
 .note-item .note-text { color:var(--text-main); line-height:1.5; margin-bottom:4px; }
 .note-item .note-time { font-size:9px; color:var(--text-muted); letter-spacing:1px; }
 .note-item .btn-del {
-  position:absolute; top:6px; right:8px;
   background:transparent; border:none; color:var(--text-muted);
-  cursor:pointer; font-size:12px; transition:color 0.2s;
+  cursor:pointer; font-size:12px; transition:color 0.2s; padding:0 2px;
 }
 .note-item .btn-del:hover { color:#ff4444; }
 .notes-input-wrap {
@@ -465,6 +464,69 @@ footer {
 .msg.arex .bubble tr:nth-child(even) td { background:rgba(0,212,255,0.03); }
 /* Override highlight.js background para que herede */
 .msg.arex .bubble pre .hljs { background:transparent; padding:0; }
+
+/* ── Notas: categorías y filtros ────────────────────── */
+.notes-filter-bar {
+  display:flex; gap:4px; padding:6px 10px;
+  border-bottom:1px solid var(--border); flex-wrap:wrap;
+  background:rgba(0,212,255,0.02);
+}
+.nf-btn {
+  background:transparent; border:1px solid var(--border);
+  color:var(--text-muted); font-family:var(--font);
+  font-size:9px; letter-spacing:1px; padding:3px 7px;
+  border-radius:2px; cursor:pointer; transition:all 0.15s;
+}
+.nf-btn:hover { border-color:var(--cyan-dim); color:var(--cyan); }
+.nf-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.08); }
+
+.note-cat-select {
+  background:rgba(0,212,255,0.04); border:1px solid var(--border);
+  border-radius:2px; color:var(--text-main); font-family:var(--font);
+  font-size:10px; padding:4px 6px; outline:none; cursor:pointer;
+  flex-shrink:0;
+}
+.note-cat-select:focus { border-color:var(--cyan); }
+
+.note-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:4px;
+}
+.note-cat {
+  font-size:8px; letter-spacing:2px; padding:1px 5px;
+  border-radius:2px; font-weight:bold;
+}
+.note-cat-general  { color:#4a7a96; border:1px solid #4a7a96; }
+.note-cat-estudio  { color:#00d4ff; border:1px solid rgba(0,212,255,0.5); }
+.note-cat-ideas    { color:#ff9900; border:1px solid rgba(255,153,0,0.5); }
+.note-cat-trabajo  { color:#00ffaa; border:1px solid rgba(0,255,170,0.5); }
+.note-cat-personal { color:#cc66ff; border:1px solid rgba(204,102,255,0.5); }
+
+/* ── Memoria permanente ─────────────────────────────── */
+.memoria-list {
+  max-height:280px; overflow-y:auto; margin-bottom:0.8rem;
+}
+.memoria-item {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:6px 8px; border-bottom:1px solid var(--border);
+  font-size:11px;
+}
+.memoria-text { flex:1; color:var(--text-main); line-height:1.5; word-break:break-word; }
+.memoria-del {
+  background:transparent; border:none; color:var(--text-muted);
+  cursor:pointer; font-size:12px; padding:0 4px;
+  transition:color 0.15s; flex-shrink:0;
+}
+.memoria-del:hover { color:#ff4444; }
+.memoria-empty {
+  font-size:11px; color:var(--text-muted); text-align:center;
+  padding:1.5rem 0.5rem; letter-spacing:0.5px; line-height:1.6;
+}
+.memoria-input-row {
+  display:flex; gap:8px; align-items:stretch; margin-top:0.8rem;
+}
+.memoria-input-row .cfg-input { flex:1; }
+.memoria-input-row .ctx-btn { width:auto; margin-top:0; padding:9px 14px; }
 
 /* ── Responsive ─────────────────────────────────────── */
 @media(max-width:600px){

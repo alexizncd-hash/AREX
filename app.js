@@ -52,7 +52,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria'];
 
 function loadAtalos() {
   const saved = localStorage.getItem('arex_atajos');
@@ -113,6 +113,20 @@ function updateCtxBadge() {
   const ctx = loadPersonalContext();
   const hasCtx = !!(ctx.proyectos || ctx.universidad || ctx.metas || ctx.datos);
   ctxBadge.classList.toggle('hidden', !hasCtx);
+}
+
+/* ── Memoria larga ──────────────────────────────────── */
+function loadMemoria() {
+  const saved = localStorage.getItem('arex_memoria');
+  return saved ? JSON.parse(saved) : [];
+}
+function saveMemoria(entries) {
+  localStorage.setItem('arex_memoria', JSON.stringify(entries));
+}
+function buildMemoriaSection() {
+  const entries = loadMemoria();
+  if (!entries.length) return '';
+  return `\n\nMEMORIA PERMANENTE (datos que Alexiz guardó para referencia constante):\n${entries.map((e, i) => `${i + 1}. ${e.text}`).join('\n')}`;
 }
 
 /* ── System prompt ──────────────────────────────────── */
@@ -212,6 +226,9 @@ let searchOn   = false;
 let examMode   = false;
 let isSpeaking = false;
 let isBusy     = false;
+
+const NOTE_CATEGORIES = ['General','Estudio','Ideas','Trabajo','Personal'];
+let noteFilter = 'all';
 
 /* ── DOM ────────────────────────────────────────────── */
 const orb          = document.getElementById('orb');
@@ -335,6 +352,18 @@ function arexSpeak(text) {
   window.speechSynthesis.speak(u);
 }
 
+/* ── Comandos de voz ────────────────────────────────── */
+const VOICE_CMDS = [
+  { phrases:['limpiar chat','borrar chat','limpiar conversación'],  cmd:'/limpiar'  },
+  { phrases:['exportar chat','descargar chat','exportar conversación'], cmd:'/exportar' },
+  { phrases:['modo examen','activar examen','modo de examen'],      cmd:'/examen'   },
+  { phrases:['abrir notas','ver notas','mis notas'],                cmd:'/notas'    },
+  { phrases:['ver estadísticas','estadísticas del sistema'],        cmd:'/stats'    },
+  { phrases:['ver comandos','mostrar ayuda','ayuda'],               cmd:'/ayuda'    },
+  { phrases:['activar búsqueda','búsqueda web','buscar en internet'], cmd:'__search__' },
+  { phrases:['resumir conversación','resume la conversación'],      cmd:'/resumir'  },
+];
+
 /* ── Reconocimiento de voz ──────────────────────────── */
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -345,13 +374,44 @@ function startListening() {
   setOrb('listening','Escuchando...');
   rec.onresult = async e => {
     btnMic.classList.remove('on');
-    txt.value = e.results[0][0].transcript;
+    const transcript = e.results[0][0].transcript;
+    const lower = transcript.toLowerCase().trim();
+
+    // Detectar comandos de voz
+    for (const vc of VOICE_CMDS) {
+      if (vc.phrases.some(p => lower.includes(p))) {
+        if (vc.cmd === '__search__') {
+          btnSearch.click();
+        } else {
+          txt.value = vc.cmd;
+          await handleSend();
+        }
+        return;
+      }
+    }
+
+    // Mensaje normal de voz
+    txt.value = transcript;
     await updateStats('voice');
     handleSend();
   };
   rec.onerror = () => { btnMic.classList.remove('on'); setOrb(null,'En espera de instrucciones'); };
   rec.onend   = () => btnMic.classList.remove('on');
   rec.start();
+}
+
+/* ── Auto-búsqueda por contexto ─────────────────────── */
+const AUTO_SEARCH_KW = [
+  'precio','cotización','noticias hoy','ahora mismo','última hora',
+  'reciente','actualización','temperatura','clima','pronóstico',
+  'tipo de cambio','dólar','euro','bitcoin','cripto','bolsa',
+  'tendencia','evento','partido','resultado','marcador','quién ganó',
+  'cuándo sale','lanzamiento','estreno','versión nueva','fecha de'
+];
+function needsAutoSearch(text) {
+  if (!AREX_CONFIG.tavilyKey || searchOn) return false;
+  const lower = text.toLowerCase();
+  return AUTO_SEARCH_KW.some(kw => lower.includes(kw));
 }
 
 /* ── Búsqueda web Tavily ────────────────────────────── */
@@ -372,6 +432,10 @@ async function webSearch(q) {
 /* ── Análisis de URLs ───────────────────────────────── */
 function isURL(text) {
   return /^https?:\/\/\S+$/i.test(text.trim());
+}
+function extractURLs(text) {
+  const m = text.match(/https?:\/\/[^\s<>"]+/gi);
+  return m ? [...new Set(m)] : [];
 }
 
 async function extractURL(url) {
@@ -463,6 +527,80 @@ async function handleURL(url) {
     const errMsg = err.message?.includes('401') ? 'API Key inválida. Verifica tu Groq Key en `/config`.' :
                    err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento.' :
                    `Error al analizar el enlace: ${err.message}`;
+    addMsg('arex', errMsg);
+    setOrb(null, 'En espera de instrucciones');
+    console.error(err);
+  } finally {
+    isBusy = false;
+    btnSend.disabled = false;
+  }
+}
+
+async function handleMultipleURLs(urls, question) {
+  isBusy = true;
+  btnSend.disabled = true;
+
+  const displayMsg = question ? `${urls.join('\n')}\n\n${question}` : urls.join('\n');
+  addMsg('user', displayMsg);
+  await saveMsg('user', displayMsg);
+  await updateStats('message');
+
+  if (!AREX_CONFIG.tavilyKey) {
+    addMsg('arex', 'Para analizar enlaces necesitas una **Tavily API Key**. Escribe `/config` para agregarla.');
+    isBusy = false; btnSend.disabled = false; return;
+  }
+
+  setOrb('searching', `Extrayendo ${urls.length} enlace${urls.length > 1 ? 's' : ''}...`);
+  showThinking();
+
+  try {
+    const results = await Promise.all(urls.map(u => extractURL(u)));
+    const valid = results.filter(r => r !== null);
+
+    if (!valid.length) {
+      hideThinking();
+      addMsg('arex', 'No se pudo extraer contenido de los enlaces. Pueden ser privados o requerir login.');
+      setOrb(null, 'En espera de instrucciones');
+      isBusy = false; btnSend.disabled = false; return;
+    }
+
+    const urlsContext = valid.map((r, i) =>
+      `[ENLACE ${i + 1}: ${r.url}]\n[TÍTULO: ${r.title}]\n${r.content}`
+    ).join('\n\n---\n\n');
+
+    const instruction = question
+      ? `[INSTRUCCIÓN] ${question}`
+      : valid.length > 1
+        ? `[INSTRUCCIÓN] Analiza y compara estos ${valid.length} enlaces. Destaca similitudes, diferencias y puntos clave de cada uno.`
+        : `[INSTRUCCIÓN] Analiza y resume los puntos más importantes de esta página.`;
+
+    history.push({ role: 'user', content: `${urlsContext}\n\n${instruction}` });
+    await saveMsg('user', `[${valid.length} URL(s) analizadas: ${urls.join(', ')}]`);
+
+    setOrb('thinking', 'Analizando contenido...');
+    const reply = await callGroq();
+    history.push({ role: 'assistant', content: reply });
+    await saveMsg('assistant', reply);
+    updateMemMetric();
+
+    hideThinking();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg arex';
+    const srcHTML = `<div class="sources">FUENTES: ${valid.map((r, i) =>
+      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${r.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a>`
+    ).join(' · ')}</div>`;
+    wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+
+    await typewrite(wrap.querySelector('.bubble'), reply);
+    if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
+
+  } catch (err) {
+    hideThinking();
+    const errMsg = err.message?.includes('401') ? 'API Key inválida. Verifica tu Groq Key en `/config`.' :
+                   err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento.' :
+                   `Error al analizar los enlaces: ${err.message}`;
     addMsg('arex', errMsg);
     setOrb(null, 'En espera de instrucciones');
     console.error(err);
@@ -564,7 +702,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '') + buildContextSection();
+  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
   let messages = [...history];
 
   if (webCtx) {
@@ -638,9 +776,9 @@ async function loadHistory() {
 }
 
 /* ── Firebase: notas ────────────────────────────────── */
-async function saveNote(text) {
+async function saveNote(text, category = 'General') {
   if (!db) return 'local_' + Date.now();
-  const ref = await addDoc(collection(db,'notes'), { text, timestamp:Date.now() });
+  const ref = await addDoc(collection(db,'notes'), { text, category, timestamp:Date.now() });
   return ref.id;
 }
 async function loadNotes() {
@@ -658,14 +796,26 @@ async function loadNotes() {
     const q = query(collection(db,'notes'), orderBy('timestamp','desc'));
     const snap = await getDocs(q);
     notesList.innerHTML = '';
-    snap.forEach(d => renderNote(d.id, d.data().text, d.data().timestamp));
+    snap.forEach(d => {
+      const data = d.data();
+      if (noteFilter === 'all' || (data.category || 'General') === noteFilter) {
+        renderNote(d.id, data.text, data.timestamp, data.category || 'General');
+      }
+    });
   } catch(e) { console.warn('Firebase loadNotes:', e); }
 }
-function renderNote(id, text, ts) {
+function renderNote(id, text, ts, category = 'General') {
   const el = document.createElement('div');
   el.className = 'note-item'; el.dataset.id = id;
   const time = new Date(ts).toLocaleDateString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-  el.innerHTML = `<div class="note-text">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="note-time">${time}</div><button class="btn-del" title="Eliminar">✕</button>`;
+  const safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML = `
+    <div class="note-header">
+      <span class="note-cat note-cat-${category.toLowerCase()}">${category}</span>
+      <button class="btn-del" title="Eliminar">✕</button>
+    </div>
+    <div class="note-text">${safeText}</div>
+    <div class="note-time">${time}</div>`;
   el.querySelector('.btn-del').onclick = async () => {
     if (db) await deleteDoc(doc(db,'notes',id)).catch(()=>{});
     el.remove();
@@ -921,6 +1071,29 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'memoria': {
+      const memoriaModal = document.getElementById('modal-memoria');
+      const memoriaList  = document.getElementById('memoria-list');
+      const entries = loadMemoria();
+      memoriaList.innerHTML = '';
+      if (!entries.length) {
+        memoriaList.innerHTML = '<div class="memoria-empty">Sin entradas. Usa el campo de abajo para guardar algo permanentemente.</div>';
+      } else {
+        entries.forEach((e, i) => {
+          const el = document.createElement('div');
+          el.className = 'memoria-item';
+          el.innerHTML = `<span class="memoria-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><button class="memoria-del" data-i="${i}">✕</button>`;
+          el.querySelector('.memoria-del').onclick = () => {
+            const cur = loadMemoria(); cur.splice(i, 1); saveMemoria(cur);
+            handleCommand('/memoria');
+          };
+          memoriaList.appendChild(el);
+        });
+      }
+      memoriaModal.classList.remove('hidden');
+      break;
+    }
+
     default:
       addMsg('arex',`Comando no reconocido: /${name}. Escribe /ayuda para ver los disponibles.`);
   }
@@ -934,7 +1107,18 @@ async function handleSend() {
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
-  if (isURL(msg)) { await handleURL(msg); return; }
+
+  // Detectar URLs en el mensaje
+  const msgURLs = extractURLs(msg);
+  if (msgURLs.length > 0) {
+    const textWithoutURLs = msg.replace(/https?:\/\/[^\s<>"]+/gi, '').trim();
+    if (msgURLs.length === 1 && !textWithoutURLs) {
+      await handleURL(msgURLs[0]);
+    } else {
+      await handleMultipleURLs(msgURLs, textWithoutURLs || null);
+    }
+    return;
+  }
 
   isBusy = true;
   btnSend.disabled = true;
@@ -945,8 +1129,9 @@ async function handleSend() {
   await updateStats('message');
 
   let webCtx = null;
-  if (searchOn) {
-    setOrb('searching','Buscando en la web...');
+  const autoSearch = needsAutoSearch(msg);
+  if (searchOn || autoSearch) {
+    setOrb('searching', searchOn ? 'Buscando en la web...' : 'Buscando información actualizada...');
     webCtx = await webSearch(msg);
     if (webCtx) await updateStats('search');
   }
@@ -1034,12 +1219,26 @@ document.getElementById('btn-close-notes').addEventListener('click', () => notes
 document.getElementById('btn-add-note').addEventListener('click', async () => {
   const t = noteInput.value.trim();
   if (!t) return;
-  const id = await saveNote(t);
-  renderNote(id, t, Date.now());
+  const cat = document.getElementById('note-cat-select')?.value || 'General';
+  const id = await saveNote(t, cat);
+  renderNote(id, t, Date.now(), cat);
   noteInput.value = '';
 });
 noteInput.addEventListener('keydown', async e => {
-  if (e.key==='Enter') { const t=noteInput.value.trim(); if(!t)return; const id=await saveNote(t); renderNote(id,t,Date.now()); noteInput.value=''; }
+  if (e.key==='Enter') {
+    const t = noteInput.value.trim(); if (!t) return;
+    const cat = document.getElementById('note-cat-select')?.value || 'General';
+    const id = await saveNote(t, cat); renderNote(id, t, Date.now(), cat); noteInput.value='';
+  }
+});
+
+// Filtro de notas por categoría
+document.getElementById('notes-filter-bar')?.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  noteFilter = btn.dataset.cat;
+  document.querySelectorAll('#notes-filter-bar [data-cat]').forEach(b => b.classList.toggle('active', b.dataset.cat === noteFilter));
+  await loadNotes();
 });
 
 // Modales
@@ -1048,7 +1247,25 @@ document.getElementById('btn-close-help').addEventListener('click',    () => mod
 document.getElementById('btn-close-config').addEventListener('click',  () => modalConfig.classList.add('hidden'));
 document.getElementById('btn-close-context').addEventListener('click', () => modalContext.classList.add('hidden'));
 document.getElementById('btn-close-atajos').addEventListener('click',  () => modalAtalos.classList.add('hidden'));
-[modalStats, modalHelp, modalConfig, modalContext, modalAtalos].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+document.getElementById('btn-close-memoria').addEventListener('click', () => document.getElementById('modal-memoria').classList.add('hidden'));
+const modalMemoria = document.getElementById('modal-memoria');
+[modalStats, modalHelp, modalConfig, modalContext, modalAtalos, modalMemoria].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+
+// Agregar entrada de memoria
+document.getElementById('memoria-add').addEventListener('click', () => {
+  const input = document.getElementById('memoria-input');
+  const t = input.value.trim();
+  if (!t) return;
+  const cur = loadMemoria();
+  if (cur.length >= 20) { addMsg('arex','Máximo 20 entradas en memoria. Elimina algunas primero.'); return; }
+  cur.push({ text: t, ts: Date.now() });
+  saveMemoria(cur);
+  input.value = '';
+  handleCommand('/memoria');
+});
+document.getElementById('memoria-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('memoria-add').click();
+});
 
 // Agregar atajo personalizado
 document.getElementById('atajo-add').addEventListener('click', () => {
