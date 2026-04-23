@@ -369,6 +369,109 @@ async function webSearch(q) {
   } catch { return null; }
 }
 
+/* ── Análisis de URLs ───────────────────────────────── */
+function isURL(text) {
+  return /^https?:\/\/\S+$/i.test(text.trim());
+}
+
+async function extractURL(url) {
+  if (!AREX_CONFIG.tavilyKey) return null;
+  // Intento 1: Tavily extract (extrae contenido directo de la URL)
+  try {
+    const res = await fetch('https://api.tavily.com/extract', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ api_key: AREX_CONFIG.tavilyKey, urls: [url] })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const result = data.results?.[0];
+      const content = result?.raw_content || result?.content || '';
+      if (content.length > 100) {
+        return { title: result.title || url, content: content.slice(0, 6000), url };
+      }
+    }
+  } catch { /* fallback */ }
+
+  // Intento 2: Tavily search con la URL como query
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ api_key: AREX_CONFIG.tavilyKey, query: url,
+        search_depth:'advanced', max_results:3, include_answer:true, include_raw_content:true })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const top = data.results?.[0];
+    const content = top?.raw_content || top?.content || data.answer || '';
+    if (!content) return null;
+    return { title: top?.title || url, content: content.slice(0, 6000), url };
+  } catch { return null; }
+}
+
+async function handleURL(url) {
+  isBusy = true;
+  btnSend.disabled = true;
+
+  addMsg('user', url);
+  await saveMsg('user', url);
+  await updateStats('message');
+
+  if (!AREX_CONFIG.tavilyKey) {
+    addMsg('arex', 'Para analizar enlaces necesitas una **Tavily API Key**. Escribe `/config` para agregarla.');
+    isBusy = false; btnSend.disabled = false; return;
+  }
+
+  setOrb('searching', 'Extrayendo contenido del enlace...');
+  showThinking();
+
+  try {
+    const extracted = await extractURL(url);
+
+    if (!extracted) {
+      hideThinking();
+      addMsg('arex', `No se pudo extraer el contenido de ese enlace. Puede ser privado, requiere login, o no está disponible.\n\nIntenta compartir el texto directamente y lo analizo.`);
+      setOrb(null, 'En espera de instrucciones');
+      isBusy = false; btnSend.disabled = false; return;
+    }
+
+    const contextMsg = `[URL: ${extracted.url}]\n[TÍTULO: ${extracted.title}]\n\n[CONTENIDO EXTRAÍDO]\n${extracted.content}\n\n[INSTRUCCIÓN] Analiza y resume los puntos más importantes de esta página. Sé directo y estructurado.`;
+    history.push({ role:'user', content: contextMsg });
+    await saveMsg('user', `[URL analizada: ${url}]`);
+
+    setOrb('thinking', 'Analizando contenido...');
+    const reply = await callGroq();
+    history.push({ role:'assistant', content: reply });
+    await saveMsg('assistant', reply);
+    updateMemMetric();
+
+    hideThinking();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg arex';
+    const safeTitle = extracted.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const srcHTML = `<div class="sources">FUENTE: <a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
+    wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+
+    await typewrite(wrap.querySelector('.bubble'), reply);
+    if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
+
+  } catch(err) {
+    hideThinking();
+    const errMsg = err.message?.includes('401') ? 'API Key inválida. Verifica tu Groq Key en `/config`.' :
+                   err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento.' :
+                   `Error al analizar el enlace: ${err.message}`;
+    addMsg('arex', errMsg);
+    setOrb(null, 'En espera de instrucciones');
+    console.error(err);
+  } finally {
+    isBusy = false;
+    btnSend.disabled = false;
+  }
+}
+
 /* ── Procesamiento de archivos ──────────────────────── */
 async function extractPDF(file) {
   if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js no disponible. Recarga la página.');
@@ -831,6 +934,7 @@ async function handleSend() {
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
+  if (isURL(msg)) { await handleURL(msg); return; }
 
   isBusy = true;
   btnSend.disabled = true;
