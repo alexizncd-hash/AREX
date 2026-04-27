@@ -452,6 +452,10 @@ async function renderArexReply(wrap, text) {
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
     btn.onclick = () => openCodePanel(code);
     wrap.querySelector('.run-wrap').appendChild(btn);
+    // Auto-ejecutar si es un documento HTML completo (visualización / herramienta)
+    if (/<!DOCTYPE|<html/i.test(code)) {
+      setTimeout(() => openCodePanel(code), 400);
+    }
   }
 }
 
