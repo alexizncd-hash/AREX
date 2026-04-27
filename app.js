@@ -385,12 +385,13 @@ function typewrite(bubble, text) {
 
 /* ── Código en vivo ─────────────────────────────────── */
 function extractCodeBlock(text) {
-  const re = /```(?:html|HTML|js|javascript|JS|css|CSS|svg|SVG|py|python)?\n?([\s\S]+?)```/g;
+  // Acepta cualquier lenguaje o ninguno: ```html, ```js, ```, ```python, etc.
+  const re = /```[^\n`]*\n([\s\S]+?)```/g;
   let best = null;
   let m;
   while ((m = re.exec(text)) !== null) {
     const code = m[1].trim();
-    if (!best || code.length > best.length) best = code;
+    if (code.length > 60 && (!best || code.length > best.length)) best = code;
   }
   return best;
 }
@@ -406,9 +407,10 @@ function runInIframe(code) {
 }
 function openCodePanel(code) {
   document.getElementById('cp-editor').value = code;
-  switchCpTab('preview');
   document.getElementById('code-panel').classList.remove('hidden');
-  runInIframe(code);
+  switchCpTab('preview');
+  // requestAnimationFrame asegura que el iframe esté pintado antes de cargar el código
+  requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
 }
 function closeCpPanel() {
   document.getElementById('code-panel').classList.add('hidden');
@@ -1450,7 +1452,10 @@ document.querySelectorAll('.cp-tab').forEach(tab =>
 document.getElementById('cp-close').addEventListener('click', closeCpPanel);
 document.getElementById('cp-run-btn').addEventListener('click', () => {
   const code = document.getElementById('cp-editor').value.trim();
-  if (code) { switchCpTab('preview'); runInIframe(code); }
+  if (code) {
+    switchCpTab('preview');
+    requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
+  }
 });
 document.getElementById('cp-copy').addEventListener('click', async () => {
   const code = document.getElementById('cp-editor').value;
