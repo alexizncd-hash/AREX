@@ -1,4 +1,4 @@
-const CACHE = 'arex-v3';
+const CACHE = 'arex-v4';
 const SHELL = ['./index.html', './icon.svg', './manifest.json'];
 
 self.addEventListener('install', e => {

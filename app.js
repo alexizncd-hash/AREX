@@ -269,6 +269,67 @@ function updateMemMetric() {
   const c = history.length;
   barMem.style.width = Math.min(100, Math.round((c/40)*100)) + '%';
   valMem.textContent = c + ' msg';
+  updateSessionStats();
+}
+
+/* ── Panel lateral (sidebar) ────────────────────────── */
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.remove('hidden');
+  updateSidebarAll();
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.add('hidden');
+}
+function setDot(dotId, valId, state, label) {
+  const dot = document.getElementById(dotId);
+  const val = document.getElementById(valId);
+  if (!dot || !val) return;
+  dot.className = `ss-dot ${state}`;
+  val.textContent = label;
+}
+function updateSystemStatus() {
+  const hasGroq     = !!AREX_CONFIG?.groqKey;
+  const hasTavily   = !!AREX_CONFIG?.tavilyKey;
+  const hasFirebase = !!db;
+  setDot('sdot-groq',     'sval-groq',     hasGroq     ? 'on-line'  : 'on-off', hasGroq     ? 'ONLINE'   : 'NO CONFIG');
+  setDot('sdot-tavily',   'sval-tavily',   hasTavily   ? 'on-ready' : 'on-off', hasTavily   ? 'LISTO'    : 'NO CONFIG');
+  setDot('sdot-firebase', 'sval-firebase', hasFirebase ? 'on-line'  : 'on-off', hasFirebase ? 'ACTIVO'   : 'OFFLINE');
+}
+function syncModeBtn(id, active) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.classList.toggle('on', active);
+  const st = btn.querySelector('.mt-st');
+  if (st) st.textContent = active ? 'ON' : 'OFF';
+}
+function updateSidebarModes() {
+  syncModeBtn('sb-search', searchOn);
+  syncModeBtn('sb-exam',   examMode);
+  syncModeBtn('sb-voice',  voiceOn);
+  // Mode strip
+  const strip = document.getElementById('mode-strip');
+  const modeVal = document.getElementById('sb-mode-val');
+  if (!strip) return;
+  const pills = [];
+  if (searchOn) pills.push(`<span class="mode-pill mp-search">BÚSQUEDA ACTIVA</span>`);
+  if (examMode) pills.push(`<span class="mode-pill mp-exam">MODO EXAMEN</span>`);
+  if (voiceOn)  pills.push(`<span class="mode-pill mp-voice">VOZ ACTIVA</span>`);
+  strip.innerHTML = pills.join('');
+  strip.classList.toggle('hidden', pills.length === 0);
+  if (modeVal) modeVal.textContent = examMode ? 'EXAMEN' : searchOn ? 'BÚSQUEDA' : 'ESTÁNDAR';
+}
+function updateSessionStats() {
+  const sbMsgs = document.getElementById('sb-msgs');
+  const sbMem  = document.getElementById('sb-mem');
+  if (sbMsgs) sbMsgs.textContent = history.length;
+  if (sbMem)  sbMem.textContent  = `${loadMemoria().length} / 20`;
+}
+function updateSidebarAll() {
+  updateSystemStatus();
+  updateSidebarModes();
+  updateSessionStats();
 }
 
 /* ── Estado del orb ─────────────────────────────────── */
@@ -955,6 +1016,7 @@ async function handleCommand(cmd) {
       addMsg('arex', examMode
         ? 'Modo examen activado. Responderé con más detalle y estructura.'
         : 'Modo examen desactivado. Volviendo al modo estándar.');
+      updateSidebarModes();
       break;
 
     case 'resumir': {
@@ -1188,6 +1250,7 @@ btnVoice.addEventListener('click', () => {
   const msg = voiceOn ? 'Síntesis de voz activada.' : 'Síntesis de voz desactivada.';
   addMsg('arex', msg);
   if (voiceOn) arexSpeak(msg);
+  updateSidebarModes();
 });
 
 btnSearch.addEventListener('click', () => {
@@ -1198,6 +1261,7 @@ btnSearch.addEventListener('click', () => {
   searchOn = !searchOn;
   btnSearch.classList.toggle('active', searchOn);
   addMsg('arex', searchOn ? 'Búsqueda web activada. Consultaré fuentes en tiempo real.' : 'Búsqueda web desactivada.');
+  updateSidebarModes();
 });
 
 btnFile.addEventListener('click', () => fileInput.click());
@@ -1330,6 +1394,29 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   document.getElementById('cfg2-ok').style.display = 'block';
 });
 
+// Sidebar: abrir / cerrar
+document.getElementById('btn-sidebar').addEventListener('click', openSidebar);
+document.getElementById('btn-sidebar-close').addEventListener('click', closeSidebar);
+document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+
+// Sidebar: acciones rápidas
+document.querySelectorAll('.qcmd').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    closeSidebar();
+    const cmd = btn.dataset.cmd;
+    txt.value = cmd;
+    await handleCommand(cmd);
+    txt.value = '';
+  });
+});
+
+// Sidebar: modos toggle
+document.getElementById('sb-search').addEventListener('click', () => btnSearch.click());
+document.getElementById('sb-exam').addEventListener('click', () => {
+  txt.value = '/examen'; handleCommand('/examen'); txt.value = '';
+});
+document.getElementById('sb-voice').addEventListener('click', () => btnVoice.click());
+
 // Voces
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
@@ -1363,6 +1450,7 @@ async function boot() {
   await loadHistory();
   await requestNotifPerm();
   updateCtxBadge();
+  updateSidebarAll();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';

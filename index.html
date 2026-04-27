@@ -38,6 +38,87 @@
   <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
 </div>
 
+<!-- ── Sidebar de control ── -->
+<nav id="sidebar" class="sidebar">
+  <div class="sidebar-hdr">
+    <span class="sidebar-title">PANEL DE CONTROL</span>
+    <button class="btn-close" id="btn-sidebar-close">✕</button>
+  </div>
+
+  <!-- Sistemas -->
+  <div class="sidebar-section">
+    <div class="ss-label">SISTEMAS</div>
+    <div class="sys-row"><span class="ss-dot" id="sdot-groq"></span><span class="ss-name">GROQ IA</span><span class="ss-val" id="sval-groq">—</span></div>
+    <div class="sys-row"><span class="ss-dot" id="sdot-tavily"></span><span class="ss-name">BÚSQUEDA WEB</span><span class="ss-val" id="sval-tavily">—</span></div>
+    <div class="sys-row"><span class="ss-dot" id="sdot-firebase"></span><span class="ss-name">FIREBASE DB</span><span class="ss-val" id="sval-firebase">—</span></div>
+  </div>
+
+  <!-- Modos -->
+  <div class="sidebar-section">
+    <div class="ss-label">MODOS ACTIVOS</div>
+    <button class="mtoggle" id="sb-search">
+      <svg class="mt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="mt-lbl">BÚSQUEDA WEB</span><span class="mt-st">OFF</span>
+    </button>
+    <button class="mtoggle" id="sb-exam">
+      <svg class="mt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="mt-lbl">MODO EXAMEN</span><span class="mt-st">OFF</span>
+    </button>
+    <button class="mtoggle" id="sb-voice">
+      <svg class="mt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      <span class="mt-lbl">VOZ DE AREX</span><span class="mt-st">OFF</span>
+    </button>
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div class="sidebar-section">
+    <div class="ss-label">ACCIONES RÁPIDAS</div>
+    <div class="qcmds">
+      <button class="qcmd" data-cmd="/notas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        NOTAS
+      </button>
+      <button class="qcmd" data-cmd="/memoria">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        MEMORIA
+      </button>
+      <button class="qcmd" data-cmd="/resumir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        RESUMIR
+      </button>
+      <button class="qcmd" data-cmd="/exportar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        EXPORTAR
+      </button>
+      <button class="qcmd" data-cmd="/stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        STATS
+      </button>
+      <button class="qcmd" data-cmd="/contexto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        CONTEXTO
+      </button>
+      <button class="qcmd" data-cmd="/atajos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        ATAJOS
+      </button>
+      <button class="qcmd qcmd-danger" data-cmd="/limpiar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        LIMPIAR
+      </button>
+    </div>
+  </div>
+
+  <!-- Sesión -->
+  <div class="sidebar-section">
+    <div class="ss-label">SESIÓN ACTUAL</div>
+    <div class="srow"><span>MENSAJES</span><span id="sb-msgs">0</span></div>
+    <div class="srow"><span>MEMORIA</span><span id="sb-mem">0 / 20</span></div>
+    <div class="srow"><span>MODO</span><span id="sb-mode-val">ESTÁNDAR</span></div>
+  </div>
+</nav>
+<div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
 <!-- ── Panel de notas ── -->
 <div id="notes-panel" class="notes-panel">
   <div class="panel-header">
@@ -244,9 +325,16 @@
 <!-- ── Header ── -->
 <header>
   <div class="sys-info left">
-    <span class="lbl">SISTEMA</span>
-    <span class="val" id="sys-val">ACTIVO</span>
-    <span class="ctx-badge hidden" id="ctx-badge" title="Contexto personal activo">CTX</span>
+    <button id="btn-sidebar" class="btn-panel" title="Panel de control">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+      <span class="lbl">SISTEMA</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="val" id="sys-val">ACTIVO</span>
+        <span class="ctx-badge hidden" id="ctx-badge" title="Contexto personal activo">CTX</span>
+      </div>
+    </div>
   </div>
   <div class="logo-wrap">
     <div class="logo-ring"><div class="logo-letter">A</div></div>
@@ -268,6 +356,9 @@
   </div>
 
   <div id="exam-badge" class="exam-badge hidden">MODO EXAMEN ACTIVO</div>
+
+  <!-- Tira de modos activos -->
+  <div id="mode-strip" class="mode-strip hidden"></div>
 
   <div class="chat" id="chat">
     <div class="welcome">
