@@ -52,7 +52,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run'];
 
 function loadAtalos() {
   const saved = localStorage.getItem('arex_atajos');
@@ -170,6 +170,7 @@ REGLAS:
 - Señala errores o mejores enfoques directamente.
 - Si hay riesgos, menciónalos con claridad.
 - Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes.
+- CÓDIGO EN VIVO: Cuando generes HTML/CSS/JS completo, Alexiz puede ejecutarlo directamente en AREX con un botón. Genera código autocontenido (sin dependencias externas) con fondo #020c14 y colores cian/blanco para que se integre con la estética del sistema. Usa Canvas, WebGL o CSS puro para visualizaciones.
 
 FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
 "Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
@@ -382,6 +383,65 @@ function typewrite(bubble, text) {
   });
 }
 
+/* ── Código en vivo ─────────────────────────────────── */
+function extractCodeBlock(text) {
+  const re = /```(?:html|HTML|js|javascript|JS|css|CSS|svg|SVG|py|python)?\n?([\s\S]+?)```/g;
+  let best = null;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const code = m[1].trim();
+    if (!best || code.length > best.length) best = code;
+  }
+  return best;
+}
+function wrapCodeIfNeeded(code) {
+  if (/<!DOCTYPE|<html/i.test(code)) return code;
+  if (!/^\s*</.test(code)) {
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{box-sizing:border-box}body{margin:0;background:#020c14;color:#e0f4ff;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;}</style></head><body><script>${code}<\/script></body></html>`;
+  }
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{box-sizing:border-box}body{margin:0;background:#020c14;color:#e0f4ff;}</style></head><body>${code}</body></html>`;
+}
+function runInIframe(code) {
+  document.getElementById('cp-iframe').srcdoc = wrapCodeIfNeeded(code);
+}
+function openCodePanel(code) {
+  document.getElementById('cp-editor').value = code;
+  switchCpTab('preview');
+  document.getElementById('code-panel').classList.remove('hidden');
+  runInIframe(code);
+}
+function closeCpPanel() {
+  document.getElementById('code-panel').classList.add('hidden');
+  setTimeout(() => { document.getElementById('cp-iframe').srcdoc = ''; }, 300);
+}
+function switchCpTab(tab) {
+  document.querySelectorAll('.cp-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('cp-preview-pane').classList.toggle('hidden', tab !== 'preview');
+  document.getElementById('cp-code-pane').classList.toggle('hidden',   tab !== 'code');
+}
+
+/* ── Helpers de render de respuesta AREX ────────────── */
+function makeArexWrap(srcHTML = '') {
+  document.querySelector('.welcome')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'msg arex';
+  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="run-wrap"></div>${srcHTML}`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+  return wrap;
+}
+async function renderArexReply(wrap, text) {
+  await typewrite(wrap.querySelector('.bubble'), text);
+  const code = extractCodeBlock(text);
+  if (code) {
+    const btn = document.createElement('button');
+    btn.className = 'run-btn';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
+    btn.onclick = () => openCodePanel(code);
+    wrap.querySelector('.run-wrap').appendChild(btn);
+  }
+}
+
 /* ── Indicador pensando ─────────────────────────────── */
 function showThinking() {
   document.querySelector('.welcome')?.remove();
@@ -572,15 +632,10 @@ async function handleURL(url) {
     updateMemMetric();
 
     hideThinking();
-    const wrap = document.createElement('div');
-    wrap.className = 'msg arex';
     const safeTitle = extracted.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const srcHTML = `<div class="sources">FUENTE: <a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
-    wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-
-    await typewrite(wrap.querySelector('.bubble'), reply);
+    const wrap = makeArexWrap(srcHTML);
+    await renderArexReply(wrap, reply);
     if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
 
   } catch(err) {
@@ -645,16 +700,11 @@ async function handleMultipleURLs(urls, question) {
     updateMemMetric();
 
     hideThinking();
-    const wrap = document.createElement('div');
-    wrap.className = 'msg arex';
     const srcHTML = `<div class="sources">FUENTES: ${valid.map((r, i) =>
       `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${r.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a>`
     ).join(' · ')}</div>`;
-    wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-
-    await typewrite(wrap.querySelector('.bubble'), reply);
+    const wrap = makeArexWrap(srcHTML);
+    await renderArexReply(wrap, reply);
     if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
 
   } catch (err) {
@@ -745,11 +795,8 @@ async function handleFile(file) {
     }
     await updateStats('file');
     hideThinking();
-    const wrap2 = document.createElement('div');
-    wrap2.className = 'msg arex';
-    wrap2.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>`;
-    chat.appendChild(wrap2);
-    await typewrite(wrap2.querySelector('.bubble'), reply);
+    const wrap2 = makeArexWrap();
+    await renderArexReply(wrap2, reply);
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
   } catch(e) {
     hideThinking();
@@ -1041,11 +1088,8 @@ async function handleCommand(cmd) {
         await saveMsg('assistant', `[Resumen]\n${summaryText}`);
         updateMemMetric();
         hideThinking();
-        const wrap = document.createElement('div');
-        wrap.className = 'msg arex';
-        wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>`;
-        chat.appendChild(wrap);
-        await typewrite(wrap.querySelector('.bubble'), summaryText);
+        const wrap = makeArexWrap();
+        await renderArexReply(wrap, summaryText);
         setOrb(null,'En espera de instrucciones');
       } catch(e) {
         hideThinking();
@@ -1133,6 +1177,17 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'run': {
+      let found = null;
+      for (let i = history.length - 1; i >= 0; i--) {
+        found = extractCodeBlock(history[i].content);
+        if (found) break;
+      }
+      if (found) { openCodePanel(found); }
+      else { addMsg('arex','No encontré código en el historial reciente. Pídeme que genere código HTML/JS primero.'); }
+      break;
+    }
+
     case 'memoria': {
       const memoriaModal = document.getElementById('modal-memoria');
       const memoriaList  = document.getElementById('memoria-list');
@@ -1210,18 +1265,12 @@ async function handleSend() {
 
     hideThinking();
     const sources = webCtx?.results?.slice(0,3) || null;
-    document.querySelector('.welcome')?.remove();
-    const wrap = document.createElement('div');
-    wrap.className = 'msg arex';
     let srcHTML = '';
     if (sources?.length) {
       srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
     }
-    wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div>${srcHTML}`;
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-
-    await typewrite(wrap.querySelector('.bubble'), reply);
+    const wrap = makeArexWrap(srcHTML);
+    await renderArexReply(wrap, reply);
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
 
   } catch(err) {
@@ -1392,6 +1441,26 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   localStorage.setItem('arex_config', JSON.stringify(config));
   window.AREX_CONFIG = config;
   document.getElementById('cfg2-ok').style.display = 'block';
+});
+
+// Panel de código en vivo
+document.querySelectorAll('.cp-tab').forEach(tab =>
+  tab.addEventListener('click', () => switchCpTab(tab.dataset.tab))
+);
+document.getElementById('cp-close').addEventListener('click', closeCpPanel);
+document.getElementById('cp-run-btn').addEventListener('click', () => {
+  const code = document.getElementById('cp-editor').value.trim();
+  if (code) { switchCpTab('preview'); runInIframe(code); }
+});
+document.getElementById('cp-copy').addEventListener('click', async () => {
+  const code = document.getElementById('cp-editor').value;
+  try {
+    await navigator.clipboard.writeText(code);
+    const btn = document.getElementById('cp-copy');
+    const orig = btn.textContent;
+    btn.textContent = 'COPIADO ✓';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  } catch { /* no disponible */ }
 });
 
 // Sidebar: abrir / cerrar

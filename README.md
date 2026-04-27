@@ -129,8 +129,8 @@ Para cambiarlas desde cualquier dispositivo, escribe `/config` en el chat.
 
 ### Próximo
 
+- [x] **Fase 20** — Ventana de código en vivo: AREX genera código → botón ▶ EJECUTAR EN AREX → panel full-screen con PREVIEW (iframe sandbox) y CÓDIGO (editor editable + re-ejecutar). Comando `/run` para abrir el último código del historial. Autodetección de bloques HTML/JS/CSS en cada respuesta.
 - [ ] **Fase 16** — Sesiones múltiples (guardar y cambiar entre conversaciones — pendiente para etapa avanzada)
-- [ ] **Fase 20** — Ventana de código en vivo (editor + preview HTML/CSS/JS en tiempo real)
 
 ---
 
