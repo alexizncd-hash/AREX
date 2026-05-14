@@ -56,7 +56,7 @@
 
 /* ── Paneles de módulos ────────────────────────────────────── */
 
-.module-panel {
+.module-panel:not(.active) {
   display: none;
 }
 
