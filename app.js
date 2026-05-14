@@ -1239,6 +1239,66 @@ async function handleCommand(cmd) {
   }
 }
 
+/* ── Sugerencias contextuales de comandos ───────────── */
+const CTX_RULES = [
+  {
+    cmd: '/run', icon: '▶', label: 'run', reason: 'código detectado',
+    priority: 0, execute: true,
+    check: () => {
+      const last = history[history.length - 1];
+      return last?.role === 'assistant' && last.content.includes('```');
+    }
+  },
+  {
+    cmd: '/recordar', icon: '⏰', label: 'recordar', reason: 'fecha mencionada',
+    priority: 0, execute: false, fill: '/recordar ',
+    check: () => {
+      const txt2 = (history[history.length - 1]?.content || '') +
+                   (history[history.length - 2]?.content || '');
+      return /mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|en \d+\s*(hora|minuto|día)/i.test(txt2);
+    }
+  },
+  {
+    cmd: '/resumir', icon: '📋', label: 'resumir', reason: 'conversación larga',
+    priority: 1, execute: true,
+    check: () => history.length >= 12
+  },
+  {
+    cmd: '/notas', icon: '📝', label: 'guardar nota', reason: 'respuesta detallada',
+    priority: 2, execute: false, fill: '/notas ',
+    check: () => {
+      const last = history[history.length - 1];
+      return last?.role === 'assistant' && last.content.length > 400;
+    }
+  },
+  {
+    cmd: '/exportar', icon: '📤', label: 'exportar', reason: 'guardar sesión',
+    priority: 3, execute: true,
+    check: () => history.length >= 8
+  }
+];
+
+function updateCtxSuggestions() {
+  const container = document.getElementById('ctx-suggestions');
+  if (!container) return;
+  const active = CTX_RULES
+    .filter(r => r.check())
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 4);
+  container.innerHTML = '';
+  active.forEach(rule => {
+    const pill = document.createElement('button');
+    pill.className = 'ctx-pill';
+    pill.innerHTML = `<span class="pill-icon">${rule.icon}</span><span>${rule.label}</span><span class="pill-reason">${rule.reason}</span>`;
+    pill.addEventListener('click', () => {
+      container.innerHTML = '';
+      if (rule.execute) { handleCommand(rule.cmd); }
+      else { txt.value = rule.fill; txt.focus(); }
+    });
+    container.appendChild(pill);
+  });
+}
+
 /* ── Flujo principal ────────────────────────────────── */
 async function handleSend() {
   if (isBusy) return;
@@ -1294,6 +1354,7 @@ async function handleSend() {
     }
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
+    updateCtxSuggestions();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
 
   } catch(err) {
@@ -1314,6 +1375,10 @@ async function handleSend() {
 /* ── Eventos ────────────────────────────────────────── */
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
+txt.addEventListener('input', () => {
+  const s = document.getElementById('ctx-suggestions');
+  if (s && txt.value.trim()) s.innerHTML = '';
+});
 btnMic.addEventListener('click', () => { if(!btnMic.classList.contains('on')) startListening(); });
 
 btnVoice.addEventListener('click', () => {
