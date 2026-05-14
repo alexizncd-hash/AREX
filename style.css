@@ -23,7 +23,79 @@ html,body { width:100%; height:100%; overflow:hidden; }
 body {
   background:var(--bg-dark); color:var(--text-main);
   font-family:var(--font);
+  display:flex; flex-direction:row; align-items:stretch;
+}
+
+/* ── Dock lateral ───────────────────────────────────── */
+#dock {
+  width:68px; flex-shrink:0;
   display:flex; flex-direction:column; align-items:center;
+  padding:1rem 0;
+  background:rgba(1,8,16,0.97);
+  border-right:1px solid rgba(0,212,255,0.1);
+  z-index:50; position:relative; gap:0.5rem;
+  box-shadow:2px 0 20px rgba(0,0,0,0.5);
+}
+.dock-logo {
+  margin-bottom:0.5rem;
+  display:flex; flex-direction:column; align-items:center;
+}
+.dock-logo-ring {
+  width:38px; height:38px; border-radius:50%;
+  border:1.5px solid var(--cyan);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:bold; color:var(--cyan);
+  box-shadow:0 0 12px var(--cyan-pulse),inset 0 0 8px var(--cyan-glow);
+  animation:logo-pulse 3s ease-in-out infinite;
+}
+.dock-nav {
+  display:flex; flex-direction:column; align-items:center;
+  gap:0.3rem; flex:1;
+}
+#dock .nav-btn {
+  width:52px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:0.25rem; padding:0.65rem 0;
+  background:transparent; border:1px solid transparent;
+  border-radius:8px; color:#2a5a72;
+  cursor:pointer; transition:all 0.2s ease;
+  font-family:var(--font);
+}
+#dock .nav-btn svg { width:18px; height:18px; stroke:currentColor; }
+#dock .nav-btn:hover {
+  background:rgba(0,212,255,0.07);
+  border-color:rgba(0,212,255,0.3); color:#5ab4cc;
+}
+#dock .nav-btn.active {
+  background:rgba(0,212,255,0.1);
+  border-color:rgba(0,212,255,0.5); color:var(--cyan);
+  box-shadow:0 0 14px rgba(0,212,255,0.2);
+}
+.dock-label {
+  font-size:0.58rem; letter-spacing:1.5px; text-transform:uppercase;
+}
+.dock-bottom {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  margin-top:auto; padding-bottom:0.5rem;
+}
+.dock-pulse-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 6px var(--green);
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+.dock-sys-label {
+  font-size:0.55rem; color:#1e4a40; letter-spacing:1px;
+}
+@keyframes pulse-dot {
+  0%,100%{ opacity:1; } 50%{ opacity:0.4; }
+}
+
+/* ── Workspace ──────────────────────────────────────── */
+#workspace {
+  flex:1; min-width:0;
+  display:flex; flex-direction:column; align-items:center;
+  overflow:hidden;
 }
 
 /* ── Sidebar panel de control ───────────────────────── */
@@ -193,7 +265,9 @@ header {
   position:relative; z-index:10;
   width:100%; max-width:960px;
   display:flex; justify-content:space-between; align-items:center;
-  padding:0.9rem 2rem; border-bottom:1px solid var(--border);
+  padding:0.7rem 2rem; border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  background:rgba(2,12,20,0.75);
 }
 .sys-info { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:130px; }
 .sys-info.right { text-align:right; flex-direction:column; gap:2px; align-items:flex-end; }
@@ -324,13 +398,16 @@ main {
 /* ── Input bar ──────────────────────────────────────── */
 .input-bar {
   width:100%; display:flex; gap:8px; align-items:center;
-  border:1px solid var(--border); background:var(--bg-panel);
-  border-radius:4px; padding:8px 12px;
+  border:1px solid rgba(0,212,255,0.15);
+  background:rgba(0,15,28,0.8);
+  backdrop-filter:blur(16px);
+  border-radius:6px; padding:8px 12px;
   transition:border-color 0.2s, box-shadow 0.2s;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.05);
 }
 .input-bar:focus-within {
-  border-color:rgba(0,212,255,0.4);
-  box-shadow:0 0 0 1px rgba(0,212,255,0.08), 0 0 16px rgba(0,212,255,0.06);
+  border-color:rgba(0,212,255,0.45);
+  box-shadow:0 0 0 1px rgba(0,212,255,0.1), 0 4px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,212,255,0.07);
 }
 #txt {
   flex:1; background:transparent; border:none; outline:none;
