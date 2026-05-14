@@ -276,6 +276,108 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
+/* ── Sesiones múltiples ─────────────────────────────── */
+const MAX_SESSIONS = 10;
+
+function getSessions() {
+  return JSON.parse(localStorage.getItem('arex_sessions') || '[]');
+}
+function saveSessions(arr) {
+  localStorage.setItem('arex_sessions', JSON.stringify(arr.slice(0, MAX_SESSIONS)));
+}
+function getCurrentSid() {
+  return localStorage.getItem('arex_current_session') || null;
+}
+function autoSessionName() {
+  const first = history.find(m => m.role === 'user');
+  if (!first) return 'Sesión vacía';
+  const t = first.content.slice(0, 30);
+  return t.length < first.content.length ? t + '…' : t;
+}
+
+function saveCurrentSession() {
+  if (!history.length) return;
+  let sid = getCurrentSid();
+  const sessions = getSessions();
+  const now = Date.now();
+  const preview = history[history.length - 1]?.content?.slice(0, 55) || '';
+  const name = autoSessionName();
+  const idx = sessions.findIndex(s => s.id === sid);
+  if (idx !== -1) {
+    sessions[idx] = { ...sessions[idx], name, preview, updated: now, messages: [...history] };
+  } else {
+    sid = sid || String(now);
+    localStorage.setItem('arex_current_session', sid);
+    sessions.unshift({ id: sid, name, preview, created: now, updated: now, messages: [...history] });
+  }
+  saveSessions(sessions);
+  renderSessionsList();
+}
+
+function startNewSession() {
+  saveCurrentSession();
+  const sid = String(Date.now());
+  localStorage.setItem('arex_current_session', sid);
+  history = [];
+  const chatEl = document.getElementById('chat');
+  chatEl.innerHTML = '<div class="welcome"><p>Nueva sesión. Soy <strong>AREX</strong> — listo para asistirte.</p></div>';
+  updateMemMetric();
+  renderSessionsList();
+}
+
+function loadSession(sid) {
+  saveCurrentSession();
+  const session = getSessions().find(s => s.id === sid);
+  if (!session) return;
+  localStorage.setItem('arex_current_session', sid);
+  history = [...(session.messages || [])];
+  const chatEl = document.getElementById('chat');
+  chatEl.innerHTML = '';
+  if (history.length) {
+    history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'arex', m.content));
+  } else {
+    chatEl.innerHTML = '<div class="welcome"><p>Sesión cargada. Soy <strong>AREX</strong>.</p></div>';
+  }
+  updateMemMetric();
+  renderSessionsList();
+}
+
+function deleteSession(sid) {
+  const sessions = getSessions().filter(s => s.id !== sid);
+  saveSessions(sessions);
+  if (getCurrentSid() === sid) {
+    localStorage.removeItem('arex_current_session');
+    sessions.length ? loadSession(sessions[0].id) : startNewSession();
+  } else {
+    renderSessionsList();
+  }
+}
+
+function renderSessionsList() {
+  const container = document.getElementById('sessions-list');
+  if (!container) return;
+  const sessions = getSessions();
+  const currentSid = getCurrentSid();
+  if (!sessions.length) {
+    container.innerHTML = '<div class="session-empty">Sin sesiones guardadas</div>';
+    return;
+  }
+  container.innerHTML = sessions.map(s => `
+    <div class="session-item${s.id === currentSid ? ' active' : ''}" data-sid="${s.id}">
+      <div class="session-info">
+        <div class="session-name">${s.name.replace(/</g,'&lt;')}</div>
+        <div class="session-preview">${(s.preview||'—').replace(/</g,'&lt;').slice(0,50)}</div>
+      </div>
+      <button class="session-del" data-del="${s.id}" title="Eliminar">✕</button>
+    </div>`).join('');
+  container.querySelectorAll('.session-item .session-info').forEach(el => {
+    el.addEventListener('click', () => loadSession(el.closest('[data-sid]').dataset.sid));
+  });
+  container.querySelectorAll('.session-del').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); deleteSession(btn.dataset.del); });
+  });
+}
+
 /* ── Métrica de memoria ─────────────────────────────── */
 function updateMemMetric() {
   const c = history.length;
@@ -342,6 +444,7 @@ function updateSidebarAll() {
   updateSystemStatus();
   updateSidebarModes();
   updateSessionStats();
+  renderSessionsList();
 }
 
 /* ── Estado del orb ─────────────────────────────────── */
@@ -1355,6 +1458,7 @@ async function handleSend() {
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
     updateCtxSuggestions();
+    saveCurrentSession();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
 
   } catch(err) {
@@ -1373,6 +1477,7 @@ async function handleSend() {
 }
 
 /* ── Eventos ────────────────────────────────────────── */
+document.getElementById('btn-nueva-sesion')?.addEventListener('click', startNewSession);
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
 txt.addEventListener('input', () => {

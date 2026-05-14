@@ -798,6 +798,31 @@ footer {
 .memoria-input-row .cfg-input { flex:1; }
 .memoria-input-row .ctx-btn { width:auto; margin-top:0; padding:9px 14px; }
 
+/* ── Sesiones múltiples ─────────────────────────────── */
+.ss-new-session-btn {
+  width:100%; display:flex; align-items:center; gap:6px;
+  padding:7px 10px; margin-bottom:8px;
+  background:rgba(0,212,255,0.05); border:1px solid rgba(0,212,255,0.2);
+  border-radius:3px; color:var(--text-muted); cursor:pointer;
+  font-family:var(--font); font-size:10px; letter-spacing:2px;
+  transition:all 0.2s;
+}
+.ss-new-session-btn:hover { background:rgba(0,212,255,0.1); color:var(--cyan); border-color:rgba(0,212,255,0.4); }
+.sessions-list { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; }
+.session-item {
+  display:flex; align-items:center; gap:6px;
+  border:1px solid rgba(0,212,255,0.1); border-radius:3px;
+  padding:6px 8px; cursor:pointer; transition:all 0.15s;
+}
+.session-item:hover { background:rgba(0,212,255,0.06); border-color:rgba(0,212,255,0.25); }
+.session-item.active { background:rgba(0,212,255,0.1); border-color:rgba(0,212,255,0.4); }
+.session-info { flex:1; min-width:0; }
+.session-name { font-size:10px; color:var(--text-main); letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.session-preview { font-size:9px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.session-del { background:none; border:none; color:#1e4a60; cursor:pointer; font-size:10px; padding:2px 4px; flex-shrink:0; transition:color 0.15s; }
+.session-del:hover { color:#ef4444; }
+.session-empty { font-size:10px; color:var(--text-muted); padding:6px 0; letter-spacing:1px; }
+
 /* ── Sugerencias contextuales ───────────────────────── */
 .ctx-suggestions {
   display:flex; gap:0.5rem; flex-wrap:wrap;
