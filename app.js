@@ -279,7 +279,7 @@ tickClock();
 /* ── Métrica de memoria ─────────────────────────────── */
 function updateMemMetric() {
   const c = history.length;
-  barMem.style.width = Math.min(100, Math.round((c/40)*100)) + '%';
+  barMem.style.width = Math.min(100, Math.round((c/100)*100)) + '%';
   valMem.textContent = c + ' msg';
   updateSessionStats();
 }
@@ -882,7 +882,7 @@ async function saveMsg(role, content) {
 async function loadHistory() {
   if (!db) return;
   try {
-    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(20));
+    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(100));
     const snap = await getDocs(q);
     const msgs = [];
     snap.forEach(d => msgs.push(d.data()));
@@ -978,24 +978,30 @@ async function loadStats() {
   } catch { return { g:{}, d:{} }; }
 }
 
-/* ── Auto-resumen al llegar a 30 mensajes ───────────── */
+/* ── Auto-compresión al llegar a 80 mensajes ────────── */
 async function autoSummarize() {
-  if (history.length < 30) return;
+  if (history.length < 80) return;
+  const toCompress = history.slice(0, -15);
+  const toKeep     = history.slice(-15);
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model:'llama-3.3-70b-versatile', max_tokens:400,
-        messages:[{ role:'user', content:`Resume en puntos clave esta conversación:\n\n${
-          history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
-        }` }]
+        model:'llama-3.3-70b-versatile', max_tokens:600,
+        messages:[{ role:'user', content:
+          `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
+          `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
+          `Sé específico y conserva información técnica relevante:\n\n${
+            toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
+          }`
+        }]
       })
     });
     if (!res.ok) return;
     const data = await res.json();
     const summary = data.choices[0].message.content;
-    history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...history.slice(-4)];
+    history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...toKeep];
     updateMemMetric();
   } catch(e) { console.warn('Auto-summarize:', e); }
 }
