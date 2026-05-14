@@ -276,10 +276,112 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
+/* ── Sesiones múltiples ─────────────────────────────── */
+const MAX_SESSIONS = 10;
+
+function getSessions() {
+  return JSON.parse(localStorage.getItem('arex_sessions') || '[]');
+}
+function saveSessions(arr) {
+  localStorage.setItem('arex_sessions', JSON.stringify(arr.slice(0, MAX_SESSIONS)));
+}
+function getCurrentSid() {
+  return localStorage.getItem('arex_current_session') || null;
+}
+function autoSessionName() {
+  const first = history.find(m => m.role === 'user');
+  if (!first) return 'Sesión vacía';
+  const t = first.content.slice(0, 30);
+  return t.length < first.content.length ? t + '…' : t;
+}
+
+function saveCurrentSession() {
+  if (!history.length) return;
+  let sid = getCurrentSid();
+  const sessions = getSessions();
+  const now = Date.now();
+  const preview = history[history.length - 1]?.content?.slice(0, 55) || '';
+  const name = autoSessionName();
+  const idx = sessions.findIndex(s => s.id === sid);
+  if (idx !== -1) {
+    sessions[idx] = { ...sessions[idx], name, preview, updated: now, messages: [...history] };
+  } else {
+    sid = sid || String(now);
+    localStorage.setItem('arex_current_session', sid);
+    sessions.unshift({ id: sid, name, preview, created: now, updated: now, messages: [...history] });
+  }
+  saveSessions(sessions);
+  renderSessionsList();
+}
+
+function startNewSession() {
+  saveCurrentSession();
+  const sid = String(Date.now());
+  localStorage.setItem('arex_current_session', sid);
+  history = [];
+  const chatEl = document.getElementById('chat');
+  chatEl.innerHTML = '<div class="welcome"><p>Nueva sesión. Soy <strong>AREX</strong> — listo para asistirte.</p></div>';
+  updateMemMetric();
+  renderSessionsList();
+}
+
+function loadSession(sid) {
+  saveCurrentSession();
+  const session = getSessions().find(s => s.id === sid);
+  if (!session) return;
+  localStorage.setItem('arex_current_session', sid);
+  history = [...(session.messages || [])];
+  const chatEl = document.getElementById('chat');
+  chatEl.innerHTML = '';
+  if (history.length) {
+    history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'arex', m.content));
+  } else {
+    chatEl.innerHTML = '<div class="welcome"><p>Sesión cargada. Soy <strong>AREX</strong>.</p></div>';
+  }
+  updateMemMetric();
+  renderSessionsList();
+}
+
+function deleteSession(sid) {
+  const sessions = getSessions().filter(s => s.id !== sid);
+  saveSessions(sessions);
+  if (getCurrentSid() === sid) {
+    localStorage.removeItem('arex_current_session');
+    sessions.length ? loadSession(sessions[0].id) : startNewSession();
+  } else {
+    renderSessionsList();
+  }
+}
+
+function renderSessionsList() {
+  const container = document.getElementById('sessions-list');
+  if (!container) return;
+  const sessions = getSessions();
+  const currentSid = getCurrentSid();
+  if (!sessions.length) {
+    container.innerHTML = '<div class="session-empty">Sin sesiones guardadas</div>';
+    return;
+  }
+  container.innerHTML = sessions.map(s => `
+    <div class="session-item${s.id === currentSid ? ' active' : ''}" data-sid="${s.id}">
+      <div class="session-info">
+        <div class="session-name">${s.name.replace(/</g,'&lt;')}</div>
+        <div class="session-preview">${(s.preview||'—').replace(/</g,'&lt;').slice(0,50)}</div>
+      </div>
+      <button class="session-del" data-del="${s.id}" title="Eliminar">✕</button>
+    </div>`).join('');
+  container.querySelectorAll('.session-item .session-info').forEach(el => {
+    el.addEventListener('click', () => loadSession(el.closest('[data-sid]').dataset.sid));
+  });
+  container.querySelectorAll('.session-del').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); deleteSession(btn.dataset.del); });
+  });
+}
+
 /* ── Métrica de memoria ─────────────────────────────── */
 function updateMemMetric() {
   const c = history.length;
-  barMem.style.width = Math.min(100, Math.round((c/40)*100)) + '%';
+  barMem.style.width = Math.min(100, Math.round((c/100)*100)) + '%';
   valMem.textContent = c + ' msg';
   updateSessionStats();
 }
@@ -342,6 +444,7 @@ function updateSidebarAll() {
   updateSystemStatus();
   updateSidebarModes();
   updateSessionStats();
+  renderSessionsList();
 }
 
 /* ── Estado del orb ─────────────────────────────────── */
@@ -882,7 +985,7 @@ async function saveMsg(role, content) {
 async function loadHistory() {
   if (!db) return;
   try {
-    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(20));
+    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(100));
     const snap = await getDocs(q);
     const msgs = [];
     snap.forEach(d => msgs.push(d.data()));
@@ -978,24 +1081,30 @@ async function loadStats() {
   } catch { return { g:{}, d:{} }; }
 }
 
-/* ── Auto-resumen al llegar a 30 mensajes ───────────── */
+/* ── Auto-compresión al llegar a 80 mensajes ────────── */
 async function autoSummarize() {
-  if (history.length < 30) return;
+  if (history.length < 80) return;
+  const toCompress = history.slice(0, -15);
+  const toKeep     = history.slice(-15);
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model:'llama-3.3-70b-versatile', max_tokens:400,
-        messages:[{ role:'user', content:`Resume en puntos clave esta conversación:\n\n${
-          history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
-        }` }]
+        model:'llama-3.3-70b-versatile', max_tokens:600,
+        messages:[{ role:'user', content:
+          `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
+          `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
+          `Sé específico y conserva información técnica relevante:\n\n${
+            toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
+          }`
+        }]
       })
     });
     if (!res.ok) return;
     const data = await res.json();
     const summary = data.choices[0].message.content;
-    history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...history.slice(-4)];
+    history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...toKeep];
     updateMemMetric();
   } catch(e) { console.warn('Auto-summarize:', e); }
 }
@@ -1233,6 +1342,66 @@ async function handleCommand(cmd) {
   }
 }
 
+/* ── Sugerencias contextuales de comandos ───────────── */
+const CTX_RULES = [
+  {
+    cmd: '/run', icon: '▶', label: 'run', reason: 'código detectado',
+    priority: 0, execute: true,
+    check: () => {
+      const last = history[history.length - 1];
+      return last?.role === 'assistant' && last.content.includes('```');
+    }
+  },
+  {
+    cmd: '/recordar', icon: '⏰', label: 'recordar', reason: 'fecha mencionada',
+    priority: 0, execute: false, fill: '/recordar ',
+    check: () => {
+      const txt2 = (history[history.length - 1]?.content || '') +
+                   (history[history.length - 2]?.content || '');
+      return /mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|en \d+\s*(hora|minuto|día)/i.test(txt2);
+    }
+  },
+  {
+    cmd: '/resumir', icon: '📋', label: 'resumir', reason: 'conversación larga',
+    priority: 1, execute: true,
+    check: () => history.length >= 12
+  },
+  {
+    cmd: '/notas', icon: '📝', label: 'guardar nota', reason: 'respuesta detallada',
+    priority: 2, execute: false, fill: '/notas ',
+    check: () => {
+      const last = history[history.length - 1];
+      return last?.role === 'assistant' && last.content.length > 400;
+    }
+  },
+  {
+    cmd: '/exportar', icon: '📤', label: 'exportar', reason: 'guardar sesión',
+    priority: 3, execute: true,
+    check: () => history.length >= 8
+  }
+];
+
+function updateCtxSuggestions() {
+  const container = document.getElementById('ctx-suggestions');
+  if (!container) return;
+  const active = CTX_RULES
+    .filter(r => r.check())
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 4);
+  container.innerHTML = '';
+  active.forEach(rule => {
+    const pill = document.createElement('button');
+    pill.className = 'ctx-pill';
+    pill.innerHTML = `<span class="pill-icon">${rule.icon}</span><span>${rule.label}</span><span class="pill-reason">${rule.reason}</span>`;
+    pill.addEventListener('click', () => {
+      container.innerHTML = '';
+      if (rule.execute) { handleCommand(rule.cmd); }
+      else { txt.value = rule.fill; txt.focus(); }
+    });
+    container.appendChild(pill);
+  });
+}
+
 /* ── Flujo principal ────────────────────────────────── */
 async function handleSend() {
   if (isBusy) return;
@@ -1288,6 +1457,8 @@ async function handleSend() {
     }
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
+    updateCtxSuggestions();
+    saveCurrentSession();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
 
   } catch(err) {
@@ -1306,8 +1477,13 @@ async function handleSend() {
 }
 
 /* ── Eventos ────────────────────────────────────────── */
+document.getElementById('btn-nueva-sesion')?.addEventListener('click', startNewSession);
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
+txt.addEventListener('input', () => {
+  const s = document.getElementById('ctx-suggestions');
+  if (s && txt.value.trim()) s.innerHTML = '';
+});
 btnMic.addEventListener('click', () => { if(!btnMic.classList.contains('on')) startListening(); });
 
 btnVoice.addEventListener('click', () => {

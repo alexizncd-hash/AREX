@@ -117,6 +117,16 @@
     <div class="srow"><span>MEMORIA</span><span id="sb-mem">0 / 20</span></div>
     <div class="srow"><span>MODO</span><span id="sb-mode-val">ESTÁNDAR</span></div>
   </div>
+
+  <!-- Sesiones múltiples -->
+  <div class="sidebar-section">
+    <div class="ss-label">SESIONES</div>
+    <button class="ss-new-session-btn" id="btn-nueva-sesion">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      NUEVA SESIÓN
+    </button>
+    <div id="sessions-list" class="sessions-list"></div>
+  </div>
 </nav>
 <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
 
@@ -357,6 +367,35 @@
 <div class="hud-grid"></div>
 <div class="scan-line"></div>
 
+<!-- ── Dock lateral ── -->
+<div id="dock">
+  <div class="dock-logo">
+    <div class="dock-logo-ring">A</div>
+  </div>
+  <nav class="dock-nav">
+    <button class="nav-btn active" data-module="chat" title="Chat IA">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="dock-label">CHAT</span>
+    </button>
+    <button class="nav-btn" data-module="finanzas" title="Finanzas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+      <span class="dock-label">FIN</span>
+    </button>
+  </nav>
+  <div class="dock-bottom">
+    <div class="dock-pulse-dot"></div>
+    <span class="dock-sys-label">SYS</span>
+  </div>
+</div>
+
+<!-- ── Workspace ── -->
+<div id="workspace">
+
 <!-- ── Header ── -->
 <header>
   <div class="sys-info left">
@@ -381,18 +420,6 @@
   </div>
 </header>
 
-<!-- ── Navegación de módulos ── -->
-<nav class="module-nav">
-  <button class="nav-btn active" data-module="chat">
-    <span class="nav-icon">💬</span>
-    <span class="nav-label">Chat</span>
-  </button>
-  <button class="nav-btn" data-module="finanzas">
-    <span class="nav-icon">💰</span>
-    <span class="nav-label">Finanzas</span>
-  </button>
-</nav>
-
 <!-- ── Main ── -->
 <main id="module-chat" class="module-panel active">
   <div class="reactor-wrap">
@@ -414,6 +441,9 @@
       <p style="margin-top:8px;font-size:11px">Escribe <code>/ayuda</code> para ver todos los comandos disponibles.</p>
     </div>
   </div>
+
+  <!-- Sugerencias contextuales de comandos -->
+  <div id="ctx-suggestions" class="ctx-suggestions"></div>
 
   <div class="input-bar">
     <!-- Micrófono -->
@@ -608,6 +638,8 @@
     <span class="val">ALEXIZ</span>
   </div>
 </footer>
+
+</div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
 <script src="finanzas-data.js"></script>
