@@ -373,23 +373,31 @@
     <div class="dock-logo-ring">A</div>
   </div>
   <nav class="dock-nav">
-    <button class="nav-btn active" data-module="chat" title="Chat IA">
+    <button class="nav-btn active" data-module="chat" data-tooltip="Chat IA">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
       <span class="dock-label">CHAT</span>
     </button>
-    <button class="nav-btn" data-module="finanzas" title="Finanzas">
+    <button class="nav-btn" data-module="finanzas" data-tooltip="Finanzas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="12" y1="1" x2="12" y2="23"/>
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
       </svg>
       <span class="dock-label">FIN</span>
     </button>
+    <button class="nav-btn" data-module="tareas" data-tooltip="Tareas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      <span class="dock-label">TAREAS</span>
+      <span class="dock-badge hidden" id="dock-tareas-badge">0</span>
+    </button>
   </nav>
   <div class="dock-bottom">
     <div class="dock-pulse-dot"></div>
-    <span class="dock-sys-label">SYS</span>
+    <span class="dock-sys-label" id="dock-session-name">—</span>
   </div>
 </div>
 
@@ -613,6 +621,28 @@
     </div>
   </div>
 
+</div>
+
+<!-- ── Módulo: Tareas ── -->
+<div id="module-tareas" class="module-panel">
+  <div class="tareas-header-bar">
+    <span class="tareas-title">TAREAS</span>
+    <span class="tareas-count" id="tareas-count">0 pendientes</span>
+  </div>
+  <div class="tareas-add-row">
+    <input type="text" id="tarea-input" class="tarea-input" placeholder="Nueva tarea... o usa /tarea desde el chat"/>
+    <button id="tarea-add-btn" class="tarea-add-btn">+ AGREGAR</button>
+  </div>
+  <div class="tareas-body">
+    <div class="tareas-col">
+      <div class="tareas-col-title">⏳ PENDIENTES</div>
+      <div id="tareas-list-pending" class="tareas-list"></div>
+    </div>
+    <div class="tareas-col">
+      <div class="tareas-col-title">✓ COMPLETADAS</div>
+      <div id="tareas-list-done" class="tareas-list"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Footer ── -->

@@ -39,7 +39,7 @@ const AREXNav = {
   actualizarEstadoSistema(modulo) {
     // Usa el ID existente de AREX (sys-val en el header)
     const statusEl = document.getElementById('sys-val');
-    const estados  = { chat: 'ACTIVO', finanzas: 'FINANZAS' };
+    const estados  = { chat: 'ACTIVO', finanzas: 'FINANZAS', tareas: 'TAREAS' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
   }
 };

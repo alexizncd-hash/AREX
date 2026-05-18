@@ -52,7 +52,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea'];
 
 function loadAtalos() {
   const saved = localStorage.getItem('arex_atajos');
@@ -312,6 +312,15 @@ function saveCurrentSession() {
   }
   saveSessions(sessions);
   renderSessionsList();
+  updateDockSessionName();
+}
+
+function updateDockSessionName() {
+  const el = document.getElementById('dock-session-name');
+  if (!el) return;
+  const sid = getCurrentSid();
+  const s = getSessions().find(s => s.id === sid);
+  el.textContent = s ? s.name.slice(0, 12) : '—';
 }
 
 function startNewSession() {
@@ -323,6 +332,7 @@ function startNewSession() {
   chatEl.innerHTML = '<div class="welcome"><p>Nueva sesión. Soy <strong>AREX</strong> — listo para asistirte.</p></div>';
   updateMemMetric();
   renderSessionsList();
+  updateDockSessionName();
 }
 
 function loadSession(sid) {
@@ -340,6 +350,7 @@ function loadSession(sid) {
   }
   updateMemMetric();
   renderSessionsList();
+  updateDockSessionName();
 }
 
 function deleteSession(sid) {
@@ -350,6 +361,65 @@ function deleteSession(sid) {
     sessions.length ? loadSession(sessions[0].id) : startNewSession();
   } else {
     renderSessionsList();
+  }
+}
+
+/* ── Módulo Tareas ──────────────────────────────────── */
+function getTareas() { return JSON.parse(localStorage.getItem('arex_tareas') || '[]'); }
+function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
+
+function addTarea(text) {
+  if (!text.trim()) return;
+  const arr = getTareas();
+  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now() });
+  saveTareasData(arr);
+  renderTareas();
+}
+function toggleTarea(id) {
+  saveTareasData(getTareas().map(t => t.id === id ? { ...t, done: !t.done } : t));
+  renderTareas();
+}
+function deleteTarea(id) {
+  saveTareasData(getTareas().filter(t => t.id !== id));
+  renderTareas();
+}
+function renderTareas() {
+  const all = getTareas();
+  const pending = all.filter(t => !t.done);
+  const done    = all.filter(t =>  t.done);
+
+  const makeItem = t => {
+    const div = document.createElement('div');
+    div.className = `tarea-item${t.done ? ' done' : ''}`;
+    div.innerHTML = `
+      <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
+      <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+      <button class="tarea-del" data-id="${t.id}">✕</button>`;
+    div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
+    div.querySelector('.tarea-del').addEventListener('click', () => deleteTarea(t.id));
+    return div;
+  };
+
+  const elPending = document.getElementById('tareas-list-pending');
+  const elDone    = document.getElementById('tareas-list-done');
+  if (!elPending) return;
+
+  elPending.innerHTML = '';
+  elDone.innerHTML    = '';
+  pending.forEach(t => elPending.appendChild(makeItem(t)));
+  done.forEach(t    => elDone.appendChild(makeItem(t)));
+
+  if (!pending.length) elPending.innerHTML = '<div class="tarea-empty">Sin tareas pendientes</div>';
+  if (!done.length)    elDone.innerHTML    = '<div class="tarea-empty">—</div>';
+
+  const count = pending.length;
+  const countEl = document.getElementById('tareas-count');
+  if (countEl) countEl.textContent = `${count} pendiente${count !== 1 ? 's' : ''}`;
+
+  const badge = document.getElementById('dock-tareas-badge');
+  if (badge) {
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
   }
 }
 
@@ -1314,6 +1384,13 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'tarea': {
+      if (!args) { addMsg('arex', 'Uso: `/tarea descripción de la tarea`\nEjemplo: `/tarea Estudiar para el examen`'); break; }
+      addTarea(args);
+      addMsg('arex', `✅ Tarea agregada: **${args}**`);
+      break;
+    }
+
     case 'memoria': {
       const memoriaModal = document.getElementById('modal-memoria');
       const memoriaList  = document.getElementById('memoria-list');
@@ -1478,6 +1555,18 @@ async function handleSend() {
 
 /* ── Eventos ────────────────────────────────────────── */
 document.getElementById('btn-nueva-sesion')?.addEventListener('click', startNewSession);
+
+// Módulo Tareas — botón agregar y Enter en input
+document.getElementById('tarea-add-btn')?.addEventListener('click', () => {
+  const inp = document.getElementById('tarea-input');
+  if (inp?.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
+});
+document.getElementById('tarea-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const inp = e.target;
+    if (inp.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
+  }
+});
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
 txt.addEventListener('input', () => {
@@ -1716,6 +1805,7 @@ async function boot() {
   await requestNotifPerm();
   updateCtxBadge();
   updateSidebarAll();
+  renderTareas();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
