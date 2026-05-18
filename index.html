@@ -408,6 +408,14 @@
       </svg>
       <span class="dock-label">CÓDIGO</span>
     </button>
+    <div class="dock-sos-sep"></div>
+    <button class="nav-btn nav-btn-sos" data-module="sos" data-tooltip="Emergencias">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span class="dock-label">SOS</span>
+    </button>
   </nav>
   <div class="dock-bottom">
     <div class="dock-pulse-dot"></div>
@@ -710,6 +718,78 @@
       <div class="tareas-col-title">✓ COMPLETADAS</div>
       <div id="tareas-list-done" class="tareas-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── SOS / Emergencias ── -->
+<div id="module-sos" class="module-panel">
+  <div class="sos-layout">
+
+    <div class="sos-topbar">
+      <span class="sos-topbar-title">🚨 EMERGENCIAS</span>
+      <button class="sos-cfg-btn" id="sos-edit-toggle">⚙ CONFIGURAR</button>
+    </div>
+
+    <!-- Botón 911 -->
+    <a href="tel:911" class="sos-911-btn">
+      <span class="sos-911-ring"></span>
+      <span class="sos-911-inner">
+        <span class="sos-911-label">🆘 LLAMAR AL 911</span>
+        <span class="sos-911-sub">Toca para marcar directamente</span>
+      </span>
+    </a>
+
+    <div class="sos-grid">
+
+      <!-- Ubicación -->
+      <div class="sos-card">
+        <div class="sos-card-title">📍 UBICACIÓN</div>
+        <div class="sos-loc-row">
+          <span id="sos-loc-text">Hermosillo, Sonora, México</span>
+          <button class="sos-loc-btn" id="sos-get-loc">GPS</button>
+        </div>
+        <div id="sos-share-row" class="sos-share-row"></div>
+        <button class="sos-copy-msg-btn" id="sos-copy-msg">📋 COPIAR MENSAJE DE EMERGENCIA</button>
+      </div>
+
+      <!-- Info médica -->
+      <div class="sos-card sos-card-medico">
+        <div class="sos-card-title">🩺 INFORMACIÓN MÉDICA</div>
+        <div id="sos-medico-card"></div>
+      </div>
+
+    </div>
+
+    <!-- Contactos -->
+    <div class="sos-card sos-card-full">
+      <div class="sos-card-title">👥 CONTACTOS DE EMERGENCIA</div>
+      <div id="sos-contacts-list" class="sos-contacts-grid"></div>
+    </div>
+
+    <!-- Panel de configuración (oculto por defecto) -->
+    <div id="sos-edit-panel" class="sos-edit-panel hidden">
+      <div class="sos-edit-block">
+        <div class="sos-edit-block-title">AGREGAR CONTACTO</div>
+        <div class="sos-edit-form">
+          <input id="sos-add-name"  class="sos-input" placeholder="Nombre"/>
+          <input id="sos-add-rel"   class="sos-input" placeholder="Relación (Mamá, Papá, Novia…)"/>
+          <input id="sos-add-phone" class="sos-input" placeholder="Teléfono (10 dígitos)" type="tel"/>
+          <button class="sos-edit-save-btn" id="sos-add-contact-btn">+ AGREGAR</button>
+        </div>
+        <div id="sos-edit-contacts-list" class="sos-edit-contacts-list"></div>
+      </div>
+      <div class="sos-edit-block">
+        <div class="sos-edit-block-title">INFORMACIÓN MÉDICA</div>
+        <div class="sos-edit-form">
+          <input id="sos-med-sangre" class="sos-input" placeholder="Tipo de sangre (ej. O+)"/>
+          <input id="sos-med-alergias" class="sos-input" placeholder="Alergias"/>
+          <input id="sos-med-meds" class="sos-input" placeholder="Medicamentos actuales"/>
+          <input id="sos-med-cond" class="sos-input" placeholder="Condiciones médicas"/>
+          <button class="sos-edit-save-btn" id="sos-save-medico-btn">GUARDAR DATOS MÉDICOS</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
