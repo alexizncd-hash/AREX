@@ -836,6 +836,196 @@ function arexSpeak(text) {
   window.speechSynthesis.speak(u);
 }
 
+/* ── Módulo SOS / Emergencias ───────────────────────── */
+const SOS_DEFAULT = { contactos: [], medico: { tipoSangre:'', alergias:'', medicamentos:'', condiciones:'' } };
+function getSOSData()      { return JSON.parse(localStorage.getItem('arex_sos') || JSON.stringify(SOS_DEFAULT)); }
+function saveSOSData(data) { localStorage.setItem('arex_sos', JSON.stringify(data)); }
+
+let _sosGPS = null; // { lat, lng, accuracy }
+
+function _emergencyMsg() {
+  const loc = _sosGPS
+    ? `GPS: ${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}\nhttps://maps.google.com/?q=${_sosGPS.lat},${_sosGPS.lng}`
+    : 'Hermosillo, Sonora, México';
+  return `🆘 EMERGENCIA 🆘\nSoy Alexiz Cejudo. Necesito ayuda urgente.\n📍 Ubicación:\n${loc}\nPor favor llama al 911 o ven a ayudarme.`;
+}
+
+function _fmtPhone(raw) {
+  const d = raw.replace(/\D/g, '');
+  return d.startsWith('52') ? d : '52' + d;
+}
+
+function renderSOSContacts() {
+  const el = document.getElementById('sos-contacts-list');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  if (!contactos.length) {
+    el.innerHTML = '<div class="sos-empty">Sin contactos — toca ⚙ CONFIGURAR para agregar</div>';
+    return;
+  }
+  const msg = encodeURIComponent(_emergencyMsg());
+  el.innerHTML = contactos.map(c => {
+    const p = c.telefono.replace(/\D/g, '');
+    const wa = _fmtPhone(p);
+    return `<div class="sos-contact-card">
+      <div class="sos-contact-info">
+        <div class="sos-contact-name">${c.nombre.replace(/</g,'&lt;')}</div>
+        <div class="sos-contact-rel">${c.relacion.replace(/</g,'&lt;')}</div>
+        <div class="sos-contact-phone">${c.telefono}</div>
+      </div>
+      <div class="sos-contact-btns">
+        <a href="tel:${p}" class="sos-btn sos-call">📞 LLAMAR</a>
+        <a href="sms:${p}?body=${msg}" class="sos-btn sos-sms">💬 SMS</a>
+        <a href="https://wa.me/${wa}?text=${msg}" target="_blank" class="sos-btn sos-wa">📲 WA</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSOSMedico() {
+  const el = document.getElementById('sos-medico-card');
+  if (!el) return;
+  const { medico } = getSOSData();
+  const row = (label, val, empty) => `
+    <div class="sos-med-row${!val ? ' sos-med-empty' : ''}">
+      <span class="sos-med-label">${label}</span>
+      <span class="sos-med-val">${val || empty}</span>
+    </div>`;
+  el.innerHTML = `<div class="sos-med-grid">
+    ${row('SANGRE',       medico.tipoSangre,   '—')}
+    ${row('ALERGIAS',     medico.alergias,     'Ninguna')}
+    ${row('MEDICAMENTOS', medico.medicamentos, 'Ninguno')}
+    ${row('CONDICIONES',  medico.condiciones,  'Ninguna')}
+  </div>`;
+}
+
+function renderSOSShareRow() {
+  const el = document.getElementById('sos-share-row');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  const msg = encodeURIComponent(_emergencyMsg());
+  el.innerHTML = contactos.length
+    ? contactos.map(c =>
+        `<a href="https://wa.me/${_fmtPhone(c.telefono)}?text=${msg}" target="_blank"
+            class="sos-share-wa">💬 ${c.nombre.replace(/</g,'&lt;')}</a>`
+      ).join('')
+    : '';
+}
+
+function renderSOSEditContacts() {
+  const el = document.getElementById('sos-edit-contacts-list');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  if (!contactos.length) { el.innerHTML = '<div class="sos-empty">Sin contactos aún</div>'; return; }
+  el.innerHTML = contactos.map((c, i) => `
+    <div class="sos-edit-contact-row">
+      <span>${c.nombre} · ${c.relacion} · ${c.telefono}</span>
+      <button class="sos-del-contact" data-i="${i}">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.sos-del-contact').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const d = getSOSData();
+      d.contactos.splice(parseInt(btn.dataset.i), 1);
+      saveSOSData(d);
+      renderSOSModule();
+      renderSOSEditContacts();
+    })
+  );
+}
+
+function renderSOSModule() {
+  renderSOSContacts();
+  renderSOSMedico();
+  renderSOSShareRow();
+}
+
+function sosGetGPS() {
+  const locEl  = document.getElementById('sos-loc-text');
+  const gpsBtn = document.getElementById('sos-get-loc');
+  if (!locEl || !gpsBtn) return;
+  if (!navigator.geolocation) { locEl.textContent = 'GPS no disponible'; return; }
+  gpsBtn.textContent = '...';
+  gpsBtn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _sosGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) };
+      locEl.innerHTML = `<strong>${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}</strong> <small>±${_sosGPS.accuracy}m</small>`;
+      gpsBtn.textContent = '↻';
+      gpsBtn.disabled = false;
+      renderSOSShareRow();
+      renderSOSContacts();
+    },
+    () => {
+      _sosGPS = null;
+      locEl.textContent = 'Sin GPS — Hermosillo, Sonora, México';
+      gpsBtn.textContent = 'GPS';
+      gpsBtn.disabled = false;
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+function initSOSEvents() {
+  document.getElementById('sos-get-loc')?.addEventListener('click', sosGetGPS);
+
+  document.getElementById('sos-copy-msg')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(_emergencyMsg());
+      const btn = document.getElementById('sos-copy-msg');
+      const orig = btn.textContent;
+      btn.textContent = '✓ COPIADO';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    } catch { /* clipboard not available */ }
+  });
+
+  document.getElementById('sos-edit-toggle')?.addEventListener('click', () => {
+    const panel = document.getElementById('sos-edit-panel');
+    const isOpen = !panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', isOpen);
+    document.getElementById('sos-edit-toggle').textContent = isOpen ? '⚙ CONFIGURAR' : '✕ CERRAR';
+    if (!isOpen) { renderSOSEditContacts(); _prefillSOSMedico(); }
+  });
+
+  document.getElementById('sos-add-contact-btn')?.addEventListener('click', () => {
+    const nombre  = document.getElementById('sos-add-name').value.trim();
+    const relacion = document.getElementById('sos-add-rel').value.trim();
+    const telefono = document.getElementById('sos-add-phone').value.trim();
+    if (!nombre || !telefono) return;
+    const d = getSOSData();
+    d.contactos.push({ id: String(Date.now()), nombre, relacion: relacion || 'Contacto', telefono });
+    saveSOSData(d);
+    document.getElementById('sos-add-name').value = '';
+    document.getElementById('sos-add-rel').value  = '';
+    document.getElementById('sos-add-phone').value = '';
+    renderSOSModule();
+    renderSOSEditContacts();
+  });
+
+  document.getElementById('sos-save-medico-btn')?.addEventListener('click', () => {
+    const d = getSOSData();
+    d.medico = {
+      tipoSangre:   document.getElementById('sos-med-sangre').value.trim(),
+      alergias:     document.getElementById('sos-med-alergias').value.trim(),
+      medicamentos: document.getElementById('sos-med-meds').value.trim(),
+      condiciones:  document.getElementById('sos-med-cond').value.trim(),
+    };
+    saveSOSData(d);
+    renderSOSMedico();
+    const btn = document.getElementById('sos-save-medico-btn');
+    btn.textContent = '✓ GUARDADO';
+    setTimeout(() => { btn.textContent = 'GUARDAR DATOS MÉDICOS'; }, 2000);
+  });
+}
+
+function _prefillSOSMedico() {
+  const { medico } = getSOSData();
+  const f = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  f('sos-med-sangre',   medico.tipoSangre);
+  f('sos-med-alergias', medico.alergias);
+  f('sos-med-meds',     medico.medicamentos);
+  f('sos-med-cond',     medico.condiciones);
+}
+
 /* ── Comandos de voz ────────────────────────────────── */
 const VOICE_CMDS = [
   { phrases:['limpiar chat','borrar chat','limpiar conversación'],  cmd:'/limpiar'  },
@@ -2095,6 +2285,8 @@ async function boot() {
   updateSidebarAll();
   renderTareas();
   restoreReminders();
+  initSOSEvents();
+  renderSOSModule();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
