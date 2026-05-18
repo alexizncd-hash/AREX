@@ -2296,6 +2296,11 @@ async function boot() {
   txt.focus();
 }
 
+// Exponer funciones de render al scope global para jarvis.js
+// (app.js es módulo ES6 — sus funciones no son globales por defecto)
+window.renderDashboard = renderDashboard;
+window.renderSOSModule = renderSOSModule;
+
 // Actualiza countdowns de recordatorios cada 30 segundos
 setInterval(() => {
   document.querySelectorAll('.rec-cd[data-de]').forEach(el => {
