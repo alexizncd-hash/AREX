@@ -631,12 +631,32 @@ function wrapCodeIfNeeded(code) {
 function runInIframe(code) {
   document.getElementById('cp-iframe').srcdoc = wrapCodeIfNeeded(code);
 }
+const CODE_TEMPLATE = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AREX Código</title>
+<style>
+  body { margin: 0; font-family: monospace; background: #030d18; color: #00d4ff; padding: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Hola desde AREX</h1>
+  <p>Edita este código o pídele a AREX que genere algo.</p>
+  <script>
+    // Tu código aquí
+  <\/script>
+</body>
+</html>`;
+
 function openCodePanel(code) {
-  document.getElementById('cp-editor').value = code;
+  const src = code || CODE_TEMPLATE;
+  document.getElementById('cp-editor').value = src;
   document.getElementById('code-panel').classList.remove('hidden');
-  switchCpTab('preview');
-  // requestAnimationFrame asegura que el iframe esté pintado antes de cargar el código
-  requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
+  // Si es plantilla vacía, abre en el editor para que el usuario escriba de inmediato
+  switchCpTab(code ? 'preview' : 'code');
+  if (code) requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
 }
 function closeCpPanel() {
   document.getElementById('code-panel').classList.add('hidden');
@@ -1422,7 +1442,7 @@ async function handleCommand(cmd) {
         if (found) break;
       }
       if (found) { openCodePanel(found); }
-      else { addMsg('arex','No encontré código en el historial reciente. Pídeme que genere código HTML/JS primero.'); }
+      else { openCodePanel(''); addMsg('arex','No encontré código reciente — abrí el editor con una plantilla vacía.'); }
       break;
     }
 
@@ -1789,6 +1809,10 @@ document.querySelectorAll('.cp-tab').forEach(tab =>
   tab.addEventListener('click', () => switchCpTab(tab.dataset.tab))
 );
 document.getElementById('cp-close').addEventListener('click', closeCpPanel);
+document.getElementById('dock-btn-codigo').addEventListener('click', () => {
+  const currentCode = document.getElementById('cp-editor').value.trim();
+  openCodePanel(currentCode || '');
+});
 document.getElementById('cp-run-btn').addEventListener('click', () => {
   const code = document.getElementById('cp-editor').value.trim();
   if (code) {
