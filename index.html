@@ -672,8 +672,16 @@
     <span class="tareas-count" id="tareas-count">0 pendientes</span>
   </div>
   <div class="tareas-add-row">
-    <input type="text" id="tarea-input" class="tarea-input" placeholder="Nueva tarea... o usa /tarea desde el chat"/>
-    <button id="tarea-add-btn" class="tarea-add-btn">+ AGREGAR</button>
+    <input type="text" id="tarea-input" class="tarea-input" placeholder="Descripción... o usa /tarea texto !alta @2026-05-25"/>
+    <div class="tarea-meta-row">
+      <input type="date" id="tarea-fecha" class="tarea-fecha-input" title="Fecha límite (opcional)"/>
+      <div class="tarea-prio-btns" id="tarea-prio-btns">
+        <button class="prio-btn prio-baja" data-prio="baja">BAJA</button>
+        <button class="prio-btn prio-media active" data-prio="media">MEDIA</button>
+        <button class="prio-btn prio-alta" data-prio="alta">ALTA</button>
+      </div>
+      <button id="tarea-add-btn" class="tarea-add-btn">+ AGREGAR</button>
+    </div>
   </div>
   <div class="tareas-body">
     <div class="tareas-col">
