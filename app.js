@@ -368,10 +368,36 @@ function deleteSession(sid) {
 function getTareas() { return JSON.parse(localStorage.getItem('arex_tareas') || '[]'); }
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
-function addTarea(text) {
+function urgenciaTarea(t) {
+  if (!t.fecha) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const vence = new Date(t.fecha + 'T00:00:00');
+  const dias = Math.round((vence - hoy) / 86400000);
+  if (dias < 0)  return { cls: 'urg-vencida',  icon: '🔴', txt: `Venció hace ${-dias}d` };
+  if (dias === 0) return { cls: 'urg-hoy',      icon: '🔴', txt: 'Vence HOY' };
+  if (dias <= 2)  return { cls: 'urg-pronto',   icon: '🟠', txt: `${dias}d` };
+  if (dias <= 7)  return { cls: 'urg-semana',   icon: '🟡', txt: `${dias}d` };
+  const d = new Date(t.fecha + 'T00:00:00');
+  return { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
+}
+
+function sortPending(arr) {
+  const prioVal = { alta: 0, media: 1, baja: 2 };
+  return [...arr].sort((a, b) => {
+    const ua = urgenciaTarea(a), ub = urgenciaTarea(b);
+    const urgOrder = { 'urg-vencida': 0, 'urg-hoy': 1, 'urg-pronto': 2, 'urg-semana': 3, 'urg-normal': 4, null: 5 };
+    const oa = urgOrder[ua?.cls ?? null] ?? 5;
+    const ob = urgOrder[ub?.cls ?? null] ?? 5;
+    if (oa !== ob) return oa - ob;
+    if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+    return (prioVal[a.prioridad] ?? 1) - (prioVal[b.prioridad] ?? 1);
+  });
+}
+
+function addTarea(text, fecha = '', prioridad = 'media') {
   if (!text.trim()) return;
   const arr = getTareas();
-  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now() });
+  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad });
   saveTareasData(arr);
   renderTareas();
 }
@@ -384,16 +410,25 @@ function deleteTarea(id) {
   renderTareas();
 }
 function renderTareas() {
-  const all = getTareas();
-  const pending = all.filter(t => !t.done);
+  const all     = getTareas();
+  const pending = sortPending(all.filter(t => !t.done));
   const done    = all.filter(t =>  t.done);
 
   const makeItem = t => {
-    const div = document.createElement('div');
-    div.className = `tarea-item${t.done ? ' done' : ''}`;
+    const urg  = urgenciaTarea(t);
+    const prio = t.prioridad || 'media';
+    const div  = document.createElement('div');
+    div.className = `tarea-item${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}`;
     div.innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
-      <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+      <div class="tarea-content">
+        <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+        <div class="tarea-meta">
+          ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
+          ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
+          ${t.fecha && t.done ? `<span class="tarea-fecha-done">📅 ${new Date(t.fecha+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>` : ''}
+        </div>
+      </div>
       <button class="tarea-del" data-id="${t.id}">✕</button>`;
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
     div.querySelector('.tarea-del').addEventListener('click', () => deleteTarea(t.id));
@@ -412,14 +447,21 @@ function renderTareas() {
   if (!pending.length) elPending.innerHTML = '<div class="tarea-empty">Sin tareas pendientes</div>';
   if (!done.length)    elDone.innerHTML    = '<div class="tarea-empty">—</div>';
 
-  const count = pending.length;
-  const countEl = document.getElementById('tareas-count');
-  if (countEl) countEl.textContent = `${count} pendiente${count !== 1 ? 's' : ''}`;
+  const urgentes = pending.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; }).length;
+  const count    = pending.length;
+  const countEl  = document.getElementById('tareas-count');
+  if (countEl) {
+    countEl.textContent = urgentes
+      ? `${count} pendiente${count !== 1 ? 's' : ''} · ${urgentes} urgente${urgentes !== 1 ? 's' : ''}`
+      : `${count} pendiente${count !== 1 ? 's' : ''}`;
+    countEl.classList.toggle('has-urgentes', urgentes > 0);
+  }
 
   const badge = document.getElementById('dock-tareas-badge');
   if (badge) {
     badge.textContent = count;
     badge.classList.toggle('hidden', count === 0);
+    badge.classList.toggle('urgente', urgentes > 0);
   }
 }
 
@@ -1385,9 +1427,15 @@ async function handleCommand(cmd) {
     }
 
     case 'tarea': {
-      if (!args) { addMsg('arex', 'Uso: `/tarea descripción de la tarea`\nEjemplo: `/tarea Estudiar para el examen`'); break; }
-      addTarea(args);
-      addMsg('arex', `✅ Tarea agregada: **${args}**`);
+      if (!args) { addMsg('arex', 'Uso: `/tarea texto !alta @2026-05-25`\n- `!alta` / `!media` / `!baja` → prioridad\n- `@YYYY-MM-DD` → fecha límite'); break; }
+      const prioMatch = args.match(/!(alta|media|baja)/i);
+      const fechaMatch = args.match(/@(\d{4}-\d{2}-\d{2})/);
+      const prio  = prioMatch  ? prioMatch[1].toLowerCase() : 'media';
+      const fecha = fechaMatch ? fechaMatch[1] : '';
+      const texto = args.replace(/!(alta|media|baja)/gi, '').replace(/@\d{4}-\d{2}-\d{2}/g, '').trim();
+      if (!texto) { addMsg('arex', 'Escribe la descripción de la tarea.'); break; }
+      addTarea(texto, fecha, prio);
+      addMsg('arex', `✅ Tarea agregada: **${texto}**${fecha ? ` · 📅 ${fecha}` : ''}${prio !== 'media' ? ` · prioridad ${prio}` : ''}`);
       break;
     }
 
@@ -1556,16 +1604,27 @@ async function handleSend() {
 /* ── Eventos ────────────────────────────────────────── */
 document.getElementById('btn-nueva-sesion')?.addEventListener('click', startNewSession);
 
-// Módulo Tareas — botón agregar y Enter en input
-document.getElementById('tarea-add-btn')?.addEventListener('click', () => {
-  const inp = document.getElementById('tarea-input');
-  if (inp?.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
+// Módulo Tareas — prioridad selector
+let _prioActual = 'media';
+document.getElementById('tarea-prio-btns')?.addEventListener('click', e => {
+  const btn = e.target.closest('.prio-btn');
+  if (!btn) return;
+  _prioActual = btn.dataset.prio;
+  document.querySelectorAll('#tarea-prio-btns .prio-btn').forEach(b => b.classList.toggle('active', b === btn));
 });
+
+function _doAddTarea() {
+  const inp   = document.getElementById('tarea-input');
+  const fecha = document.getElementById('tarea-fecha')?.value || '';
+  if (!inp?.value.trim()) return;
+  addTarea(inp.value.trim(), fecha, _prioActual);
+  inp.value = '';
+  if (document.getElementById('tarea-fecha')) document.getElementById('tarea-fecha').value = '';
+}
+
+document.getElementById('tarea-add-btn')?.addEventListener('click', _doAddTarea);
 document.getElementById('tarea-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const inp = e.target;
-    if (inp.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
-  }
+  if (e.key === 'Enter') _doAddTarea();
 });
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
