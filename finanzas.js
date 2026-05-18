@@ -39,6 +39,14 @@ const FinanzasModule = {
         this.actualizarCalculadora();
       });
     });
+
+    document.getElementById('edit-save-btn')?.addEventListener('click', () => this.guardarEditor());
+    document.getElementById('edit-reset-btn')?.addEventListener('click', () => {
+      resetFinanzasOverrides();
+      this.renderEditor();
+      this.actualizarMetricas();
+    });
+    document.getElementById('btn-analizar-ia')?.addEventListener('click', () => this.analizarConIA());
   },
 
   cambiarVista(vista) {
@@ -49,16 +57,17 @@ const FinanzasModule = {
     document.getElementById(`view-${vista}`).classList.add('active');
     this.vistaActual = vista;
 
-    if (vista === 'dashboard')      this.renderDashboard();
+    if (vista === 'dashboard')        this.renderDashboard();
     else if (vista === 'recordatorios') this.renderRecordatorios();
     else if (vista === 'calculadora')   this.renderCalculadora();
+    else if (vista === 'editar')        this.renderEditor();
   },
 
   actualizarMetricas() {
     const deudaTotal  = calcularDeudaTotal();
     const gastosTotal = calcularGastosTotal();
     const margen      = calcularMargen();
-    const ingreso     = FINANZAS_DATA.config.ingresoMensual;
+    const ingreso     = getFinanzasData().config.ingresoMensual;
 
     document.getElementById('metric-ingreso').textContent = formatearMoneda(ingreso);
     document.getElementById('metric-deuda').textContent   = formatearMoneda(deudaTotal);
@@ -78,7 +87,7 @@ const FinanzasModule = {
     if (!container) return;
     container.innerHTML = '';
 
-    const tarjetasOrdenadas = [...FINANZAS_DATA.tarjetas].sort((a, b) => a.prioridad - b.prioridad);
+    const tarjetasOrdenadas = [...getFinanzasData().tarjetas].sort((a, b) => a.prioridad - b.prioridad);
 
     tarjetasOrdenadas.forEach(tarjeta => {
       const porcentajeUso   = ((tarjeta.saldo / tarjeta.limite) * 100).toFixed(1);
@@ -135,7 +144,7 @@ const FinanzasModule = {
     if (!container) return;
     container.innerHTML = '';
 
-    const gastosOrdenados = [...FINANZAS_DATA.gastos].sort((a, b) => b.monto - a.monto);
+    const gastosOrdenados = [...getFinanzasData().gastos].sort((a, b) => b.monto - a.monto);
     const totalGastos = calcularGastosTotal();
 
     gastosOrdenados.forEach(gasto => {
@@ -260,7 +269,7 @@ const FinanzasModule = {
     if (!container) return;
     container.innerHTML = '';
 
-    FINANZAS_DATA.tarjetas.forEach(tarjeta => {
+    getFinanzasData().tarjetas.forEach(tarjeta => {
       const item = document.createElement('div');
       item.className = 'tarjeta-list-item';
       item.style.borderLeftColor = tarjeta.color;
@@ -305,7 +314,7 @@ const FinanzasModule = {
     document.getElementById('resultado-fecha').textContent =
       fechaLibertad.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
 
-    const pagoTotal = FINANZAS_DATA.tarjetas.reduce((s, t) => s + t.pagoMinimo + t.pagoMSI, 0) + this.pagoExtraActual;
+    const pagoTotal = getFinanzasData().tarjetas.reduce((s, t) => s + t.pagoMinimo + t.pagoMSI, 0) + this.pagoExtraActual;
     document.getElementById('resultado-pago').textContent = formatearMoneda(pagoTotal);
 
     this.renderOrdenLiquidacion(simulacion.tarjetas);
@@ -362,6 +371,125 @@ const FinanzasModule = {
         <p class="nota-grafica">💡 Gráfica detallada disponible próximamente</p>
       </div>
     `;
+  },
+
+  // ── EDITOR ─────────────────────────────────────────────
+
+  renderEditor() {
+    const data = getFinanzasData();
+    const fecha = document.getElementById('editor-fecha-actual');
+    if (fecha) fecha.textContent = data.config.fechaActualizacion;
+
+    const ingresoEl = document.getElementById('edit-ingreso');
+    if (ingresoEl) ingresoEl.value = data.config.ingresoMensual;
+
+    const tarjetasEl = document.getElementById('edit-tarjetas');
+    if (tarjetasEl) {
+      tarjetasEl.innerHTML = data.tarjetas.map(t => `
+        <div class="edit-row">
+          <span class="edit-label" style="border-left:3px solid ${t.color}">${t.nombre}</span>
+          <div class="edit-fields">
+            <div class="edit-field">
+              <label>Saldo actual</label>
+              <input type="number" class="edit-input" data-tid="${t.id}" data-field="saldo" value="${t.saldo}" min="0">
+            </div>
+            <div class="edit-field">
+              <label>Pago mínimo</label>
+              <input type="number" class="edit-input" data-tid="${t.id}" data-field="pagoMinimo" value="${t.pagoMinimo}" min="0">
+            </div>
+            <div class="edit-field">
+              <label>Interés/mes</label>
+              <input type="number" class="edit-input" data-tid="${t.id}" data-field="interesMensual" value="${t.interesMensual}" min="0">
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    const gastosEl = document.getElementById('edit-gastos');
+    if (gastosEl) {
+      gastosEl.innerHTML = data.gastos.map(g => `
+        <div class="edit-row">
+          <span class="edit-label">${g.icono || ''} ${g.categoria}</span>
+          <div class="edit-fields">
+            <div class="edit-field">
+              <label>Monto mensual</label>
+              <input type="number" class="edit-input" data-gid="${g.id}" data-field="monto" value="${g.monto}" min="0">
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    document.getElementById('edit-ok')?.classList.add('hidden');
+  },
+
+  guardarEditor() {
+    const ingreso = parseFloat(document.getElementById('edit-ingreso')?.value) || 0;
+
+    const tarjetas = [];
+    document.querySelectorAll('#edit-tarjetas .edit-input[data-tid]').forEach(inp => {
+      const id = inp.dataset.tid;
+      const field = inp.dataset.field;
+      let entry = tarjetas.find(t => t.id === id);
+      if (!entry) { entry = { id }; tarjetas.push(entry); }
+      entry[field] = parseFloat(inp.value) || 0;
+    });
+
+    const gastos = [];
+    document.querySelectorAll('#edit-gastos .edit-input[data-gid]').forEach(inp => {
+      gastos.push({ id: inp.dataset.gid, [inp.dataset.field]: parseFloat(inp.value) || 0 });
+    });
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    saveFinanzasOverrides({
+      config: { ingresoMensual: ingreso, fechaActualizacion: hoy },
+      tarjetas,
+      gastos
+    });
+
+    this.actualizarMetricas();
+    document.getElementById('edit-ok')?.classList.remove('hidden');
+    setTimeout(() => document.getElementById('edit-ok')?.classList.add('hidden'), 2500);
+  },
+
+  // ── ANALIZAR CON IA ────────────────────────────────────
+
+  analizarConIA() {
+    const d = getFinanzasData();
+    const deuda = calcularDeudaTotal();
+    const gastos = calcularGastosTotal();
+    const margen = calcularMargen();
+
+    const tarjetasStr = d.tarjetas.map(t =>
+      `- ${t.nombre}: $${t.saldo.toLocaleString()} saldo | CAT ${t.cat}% | Interés/mes $${t.interesMensual} | Pago $${t.pagoMinimo + t.pagoMSI} | Prioridad #${t.prioridad}`
+    ).join('\n');
+
+    const gastosStr = d.gastos.map(g =>
+      `- ${g.categoria}: $${g.monto.toLocaleString()} (${g.tipo}${g.reducible ? ', reducible' : ''})`
+    ).join('\n');
+
+    const prompt = `Analiza mi situación financiera REAL y dame un plan de acción concreto:
+
+**INGRESOS**
+- Mensual: $${d.config.ingresoMensual.toLocaleString()} | Diario: $${d.config.ingresoDiario || Math.round(d.config.ingresoMensual/30)}
+
+**DEUDAS — Total: $${deuda.toLocaleString()}**
+${tarjetasStr}
+
+**GASTOS MENSUALES — Total: $${gastos.toLocaleString()}**
+${gastosStr}
+
+**MARGEN DISPONIBLE: $${margen.toLocaleString()}/mes**
+
+Dame: 1) Diagnóstico honesto de mi situación 2) Plan de acción para los próximos 3 meses con montos específicos 3) Qué gastos reducir para acelerar la liquidación 4) Fecha realista de libertad financiera con mi margen actual`;
+
+    if (window.AREXNav) window.AREXNav.cambiarModulo('chat');
+    const txt = document.getElementById('txt');
+    const btnSend = document.getElementById('btn-send');
+    if (txt && btnSend) {
+      txt.value = prompt;
+      txt.focus();
+      btnSend.click();
+    }
   }
 };
 

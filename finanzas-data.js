@@ -304,30 +304,62 @@ const FINANZAS_DATA = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// CAPA DE PERSISTENCIA — sobreescrituras en localStorage
+// ═══════════════════════════════════════════════════════════
+
+function getFinanzasData() {
+  const raw = localStorage.getItem('arex_finanzas_overrides');
+  if (!raw) return FINANZAS_DATA;
+  try {
+    const ov = JSON.parse(raw);
+    return {
+      ...FINANZAS_DATA,
+      config: { ...FINANZAS_DATA.config, ...ov.config },
+      tarjetas: FINANZAS_DATA.tarjetas.map(t => {
+        const o = (ov.tarjetas || []).find(x => x.id === t.id);
+        return o ? { ...t, ...o } : t;
+      }),
+      gastos: FINANZAS_DATA.gastos.map(g => {
+        const o = (ov.gastos || []).find(x => x.id === g.id);
+        return o ? { ...g, ...o } : g;
+      })
+    };
+  } catch { return FINANZAS_DATA; }
+}
+
+function saveFinanzasOverrides(overrides) {
+  localStorage.setItem('arex_finanzas_overrides', JSON.stringify(overrides));
+}
+
+function resetFinanzasOverrides() {
+  localStorage.removeItem('arex_finanzas_overrides');
+}
+
+// ═══════════════════════════════════════════════════════════
 // FUNCIONES DE CÁLCULO
 // ═══════════════════════════════════════════════════════════
 
 function calcularDeudaTotal() {
-  return FINANZAS_DATA.tarjetas.reduce((total, t) => total + t.saldo, 0);
+  return getFinanzasData().tarjetas.reduce((total, t) => total + t.saldo, 0);
 }
 
 function calcularGastosTotal() {
-  return FINANZAS_DATA.gastos.reduce((total, g) => total + g.monto, 0);
+  return getFinanzasData().gastos.reduce((total, g) => total + g.monto, 0);
 }
 
 function calcularMargen() {
-  return FINANZAS_DATA.config.ingresoMensual - calcularGastosTotal();
+  return getFinanzasData().config.ingresoMensual - calcularGastosTotal();
 }
 
 function calcularPorcentajeGastos() {
-  return ((calcularGastosTotal() / FINANZAS_DATA.config.ingresoMensual) * 100).toFixed(1);
+  return ((calcularGastosTotal() / getFinanzasData().config.ingresoMensual) * 100).toFixed(1);
 }
 
 function obtenerProximosPagos(dias = 30) {
   const hoy = new Date();
   const proximosPagos = [];
 
-  FINANZAS_DATA.tarjetas.forEach(tarjeta => {
+  getFinanzasData().tarjetas.forEach(tarjeta => {
     const año = hoy.getFullYear();
     const mes = hoy.getMonth();
 
@@ -356,7 +388,7 @@ function obtenerProximosPagos(dias = 30) {
 }
 
 function simularLiquidacion(pagoExtra, estrategia = 'avalancha') {
-  let tarjetasSimulacion = FINANZAS_DATA.tarjetas.map(t => ({
+  let tarjetasSimulacion = getFinanzasData().tarjetas.map(t => ({
     nombre: t.nombre,
     saldo: t.saldo,
     tasaAnual: t.tasaAnual,
