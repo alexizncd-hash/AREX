@@ -465,6 +465,106 @@ function renderTareas() {
   }
 }
 
+function renderDashboard() {
+  const el = document.getElementById('dash-content');
+  if (!el) return;
+
+  const fin       = getFinanzasData();
+  const tareas    = getTareas();
+  const pendientes = sortPending(tareas.filter(t => !t.done));
+  const urgentes  = pendientes.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; });
+  const proximas  = pendientes.filter(t => { const u = urgenciaTarea(t); return u && !['urg-vencida','urg-hoy'].includes(u.cls); }).slice(0, 3);
+  const sinFecha  = pendientes.filter(t => !t.fecha).slice(0, 2);
+  const mostrar   = [...urgentes, ...proximas, ...sinFecha].slice(0, 6);
+
+  const deuda    = calcularDeudaTotal();
+  const margen   = calcularMargen();
+  const ingreso  = fin.config.ingresoMensual;
+  const pagos    = obtenerProximosPagos(30);
+
+  const hoy      = new Date();
+  const diasMes  = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const pctMes   = Math.round((hoy.getDate() / diasMes) * 100);
+  const fechaStr = hoy.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const mesStr   = hoy.toLocaleDateString('es-MX', { month:'long', year:'numeric' }).toUpperCase();
+
+  const mkTareaItem = t => {
+    const u    = urgenciaTarea(t);
+    const prio = t.prioridad || 'media';
+    const esUrgente = u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
+    return `<div class="dash-tarea-item${esUrgente ? ' urgent' : ''}">
+      <button class="dash-check" data-id="${t.id}"></button>
+      <span class="dash-tarea-txt">${t.text.replace(/</g,'&lt;')}</span>
+      ${u ? `<span class="dash-urg ${u.cls}">${u.icon} ${u.txt}</span>`
+           : `<span class="dash-prio-dot prio-${prio}"></span>`}
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div class="dash-topbar">
+      <span class="dash-fecha-hoy">${fechaStr.toUpperCase()}</span>
+      <div class="dash-quick-stats">
+        ${urgentes.length
+          ? `<span class="dash-stat dash-stat-alert">${urgentes.length} URGENTE${urgentes.length!==1?'S':''}</span>`
+          : `<span class="dash-stat">${pendientes.length} PENDIENTE${pendientes.length!==1?'S':''}</span>`}
+      </div>
+    </div>
+
+    <div class="dash-grid">
+
+      <div class="dash-widget">
+        <div class="dash-w-header">
+          <span class="dash-w-title">TAREAS</span>
+          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('tareas')">VER TODAS →</button>
+        </div>
+        ${mostrar.length
+          ? mostrar.map(mkTareaItem).join('')
+          : '<div class="dash-empty">Sin tareas pendientes</div>'}
+      </div>
+
+      <div class="dash-widget">
+        <div class="dash-w-header">
+          <span class="dash-w-title">FINANZAS</span>
+          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('finanzas')">VER TODO →</button>
+        </div>
+        <div class="dash-kpis">
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">INGRESO</span>
+            <span class="dash-kpi-val kpi-green">${formatearMoneda(ingreso)}</span>
+          </div>
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">DEUDA</span>
+            <span class="dash-kpi-val kpi-red">${formatearMoneda(deuda)}</span>
+          </div>
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">MARGEN</span>
+            <span class="dash-kpi-val ${margen >= 0 ? 'kpi-green' : 'kpi-red'}">${formatearMoneda(margen)}</span>
+          </div>
+        </div>
+        <div class="dash-w-subtitle">PRÓXIMOS PAGOS</div>
+        ${pagos.length
+          ? pagos.map(p => `
+            <div class="dash-pago urg-pago-${p.urgencia}">
+              <span class="dash-pago-nom">${p.tarjeta}</span>
+              <span class="dash-pago-dias">${p.diasRestantes === 0 ? 'HOY' : p.diasRestantes + 'd'}</span>
+              <span class="dash-pago-monto">${formatearMoneda(p.pagoMinimo)}</span>
+            </div>`).join('')
+          : '<div class="dash-empty">Sin pagos en los próximos 30 días</div>'}
+      </div>
+
+    </div>
+
+    <div class="dash-mes-wrap">
+      <span class="dash-mes-label">${mesStr} — DÍA ${hoy.getDate()} DE ${diasMes} (${pctMes}%)</span>
+      <div class="dash-mes-bar"><div class="dash-mes-fill" style="width:${pctMes}%"></div></div>
+    </div>
+  `;
+
+  el.querySelectorAll('.dash-check').forEach(btn =>
+    btn.addEventListener('click', () => { toggleTarea(btn.dataset.id); renderDashboard(); })
+  );
+}
+
 function renderSessionsList() {
   const container = document.getElementById('sessions-list');
   if (!container) return;

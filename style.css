@@ -947,6 +947,113 @@ footer {
 .dock-badge.urgente { background:#ef4444; box-shadow:0 0 6px rgba(239,68,68,0.5); }
 @media(max-width:600px) { .tareas-body { grid-template-columns:1fr; } }
 
+/* ── Dashboard INICIO ───────────────────────────────── */
+.dash-content {
+  display:flex; flex-direction:column; gap:1.2rem; height:100%; overflow-y:auto;
+  padding-right:4px;
+}
+.dash-topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; background:rgba(0,15,28,0.6);
+  border:1px solid rgba(0,212,255,0.1); border-radius:4px;
+}
+.dash-fecha-hoy {
+  font-size:0.65rem; letter-spacing:2px; color:var(--cyan);
+}
+.dash-quick-stats { display:flex; gap:8px; }
+.dash-stat { font-size:0.6rem; letter-spacing:1px; color:var(--text-muted); }
+.dash-stat-alert { color:#ef4444; font-weight:700; letter-spacing:1px; font-size:0.6rem; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media(max-width:640px) { .dash-grid { grid-template-columns:1fr; } }
+
+.dash-widget {
+  background:rgba(0,15,28,0.5); border:1px solid rgba(0,212,255,0.1);
+  border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:8px;
+}
+.dash-w-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:2px;
+}
+.dash-w-title {
+  font-size:0.6rem; letter-spacing:3px; color:var(--text-muted);
+}
+.dash-w-link {
+  background:none; border:none; color:rgba(0,212,255,0.4);
+  font-family:var(--font); font-size:0.55rem; letter-spacing:1px;
+  cursor:pointer; transition:color 0.15s; padding:0;
+}
+.dash-w-link:hover { color:var(--cyan); }
+.dash-w-subtitle {
+  font-size:0.55rem; letter-spacing:2px; color:#1e4a60;
+  margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,212,255,0.08);
+}
+
+/* Tareas en dashboard */
+.dash-tarea-item {
+  display:flex; align-items:center; gap:7px;
+  padding:5px 0; border-bottom:1px solid rgba(0,212,255,0.05);
+}
+.dash-tarea-item:last-of-type { border-bottom:none; }
+.dash-tarea-item.urgent .dash-tarea-txt { color:#fca5a5; }
+.dash-check {
+  width:14px; height:14px; flex-shrink:0; border-radius:50%;
+  background:none; border:1px solid rgba(0,212,255,0.3);
+  cursor:pointer; transition:all 0.15s;
+}
+.dash-check:hover { background:rgba(0,212,255,0.15); border-color:var(--cyan); }
+.dash-tarea-txt { flex:1; font-size:10.5px; color:var(--text-main); letter-spacing:0.4px; }
+.dash-urg { font-size:0.58rem; white-space:nowrap; flex-shrink:0; }
+.dash-urg.urg-vencida,.dash-urg.urg-hoy  { color:#ef4444; font-weight:700; }
+.dash-urg.urg-pronto  { color:#f97316; }
+.dash-urg.urg-semana  { color:#f59e0b; }
+.dash-urg.urg-normal  { color:#1e4a60; }
+.dash-prio-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+}
+.dash-prio-dot.prio-alta  { background:#ef4444; }
+.dash-prio-dot.prio-media { background:#f59e0b; }
+.dash-prio-dot.prio-baja  { background:#22c55e; }
+
+/* KPIs finanzas */
+.dash-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.dash-kpi {
+  display:flex; flex-direction:column; gap:3px;
+  background:rgba(0,212,255,0.03); border:1px solid rgba(0,212,255,0.08);
+  border-radius:4px; padding:8px;
+}
+.dash-kpi-label { font-size:0.5rem; letter-spacing:2px; color:#1e4a60; }
+.dash-kpi-val { font-size:0.85rem; letter-spacing:0.5px; font-weight:700; }
+.kpi-green { color:#22c55e; }
+.kpi-red   { color:#ef4444; }
+
+/* Próximos pagos */
+.dash-pago {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 8px; border-radius:3px;
+  border-left:3px solid transparent;
+  background:rgba(0,15,28,0.4);
+}
+.dash-pago.urg-pago-hoy     { border-left-color:#ef4444; }
+.dash-pago.urg-pago-urgente { border-left-color:#f97316; }
+.dash-pago.urg-pago-proximo { border-left-color:#f59e0b; }
+.dash-pago.urg-pago-programado { border-left-color:#1e4a60; }
+.dash-pago-nom   { flex:1; font-size:10px; color:var(--text-main); letter-spacing:0.5px; }
+.dash-pago-dias  { font-size:0.6rem; color:var(--text-muted); width:28px; text-align:right; }
+.dash-pago-monto { font-size:0.7rem; color:var(--cyan); letter-spacing:0.5px; width:60px; text-align:right; }
+
+/* Barra del mes */
+.dash-mes-wrap {
+  display:flex; flex-direction:column; gap:5px;
+  padding:10px 14px; background:rgba(0,15,28,0.4);
+  border:1px solid rgba(0,212,255,0.08); border-radius:4px;
+}
+.dash-mes-label { font-size:0.55rem; letter-spacing:2px; color:#1e4a60; }
+.dash-mes-bar   { height:3px; background:rgba(0,212,255,0.1); border-radius:2px; overflow:hidden; }
+.dash-mes-fill  { height:100%; background:linear-gradient(90deg, var(--cyan), #00ffaa); border-radius:2px; transition:width 0.5s ease; }
+
+.dash-empty { font-size:10px; color:#1e4a60; padding:4px 0; letter-spacing:1px; }
+
 /* ── Sesiones múltiples ─────────────────────────────── */
 .ss-new-session-btn {
   width:100%; display:flex; align-items:center; gap:6px;
