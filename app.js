@@ -554,6 +554,14 @@ function renderDashboard() {
 
     </div>
 
+    <div class="dash-widget dash-w-full">
+      <div class="dash-w-header">
+        <span class="dash-w-title">RECORDATORIOS</span>
+        <button class="dash-w-link" onclick="document.getElementById('txt')?.focus()">+ NUEVO →</button>
+      </div>
+      <div id="dash-rec-body">${_buildRecHtml()}</div>
+    </div>
+
     <div class="dash-mes-wrap">
       <span class="dash-mes-label">${mesStr} — DÍA ${hoy.getDate()} DE ${diasMes} (${pctMes}%)</span>
       <div class="dash-mes-bar"><div class="dash-mes-fill" style="width:${pctMes}%"></div></div>
@@ -562,6 +570,9 @@ function renderDashboard() {
 
   el.querySelectorAll('.dash-check').forEach(btn =>
     btn.addEventListener('click', () => { toggleTarea(btn.dataset.id); renderDashboard(); })
+  );
+  el.querySelectorAll('.rec-dismiss').forEach(b =>
+    b.addEventListener('click', () => dismissReminder(b.dataset.id))
   );
 }
 
@@ -1356,6 +1367,92 @@ function scheduleReminder(ms, message) {
     if (voiceOn) arexSpeak(`Recordatorio: ${message}`);
   }, ms);
 }
+
+/* ── Recordatorios persistentes ─────────────────────── */
+function getRecordatorios() { return JSON.parse(localStorage.getItem('arex_recordatorios') || '[]'); }
+function saveRecordatorios(arr) { localStorage.setItem('arex_recordatorios', JSON.stringify(arr)); }
+
+function fmtCountdown(disparaEn) {
+  const ms = disparaEn - Date.now();
+  if (ms <= 0) return 'ahora';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `en ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `en ${m}min`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  if (h < 24) return rm > 0 ? `en ${h}h ${rm}min` : `en ${h}h`;
+  return `en ${Math.floor(h / 24)}d`;
+}
+
+function armReminder(rec) {
+  const ms = rec.disparaEn - Date.now();
+  if (ms <= 0) return;
+  setTimeout(() => {
+    saveRecordatorios(getRecordatorios().map(r => r.id === rec.id ? { ...r, disparado: true } : r));
+    if (Notification.permission === 'granted') new Notification('AREX — Recordatorio', { body: rec.msg, icon:'icon.svg' });
+    addMsg('arex', `⏰ **Recordatorio:** ${rec.msg}`);
+    if (voiceOn) arexSpeak(`Recordatorio: ${rec.msg}`);
+    _refreshRecWidget();
+  }, ms);
+}
+
+function restoreReminders() {
+  const now = Date.now();
+  const all = getRecordatorios();
+  let changed = false;
+  all.forEach(r => {
+    if (!r.disparado) {
+      if (r.disparaEn <= now) { r.disparado = true; r.perdido = true; changed = true; }
+      else armReminder(r);
+    }
+  });
+  if (changed) saveRecordatorios(all);
+}
+
+function saveReminder(ms, msg) {
+  const rec = { id: String(Date.now()), msg, disparaEn: Date.now() + ms, disparado: false, creadoEn: Date.now() };
+  const all = getRecordatorios(); all.push(rec);
+  saveRecordatorios(all);
+  armReminder(rec);
+  _refreshRecWidget();
+}
+
+function dismissReminder(id) {
+  saveRecordatorios(getRecordatorios().filter(r => r.id !== id));
+  _refreshRecWidget();
+}
+
+function _buildRecHtml() {
+  const all      = getRecordatorios();
+  const activos  = all.filter(r => !r.disparado).sort((a,b) => a.disparaEn - b.disparaEn);
+  const perdidos = all.filter(r => r.disparado && r.perdido);
+  const hechos   = all.filter(r => r.disparado && !r.perdido).slice(-2);
+
+  if (!all.length) return '<div class="dash-empty">Sin recordatorios — usa /recordar 30min mensaje</div>';
+
+  const mkItem = (r, cls, icon, label) => `
+    <div class="rec-item ${cls}">
+      <span class="rec-icon">${icon}</span>
+      <span class="rec-msg">${r.msg.replace(/</g,'&lt;')}</span>
+      <span class="rec-cd"${cls==='rec-activo' ? ` data-de="${r.disparaEn}"` : ''}>${label}</span>
+      <button class="rec-dismiss" data-id="${r.id}" title="Eliminar">✕</button>
+    </div>`;
+
+  return [
+    ...activos.map(r  => mkItem(r, 'rec-activo',  '⏰', fmtCountdown(r.disparaEn))),
+    ...perdidos.map(r => mkItem(r, 'rec-perdido', '🔕', 'perdido')),
+    ...hechos.map(r   => mkItem(r, 'rec-hecho',   '✓',  'completado')),
+  ].join('');
+}
+
+function _refreshRecWidget() {
+  const el = document.getElementById('dash-rec-body');
+  if (!el) return;
+  el.innerHTML = _buildRecHtml();
+  el.querySelectorAll('.rec-dismiss').forEach(b =>
+    b.addEventListener('click', () => dismissReminder(b.dataset.id))
+  );
+}
 function parseReminder(args) {
   const minMatch  = args.match(/^(\d+)\s*min\s+(.+)/i);
   const hrMatch   = args.match(/^(\d+)\s*h\s+(.+)/i);
@@ -1491,11 +1588,19 @@ async function handleCommand(cmd) {
 
     case 'recordar': {
       await requestNotifPerm();
+      if (!args) {
+        const recs = getRecordatorios();
+        const activos = recs.filter(r => !r.disparado).sort((a,b) => a.disparaEn - b.disparaEn);
+        if (!activos.length) { addMsg('arex', 'Sin recordatorios activos.\nUso: `/recordar 30min mensaje` · `/recordar 2h mensaje` · `/recordar 20:00 mensaje`'); break; }
+        const lista = activos.map(r => `⏰ **${r.msg}** — ${fmtCountdown(r.disparaEn)}`).join('\n');
+        addMsg('arex', `Recordatorios activos:\n${lista}`);
+        break;
+      }
       const parsed = parseReminder(args);
-      if (!parsed) { addMsg('arex','Formato: /recordar 30min mensaje · /recordar 2h mensaje · /recordar 20:00 mensaje'); break; }
-      scheduleReminder(parsed.ms, parsed.msg);
+      if (!parsed) { addMsg('arex','Formato: `/recordar 30min mensaje` · `/recordar 2h mensaje` · `/recordar 20:00 mensaje`'); break; }
+      saveReminder(parsed.ms, parsed.msg);
       const mins = Math.round(parsed.ms / 60000);
-      addMsg('arex', `Recordatorio programado: "${parsed.msg}" en ${mins < 60 ? mins+' minutos' : (mins/60).toFixed(1)+' horas'}.`);
+      addMsg('arex', `✅ Recordatorio guardado: "${parsed.msg}" — ${mins < 60 ? mins+' min' : (mins/60).toFixed(1)+' h'}.`);
       break;
     }
 
@@ -1989,6 +2094,7 @@ async function boot() {
   updateCtxBadge();
   updateSidebarAll();
   renderTareas();
+  restoreReminders();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
@@ -1997,6 +2103,13 @@ async function boot() {
   bootScreen.style.display = 'none';
   txt.focus();
 }
+
+// Actualiza countdowns de recordatorios cada 30 segundos
+setInterval(() => {
+  document.querySelectorAll('.rec-cd[data-de]').forEach(el => {
+    el.textContent = fmtCountdown(parseInt(el.dataset.de));
+  });
+}, 30000);
 
 // Punto de entrada — siempre registrar el handler del setup
 setupSaveHandler();
