@@ -373,6 +373,13 @@
     <div class="dock-logo-ring">A</div>
   </div>
   <nav class="dock-nav">
+    <button class="nav-btn" data-module="inicio" data-tooltip="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+      </svg>
+      <span class="dock-label">INICIO</span>
+    </button>
     <button class="nav-btn active" data-module="chat" data-tooltip="Chat IA">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -393,6 +400,13 @@
       </svg>
       <span class="dock-label">TAREAS</span>
       <span class="dock-badge hidden" id="dock-tareas-badge">0</span>
+    </button>
+    <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 18 22 12 16 6"/>
+        <polyline points="8 6 2 12 8 18"/>
+      </svg>
+      <span class="dock-label">CÓDIGO</span>
     </button>
   </nav>
   <div class="dock-bottom">
@@ -502,6 +516,10 @@
 </main>
 
 <!-- ── Módulo: Finanzas ── -->
+<div id="module-inicio" class="module-panel">
+  <div id="dash-content" class="dash-content"></div>
+</div>
+
 <div id="module-finanzas" class="module-panel">
 
   <!-- Sub-navegación -->
