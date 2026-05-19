@@ -30,6 +30,34 @@ main#module-chat.module-panel.active {
   z-index: 10;
 }
 
+/* Módulos con scroll propio en su layout interno */
+#module-notas.module-panel.active,
+#module-habitos.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Módulos con scroll en el panel */
+#module-inicio.module-panel.active,
+#module-sos.module-panel.active,
+#module-tareas.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
+
 /* ── Sub-navegación de Finanzas ───────────────────────────── */
 
 .finanzas-subnav {

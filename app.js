@@ -3043,3 +3043,14 @@ if (loadConfig()) {
 } else {
   showSetup();
 }
+
+// Fix keyboard/viewport jump on mobile
+(function fixMobileVH() {
+  const update = () => {
+    const h = (window.visualViewport?.height ?? window.innerHeight);
+    document.documentElement.style.setProperty('--real-vh', h + 'px');
+  };
+  window.visualViewport?.addEventListener('resize', update);
+  window.addEventListener('resize', update);
+  update();
+})();
