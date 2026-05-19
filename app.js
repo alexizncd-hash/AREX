@@ -647,6 +647,248 @@ function renderNotasWidget() {
     </div>`).join('');
 }
 
+// ── Módulo Hábitos ───────────────────────────────────────
+function getHabitos() { return JSON.parse(localStorage.getItem('arex_habitos') || '[]'); }
+function saveHabitos(arr) { localStorage.setItem('arex_habitos', JSON.stringify(arr)); }
+
+function _todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function _getStreak(h) {
+  const today = _todayStr();
+  let streak = 0;
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  while (true) {
+    const s = d.toISOString().slice(0, 10);
+    if (!h.history.includes(s)) {
+      if (streak === 0 && s === today) { d.setDate(d.getDate() - 1); continue; }
+      break;
+    }
+    streak++; d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function _last7(h) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const s = d.toISOString().slice(0, 10);
+    return { date: s, checked: h.history.includes(s), isToday: i === 6 };
+  });
+}
+
+function checkHabito(id) {
+  const today = _todayStr();
+  saveHabitos(getHabitos().map(h => {
+    if (h.id !== id) return h;
+    const history = h.history.includes(today)
+      ? h.history.filter(d => d !== today)
+      : [...h.history, today];
+    return { ...h, history };
+  }));
+  renderHabitos(); renderDashboard();
+}
+
+function deleteHabito(id) {
+  saveHabitos(getHabitos().filter(h => h.id !== id));
+  renderHabitos(); renderDashboard();
+}
+
+function addHabito(nombre, emoji) {
+  if (!nombre.trim()) return;
+  saveHabitos([...getHabitos(), { id: String(Date.now()), nombre: nombre.trim(), emoji: emoji || '🎯', history: [], created: Date.now() }]);
+  renderHabitos();
+}
+
+function renderHabitos() {
+  const el = document.getElementById('hab-list');
+  if (!el) return;
+  const habitos = getHabitos();
+  const today = _todayStr();
+
+  const sub = document.getElementById('hab-subtitle');
+  if (sub) {
+    const done = habitos.filter(h => h.history.includes(today)).length;
+    sub.textContent = habitos.length
+      ? `${done}/${habitos.length} completados hoy`
+      : 'Sin hábitos aún';
+  }
+
+  if (!habitos.length) {
+    el.innerHTML = '<div class="hab-empty">Sin hábitos — toca + NUEVO para agregar uno</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  habitos.forEach(h => {
+    const streak = _getStreak(h);
+    const done   = h.history.includes(today);
+    const div    = document.createElement('div');
+    div.className = 'hab-card' + (done ? ' checked' : '');
+    div.innerHTML = `
+      <button class="hab-check${done ? ' done' : ''}" data-id="${h.id}">
+        <span class="hab-emoji">${h.emoji}</span>
+        ${done ? '<span class="hab-tick">✓</span>' : ''}
+      </button>
+      <div class="hab-info">
+        <div class="hab-nombre">${h.nombre.replace(/</g,'&lt;')}</div>
+        <div class="hab-dots">${_last7(h).map(d =>
+          `<span class="hab-dot${d.checked?' on':''}${d.isToday?' today':''}"></span>`
+        ).join('')}</div>
+      </div>
+      <div class="hab-right">
+        <div class="hab-streak">${streak}<span class="hab-sl"> racha</span></div>
+        <button class="hab-del">✕</button>
+      </div>`;
+
+    div.querySelector('.hab-check').addEventListener('click', () => checkHabito(h.id));
+    let _hdt = null;
+    const db = div.querySelector('.hab-del');
+    db.addEventListener('click', () => {
+      if (_hdt) { clearTimeout(_hdt); deleteHabito(h.id); return; }
+      db.classList.add('confirming'); db.textContent = '¿?';
+      _hdt = setTimeout(() => { db.classList.remove('confirming'); db.textContent = '✕'; _hdt = null; }, 2000);
+    });
+    el.appendChild(div);
+  });
+}
+window.renderHabitos = renderHabitos;
+
+function renderHabitosWidget() {
+  const el = document.getElementById('dash-habitos-widget');
+  if (!el) return;
+  const habitos = getHabitos();
+  if (!habitos.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const today = _todayStr();
+  const done  = habitos.filter(h => h.history.includes(today)).length;
+  el.querySelector('.dash-hab-body').innerHTML = `
+    <div class="dash-hab-progress">
+      <div class="dhp-bar"><div class="dhp-fill" style="width:${Math.round(done/habitos.length*100)}%"></div></div>
+      <span class="dhp-label">${done}/${habitos.length} hoy</span>
+    </div>
+    ${habitos.map(h => {
+      const isDone = h.history.includes(today);
+      const streak = _getStreak(h);
+      return `<div class="dash-hab-item${isDone?' done':''}">
+        <button class="dash-hab-check${isDone?' done':''}" data-id="${h.id}">${isDone?'✓':h.emoji}</button>
+        <span class="dash-hab-nombre">${h.nombre.replace(/</g,'&lt;')}</span>
+        ${streak > 1 ? `<span class="dash-hab-streak">🔥${streak}</span>` : ''}
+      </div>`;
+    }).join('')}`;
+  el.querySelectorAll('.dash-hab-check').forEach(btn =>
+    btn.addEventListener('click', () => checkHabito(btn.dataset.id))
+  );
+}
+
+// ── Vista Calendario ─────────────────────────────────────
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth();
+let _calSelDay = null;
+
+function switchTareasView(v) {
+  document.getElementById('tvt-lista').classList.toggle('active', v === 'lista');
+  document.getElementById('tvt-cal').classList.toggle('active',   v === 'cal');
+  document.querySelector('.tareas-add-row')?.classList.toggle('hidden', v === 'cal');
+  document.getElementById('tareas-body').classList.toggle('hidden', v === 'cal');
+  document.getElementById('tareas-cal').classList.toggle('hidden', v !== 'cal');
+  if (v === 'cal') renderCalendario();
+}
+window.switchTareasView = switchTareasView;
+
+function renderCalendario() {
+  const tareas   = getTareas();
+  const hoy      = new Date(); hoy.setHours(0, 0, 0, 0);
+  const firstDay = new Date(_calYear, _calMonth, 1);
+  const lastDay  = new Date(_calYear, _calMonth + 1, 0);
+  const mesStr   = firstDay.toLocaleDateString('es-MX', { month:'long', year:'numeric' }).toUpperCase();
+
+  document.getElementById('cal-mes-label').textContent = mesStr;
+
+  const taskMap = {};
+  tareas.forEach(t => { if (t.fecha) { (taskMap[t.fecha] = taskMap[t.fecha] || []).push(t); } });
+
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const cells = [...Array(startOffset).fill(null)];
+  for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d);
+  while (cells.length % 7) cells.push(null);
+
+  const DAYS = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+  let html = `<div class="cal-days-header">${DAYS.map(d => `<div class="cal-day-name">${d}</div>`).join('')}</div><div class="cal-cells">`;
+
+  cells.forEach(d => {
+    if (!d) { html += '<div class="cal-cell empty"></div>'; return; }
+    const ds = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dt = taskMap[ds] || [];
+    const isHoy = new Date(_calYear, _calMonth, d).getTime() === hoy.getTime();
+    const isSel = _calSelDay === ds;
+    const hasUrgent = dt.some(t => !t.done && ['urg-hoy','urg-vencida'].includes(urgenciaTarea(t)?.cls));
+    html += `<div class="cal-cell${isHoy?' hoy':''}${isSel?' sel':''}" data-date="${ds}">
+      <span class="cal-num">${d}</span>
+      ${dt.length ? `<div class="cal-dots">${dt.slice(0,3).map(t =>
+        `<span class="cal-dot${t.done?' done':hasUrgent&&!t.done?' urgent':''}"></span>`
+      ).join('')}${dt.length>3?`<span class="cal-more">+${dt.length-3}</span>`:''}</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('cal-grid').innerHTML = html;
+
+  document.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      _calSelDay = cell.dataset.date;
+      renderCalendario();
+      _renderCalDay(taskMap[_calSelDay] || [], _calSelDay);
+    });
+  });
+  if (_calSelDay) _renderCalDay(taskMap[_calSelDay] || [], _calSelDay);
+}
+
+function _renderCalDay(tareas, dateStr) {
+  const el = document.getElementById('cal-day-tasks');
+  if (!tareas.length) { el.classList.add('hidden'); return; }
+  const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="cdt-title">${label.toUpperCase()}</div>` +
+    tareas.map(t => `<div class="cdt-item${t.done?' done':''}">
+      <span class="cdt-dot prio-${t.prioridad||'media'}"></span>
+      <span class="cdt-text">${t.text.replace(/</g,'&lt;')}</span>
+      ${t.done ? '<span class="cdt-badge">✓</span>' : ''}
+    </div>`).join('');
+}
+
+// ── Exportar / Importar backup ───────────────────────────
+function exportarBackup() {
+  const data = {};
+  Object.keys(localStorage).filter(k => k.startsWith('arex_')).forEach(k => {
+    try { data[k] = JSON.parse(localStorage.getItem(k)); } catch { data[k] = localStorage.getItem(k); }
+  });
+  const blob = new Blob([JSON.stringify({ version: 1, date: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `AREX_backup_${_todayStr()}.json` });
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function importarBackup(file) {
+  if (!file) return;
+  const statusEl = document.getElementById('import-status');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const { data } = JSON.parse(e.target.result);
+      if (!data) throw new Error('Formato inválido');
+      Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+      statusEl.style.color = '#00d4ff';
+      statusEl.textContent = '✓ Datos restaurados. Recargando...';
+      setTimeout(() => location.reload(), 1500);
+    } catch {
+      statusEl.style.color = '#ff4444';
+      statusEl.textContent = '✗ Archivo inválido.';
+    }
+  };
+  reader.readAsText(file);
+}
+window.exportarBackup  = exportarBackup;
+window.importarBackup  = importarBackup;
+
 function renderDashboard() {
   const el = document.getElementById('dash-content');
   if (!el) return;
@@ -738,6 +980,14 @@ function renderDashboard() {
 
     <div id="dash-weather" class="dash-widget dash-w-full"></div>
 
+    <div id="dash-habitos-widget" class="dash-widget dash-w-full" style="display:none">
+      <div class="dash-w-header">
+        <span class="dash-w-title">🔥 HÁBITOS DE HOY</span>
+        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('habitos')">VER TODOS →</button>
+      </div>
+      <div class="dash-hab-body"></div>
+    </div>
+
     <div id="dash-notas-widget" class="dash-widget dash-w-full" style="display:none">
       <div class="dash-w-header">
         <span class="dash-w-title">📌 NOTAS FIJADAS</span>
@@ -768,6 +1018,7 @@ function renderDashboard() {
   );
 
   renderWeatherWidget();
+  renderHabitosWidget();
   renderNotasWidget();
 }
 
@@ -2574,6 +2825,37 @@ document.getElementById('sidebar-overlay').addEventListener('click', closeSideba
 // Notas
 document.getElementById('notas-add-btn').addEventListener('click', addNota);
 document.getElementById('notas-search').addEventListener('input', renderNotas);
+
+// Hábitos
+document.getElementById('hab-add-btn').addEventListener('click', () => {
+  document.getElementById('hab-form').classList.toggle('hidden');
+  document.getElementById('hab-nombre').focus();
+});
+document.getElementById('hab-form-save').addEventListener('click', () => {
+  const nombre = document.getElementById('hab-nombre').value.trim();
+  const emoji  = document.getElementById('hab-emoji').value.trim() || '🎯';
+  if (!nombre) return;
+  addHabito(nombre, emoji);
+  document.getElementById('hab-nombre').value = '';
+  document.getElementById('hab-emoji').value  = '🎯';
+  document.getElementById('hab-form').classList.add('hidden');
+});
+document.getElementById('hab-form-cancel').addEventListener('click', () => {
+  document.getElementById('hab-form').classList.add('hidden');
+});
+document.getElementById('hab-nombre').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('hab-form-save').click();
+});
+
+// Calendario de tareas
+document.getElementById('cal-prev').addEventListener('click', () => {
+  _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+  _calSelDay = null; renderCalendario();
+});
+document.getElementById('cal-next').addEventListener('click', () => {
+  _calMonth++; if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  _calSelDay = null; renderCalendario();
+});
 
 // Sidebar: acciones rápidas
 document.querySelectorAll('.qcmd').forEach(btn => {

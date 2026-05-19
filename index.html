@@ -255,6 +255,13 @@
         <input id="cfg2-fb-bucket"  class="cfg-input" placeholder="Firebase storageBucket"/>
         <input id="cfg2-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
         <input id="cfg2-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">BACKUP DE DATOS</div>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <button onclick="exportarBackup()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;">⬇ EXPORTAR TODO</button>
+          <label for="import-file" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;user-select:none;">⬆ IMPORTAR</label>
+          <input id="import-file" type="file" accept=".json" style="display:none" onchange="importarBackup(this.files[0])"/>
+        </div>
+        <div id="import-status" style="font-size:10px;color:#4a7a96;min-height:1rem;letter-spacing:1px;"></div>
         <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">NOTIFICACIONES</div>
         <div style="display:flex;align-items:center;gap:0.75rem;">
           <button onclick="requestNotifPermission()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;white-space:nowrap;">ACTIVAR</button>
@@ -415,6 +422,13 @@
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
       <span class="dock-label">NOTAS</span>
+    </button>
+    <button class="nav-btn" data-module="habitos" data-tooltip="Hábitos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span class="dock-label">HÁBITOS</span>
     </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -711,6 +725,10 @@
   <div class="tareas-header-bar">
     <span class="tareas-title">TAREAS</span>
     <span class="tareas-count" id="tareas-count">0 pendientes</span>
+    <div class="tvt-wrap">
+      <button class="tvt active" id="tvt-lista" onclick="switchTareasView('lista')">☰ LISTA</button>
+      <button class="tvt" id="tvt-cal" onclick="switchTareasView('cal')">📅 CAL</button>
+    </div>
   </div>
   <div class="tareas-add-row">
     <input type="text" id="tarea-input" class="tarea-input" placeholder="Descripción... o usa /tarea texto !alta @2026-05-25"/>
@@ -724,7 +742,7 @@
       <button id="tarea-add-btn" class="tarea-add-btn">+ AGREGAR</button>
     </div>
   </div>
-  <div class="tareas-body">
+  <div class="tareas-body" id="tareas-body">
     <div class="tareas-col">
       <div class="tareas-col-title">⏳ PENDIENTES</div>
       <div id="tareas-list-pending" class="tareas-list"></div>
@@ -732,6 +750,37 @@
     <div class="tareas-col">
       <div class="tareas-col-title">✓ COMPLETADAS</div>
       <div id="tareas-list-done" class="tareas-list"></div>
+    </div>
+  </div>
+  <div id="tareas-cal" class="tareas-cal hidden">
+    <div class="cal-nav">
+      <button id="cal-prev" class="cal-nav-btn">‹</button>
+      <span id="cal-mes-label" class="cal-mes-label">—</span>
+      <button id="cal-next" class="cal-nav-btn">›</button>
+    </div>
+    <div id="cal-grid"></div>
+    <div id="cal-day-tasks" class="cal-day-tasks hidden"></div>
+  </div>
+</div>
+
+<!-- ── Hábitos ── -->
+<div id="module-habitos" class="module-panel">
+  <div class="habitos-layout">
+    <div class="habitos-topbar">
+      <div>
+        <div class="hab-title">HÁBITOS</div>
+        <div class="hab-subtitle" id="hab-subtitle">Cargando...</div>
+      </div>
+      <button id="hab-add-btn" class="hab-add-btn">+ NUEVO</button>
+    </div>
+    <div id="hab-list" class="hab-list"></div>
+    <div id="hab-form" class="hab-form hidden">
+      <input id="hab-emoji" class="hab-emoji-input" placeholder="🎯" maxlength="2" value="🎯"/>
+      <input id="hab-nombre" class="hab-input" placeholder="Nombre del hábito..." autocomplete="off"/>
+      <div class="hab-form-btns">
+        <button id="hab-form-save" class="hab-form-save">GUARDAR</button>
+        <button id="hab-form-cancel" class="hab-form-cancel">CANCELAR</button>
+      </div>
     </div>
   </div>
 </div>
