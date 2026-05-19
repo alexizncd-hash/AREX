@@ -531,8 +531,14 @@ main#module-chat.module-panel.active {
   font-size: 0.78rem;
 }
 
-.gasto-monto       { color: #00d4ff; font-family: 'Courier New', monospace; font-weight: bold; }
-.gasto-porcentaje  { color: #4a7a96; }
+.gasto-monto        { color: #00d4ff; font-family: 'Courier New', monospace; font-weight: bold; }
+.gasto-porcentaje   { color: #4a7a96; }
+.gasto-ingreso-pct  { color: #2a5a70; font-size: 0.72rem; }
+.gasto-reducible    {
+  font-size: 0.6rem; letter-spacing: 0.5px; padding: 0.1rem 0.45rem;
+  border-radius: 3px; background: rgba(0,255,170,0.1); color: #00ffaa;
+  border: 1px solid rgba(0,255,170,0.25);
+}
 
 /* ── Recordatorios y alertas ──────────────────────────────── */
 

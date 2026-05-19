@@ -662,6 +662,7 @@ function renderNotas() {
             `<span class="ncolor${n.color===c?' active':''}" data-c="${c}" title="${c||'default'}"></span>`
           ).join('')}
         </div>
+        <span class="nota-wc">${n.cuerpo.trim() ? n.cuerpo.trim().split(/\s+/).length + ' pal' : ''}</span>
         <span class="nota-ts">${new Date(n.updatedAt).toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>
       </div>`;
 
@@ -669,7 +670,12 @@ function renderNotas() {
     let tt; ti.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => updateNota(n.id, { titulo: ti.value }), 700); });
 
     const ta = card.querySelector('.nota-cuerpo');
-    let ct; ta.addEventListener('input', () => { clearTimeout(ct); ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700); });
+    let ct; ta.addEventListener('input', () => {
+      clearTimeout(ct);
+      ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700);
+      const wc = card.querySelector('.nota-wc');
+      if (wc) wc.textContent = ta.value.trim() ? ta.value.trim().split(/\s+/).length + ' pal' : '';
+    });
 
     card.querySelector('.nota-pin-btn').addEventListener('click', () => {
       updateNota(n.id, { pinned: !n.pinned });
@@ -2077,7 +2083,7 @@ async function callGroq(webCtx) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 1500 : 1000,
+    body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 4096 : 2048,
       messages: [{ role:'system', content: systemPrompt }, ...messages] })
   });
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
@@ -2101,7 +2107,7 @@ async function callGroqStream(webCtx, onChunk) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: examMode ? 1500 : 1000,
+      max_tokens: examMode ? 4096 : 2048,
       stream: true,
       messages: [{ role: 'system', content: systemPrompt }, ...messages]
     })
@@ -2257,7 +2263,7 @@ async function loadStats() {
 
 /* ── Auto-compresión al llegar a 80 mensajes ────────── */
 async function autoSummarize() {
-  if (history.length < 80) return;
+  if (history.length < 45) return;
   addMsg('arex', '📋 Optimizando memoria de conversación — comprimiendo historial...');
   const toCompress = history.slice(0, -15);
   const toKeep     = history.slice(-15);
@@ -2666,6 +2672,17 @@ const CTX_RULES = [
     }
   },
   {
+    cmd: '/tarea', icon: '✓', label: 'crear tarea', reason: 'acción pendiente',
+    priority: 1, execute: false, fill: '/tarea ',
+    check: () => {
+      const last = history[history.length - 1];
+      return last?.role === 'assistant'
+        && /(\n|^)\d+\.\s|\n[-•]\s/m.test(last.content)
+        && last.content.length > 80
+        && !last.content.includes('```');
+    }
+  },
+  {
     cmd: '/resumir', icon: '📋', label: 'resumir', reason: 'conversación larga',
     priority: 1, execute: true,
     check: () => history.length >= 12
@@ -2811,6 +2828,15 @@ function _doAddTarea() {
 document.getElementById('tarea-add-btn')?.addEventListener('click', _doAddTarea);
 document.getElementById('tarea-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') _doAddTarea();
+});
+document.getElementById('btn-tarea-hoy')?.addEventListener('click', () => {
+  document.getElementById('tarea-fecha').value = _todayStr();
+  document.getElementById('tarea-input')?.focus();
+});
+document.getElementById('btn-tarea-man')?.addEventListener('click', () => {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  document.getElementById('tarea-fecha').value = d.toISOString().slice(0, 10);
+  document.getElementById('tarea-input')?.focus();
 });
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });

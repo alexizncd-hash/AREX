@@ -147,9 +147,11 @@ const FinanzasModule = {
 
     const gastosOrdenados = [...getFinanzasData().gastos].sort((a, b) => b.monto - a.monto);
     const totalGastos = calcularGastosTotal();
+    const ingreso = getFinanzasData().config.ingresoMensual;
 
     gastosOrdenados.forEach(gasto => {
-      const porcentaje = ((gasto.monto / totalGastos) * 100).toFixed(1);
+      const pctGastos  = ((gasto.monto / totalGastos) * 100).toFixed(1);
+      const pctIngreso = ingreso > 0 ? ((gasto.monto / ingreso) * 100).toFixed(1) : '—';
       const bar = document.createElement('div');
       bar.className = 'gasto-bar';
       bar.innerHTML = `
@@ -157,13 +159,15 @@ const FinanzasModule = {
           <span class="gasto-icono">${gasto.icono || '📊'}</span>
           <span class="gasto-nombre">${gasto.categoria}</span>
           <span class="gasto-tipo ${gasto.tipo}">${gasto.tipo}</span>
+          ${gasto.reducible ? '<span class="gasto-reducible">↓ reducible</span>' : ''}
         </div>
         <div class="gasto-barra">
-          <div class="gasto-fill" style="width:${porcentaje}%;background:${gasto.color}"></div>
+          <div class="gasto-fill" style="width:${pctGastos}%;background:${gasto.color}"></div>
         </div>
         <div class="gasto-valores">
           <span class="gasto-monto">${formatearMoneda(gasto.monto)}</span>
-          <span class="gasto-porcentaje">${porcentaje}%</span>
+          <span class="gasto-porcentaje">${pctGastos}% de gastos</span>
+          <span class="gasto-ingreso-pct">${pctIngreso}% del ingreso</span>
         </div>
       `;
       container.appendChild(bar);
