@@ -544,6 +544,107 @@ function renderTareas() {
     badge.classList.toggle('hidden', count === 0);
     badge.classList.toggle('urgente', urgentes > 0);
   }
+  scheduleTaskNotifications();
+}
+
+// ── Módulo Notas ────────────────────────────────────────
+function getNotas() { return JSON.parse(localStorage.getItem('arex_notas') || '[]'); }
+function saveNotas(arr) { localStorage.setItem('arex_notas', JSON.stringify(arr)); }
+
+function addNota() {
+  const arr = getNotas();
+  const id  = String(Date.now());
+  arr.unshift({ id, titulo: '', cuerpo: '', pinned: false, color: '', createdAt: Date.now(), updatedAt: Date.now() });
+  saveNotas(arr);
+  renderNotas();
+  setTimeout(() => document.querySelector('#notas-list .nota-titulo')?.focus(), 60);
+}
+
+function updateNota(id, changes) {
+  saveNotas(getNotas().map(n => n.id === id ? { ...n, ...changes, updatedAt: Date.now() } : n));
+}
+
+function deleteNota(id) {
+  saveNotas(getNotas().filter(n => n.id !== id));
+  renderNotas();
+  renderDashboard();
+}
+
+function renderNotas() {
+  const el = document.getElementById('notas-list');
+  if (!el) return;
+  const q = (document.getElementById('notas-search')?.value || '').toLowerCase().trim();
+  let notas = getNotas();
+  if (q) notas = notas.filter(n => n.titulo.toLowerCase().includes(q) || n.cuerpo.toLowerCase().includes(q));
+  notas.sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt));
+
+  if (!notas.length) {
+    el.innerHTML = `<div class="notas-empty">${q ? `Sin resultados para "${q}"` : 'Sin notas — toca + NUEVA para crear una'}</div>`;
+    return;
+  }
+
+  el.innerHTML = '';
+  notas.forEach(n => {
+    const card = document.createElement('div');
+    card.className = 'nota-card' + (n.pinned ? ' pinned' : '') + (n.color ? ' nc-' + n.color : '');
+    card.dataset.id = n.id;
+    card.innerHTML = `
+      <div class="nota-card-head">
+        <input class="nota-titulo" value="${n.titulo.replace(/"/g,'&quot;')}" placeholder="Título..."/>
+        <div class="nota-btn-row">
+          <button class="nota-pin-btn${n.pinned ? ' active' : ''}" title="${n.pinned ? 'Desanclar' : 'Anclar'}">📌</button>
+          <button class="nota-del-btn">✕</button>
+        </div>
+      </div>
+      <textarea class="nota-cuerpo" placeholder="Escribe aquí...">${n.cuerpo.replace(/</g,'&lt;')}</textarea>
+      <div class="nota-footer">
+        <div class="nota-colors">
+          ${['','amber','emerald','rose'].map(c =>
+            `<span class="ncolor${n.color===c?' active':''}" data-c="${c}" title="${c||'default'}"></span>`
+          ).join('')}
+        </div>
+        <span class="nota-ts">${new Date(n.updatedAt).toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>
+      </div>`;
+
+    const ti = card.querySelector('.nota-titulo');
+    let tt; ti.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => updateNota(n.id, { titulo: ti.value }), 700); });
+
+    const ta = card.querySelector('.nota-cuerpo');
+    let ct; ta.addEventListener('input', () => { clearTimeout(ct); ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700); });
+
+    card.querySelector('.nota-pin-btn').addEventListener('click', () => {
+      updateNota(n.id, { pinned: !n.pinned });
+      renderNotas(); renderDashboard();
+    });
+
+    let _dt = null;
+    const db = card.querySelector('.nota-del-btn');
+    db.addEventListener('click', () => {
+      if (_dt) { clearTimeout(_dt); deleteNota(n.id); return; }
+      db.classList.add('confirming'); db.textContent = '¿Eliminar?';
+      _dt = setTimeout(() => { db.classList.remove('confirming'); db.textContent = '✕'; _dt = null; }, 2500);
+    });
+
+    card.querySelectorAll('.ncolor').forEach(dot =>
+      dot.addEventListener('click', () => { updateNota(n.id, { color: dot.dataset.c }); renderNotas(); })
+    );
+
+    el.appendChild(card);
+  });
+}
+window.renderNotas = renderNotas;
+
+function renderNotasWidget() {
+  const el = document.getElementById('dash-notas-widget');
+  if (!el) return;
+  const pinned = getNotas().filter(n => n.pinned).sort((a, b) => b.updatedAt - a.updatedAt);
+  if (!pinned.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.querySelector('.dash-notas-body').innerHTML = pinned.map(n => `
+    <div class="dash-nota-item" onclick="AREXNav.cambiarModulo('notas')">
+      ${n.titulo ? `<div class="dash-nota-titulo">${n.titulo.replace(/</g,'&lt;')}</div>` : ''}
+      ${n.cuerpo ? `<div class="dash-nota-cuerpo">${n.cuerpo.replace(/</g,'&lt;').slice(0, 80)}${n.cuerpo.length > 80 ? '…' : ''}</div>` : ''}
+    </div>`).join('');
 }
 
 function renderDashboard() {
@@ -637,6 +738,14 @@ function renderDashboard() {
 
     <div id="dash-weather" class="dash-widget dash-w-full"></div>
 
+    <div id="dash-notas-widget" class="dash-widget dash-w-full" style="display:none">
+      <div class="dash-w-header">
+        <span class="dash-w-title">📌 NOTAS FIJADAS</span>
+        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('notas')">VER TODAS →</button>
+      </div>
+      <div class="dash-notas-body"></div>
+    </div>
+
     <div class="dash-widget dash-w-full">
       <div class="dash-w-header">
         <span class="dash-w-title">RECORDATORIOS</span>
@@ -659,6 +768,7 @@ function renderDashboard() {
   );
 
   renderWeatherWidget();
+  renderNotasWidget();
 }
 
 function renderSessionsList() {
@@ -986,6 +1096,48 @@ function arexSpeak(text) {
   u.onerror = () => { isSpeaking = false; setOrb(null,'En espera de instrucciones'); };
   window.speechSynthesis.speak(u);
 }
+
+/* ── Notificaciones ─────────────────────────────────── */
+const _notifTimers = new Map();
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  await Notification.requestPermission();
+  _updateNotifStatus();
+  if (Notification.permission === 'granted') scheduleTaskNotifications();
+}
+
+function _updateNotifStatus() {
+  const el = document.getElementById('notif-status');
+  if (!el) return;
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const labels = { granted: '✓ ACTIVADAS', denied: '✗ BLOQUEADAS', default: 'SIN CONFIGURAR', unsupported: 'NO SOPORTADO' };
+  const colors  = { granted: '#00d4ff', denied: '#ff4444', default: '#4a7a96', unsupported: '#4a7a96' };
+  el.textContent = labels[perm] || perm;
+  el.style.color  = colors[perm]  || '#4a7a96';
+}
+
+function _showTaskNotif(t, label) {
+  if (Notification.permission !== 'granted') return;
+  const n = new Notification(`AREX — ${label}`, {
+    body: t.text, icon: './icon.svg', tag: 'arex-task-' + t.id, renotify: true
+  });
+  n.onclick = () => { window.focus(); AREXNav?.cambiarModulo('tareas'); n.close(); };
+}
+
+function scheduleTaskNotifications() {
+  _notifTimers.forEach(id => clearTimeout(id));
+  _notifTimers.clear();
+  if (Notification.permission !== 'granted') return;
+  const now = Date.now();
+  getTareas().filter(t => !t.done && t.fecha).forEach(t => {
+    const due    = new Date(t.fecha + 'T09:00:00').getTime();
+    const before = due - 86400000;
+    if (before > now) _notifTimers.set(t.id + 'b', setTimeout(() => _showTaskNotif(t, 'MAÑANA VENCE'), before - now));
+    if (due    > now) _notifTimers.set(t.id + 'd', setTimeout(() => _showTaskNotif(t, 'VENCE HOY'),    due    - now));
+  });
+}
+window.requestNotifPermission = requestNotifPermission;
 
 /* ── Módulo SOS / Emergencias ───────────────────────── */
 const SOS_DEFAULT = { contactos: [], medico: { tipoSangre:'', alergias:'', medicamentos:'', condiciones:'' } };
@@ -1743,6 +1895,7 @@ async function requestNotifPerm() {
   if ('Notification' in window && Notification.permission === 'default') {
     await Notification.requestPermission();
   }
+  _updateNotifStatus();
 }
 /* ── Recordatorios persistentes ─────────────────────── */
 function getRecordatorios() { return JSON.parse(localStorage.getItem('arex_recordatorios') || '[]'); }
@@ -2013,6 +2166,7 @@ async function handleCommand(cmd) {
       document.getElementById('cfg2-fb-app').value     = fb.appId             || '';
       document.getElementById('cfg2-ok').style.display    = 'none';
       document.getElementById('cfg2-error').style.display = 'none';
+      _updateNotifStatus();
       modalConfig.classList.remove('hidden');
       break;
     }
@@ -2416,6 +2570,10 @@ document.getElementById('cp-copy').addEventListener('click', async () => {
 document.getElementById('btn-sidebar').addEventListener('click', openSidebar);
 document.getElementById('btn-sidebar-close').addEventListener('click', closeSidebar);
 document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+
+// Notas
+document.getElementById('notas-add-btn').addEventListener('click', addNota);
+document.getElementById('notas-search').addEventListener('input', renderNotas);
 
 // Sidebar: acciones rápidas
 document.querySelectorAll('.qcmd').forEach(btn => {

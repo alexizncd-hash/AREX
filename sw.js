@@ -1,4 +1,4 @@
-const CACHE = 'arex-v6';
+const CACHE = 'arex-v7';
 const SHELL = [
   './index.html',
   './style.css',
@@ -34,5 +34,15 @@ self.addEventListener('fetch', e => {
 
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      if (list.length) return list[0].focus();
+      return clients.openWindow('./');
+    })
   );
 });

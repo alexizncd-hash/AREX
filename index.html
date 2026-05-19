@@ -255,6 +255,11 @@
         <input id="cfg2-fb-bucket"  class="cfg-input" placeholder="Firebase storageBucket"/>
         <input id="cfg2-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
         <input id="cfg2-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">NOTIFICACIONES</div>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <button onclick="requestNotifPermission()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;white-space:nowrap;">ACTIVAR</button>
+          <span id="notif-status" style="font-size:10px;letter-spacing:1.5px;color:#4a7a96;">—</span>
+        </div>
         <button id="cfg2-save" style="margin-top:0.5rem;background:transparent;border:1px solid #00d4ff;color:#00d4ff;font-family:monospace;font-size:12px;letter-spacing:3px;padding:10px;cursor:pointer;border-radius:2px;">GUARDAR</button>
         <div id="cfg2-ok"    style="font-size:11px;color:#00d4ff;text-align:center;display:none;letter-spacing:1px;">CONFIGURACIÓN GUARDADA. RECARGA LA PÁGINA.</div>
         <div id="cfg2-error" style="font-size:11px;color:#ff4444;text-align:center;display:none;">La Groq API Key es requerida.</div>
@@ -403,6 +408,13 @@
       </svg>
       <span class="dock-label">TAREAS</span>
       <span class="dock-badge hidden" id="dock-tareas-badge">0</span>
+    </button>
+    <button class="nav-btn" data-module="notas" data-tooltip="Notas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      <span class="dock-label">NOTAS</span>
     </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -721,6 +733,17 @@
       <div class="tareas-col-title">✓ COMPLETADAS</div>
       <div id="tareas-list-done" class="tareas-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── Notas ── -->
+<div id="module-notas" class="module-panel">
+  <div class="notas-layout">
+    <div class="notas-topbar">
+      <input id="notas-search" class="notas-search" type="search" placeholder="🔍 Buscar notas..." autocomplete="off"/>
+      <button class="notas-add-btn" id="notas-add-btn">+ NUEVA</button>
+    </div>
+    <div id="notas-list" class="notas-list"></div>
   </div>
 </div>
 
