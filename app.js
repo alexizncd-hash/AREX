@@ -3296,8 +3296,8 @@ async function generarBriefing() {
 
   const contexto = [
     `Fecha: ${today.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
-    `Tareas urgentes: ${tareasUrgentes.map(t => t.texto).join(', ') || 'ninguna'}`,
-    `Tareas para hoy: ${tareasHoy.map(t => t.texto).join(', ') || 'ninguna'}`,
+    `Tareas urgentes: ${tareasUrgentes.map(t => t.text).join(', ') || 'ninguna'}`,
+    `Tareas para hoy: ${tareasHoy.map(t => t.text).join(', ') || 'ninguna'}`,
     `Total pendiente: ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`,
     `Hábitos pendientes: ${habitosPendientes.map(h => `${h.emoji} ${h.nombre}`).join(', ') || 'todos completados'}`,
     `Recordatorios activos: ${recs.slice(0,3).map(r => r.msg).join(', ') || 'ninguno'}`,
@@ -3330,7 +3330,7 @@ function buscarGlobal(q) {
   const ql = q.toLowerCase();
   const match = s => s?.toLowerCase().includes(ql);
   return {
-    tareas:        getTareas().filter(t => !t.done && (match(t.texto) || match(t.fecha))),
+    tareas:        getTareas().filter(t => !t.done && (match(t.text) || match(t.fecha))),
     notas:         getNotas().filter(n => match(n.titulo) || match(n.cuerpo)),
     hechos:        getHechos().filter(h => match(h.texto)),
     recordatorios: getRecordatorios().filter(r => !r.disparado && match(r.msg))
@@ -3350,7 +3350,7 @@ function renderBusquedaGlobal(q) {
   const safe = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
 
   let html = '';
-  if (tareas.length)        html += `<div class="bg-group"><div class="bg-gtitle">TAREAS (${tareas.length})</div>${tareas.slice(0,6).map(t => `<div class="bg-item" data-mod="tareas"><span class="bg-ico">✓</span><span>${hl(safe(t.texto))}</span></div>`).join('')}</div>`;
+  if (tareas.length)        html += `<div class="bg-group"><div class="bg-gtitle">TAREAS (${tareas.length})</div>${tareas.slice(0,6).map(t => `<div class="bg-item" data-mod="tareas"><span class="bg-ico">✓</span><span>${hl(safe(t.text))}</span></div>`).join('')}</div>`;
   if (notas.length)         html += `<div class="bg-group"><div class="bg-gtitle">NOTAS (${notas.length})</div>${notas.slice(0,5).map(n => `<div class="bg-item" data-mod="notas"><span class="bg-ico">📝</span><span>${hl(safe(n.titulo || n.cuerpo.slice(0,60)))}</span></div>`).join('')}</div>`;
   if (hechos.length)        html += `<div class="bg-group"><div class="bg-gtitle">MEMORIA (${hechos.length})</div>${hechos.slice(0,5).map(h => `<div class="bg-item" data-mod="chat"><span class="bg-ico">🧠</span><span>${hl(safe(h.texto))}</span></div>`).join('')}</div>`;
   if (recordatorios.length) html += `<div class="bg-group"><div class="bg-gtitle">RECORDATORIOS (${recordatorios.length})</div>${recordatorios.slice(0,3).map(r => `<div class="bg-item" data-mod="inicio"><span class="bg-ico">⏰</span><span>${hl(safe(r.msg))}</span></div>`).join('')}</div>`;
