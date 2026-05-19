@@ -39,6 +39,7 @@ function setupSaveHandler() {
     const config = {
       groqKey:   groq,
       tavilyKey: document.getElementById('cfg-tavily').value.trim() || '',
+      owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
                            storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
     };
@@ -554,6 +555,8 @@ function renderDashboard() {
 
     </div>
 
+    <div id="dash-weather" class="dash-widget dash-w-full"></div>
+
     <div class="dash-widget dash-w-full">
       <div class="dash-w-header">
         <span class="dash-w-title">RECORDATORIOS</span>
@@ -574,6 +577,8 @@ function renderDashboard() {
   el.querySelectorAll('.rec-dismiss').forEach(b =>
     b.addEventListener('click', () => dismissReminder(b.dataset.id))
   );
+
+  renderWeatherWidget();
 }
 
 function renderSessionsList() {
@@ -1818,6 +1823,7 @@ async function handleCommand(cmd) {
       const fb = AREX_CONFIG.firebase || {};
       document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
       document.getElementById('cfg2-tavily').value  = AREX_CONFIG.tavilyKey || '';
+      document.getElementById('cfg2-owm').value     = AREX_CONFIG.owmKey    || '';
       document.getElementById('cfg2-fb-key').value     = fb.apiKey            || '';
       document.getElementById('cfg2-fb-domain').value  = fb.authDomain        || '';
       document.getElementById('cfg2-fb-project').value = fb.projectId         || '';
@@ -2185,6 +2191,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   const config = {
     groqKey:   groq,
     tavilyKey: document.getElementById('cfg2-tavily').value.trim() || '',
+    owmKey:    document.getElementById('cfg2-owm').value.trim()    || '',
     firebase:  fbKey ? {
       apiKey:            fbKey,
       authDomain:        document.getElementById('cfg2-fb-domain').value.trim(),
@@ -2296,7 +2303,107 @@ async function boot() {
   txt.focus();
 }
 
-// Exponer funciones de render al scope global para jarvis.js
+// ── CLIMA ─────────────────────────────────────────────────────────────────
+const WEATHER_CACHE_KEY = 'arex_weather_cache';
+const WEATHER_HIDE_KEY  = 'arex_weather_hidden';
+const WEATHER_TTL       = 30 * 60 * 1000;
+
+async function fetchWeather() {
+  const key = AREX_CONFIG?.owmKey;
+  if (!key) return null;
+  const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+  if (cached) {
+    const { data, ts } = JSON.parse(cached);
+    if (Date.now() - ts < WEATHER_TTL) return data;
+  }
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=Hermosillo,MX&appid=${encodeURIComponent(key)}&units=metric&lang=es`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    return data;
+  } catch { return null; }
+}
+
+function _weatherIcon(id) {
+  if (id >= 200 && id < 300) return '⛈';
+  if (id >= 300 && id < 400) return '🌦';
+  if (id >= 500 && id < 600) return '🌧';
+  if (id >= 600 && id < 700) return '❄';
+  if (id >= 700 && id < 800) return '🌫';
+  if (id === 800)             return '☀';
+  if (id === 801)             return '🌤';
+  if (id === 802)             return '⛅';
+  return '☁';
+}
+
+function renderWeatherWidget() {
+  const el = document.getElementById('dash-weather');
+  if (!el) return;
+  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
+  const key    = AREX_CONFIG?.owmKey;
+
+  const toggleBtn = `<button class="weather-toggle" onclick="toggleWeatherWidget()" title="${hidden ? 'Mostrar' : 'Ocultar'}">${hidden ? '◎' : '⊙'}</button>`;
+
+  if (!key) {
+    el.innerHTML = `
+      <div class="dash-w-header">
+        <span class="dash-w-title">CLIMA — HERMOSILLO</span>
+        <button class="dash-w-link" onclick="document.getElementById('modal-config').classList.remove('hidden')">CONFIGURAR →</button>
+      </div>
+      <div class="dash-empty">Agrega tu OpenWeatherMap API Key en /config para ver el clima</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="dash-w-header">
+      <span class="dash-w-title">CLIMA — HERMOSILLO</span>
+      ${toggleBtn}
+    </div>
+    <div class="weather-body${hidden ? ' hidden' : ''}">
+      <span class="dash-empty" style="font-size:0.65rem">Cargando...</span>
+    </div>`;
+
+  fetchWeather().then(data => {
+    const body = el.querySelector('.weather-body');
+    if (!body) return;
+    if (!data) {
+      body.innerHTML = '<div class="dash-empty">Sin datos — verifica tu API Key en /config</div>';
+      return;
+    }
+    const icon  = _weatherIcon(data.weather[0].id);
+    const desc  = data.weather[0].description.replace(/^\w/, c => c.toUpperCase());
+    const temp  = Math.round(data.main.temp);
+    const feels = Math.round(data.main.feels_like);
+    const hum   = data.main.humidity;
+    const wind  = Math.round(data.wind.speed * 3.6);
+    const tmax  = Math.round(data.main.temp_max);
+    const tmin  = Math.round(data.main.temp_min);
+    body.innerHTML = `
+      <div class="weather-main">
+        <span class="weather-icon">${icon}</span>
+        <span class="weather-temp">${temp}°<span class="weather-unit">C</span></span>
+        <span class="weather-desc">${desc}</span>
+      </div>
+      <div class="weather-details">
+        <div class="weather-stat"><span class="wst-label">SENSACIÓN</span><span class="wst-val">${feels}°C</span></div>
+        <div class="weather-stat"><span class="wst-label">HUMEDAD</span><span class="wst-val">${hum}%</span></div>
+        <div class="weather-stat"><span class="wst-label">VIENTO</span><span class="wst-val">${wind} km/h</span></div>
+        <div class="weather-stat"><span class="wst-label">MÁX / MÍN</span><span class="wst-val">${tmax}° / ${tmin}°</span></div>
+      </div>`;
+  });
+}
+
+function toggleWeatherWidget() {
+  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
+  localStorage.setItem(WEATHER_HIDE_KEY, hidden ? '0' : '1');
+  renderWeatherWidget();
+}
+window.toggleWeatherWidget = toggleWeatherWidget;
+
+// ── Exponer funciones de render al scope global para jarvis.js
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.renderSOSModule = renderSOSModule;

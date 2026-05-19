@@ -10,6 +10,7 @@
 window.AREX_CONFIG = {
   groqKey:   'gsk_...',           // console.groq.com
   tavilyKey: 'tvly-...',          // app.tavily.com  (opcional)
+  owmKey:    '',                  // openweathermap.org  (opcional — widget de clima)
   firebase: {                     // console.firebase.google.com  (opcional)
     apiKey:            'AIza...',
     authDomain:        'tu-proyecto.firebaseapp.com',
