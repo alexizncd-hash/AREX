@@ -80,6 +80,7 @@ const FinanzasModule = {
   renderDashboard() {
     this.renderTarjetas();
     this.renderGraficaGastos();
+    if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
   },
 
   renderTarjetas() {

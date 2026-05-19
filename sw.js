@@ -1,4 +1,4 @@
-const CACHE = 'arex-v8';
+const CACHE = 'arex-v9';
 const SHELL = [
   './index.html',
   './style.css',

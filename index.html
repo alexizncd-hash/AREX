@@ -473,11 +473,63 @@
     <div class="logo-ring"><div class="logo-letter">A</div></div>
     <h1>AREX</h1>
   </div>
-  <div class="sys-info right">
-    <span class="lbl">HORA</span>
-    <span class="val" id="clock">--:--:--</span>
+  <div class="sys-info right" style="flex-direction:row;align-items:center;gap:8px;">
+    <button id="btn-pomo-toggle" class="btn-hdr-icon" onclick="togglePomodoroWidget()" title="Pomodoro (foco)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+    <button id="btn-search-toggle" class="btn-hdr-icon" onclick="abrirBusqueda()" title="Búsqueda global (Ctrl+K)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <div>
+      <span class="lbl">HORA</span>
+      <span class="val" id="clock">--:--:--</span>
+    </div>
   </div>
 </header>
+
+<!-- ── Pomodoro Widget ── -->
+<div id="pomo-widget" class="pomo-widget hidden">
+  <div class="pomo-header">
+    <span class="pomo-title">POMODORO</span>
+    <button class="pomo-close" onclick="togglePomodoroWidget()">✕</button>
+  </div>
+  <div class="pomo-body">
+    <div class="pomo-ring-wrap">
+      <svg class="pomo-svg" viewBox="0 0 100 100">
+        <circle class="pomo-circle-bg" cx="50" cy="50" r="38" fill="none" stroke="rgba(0,212,255,0.1)" stroke-width="5"/>
+        <circle class="pomo-circle-progress" cx="50" cy="50" r="38" fill="none"
+          stroke="var(--cyan)" stroke-width="5" stroke-linecap="round"
+          stroke-dasharray="238.76" stroke-dashoffset="0"
+          transform="rotate(-90 50 50)"/>
+      </svg>
+      <div class="pomo-center">
+        <div class="pomo-time">25:00</div>
+        <div class="pomo-mode">FOCO</div>
+      </div>
+    </div>
+    <div class="pomo-controls">
+      <button class="pomo-btn-preset" onclick="resetPomodoro('work')" title="25 min foco">25</button>
+      <button class="pomo-btn-main" onclick="togglePomodoro()">▶</button>
+      <button class="pomo-btn-preset" onclick="resetPomodoro('short')" title="5 min descanso">5</button>
+      <button class="pomo-btn-preset" onclick="resetPomodoro('long')" title="15 min descanso">15</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Búsqueda Global ── -->
+<div id="busqueda-overlay" class="hidden busqueda-overlay">
+  <div class="bg-container">
+    <div class="bg-header">
+      <svg class="bg-icon-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="busqueda-input" class="bg-input" placeholder="Buscar en tareas, notas, memoria..." autocomplete="off"/>
+      <button class="bg-close" onclick="cerrarBusqueda()">✕</button>
+    </div>
+    <div id="busqueda-results" class="bg-results">
+      <div class="bg-empty">Escribe para buscar en todos los módulos</div>
+    </div>
+    <div class="bg-hint">Ctrl+K · Esc para cerrar</div>
+  </div>
+</div>
 
 <!-- ── Main ── -->
 <main id="module-chat" class="module-panel active">
@@ -522,6 +574,15 @@
       </svg>
     </button>
     <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none"/>
+
+    <!-- Cámara (captura directa) -->
+    <button class="btn" id="btn-camera" title="Tomar foto con la cámara">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </button>
+    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none"/>
 
     <input type="text" id="txt" placeholder="Escribe un mensaje o /ayuda..." autocomplete="off"/>
 
@@ -601,6 +662,13 @@
           </div>
         </div>
       </div>
+      <!-- Tipo de cambio widget -->
+      <div class="fx-widget-row">
+        <div class="fx-widget-label">TIPO DE CAMBIO</div>
+        <div id="dash-fx-widget" class="fx-widget-val">—</div>
+        <button class="fx-refresh-btn" onclick="renderExchangeWidget()" title="Actualizar">↺</button>
+      </div>
+
       <div class="deudas-section">
         <h3 class="section-title">💳 Tus Tarjetas de Crédito</h3>
         <div class="tarjetas-grid" id="tarjetas-grid"></div>

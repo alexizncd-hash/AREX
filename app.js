@@ -53,7 +53,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos'];
 
 function loadAtalos() {
   const saved = localStorage.getItem('arex_atajos');
@@ -2027,8 +2027,16 @@ async function handleFile(file) {
       updateMemMetric();
     } else {
       const dataURL = await resizeImage(file);
-      reply = await analyzeImage(dataURL, txt.value.trim() || 'Analiza esta imagen detalladamente.');
+      const userHint = txt.value.trim();
       txt.value = '';
+      const nameL = file.name.toLowerCase();
+      let imgPrompt = userHint ||
+        (nameL.match(/ticket|recibo|factura|nota|compra|venta|cobro/) || userHint.match(/gasto|recibo|ticket|factura/i)
+          ? 'Analiza este ticket/recibo. Extrae: establecimiento, fecha, artículos con precios, total. Luego dime si quieres que lo registre como gasto.'
+          : nameL.match(/pizarr|whiteboard|board|apunte|nota|clase/) || userHint.match(/pizarr|apunte/i)
+            ? 'Analiza este apunte o pizarrón. Extrae todo el texto e ideas en formato organizado. ¿Quieres que lo guarde como nota?'
+            : 'Analiza esta imagen detalladamente.');
+      reply = await analyzeImage(dataURL, imgPrompt);
       history.push({ role:'user', content: `[Imagen: ${file.name}]` });
       history.push({ role:'assistant', content: reply });
       await saveMsg('user', `[Imagen adjunta: ${file.name}]`);
@@ -2616,6 +2624,23 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'briefing':
+      localStorage.removeItem('arex_briefing_date');
+      await generarBriefing();
+      break;
+
+    case 'pomodoro':
+      togglePomodoroWidget();
+      break;
+
+    case 'buscar':
+      abrirBusqueda();
+      if (args) {
+        const bi = document.getElementById('busqueda-input');
+        if (bi) { bi.value = args; renderBusquedaGlobal(args); }
+      }
+      break;
+
     default:
       addMsg('arex',`Comando no reconocido: /${name}. Escribe /ayuda para ver los disponibles.`);
   }
@@ -2819,6 +2844,10 @@ btnFile.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => {
   if (e.target.files[0]) { handleFile(e.target.files[0]); fileInput.value = ''; }
 });
+document.getElementById('btn-camera')?.addEventListener('click', () => document.getElementById('camera-input')?.click());
+document.getElementById('camera-input')?.addEventListener('change', e => {
+  if (e.target.files[0]) { handleFile(e.target.files[0]); e.target.value = ''; }
+});
 
 // Drag & drop
 chat.addEventListener('dragover', e => { e.preventDefault(); chat.classList.add('drag-over'); });
@@ -2973,6 +3002,14 @@ document.getElementById('cp-copy').addEventListener('click', async () => {
   } catch { /* no disponible */ }
 });
 
+// Búsqueda global — Ctrl+K / Esc
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); abrirBusqueda(); }
+  if (e.key === 'Escape') cerrarBusqueda();
+});
+document.getElementById('busqueda-overlay')?.addEventListener('click', e => { if (e.target.id === 'busqueda-overlay') cerrarBusqueda(); });
+document.getElementById('busqueda-input')?.addEventListener('input', e => renderBusquedaGlobal(e.target.value));
+
 // Sidebar: abrir / cerrar
 document.getElementById('btn-sidebar').addEventListener('click', openSidebar);
 document.getElementById('btn-sidebar-close').addEventListener('click', closeSidebar);
@@ -3076,6 +3113,7 @@ async function boot() {
   await new Promise(r => setTimeout(r, 600));
   bootScreen.style.display = 'none';
   txt.focus();
+  setTimeout(() => generarBriefing(), 800);
 }
 
 // ── CLIMA ─────────────────────────────────────────────────────────────────
@@ -3199,6 +3237,202 @@ if (loadConfig()) {
 } else {
   showSetup();
 }
+
+// ── BRIEFING DIARIO ───────────────────────────────────────────────────────────
+async function generarBriefing() {
+  const hoy = _todayStr();
+  if (localStorage.getItem('arex_briefing_date') === hoy) return;
+
+  const tareas = getTareas().filter(t => !t.done);
+  const habitos = getHabitos();
+  const habitosPendientes = habitos.filter(h => !h.history.includes(hoy));
+  const recs = getRecordatorios().filter(r => !r.disparado);
+  const today = new Date();
+
+  const tareasUrgentes = tareas.filter(t => t.prioridad === 'alta').slice(0, 3);
+  const tareasHoy = tareas.filter(t => t.fecha === hoy).slice(0, 3);
+
+  const contexto = [
+    `Fecha: ${today.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
+    `Tareas urgentes: ${tareasUrgentes.map(t => t.texto).join(', ') || 'ninguna'}`,
+    `Tareas para hoy: ${tareasHoy.map(t => t.texto).join(', ') || 'ninguna'}`,
+    `Total pendiente: ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`,
+    `Hábitos pendientes: ${habitosPendientes.map(h => `${h.emoji} ${h.nombre}`).join(', ') || 'todos completados'}`,
+    `Recordatorios activos: ${recs.slice(0,3).map(r => r.msg).join(', ') || 'ninguno'}`,
+  ].join('\n');
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 280,
+        messages: [
+          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino MUY breve (3-4 líneas), directo y motivador en español. Sin listas, sin asteriscos de markdown, solo texto fluido con lo más importante del día.' },
+          { role: 'user', content: `Datos de hoy:\n${contexto}` }
+        ]
+      })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const briefing = data.choices[0].message.content;
+    localStorage.setItem('arex_briefing_date', hoy);
+    addMsg('arex', `**Briefing — ${today.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'short' })}**\n\n${briefing}`);
+  } catch(e) { console.warn('Briefing:', e); }
+}
+window.generarBriefing = generarBriefing;
+
+// ── BÚSQUEDA GLOBAL ───────────────────────────────────────────────────────────
+function buscarGlobal(q) {
+  if (!q.trim()) return { tareas:[], notas:[], hechos:[], recordatorios:[] };
+  const ql = q.toLowerCase();
+  const match = s => s?.toLowerCase().includes(ql);
+  return {
+    tareas:        getTareas().filter(t => !t.done && (match(t.texto) || match(t.fecha))),
+    notas:         getNotas().filter(n => match(n.titulo) || match(n.cuerpo)),
+    hechos:        getHechos().filter(h => match(h.texto)),
+    recordatorios: getRecordatorios().filter(r => !r.disparado && match(r.msg))
+  };
+}
+
+function renderBusquedaGlobal(q) {
+  const el = document.getElementById('busqueda-results');
+  if (!el) return;
+  if (!q.trim()) { el.innerHTML = '<div class="bg-empty">Escribe para buscar en tareas, notas, memoria y recordatorios</div>'; return; }
+  const { tareas, notas, hechos, recordatorios } = buscarGlobal(q);
+  const total = tareas.length + notas.length + hechos.length + recordatorios.length;
+  if (!total) { el.innerHTML = `<div class="bg-empty">Sin resultados para "${q}"</div>`; return; }
+
+  const safeRe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const hl = t => t.replace(new RegExp(safeRe, 'gi'), m => `<mark class="bg-hl">${m}</mark>`);
+  const safe = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+  let html = '';
+  if (tareas.length)        html += `<div class="bg-group"><div class="bg-gtitle">TAREAS (${tareas.length})</div>${tareas.slice(0,6).map(t => `<div class="bg-item" data-mod="tareas"><span class="bg-ico">✓</span><span>${hl(safe(t.texto))}</span></div>`).join('')}</div>`;
+  if (notas.length)         html += `<div class="bg-group"><div class="bg-gtitle">NOTAS (${notas.length})</div>${notas.slice(0,5).map(n => `<div class="bg-item" data-mod="notas"><span class="bg-ico">📝</span><span>${hl(safe(n.titulo || n.cuerpo.slice(0,60)))}</span></div>`).join('')}</div>`;
+  if (hechos.length)        html += `<div class="bg-group"><div class="bg-gtitle">MEMORIA (${hechos.length})</div>${hechos.slice(0,5).map(h => `<div class="bg-item" data-mod="chat"><span class="bg-ico">🧠</span><span>${hl(safe(h.texto))}</span></div>`).join('')}</div>`;
+  if (recordatorios.length) html += `<div class="bg-group"><div class="bg-gtitle">RECORDATORIOS (${recordatorios.length})</div>${recordatorios.slice(0,3).map(r => `<div class="bg-item" data-mod="inicio"><span class="bg-ico">⏰</span><span>${hl(safe(r.msg))}</span></div>`).join('')}</div>`;
+
+  el.innerHTML = html;
+  el.querySelectorAll('.bg-item[data-mod]').forEach(item => {
+    item.addEventListener('click', () => { cerrarBusqueda(); AREXNav.cambiarModulo(item.dataset.mod); });
+  });
+}
+
+function abrirBusqueda() {
+  const overlay = document.getElementById('busqueda-overlay');
+  const input   = document.getElementById('busqueda-input');
+  if (!overlay || !input) return;
+  overlay.classList.remove('hidden');
+  input.value = '';
+  renderBusquedaGlobal('');
+  setTimeout(() => input.focus(), 50);
+}
+function cerrarBusqueda() { document.getElementById('busqueda-overlay')?.classList.add('hidden'); }
+window.abrirBusqueda  = abrirBusqueda;
+window.cerrarBusqueda = cerrarBusqueda;
+
+// ── POMODORO ──────────────────────────────────────────────────────────────────
+const POMO_TIMES = { work: 25 * 60, short: 5 * 60, long: 15 * 60 };
+let _pom = { running: false, mode: 'work', elapsed: 0, total: 25 * 60, interval: null };
+
+function _pomRender() {
+  const el = document.getElementById('pomo-widget');
+  if (!el || el.classList.contains('hidden')) return;
+  const remaining = _pom.total - _pom.elapsed;
+  const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const s = String(remaining % 60).padStart(2, '0');
+  const pct = _pom.total > 0 ? (_pom.elapsed / _pom.total) : 0;
+  const modeLabel = _pom.mode === 'work' ? 'FOCO' : _pom.mode === 'short' ? 'DESCANSO' : 'DESCANSO LARGO';
+  const r = 38, circ = 2 * Math.PI * r;
+  const dash = circ - pct * circ;
+
+  el.querySelector('.pomo-time').textContent = `${m}:${s}`;
+  el.querySelector('.pomo-mode').textContent = modeLabel;
+  el.querySelector('.pomo-circle-progress').setAttribute('stroke-dashoffset', dash.toFixed(1));
+  el.querySelector('.pomo-btn-main').textContent = _pom.running ? '⏸' : '▶';
+}
+
+function _pomDone() {
+  clearInterval(_pom.interval);
+  _pom.running = false; _pom.interval = null;
+  const wasWork = _pom.mode === 'work';
+  const msg = wasWork ? '⏱ Pomodoro completado. ¡Tómate un descanso merecido!' : '⏱ Descanso terminado. ¡A trabajar!';
+  if (Notification.permission === 'granted') new Notification('AREX — Pomodoro', { body: msg, icon: 'icon.svg' });
+  addMsg('arex', msg);
+  _pom.mode = wasWork ? 'short' : 'work';
+  _pom.elapsed = 0;
+  _pom.total = POMO_TIMES[_pom.mode];
+  _pomRender();
+}
+
+function togglePomodoro() {
+  if (_pom.running) {
+    clearInterval(_pom.interval); _pom.running = false; _pom.interval = null;
+  } else {
+    _pom.interval = setInterval(() => { _pom.elapsed++; if (_pom.elapsed >= _pom.total) { _pomDone(); } else { _pomRender(); } }, 1000);
+    _pom.running = true;
+  }
+  _pomRender();
+}
+
+function resetPomodoro(mode) {
+  clearInterval(_pom.interval);
+  _pom.running = false; _pom.interval = null;
+  _pom.mode = mode || 'work';
+  _pom.elapsed = 0;
+  _pom.total = POMO_TIMES[_pom.mode];
+  _pomRender();
+}
+
+function togglePomodoroWidget() {
+  const el = document.getElementById('pomo-widget');
+  if (!el) return;
+  el.classList.toggle('hidden');
+  if (!el.classList.contains('hidden')) _pomRender();
+}
+window.togglePomodoro       = togglePomodoro;
+window.resetPomodoro        = resetPomodoro;
+window.togglePomodoroWidget = togglePomodoroWidget;
+
+// ── TIPO DE CAMBIO MXN/USD ────────────────────────────────────────────────────
+const FX_CACHE_KEY = 'arex_fx_cache';
+const FX_TTL       = 60 * 60 * 1000;
+
+async function fetchExchangeRate() {
+  const cached = localStorage.getItem(FX_CACHE_KEY);
+  if (cached) {
+    const { rate, ts } = JSON.parse(cached);
+    if (Date.now() - ts < FX_TTL) return rate;
+  }
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN');
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rate = data.rates?.MXN;
+    if (!rate) return null;
+    localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rate, ts: Date.now() }));
+    return rate;
+  } catch { return null; }
+}
+
+async function renderExchangeWidget() {
+  const el = document.getElementById('dash-fx-widget');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:0.62rem;color:var(--text-muted);letter-spacing:1px">Cargando...</div>';
+  const rate = await fetchExchangeRate();
+  if (!rate) { el.innerHTML = '<div style="font-size:0.62rem;color:var(--text-muted)">Sin datos · sin conexión</div>'; return; }
+  const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || '{}');
+  const upd = cached.ts ? new Date(cached.ts).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '';
+  el.innerHTML = `
+    <div class="fx-main">
+      <span class="fx-pair">1 USD</span>
+      <span class="fx-arrow">→</span>
+      <span class="fx-rate">$${rate.toFixed(2)} <span class="fx-unit">MXN</span></span>
+    </div>
+    <div class="fx-upd">Actualizado ${upd} · frankfurter.app</div>`;
+}
+window.renderExchangeWidget = renderExchangeWidget;
 
 // Fix keyboard/viewport jump on mobile
 (function fixMobileVH() {
