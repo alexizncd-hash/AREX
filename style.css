@@ -318,8 +318,8 @@ header {
 main {
   position:relative; z-index:10;
   width:100%; max-width:960px;
-  flex:1; display:flex; flex-direction:column; align-items:center;
-  padding:0.8rem 2rem; gap:0.8rem; overflow:hidden;
+  flex:1; min-height:0; display:flex; flex-direction:column; align-items:center;
+  padding:0.8rem 1.2rem; gap:0.8rem; overflow:hidden;
 }
 
 /* ── Reactor / Orb ──────────────────────────────────── */
@@ -394,13 +394,13 @@ main {
 .welcome { color:var(--text-muted); font-size:13px; line-height:2.2; text-align:center; padding:1rem; }
 .welcome code { color:var(--cyan); background:rgba(0,212,255,0.08); padding:1px 6px; border-radius:2px; }
 
-.msg { display:flex; flex-direction:column; gap:3px; max-width:82%; animation:appear 0.2s ease-out; }
+.msg { display:flex; flex-direction:column; gap:3px; max-width:88%; min-width:0; animation:appear 0.2s ease-out; }
 @keyframes appear { from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);} }
 .msg.user { align-self:flex-end; }
 .msg.arex { align-self:flex-start; }
 .msg .who { font-size:9px; letter-spacing:3px; color:var(--text-muted); }
 .msg.user .who { text-align:right; }
-.msg .bubble { padding:10px 14px; border-radius:2px; font-size:13px; line-height:1.7; }
+.msg .bubble { padding:10px 14px; border-radius:2px; font-size:13px; line-height:1.7; overflow-wrap:break-word; word-break:break-word; min-width:0; max-width:100%; }
 .msg.user .bubble {
   background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.22);
   border-right:3px solid var(--cyan); color:var(--text-main);
@@ -863,9 +863,7 @@ footer {
 
 /* ── Módulo Tareas ──────────────────────────────────── */
 #module-tareas.module-panel.active {
-  display:flex; flex-direction:column;
-  flex:1; min-height:0; overflow-y:auto;
-  width:100%; max-width:960px; padding:1.2rem 2rem;
+  padding:1rem 1rem;
   gap:1rem;
 }
 .tareas-header-bar {
@@ -1029,7 +1027,8 @@ footer {
 /* ── Módulo SOS ─────────────────────────────────────── */
 .sos-layout {
   display:flex; flex-direction:column; gap:1rem;
-  height:100%; overflow-y:auto; padding-right:4px;
+  padding:1rem 1rem 2rem;
+  min-width:0; width:100%;
 }
 .sos-topbar {
   display:flex; align-items:center; justify-content:space-between;
@@ -1176,8 +1175,9 @@ footer {
 
 /* ── Dashboard INICIO ───────────────────────────────── */
 .dash-content {
-  display:flex; flex-direction:column; gap:1.2rem; height:100%; overflow-y:auto;
-  padding-right:4px;
+  display:flex; flex-direction:column; gap:1.2rem;
+  padding:0.8rem 1rem 2rem;
+  min-width:0; width:100%;
 }
 .dash-topbar {
   display:flex; align-items:center; justify-content:space-between;
@@ -1397,7 +1397,7 @@ footer {
   --nc-rose:    #1c0009;
 }
 #module-notas { padding:0; overflow:hidden; }
-.notas-layout { display:flex; flex-direction:column; height:100%; }
+.notas-layout { display:flex; flex-direction:column; flex:1; min-height:0; }
 .notas-topbar {
   display:flex; gap:0.6rem; padding:0.85rem 1rem;
   border-bottom:1px solid var(--border); flex-shrink:0;
@@ -1490,7 +1490,7 @@ footer {
 
 /* ── Módulo Hábitos ─────────────────────────────────── */
 #module-habitos { padding:0; overflow:hidden; }
-.habitos-layout { display:flex; flex-direction:column; height:100%; }
+.habitos-layout { display:flex; flex-direction:column; flex:1; min-height:0; }
 .habitos-topbar {
   display:flex; justify-content:space-between; align-items:center;
   padding:0.85rem 1rem; border-bottom:1px solid var(--border); flex-shrink:0;
@@ -2086,11 +2086,25 @@ header {
 /* ── Responsive ─────────────────────────────────────── */
 @media(max-width:600px){
   footer { display:none; }
-  header,main { padding:0.7rem 1rem; }
+  header { padding:0.5rem 0.8rem; }
+  main   { padding:0.5rem 0.6rem; gap:0.5rem; }
   .logo-wrap h1 { font-size:16px; letter-spacing:5px; }
+  .logo-ring { width:36px; height:36px; }
+  .logo-letter { font-size:14px; }
   .notes-panel { width:85%; right:-85%; }
   .sidebar { width:85%; left:-85%; }
   .qcmds { grid-template-columns:1fr 1fr 1fr; }
   .pomo-widget { right: 8px; top: 60px; width: 180px; }
   .bg-container { width: 96vw; }
+  /* Ocultar botones de header en pantallas muy pequeñas — accesibles vía /pomodoro /buscar */
+  #btn-pomo-toggle, #btn-search-toggle { display: none; }
+  .sys-info.left { min-width: 0; }
+  .sys-info { gap: 6px; }
+  .sys-info .lbl { font-size: 8px; letter-spacing: 2px; }
+  .sys-info .val { font-size: 11px; }
+}
+
+@media(max-width:400px){
+  main { padding:0.4rem 0.4rem; }
+  header { padding:0.4rem 0.5rem; }
 }
