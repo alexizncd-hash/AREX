@@ -37,10 +37,11 @@ const AREXNav = {
   },
 
   actualizarEstadoSistema(modulo) {
-    // Usa el ID existente de AREX (sys-val en el header)
     const statusEl = document.getElementById('sys-val');
-    const estados  = { chat: 'ACTIVO', finanzas: 'FINANZAS', tareas: 'TAREAS' };
+    const estados  = { inicio: 'INICIO', chat: 'ACTIVO', finanzas: 'FINANZAS', tareas: 'TAREAS', sos: 'SOS' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
+    if (modulo === 'inicio' && typeof renderDashboard  === 'function') renderDashboard();
+    if (modulo === 'sos'    && typeof renderSOSModule  === 'function') renderSOSModule();
   }
 };
 

@@ -39,6 +39,7 @@ function setupSaveHandler() {
     const config = {
       groqKey:   groq,
       tavilyKey: document.getElementById('cfg-tavily').value.trim() || '',
+      owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
                            storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
     };
@@ -130,9 +131,16 @@ function buildMemoriaSection() {
 }
 
 /* ── System prompt ──────────────────────────────────── */
-const SYSTEM_BASE = `
-Eres AREX, el sistema de inteligencia personal de Alexiz.
+function buildSystemBase() {
+  const now  = new Date();
+  const fecha = now.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const hora  = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+  return `Eres AREX, el sistema de inteligencia personal de Alexiz.
 Tu nombre nace de Alexiz y Margaret — las dos personas más importantes en su vida.
+
+CONTEXTO OPERACIONAL:
+- Fecha: ${fecha}. Hora: ${hora}.
+- Ubicación: Hermosillo, Sonora, México (UTC-7).
 
 IDENTIDAD Y TONO:
 - Formal, preciso y directo. Sin rodeos. Como JARVIS con Tony Stark.
@@ -151,11 +159,19 @@ QUIÉN ES ALEXIZ:
 - Valora su familia y a Margaret, su novia — fundamental en su vida.
 - Prefiere entender el "mínimo funcional" antes de profundizar.
 
+MÓDULOS DEL SISTEMA (puedes referirte a ellos):
+- FINANZAS: tarjetas de crédito, saldos, gastos mensuales, calculadora de deuda, recordatorios de pago.
+- TAREAS: lista de pendientes con fecha límite y prioridad alta/media/baja.
+- RECORDATORIOS: activos con countdown, persistentes entre sesiones (/recordar 30min, /recordar 20:00).
+- SOS: módulo de emergencias — 911, GPS, SMS, WhatsApp, tarjeta médica, contactos de emergencia.
+- CÓDIGO: editor con preview en vivo de HTML/CSS/JS (sandbox iframe).
+- DASHBOARD: vista de inicio con resumen de tareas urgentes, finanzas y clima.
+
 ÁREAS DE EXPERTISE:
-1. PROGRAMACIÓN: HTML, CSS, JavaScript. Explica el concepto antes del código. Comenta el código clave.
+1. PROGRAMACIÓN: HTML, CSS, JavaScript. Explica el concepto antes del código. Comenta solo lo no obvio.
 2. UNIVERSIDAD: trabajos, proyectos, exámenes, resúmenes, análisis, ensayos.
 3. NEGOCIOS: estrategia, ideas, propuestas, análisis, decisiones.
-4. FINANZAS PERSONALES: presupuestos, ahorro, inversión, control de gastos.
+4. FINANZAS PERSONALES: presupuestos, ahorro, inversión, control de gastos, deuda, tarjetas.
 5. DESARROLLO PERSONAL: hábitos, rutinas, mentalidad, metas, disciplina.
 6. SALUD Y BIENESTAR: físico, mental, espiritual.
 7. RELACIONES: comunicación, familia, pareja.
@@ -179,14 +195,15 @@ REGLAS:
 - Responde SIEMPRE en español.
 - 3-5 líneas por defecto. Expándete si Alexiz pide más detalle.
 - Código: describe brevemente qué hace (1 línea), luego el bloque de código completo.
-- Señala errores o mejores enfoques directamente.
-- Si hay riesgos, menciónalos con claridad.
-- Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes.
+- Señala errores o mejores enfoques directamente, sin rodeos.
+- Si hay riesgos o errores en el planteamiento de Alexiz, díselo primero.
+- Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes con claridad.
+- Para temas de finanzas personales, considera el contexto de México (tasas, productos, normativa local).
 
 FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
 "Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
-"Aquí el análisis." | "Datos disponibles." | "Operación completada."
-`.trim();
+"Aquí el análisis." | "Datos disponibles." | "Operación completada."`.trim();
+}
 
 const EXAM_ADDON = `
 
@@ -225,10 +242,21 @@ function applyHighlight(el) {
   el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
 }
 
-/* ── PDF.js worker ──────────────────────────────────── */
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* ── PDF.js (lazy) ──────────────────────────────────── */
+const PDF_SRC    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDF_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let _pdfReady = false;
+async function ensurePdfJs() {
+  if (_pdfReady) return;
+  if (typeof pdfjsLib === 'undefined') {
+    await new Promise((ok, fail) => {
+      const s = document.createElement('script');
+      s.src = PDF_SRC; s.onload = ok; s.onerror = fail;
+      document.head.appendChild(s);
+    });
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+  _pdfReady = true;
 }
 
 /* ── Estado global ──────────────────────────────────── */
@@ -238,6 +266,8 @@ let searchOn   = false;
 let examMode   = false;
 let isSpeaking = false;
 let isBusy     = false;
+
+const _msgRaw = new WeakMap(); // wrap element → raw markdown text
 
 const NOTE_CATEGORIES = ['General','Estudio','Ideas','Trabajo','Personal'];
 let noteFilter = 'all';
@@ -368,10 +398,36 @@ function deleteSession(sid) {
 function getTareas() { return JSON.parse(localStorage.getItem('arex_tareas') || '[]'); }
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
-function addTarea(text) {
+function urgenciaTarea(t) {
+  if (!t.fecha) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const vence = new Date(t.fecha + 'T00:00:00');
+  const dias = Math.round((vence - hoy) / 86400000);
+  if (dias < 0)  return { cls: 'urg-vencida',  icon: '🔴', txt: `Venció hace ${-dias}d` };
+  if (dias === 0) return { cls: 'urg-hoy',      icon: '🔴', txt: 'Vence HOY' };
+  if (dias <= 2)  return { cls: 'urg-pronto',   icon: '🟠', txt: `${dias}d` };
+  if (dias <= 7)  return { cls: 'urg-semana',   icon: '🟡', txt: `${dias}d` };
+  const d = new Date(t.fecha + 'T00:00:00');
+  return { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
+}
+
+function sortPending(arr) {
+  const prioVal = { alta: 0, media: 1, baja: 2 };
+  return [...arr].sort((a, b) => {
+    const ua = urgenciaTarea(a), ub = urgenciaTarea(b);
+    const urgOrder = { 'urg-vencida': 0, 'urg-hoy': 1, 'urg-pronto': 2, 'urg-semana': 3, 'urg-normal': 4, null: 5 };
+    const oa = urgOrder[ua?.cls ?? null] ?? 5;
+    const ob = urgOrder[ub?.cls ?? null] ?? 5;
+    if (oa !== ob) return oa - ob;
+    if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+    return (prioVal[a.prioridad] ?? 1) - (prioVal[b.prioridad] ?? 1);
+  });
+}
+
+function addTarea(text, fecha = '', prioridad = 'media') {
   if (!text.trim()) return;
   const arr = getTareas();
-  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now() });
+  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad });
   saveTareasData(arr);
   renderTareas();
 }
@@ -383,20 +439,80 @@ function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
   renderTareas();
 }
+function updateTarea(id, changes) {
+  saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
+  renderTareas();
+}
 function renderTareas() {
-  const all = getTareas();
-  const pending = all.filter(t => !t.done);
+  const all     = getTareas();
+  const pending = sortPending(all.filter(t => !t.done));
   const done    = all.filter(t =>  t.done);
 
   const makeItem = t => {
-    const div = document.createElement('div');
-    div.className = `tarea-item${t.done ? ' done' : ''}`;
+    const urg  = urgenciaTarea(t);
+    const prio = t.prioridad || 'media';
+    const div  = document.createElement('div');
+    div.className = `tarea-item${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}`;
     div.innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
-      <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
-      <button class="tarea-del" data-id="${t.id}">✕</button>`;
+      <div class="tarea-content">
+        <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+        <div class="tarea-meta">
+          ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
+          ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
+          ${t.fecha && t.done ? `<span class="tarea-fecha-done">📅 ${new Date(t.fecha+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>` : ''}
+        </div>
+      </div>
+      <div class="tarea-actions">
+        ${!t.done ? '<button class="tarea-edit" title="Editar">✎</button>' : ''}
+        <button class="tarea-del" title="Eliminar">✕</button>
+      </div>`;
+
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
-    div.querySelector('.tarea-del').addEventListener('click', () => deleteTarea(t.id));
+
+    div.querySelector('.tarea-edit')?.addEventListener('click', () => {
+      let _ep = t.prioridad || 'media';
+      div.innerHTML = `
+        <div class="tarea-edit-form">
+          <input class="tarea-edit-text" type="text" value="${t.text.replace(/"/g,'&quot;')}" placeholder="Descripción..."/>
+          <div class="tarea-edit-row">
+            <input class="tarea-edit-fecha" type="date" value="${t.fecha || ''}"/>
+            <div class="tarea-edit-prio-btns">
+              <button class="tep${t.prioridad==='alta'?' active':''}" data-p="alta">ALTA</button>
+              <button class="tep${(!t.prioridad||t.prioridad==='media')?' active':''}" data-p="media">MEDIA</button>
+              <button class="tep${t.prioridad==='baja'?' active':''}" data-p="baja">BAJA</button>
+            </div>
+          </div>
+          <div class="tarea-edit-btns">
+            <button class="tarea-edit-save">GUARDAR</button>
+            <button class="tarea-edit-cancel">CANCELAR</button>
+          </div>
+        </div>`;
+      div.querySelectorAll('.tep').forEach(b => b.addEventListener('click', () => {
+        _ep = b.dataset.p;
+        div.querySelectorAll('.tep').forEach(x => x.classList.toggle('active', x === b));
+      }));
+      div.querySelector('.tarea-edit-save').addEventListener('click', () => {
+        const text = div.querySelector('.tarea-edit-text').value.trim();
+        if (!text) return;
+        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep });
+      });
+      div.querySelector('.tarea-edit-cancel').addEventListener('click', () => renderTareas());
+      div.querySelector('.tarea-edit-text').select();
+    });
+
+    let _tap = false, _tapTimer;
+    div.querySelector('.tarea-del').addEventListener('click', function() {
+      if (_tap) {
+        clearTimeout(_tapTimer); deleteTarea(t.id);
+      } else {
+        _tap = true; this.textContent = '?'; this.classList.add('confirming');
+        _tapTimer = setTimeout(() => {
+          _tap = false; this.textContent = '✕'; this.classList.remove('confirming');
+        }, 2000);
+      }
+    });
+
     return div;
   };
 
@@ -412,15 +528,137 @@ function renderTareas() {
   if (!pending.length) elPending.innerHTML = '<div class="tarea-empty">Sin tareas pendientes</div>';
   if (!done.length)    elDone.innerHTML    = '<div class="tarea-empty">—</div>';
 
-  const count = pending.length;
-  const countEl = document.getElementById('tareas-count');
-  if (countEl) countEl.textContent = `${count} pendiente${count !== 1 ? 's' : ''}`;
+  const urgentes = pending.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; }).length;
+  const count    = pending.length;
+  const countEl  = document.getElementById('tareas-count');
+  if (countEl) {
+    countEl.textContent = urgentes
+      ? `${count} pendiente${count !== 1 ? 's' : ''} · ${urgentes} urgente${urgentes !== 1 ? 's' : ''}`
+      : `${count} pendiente${count !== 1 ? 's' : ''}`;
+    countEl.classList.toggle('has-urgentes', urgentes > 0);
+  }
 
   const badge = document.getElementById('dock-tareas-badge');
   if (badge) {
     badge.textContent = count;
     badge.classList.toggle('hidden', count === 0);
+    badge.classList.toggle('urgente', urgentes > 0);
   }
+}
+
+function renderDashboard() {
+  const el = document.getElementById('dash-content');
+  if (!el) return;
+
+  const fin       = getFinanzasData();
+  const tareas    = getTareas();
+  const pendientes = sortPending(tareas.filter(t => !t.done));
+  const urgentes  = pendientes.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; });
+  const proximas  = pendientes.filter(t => { const u = urgenciaTarea(t); return u && !['urg-vencida','urg-hoy'].includes(u.cls); }).slice(0, 3);
+  const sinFecha  = pendientes.filter(t => !t.fecha).slice(0, 2);
+  const mostrar   = [...urgentes, ...proximas, ...sinFecha].slice(0, 6);
+
+  const deuda    = calcularDeudaTotal();
+  const margen   = calcularMargen();
+  const ingreso  = fin.config.ingresoMensual;
+  const pagos    = obtenerProximosPagos(30);
+
+  const hoy      = new Date();
+  const diasMes  = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const pctMes   = Math.round((hoy.getDate() / diasMes) * 100);
+  const fechaStr = hoy.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const mesStr   = hoy.toLocaleDateString('es-MX', { month:'long', year:'numeric' }).toUpperCase();
+
+  const mkTareaItem = t => {
+    const u    = urgenciaTarea(t);
+    const prio = t.prioridad || 'media';
+    const esUrgente = u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
+    return `<div class="dash-tarea-item${esUrgente ? ' urgent' : ''}">
+      <button class="dash-check" data-id="${t.id}"></button>
+      <span class="dash-tarea-txt">${t.text.replace(/</g,'&lt;')}</span>
+      ${u ? `<span class="dash-urg ${u.cls}">${u.icon} ${u.txt}</span>`
+           : `<span class="dash-prio-dot prio-${prio}"></span>`}
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div class="dash-topbar">
+      <span class="dash-fecha-hoy">${fechaStr.toUpperCase()}</span>
+      <div class="dash-quick-stats">
+        ${urgentes.length
+          ? `<span class="dash-stat dash-stat-alert">${urgentes.length} URGENTE${urgentes.length!==1?'S':''}</span>`
+          : `<span class="dash-stat">${pendientes.length} PENDIENTE${pendientes.length!==1?'S':''}</span>`}
+      </div>
+    </div>
+
+    <div class="dash-grid">
+
+      <div class="dash-widget">
+        <div class="dash-w-header">
+          <span class="dash-w-title">TAREAS</span>
+          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('tareas')">VER TODAS →</button>
+        </div>
+        ${mostrar.length
+          ? mostrar.map(mkTareaItem).join('')
+          : '<div class="dash-empty">Sin tareas pendientes</div>'}
+      </div>
+
+      <div class="dash-widget">
+        <div class="dash-w-header">
+          <span class="dash-w-title">FINANZAS</span>
+          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('finanzas')">VER TODO →</button>
+        </div>
+        <div class="dash-kpis">
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">INGRESO</span>
+            <span class="dash-kpi-val kpi-green">${formatearMoneda(ingreso)}</span>
+          </div>
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">DEUDA</span>
+            <span class="dash-kpi-val kpi-red">${formatearMoneda(deuda)}</span>
+          </div>
+          <div class="dash-kpi">
+            <span class="dash-kpi-label">MARGEN</span>
+            <span class="dash-kpi-val ${margen >= 0 ? 'kpi-green' : 'kpi-red'}">${formatearMoneda(margen)}</span>
+          </div>
+        </div>
+        <div class="dash-w-subtitle">PRÓXIMOS PAGOS</div>
+        ${pagos.length
+          ? pagos.map(p => `
+            <div class="dash-pago urg-pago-${p.urgencia}">
+              <span class="dash-pago-nom">${p.tarjeta}</span>
+              <span class="dash-pago-dias">${p.diasRestantes === 0 ? 'HOY' : p.diasRestantes + 'd'}</span>
+              <span class="dash-pago-monto">${formatearMoneda(p.pagoMinimo)}</span>
+            </div>`).join('')
+          : '<div class="dash-empty">Sin pagos en los próximos 30 días</div>'}
+      </div>
+
+    </div>
+
+    <div id="dash-weather" class="dash-widget dash-w-full"></div>
+
+    <div class="dash-widget dash-w-full">
+      <div class="dash-w-header">
+        <span class="dash-w-title">RECORDATORIOS</span>
+        <button class="dash-w-link" onclick="document.getElementById('txt')?.focus()">+ NUEVO →</button>
+      </div>
+      <div id="dash-rec-body">${_buildRecHtml()}</div>
+    </div>
+
+    <div class="dash-mes-wrap">
+      <span class="dash-mes-label">${mesStr} — DÍA ${hoy.getDate()} DE ${diasMes} (${pctMes}%)</span>
+      <div class="dash-mes-bar"><div class="dash-mes-fill" style="width:${pctMes}%"></div></div>
+    </div>
+  `;
+
+  el.querySelectorAll('.dash-check').forEach(btn =>
+    btn.addEventListener('click', () => { toggleTarea(btn.dataset.id); renderDashboard(); })
+  );
+  el.querySelectorAll('.rec-dismiss').forEach(b =>
+    b.addEventListener('click', () => dismissReminder(b.dataset.id))
+  );
+
+  renderWeatherWidget();
 }
 
 function renderSessionsList() {
@@ -538,7 +776,20 @@ function addMsg(role, text, sources) {
       sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
     }</div>`;
   }
-  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${srcHTML}`;
+  const actionsHTML = role !== 'user'
+    ? `<div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button></div>`
+    : '';
+  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${actionsHTML}${srcHTML}`;
+  if (role !== 'user') {
+    wrap.querySelector('.msg-copy')?.addEventListener('click', () => {
+      const text = wrap.querySelector('.bubble').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = wrap.querySelector('.msg-copy');
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = '⎘', 1500);
+      }).catch(() => {});
+    });
+  }
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   if (role !== 'user') applyHighlight(wrap);
@@ -589,12 +840,32 @@ function wrapCodeIfNeeded(code) {
 function runInIframe(code) {
   document.getElementById('cp-iframe').srcdoc = wrapCodeIfNeeded(code);
 }
+const CODE_TEMPLATE = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AREX Código</title>
+<style>
+  body { margin: 0; font-family: monospace; background: #030d18; color: #00d4ff; padding: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Hola desde AREX</h1>
+  <p>Edita este código o pídele a AREX que genere algo.</p>
+  <script>
+    // Tu código aquí
+  <\/script>
+</body>
+</html>`;
+
 function openCodePanel(code) {
-  document.getElementById('cp-editor').value = code;
+  const src = code || CODE_TEMPLATE;
+  document.getElementById('cp-editor').value = src;
   document.getElementById('code-panel').classList.remove('hidden');
-  switchCpTab('preview');
-  // requestAnimationFrame asegura que el iframe esté pintado antes de cargar el código
-  requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
+  // Si es plantilla vacía, abre en el editor para que el usuario escriba de inmediato
+  switchCpTab(code ? 'preview' : 'code');
+  if (code) requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
 }
 function closeCpPanel() {
   document.getElementById('code-panel').classList.add('hidden');
@@ -611,25 +882,78 @@ function makeArexWrap(srcHTML = '') {
   document.querySelector('.welcome')?.remove();
   const wrap = document.createElement('div');
   wrap.className = 'msg arex';
-  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="run-wrap"></div>${srcHTML}`;
+  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button><button class="msg-regen" title="Regenerar">↺</button></div><div class="run-wrap"></div>${srcHTML}`;
+
+  wrap.querySelector('.msg-copy').addEventListener('click', () => {
+    const text = _msgRaw.get(wrap) || wrap.querySelector('.bubble').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = wrap.querySelector('.msg-copy');
+      const prev = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(() => btn.textContent = prev, 1500);
+    }).catch(() => {});
+  });
+
+  wrap.querySelector('.msg-regen').addEventListener('click', async () => {
+    if (isBusy) return;
+    if (history.length && history[history.length - 1].role === 'assistant') history.pop();
+    if (!history.length || history[history.length - 1].role !== 'user') return;
+    wrap.remove();
+    isBusy = true; btnSend.disabled = true;
+    setOrb('thinking', 'Regenerando...');
+    showThinking();
+    try {
+      const newWrap = makeArexWrap();
+      hideThinking();
+      const reply = await streamArexReply(newWrap, null);
+      history.push({ role: 'assistant', content: reply });
+      await saveMsg('assistant', reply);
+      saveCurrentSession();
+      if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
+    } catch(err) {
+      hideThinking();
+      addMsg('arex', `Error al regenerar: ${err.message}`);
+      setOrb(null, 'En espera de instrucciones');
+    } finally {
+      isBusy = false; btnSend.disabled = false;
+    }
+  });
+
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   return wrap;
 }
+
+function _attachRunBtn(wrap, text) {
+  const code = extractCodeBlock(text);
+  if (!code) return;
+  const btn = document.createElement('button');
+  btn.className = 'run-btn';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
+  btn.onclick = () => openCodePanel(code);
+  wrap.querySelector('.run-wrap').appendChild(btn);
+  if (/<!DOCTYPE|<html/i.test(code)) setTimeout(() => openCodePanel(code), 400);
+}
+
 async function renderArexReply(wrap, text) {
   await typewrite(wrap.querySelector('.bubble'), text);
-  const code = extractCodeBlock(text);
-  if (code) {
-    const btn = document.createElement('button');
-    btn.className = 'run-btn';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
-    btn.onclick = () => openCodePanel(code);
-    wrap.querySelector('.run-wrap').appendChild(btn);
-    // Auto-ejecutar si es un documento HTML completo (visualización / herramienta)
-    if (/<!DOCTYPE|<html/i.test(code)) {
-      setTimeout(() => openCodePanel(code), 400);
-    }
-  }
+  _msgRaw.set(wrap, text);
+  _attachRunBtn(wrap, text);
+}
+
+async function streamArexReply(wrap, webCtx) {
+  const bubble = wrap.querySelector('.bubble');
+  bubble.textContent = '';
+  const full = await callGroqStream(webCtx, accumulated => {
+    bubble.textContent = accumulated;
+    chat.scrollTop = chat.scrollHeight;
+  });
+  bubble.innerHTML = renderMarkdown(full);
+  applyHighlight(bubble);
+  _msgRaw.set(wrap, full);
+  chat.scrollTop = chat.scrollHeight;
+  _attachRunBtn(wrap, full);
+  return full;
 }
 
 /* ── Indicador pensando ─────────────────────────────── */
@@ -661,6 +985,196 @@ function arexSpeak(text) {
   u.onend   = () => { isSpeaking = false; setOrb(null,'En espera de instrucciones'); };
   u.onerror = () => { isSpeaking = false; setOrb(null,'En espera de instrucciones'); };
   window.speechSynthesis.speak(u);
+}
+
+/* ── Módulo SOS / Emergencias ───────────────────────── */
+const SOS_DEFAULT = { contactos: [], medico: { tipoSangre:'', alergias:'', medicamentos:'', condiciones:'' } };
+function getSOSData()      { return JSON.parse(localStorage.getItem('arex_sos') || JSON.stringify(SOS_DEFAULT)); }
+function saveSOSData(data) { localStorage.setItem('arex_sos', JSON.stringify(data)); }
+
+let _sosGPS = null; // { lat, lng, accuracy }
+
+function _emergencyMsg() {
+  const loc = _sosGPS
+    ? `GPS: ${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}\nhttps://maps.google.com/?q=${_sosGPS.lat},${_sosGPS.lng}`
+    : 'Hermosillo, Sonora, México';
+  return `🆘 EMERGENCIA 🆘\nSoy Alexiz Cejudo. Necesito ayuda urgente.\n📍 Ubicación:\n${loc}\nPor favor llama al 911 o ven a ayudarme.`;
+}
+
+function _fmtPhone(raw) {
+  const d = raw.replace(/\D/g, '');
+  return d.startsWith('52') ? d : '52' + d;
+}
+
+function renderSOSContacts() {
+  const el = document.getElementById('sos-contacts-list');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  if (!contactos.length) {
+    el.innerHTML = '<div class="sos-empty">Sin contactos — toca ⚙ CONFIGURAR para agregar</div>';
+    return;
+  }
+  const msg = encodeURIComponent(_emergencyMsg());
+  el.innerHTML = contactos.map(c => {
+    const p = c.telefono.replace(/\D/g, '');
+    const wa = _fmtPhone(p);
+    return `<div class="sos-contact-card">
+      <div class="sos-contact-info">
+        <div class="sos-contact-name">${c.nombre.replace(/</g,'&lt;')}</div>
+        <div class="sos-contact-rel">${c.relacion.replace(/</g,'&lt;')}</div>
+        <div class="sos-contact-phone">${c.telefono}</div>
+      </div>
+      <div class="sos-contact-btns">
+        <a href="tel:${p}" class="sos-btn sos-call">📞 LLAMAR</a>
+        <a href="sms:${p}?body=${msg}" class="sos-btn sos-sms">💬 SMS</a>
+        <a href="https://wa.me/${wa}?text=${msg}" target="_blank" class="sos-btn sos-wa">📲 WA</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSOSMedico() {
+  const el = document.getElementById('sos-medico-card');
+  if (!el) return;
+  const { medico } = getSOSData();
+  const row = (label, val, empty) => `
+    <div class="sos-med-row${!val ? ' sos-med-empty' : ''}">
+      <span class="sos-med-label">${label}</span>
+      <span class="sos-med-val">${val || empty}</span>
+    </div>`;
+  el.innerHTML = `<div class="sos-med-grid">
+    ${row('SANGRE',       medico.tipoSangre,   '—')}
+    ${row('ALERGIAS',     medico.alergias,     'Ninguna')}
+    ${row('MEDICAMENTOS', medico.medicamentos, 'Ninguno')}
+    ${row('CONDICIONES',  medico.condiciones,  'Ninguna')}
+  </div>`;
+}
+
+function renderSOSShareRow() {
+  const el = document.getElementById('sos-share-row');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  const msg = encodeURIComponent(_emergencyMsg());
+  el.innerHTML = contactos.length
+    ? contactos.map(c =>
+        `<a href="https://wa.me/${_fmtPhone(c.telefono)}?text=${msg}" target="_blank"
+            class="sos-share-wa">💬 ${c.nombre.replace(/</g,'&lt;')}</a>`
+      ).join('')
+    : '';
+}
+
+function renderSOSEditContacts() {
+  const el = document.getElementById('sos-edit-contacts-list');
+  if (!el) return;
+  const { contactos } = getSOSData();
+  if (!contactos.length) { el.innerHTML = '<div class="sos-empty">Sin contactos aún</div>'; return; }
+  el.innerHTML = contactos.map((c, i) => `
+    <div class="sos-edit-contact-row">
+      <span>${c.nombre} · ${c.relacion} · ${c.telefono}</span>
+      <button class="sos-del-contact" data-i="${i}">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.sos-del-contact').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const d = getSOSData();
+      d.contactos.splice(parseInt(btn.dataset.i), 1);
+      saveSOSData(d);
+      renderSOSModule();
+      renderSOSEditContacts();
+    })
+  );
+}
+
+function renderSOSModule() {
+  renderSOSContacts();
+  renderSOSMedico();
+  renderSOSShareRow();
+}
+
+function sosGetGPS() {
+  const locEl  = document.getElementById('sos-loc-text');
+  const gpsBtn = document.getElementById('sos-get-loc');
+  if (!locEl || !gpsBtn) return;
+  if (!navigator.geolocation) { locEl.textContent = 'GPS no disponible'; return; }
+  gpsBtn.textContent = '...';
+  gpsBtn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _sosGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) };
+      locEl.innerHTML = `<strong>${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}</strong> <small>±${_sosGPS.accuracy}m</small>`;
+      gpsBtn.textContent = '↻';
+      gpsBtn.disabled = false;
+      renderSOSShareRow();
+      renderSOSContacts();
+    },
+    () => {
+      _sosGPS = null;
+      locEl.textContent = 'Sin GPS — Hermosillo, Sonora, México';
+      gpsBtn.textContent = 'GPS';
+      gpsBtn.disabled = false;
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+function initSOSEvents() {
+  document.getElementById('sos-get-loc')?.addEventListener('click', sosGetGPS);
+
+  document.getElementById('sos-copy-msg')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(_emergencyMsg());
+      const btn = document.getElementById('sos-copy-msg');
+      const orig = btn.textContent;
+      btn.textContent = '✓ COPIADO';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    } catch { /* clipboard not available */ }
+  });
+
+  document.getElementById('sos-edit-toggle')?.addEventListener('click', () => {
+    const panel = document.getElementById('sos-edit-panel');
+    const isOpen = !panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', isOpen);
+    document.getElementById('sos-edit-toggle').textContent = isOpen ? '⚙ CONFIGURAR' : '✕ CERRAR';
+    if (!isOpen) { renderSOSEditContacts(); _prefillSOSMedico(); }
+  });
+
+  document.getElementById('sos-add-contact-btn')?.addEventListener('click', () => {
+    const nombre  = document.getElementById('sos-add-name').value.trim();
+    const relacion = document.getElementById('sos-add-rel').value.trim();
+    const telefono = document.getElementById('sos-add-phone').value.trim();
+    if (!nombre || !telefono) return;
+    const d = getSOSData();
+    d.contactos.push({ id: String(Date.now()), nombre, relacion: relacion || 'Contacto', telefono });
+    saveSOSData(d);
+    document.getElementById('sos-add-name').value = '';
+    document.getElementById('sos-add-rel').value  = '';
+    document.getElementById('sos-add-phone').value = '';
+    renderSOSModule();
+    renderSOSEditContacts();
+  });
+
+  document.getElementById('sos-save-medico-btn')?.addEventListener('click', () => {
+    const d = getSOSData();
+    d.medico = {
+      tipoSangre:   document.getElementById('sos-med-sangre').value.trim(),
+      alergias:     document.getElementById('sos-med-alergias').value.trim(),
+      medicamentos: document.getElementById('sos-med-meds').value.trim(),
+      condiciones:  document.getElementById('sos-med-cond').value.trim(),
+    };
+    saveSOSData(d);
+    renderSOSMedico();
+    const btn = document.getElementById('sos-save-medico-btn');
+    btn.textContent = '✓ GUARDADO';
+    setTimeout(() => { btn.textContent = 'GUARDAR DATOS MÉDICOS'; }, 2000);
+  });
+}
+
+function _prefillSOSMedico() {
+  const { medico } = getSOSData();
+  const f = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  f('sos-med-sangre',   medico.tipoSangre);
+  f('sos-med-alergias', medico.alergias);
+  f('sos-med-meds',     medico.medicamentos);
+  f('sos-med-cond',     medico.condiciones);
 }
 
 /* ── Comandos de voz ────────────────────────────────── */
@@ -913,7 +1427,7 @@ async function handleMultipleURLs(urls, question) {
 
 /* ── Procesamiento de archivos ──────────────────────── */
 async function extractPDF(file) {
-  if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js no disponible. Recarga la página.');
+  await ensurePdfJs();
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   let text = '';
@@ -1000,7 +1514,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
   let messages = [...history];
 
   if (webCtx) {
@@ -1023,6 +1537,50 @@ async function callGroq(webCtx) {
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   return data.choices[0].message.content;
+}
+
+/* ── Llamada a Groq (streaming) ─────────────────────── */
+async function callGroqStream(webCtx, onChunk) {
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  let messages = [...history];
+
+  if (webCtx) {
+    const last = messages[messages.length - 1];
+    const webSection = webCtx.answer ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n` : '';
+    messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
+  }
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: examMode ? 1500 : 1000,
+      stream: true,
+      messages: [{ role: 'system', content: systemPrompt }, ...messages]
+    })
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
+
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') return full;
+      try {
+        const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
+        if (delta) { full += delta; onChunk(full); }
+      } catch {}
+    }
+  }
+  return full;
 }
 
 /* ── Llamada a Groq (visión) ────────────────────────── */
@@ -1154,6 +1712,7 @@ async function loadStats() {
 /* ── Auto-compresión al llegar a 80 mensajes ────────── */
 async function autoSummarize() {
   if (history.length < 80) return;
+  addMsg('arex', '📋 Optimizando memoria de conversación — comprimiendo historial...');
   const toCompress = history.slice(0, -15);
   const toKeep     = history.slice(-15);
   try {
@@ -1185,14 +1744,90 @@ async function requestNotifPerm() {
     await Notification.requestPermission();
   }
 }
-function scheduleReminder(ms, message) {
+/* ── Recordatorios persistentes ─────────────────────── */
+function getRecordatorios() { return JSON.parse(localStorage.getItem('arex_recordatorios') || '[]'); }
+function saveRecordatorios(arr) { localStorage.setItem('arex_recordatorios', JSON.stringify(arr)); }
+
+function fmtCountdown(disparaEn) {
+  const ms = disparaEn - Date.now();
+  if (ms <= 0) return 'ahora';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `en ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `en ${m}min`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  if (h < 24) return rm > 0 ? `en ${h}h ${rm}min` : `en ${h}h`;
+  return `en ${Math.floor(h / 24)}d`;
+}
+
+function armReminder(rec) {
+  const ms = rec.disparaEn - Date.now();
+  if (ms <= 0) return;
   setTimeout(() => {
-    if (Notification.permission === 'granted') {
-      new Notification('AREX — Recordatorio', { body: message, icon:'icon.svg' });
-    }
-    addMsg('arex', `⏰ Recordatorio: ${message}`);
-    if (voiceOn) arexSpeak(`Recordatorio: ${message}`);
+    saveRecordatorios(getRecordatorios().map(r => r.id === rec.id ? { ...r, disparado: true } : r));
+    if (Notification.permission === 'granted') new Notification('AREX — Recordatorio', { body: rec.msg, icon:'icon.svg' });
+    addMsg('arex', `⏰ **Recordatorio:** ${rec.msg}`);
+    if (voiceOn) arexSpeak(`Recordatorio: ${rec.msg}`);
+    _refreshRecWidget();
   }, ms);
+}
+
+function restoreReminders() {
+  const now = Date.now();
+  const all = getRecordatorios();
+  let changed = false;
+  all.forEach(r => {
+    if (!r.disparado) {
+      if (r.disparaEn <= now) { r.disparado = true; r.perdido = true; changed = true; }
+      else armReminder(r);
+    }
+  });
+  if (changed) saveRecordatorios(all);
+}
+
+function saveReminder(ms, msg) {
+  const rec = { id: String(Date.now()), msg, disparaEn: Date.now() + ms, disparado: false, creadoEn: Date.now() };
+  const all = getRecordatorios(); all.push(rec);
+  saveRecordatorios(all);
+  armReminder(rec);
+  _refreshRecWidget();
+}
+
+function dismissReminder(id) {
+  saveRecordatorios(getRecordatorios().filter(r => r.id !== id));
+  _refreshRecWidget();
+}
+
+function _buildRecHtml() {
+  const all      = getRecordatorios();
+  const activos  = all.filter(r => !r.disparado).sort((a,b) => a.disparaEn - b.disparaEn);
+  const perdidos = all.filter(r => r.disparado && r.perdido);
+  const hechos   = all.filter(r => r.disparado && !r.perdido).slice(-2);
+
+  if (!all.length) return '<div class="dash-empty">Sin recordatorios — usa /recordar 30min mensaje</div>';
+
+  const mkItem = (r, cls, icon, label) => `
+    <div class="rec-item ${cls}">
+      <span class="rec-icon">${icon}</span>
+      <span class="rec-msg">${r.msg.replace(/</g,'&lt;')}</span>
+      <span class="rec-cd"${cls==='rec-activo' ? ` data-de="${r.disparaEn}"` : ''}>${label}</span>
+      <button class="rec-dismiss" data-id="${r.id}" title="Eliminar">✕</button>
+    </div>`;
+
+  return [
+    ...activos.map(r  => mkItem(r, 'rec-activo',  '⏰', fmtCountdown(r.disparaEn))),
+    ...perdidos.map(r => mkItem(r, 'rec-perdido', '🔕', 'perdido')),
+    ...hechos.map(r   => mkItem(r, 'rec-hecho',   '✓',  'completado')),
+  ].join('');
+}
+
+function _refreshRecWidget() {
+  const el = document.getElementById('dash-rec-body');
+  if (!el) return;
+  el.innerHTML = _buildRecHtml();
+  el.querySelectorAll('.rec-dismiss').forEach(b =>
+    b.addEventListener('click', () => dismissReminder(b.dataset.id))
+  );
 }
 function parseReminder(args) {
   const minMatch  = args.match(/^(\d+)\s*min\s+(.+)/i);
@@ -1329,11 +1964,19 @@ async function handleCommand(cmd) {
 
     case 'recordar': {
       await requestNotifPerm();
+      if (!args) {
+        const recs = getRecordatorios();
+        const activos = recs.filter(r => !r.disparado).sort((a,b) => a.disparaEn - b.disparaEn);
+        if (!activos.length) { addMsg('arex', 'Sin recordatorios activos.\nUso: `/recordar 30min mensaje` · `/recordar 2h mensaje` · `/recordar 20:00 mensaje`'); break; }
+        const lista = activos.map(r => `⏰ **${r.msg}** — ${fmtCountdown(r.disparaEn)}`).join('\n');
+        addMsg('arex', `Recordatorios activos:\n${lista}`);
+        break;
+      }
       const parsed = parseReminder(args);
-      if (!parsed) { addMsg('arex','Formato: /recordar 30min mensaje · /recordar 2h mensaje · /recordar 20:00 mensaje'); break; }
-      scheduleReminder(parsed.ms, parsed.msg);
+      if (!parsed) { addMsg('arex','Formato: `/recordar 30min mensaje` · `/recordar 2h mensaje` · `/recordar 20:00 mensaje`'); break; }
+      saveReminder(parsed.ms, parsed.msg);
       const mins = Math.round(parsed.ms / 60000);
-      addMsg('arex', `Recordatorio programado: "${parsed.msg}" en ${mins < 60 ? mins+' minutos' : (mins/60).toFixed(1)+' horas'}.`);
+      addMsg('arex', `✅ Recordatorio guardado: "${parsed.msg}" — ${mins < 60 ? mins+' min' : (mins/60).toFixed(1)+' h'}.`);
       break;
     }
 
@@ -1361,6 +2004,7 @@ async function handleCommand(cmd) {
       const fb = AREX_CONFIG.firebase || {};
       document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
       document.getElementById('cfg2-tavily').value  = AREX_CONFIG.tavilyKey || '';
+      document.getElementById('cfg2-owm').value     = AREX_CONFIG.owmKey    || '';
       document.getElementById('cfg2-fb-key').value     = fb.apiKey            || '';
       document.getElementById('cfg2-fb-domain').value  = fb.authDomain        || '';
       document.getElementById('cfg2-fb-project').value = fb.projectId         || '';
@@ -1380,14 +2024,20 @@ async function handleCommand(cmd) {
         if (found) break;
       }
       if (found) { openCodePanel(found); }
-      else { addMsg('arex','No encontré código en el historial reciente. Pídeme que genere código HTML/JS primero.'); }
+      else { openCodePanel(''); addMsg('arex','No encontré código reciente — abrí el editor con una plantilla vacía.'); }
       break;
     }
 
     case 'tarea': {
-      if (!args) { addMsg('arex', 'Uso: `/tarea descripción de la tarea`\nEjemplo: `/tarea Estudiar para el examen`'); break; }
-      addTarea(args);
-      addMsg('arex', `✅ Tarea agregada: **${args}**`);
+      if (!args) { addMsg('arex', 'Uso: `/tarea texto !alta @2026-05-25`\n- `!alta` / `!media` / `!baja` → prioridad\n- `@YYYY-MM-DD` → fecha límite'); break; }
+      const prioMatch = args.match(/!(alta|media|baja)/i);
+      const fechaMatch = args.match(/@(\d{4}-\d{2}-\d{2})/);
+      const prio  = prioMatch  ? prioMatch[1].toLowerCase() : 'media';
+      const fecha = fechaMatch ? fechaMatch[1] : '';
+      const texto = args.replace(/!(alta|media|baja)/gi, '').replace(/@\d{4}-\d{2}-\d{2}/g, '').trim();
+      if (!texto) { addMsg('arex', 'Escribe la descripción de la tarea.'); break; }
+      addTarea(texto, fecha, prio);
+      addMsg('arex', `✅ Tarea agregada: **${texto}**${fecha ? ` · 📅 ${fecha}` : ''}${prio !== 'media' ? ` · prioridad ${prio}` : ''}`);
       break;
     }
 
@@ -1521,19 +2171,17 @@ async function handleSend() {
   await autoSummarize();
 
   try {
-    const reply = await callGroq(webCtx);
+    const sources = webCtx?.results?.slice(0, 3) || null;
+    let srcHTML = '';
+    if (sources?.length) {
+      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+    }
+    const wrap = makeArexWrap(srcHTML);
+    hideThinking();
+    const reply = await streamArexReply(wrap, webCtx);
     history.push({ role:'assistant', content: reply });
     await saveMsg('assistant', reply);
     updateMemMetric();
-
-    hideThinking();
-    const sources = webCtx?.results?.slice(0,3) || null;
-    let srcHTML = '';
-    if (sources?.length) {
-      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
-    }
-    const wrap = makeArexWrap(srcHTML);
-    await renderArexReply(wrap, reply);
     updateCtxSuggestions();
     saveCurrentSession();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
@@ -1556,16 +2204,27 @@ async function handleSend() {
 /* ── Eventos ────────────────────────────────────────── */
 document.getElementById('btn-nueva-sesion')?.addEventListener('click', startNewSession);
 
-// Módulo Tareas — botón agregar y Enter en input
-document.getElementById('tarea-add-btn')?.addEventListener('click', () => {
-  const inp = document.getElementById('tarea-input');
-  if (inp?.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
+// Módulo Tareas — prioridad selector
+let _prioActual = 'media';
+document.getElementById('tarea-prio-btns')?.addEventListener('click', e => {
+  const btn = e.target.closest('.prio-btn');
+  if (!btn) return;
+  _prioActual = btn.dataset.prio;
+  document.querySelectorAll('#tarea-prio-btns .prio-btn').forEach(b => b.classList.toggle('active', b === btn));
 });
+
+function _doAddTarea() {
+  const inp   = document.getElementById('tarea-input');
+  const fecha = document.getElementById('tarea-fecha')?.value || '';
+  if (!inp?.value.trim()) return;
+  addTarea(inp.value.trim(), fecha, _prioActual);
+  inp.value = '';
+  if (document.getElementById('tarea-fecha')) document.getElementById('tarea-fecha').value = '';
+}
+
+document.getElementById('tarea-add-btn')?.addEventListener('click', _doAddTarea);
 document.getElementById('tarea-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const inp = e.target;
-    if (inp.value.trim()) { addTarea(inp.value.trim()); inp.value = ''; }
-  }
+  if (e.key === 'Enter') _doAddTarea();
 });
 btnSend.addEventListener('click', handleSend);
 txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
@@ -1711,6 +2370,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   const config = {
     groqKey:   groq,
     tavilyKey: document.getElementById('cfg2-tavily').value.trim() || '',
+    owmKey:    document.getElementById('cfg2-owm').value.trim()    || '',
     firebase:  fbKey ? {
       apiKey:            fbKey,
       authDomain:        document.getElementById('cfg2-fb-domain').value.trim(),
@@ -1730,6 +2390,10 @@ document.querySelectorAll('.cp-tab').forEach(tab =>
   tab.addEventListener('click', () => switchCpTab(tab.dataset.tab))
 );
 document.getElementById('cp-close').addEventListener('click', closeCpPanel);
+document.getElementById('dock-btn-codigo').addEventListener('click', () => {
+  const currentCode = document.getElementById('cp-editor').value.trim();
+  openCodePanel(currentCode || '');
+});
 document.getElementById('cp-run-btn').addEventListener('click', () => {
   const code = document.getElementById('cp-editor').value.trim();
   if (code) {
@@ -1782,12 +2446,12 @@ if ('serviceWorker' in navigator) {
 /* ── Secuencia de arranque ──────────────────────────── */
 async function boot() {
   const lines = [
-    'Iniciando AREX v3.0...',
-    'Cargando módulos de IA...',
+    'Iniciando AREX v4.0...',
+    'Cargando módulos — IA · Finanzas · Tareas · SOS...',
     'Conectando Firebase...',
     'Restaurando memoria de sesión...',
-    'Cargando sistema de voz...',
-    'Activando búsqueda web...',
+    'Activando recordatorios y notificaciones...',
+    'Activando búsqueda web y sistema de clima...',
     'Todos los sistemas en línea.'
   ];
   const bootLines = document.getElementById('boot-lines');
@@ -1806,6 +2470,9 @@ async function boot() {
   updateCtxBadge();
   updateSidebarAll();
   renderTareas();
+  restoreReminders();
+  initSOSEvents();
+  renderSOSModule();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
@@ -1814,6 +2481,118 @@ async function boot() {
   bootScreen.style.display = 'none';
   txt.focus();
 }
+
+// ── CLIMA ─────────────────────────────────────────────────────────────────
+const WEATHER_CACHE_KEY = 'arex_weather_cache';
+const WEATHER_HIDE_KEY  = 'arex_weather_hidden';
+const WEATHER_TTL       = 30 * 60 * 1000;
+
+async function fetchWeather() {
+  const key = AREX_CONFIG?.owmKey;
+  if (!key) return null;
+  const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+  if (cached) {
+    const { data, ts } = JSON.parse(cached);
+    if (Date.now() - ts < WEATHER_TTL) return data;
+  }
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=Hermosillo,MX&appid=${encodeURIComponent(key)}&units=metric&lang=es`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    return data;
+  } catch { return null; }
+}
+
+function _weatherIcon(id) {
+  if (id >= 200 && id < 300) return '⛈';
+  if (id >= 300 && id < 400) return '🌦';
+  if (id >= 500 && id < 600) return '🌧';
+  if (id >= 600 && id < 700) return '❄';
+  if (id >= 700 && id < 800) return '🌫';
+  if (id === 800)             return '☀';
+  if (id === 801)             return '🌤';
+  if (id === 802)             return '⛅';
+  return '☁';
+}
+
+function renderWeatherWidget() {
+  const el = document.getElementById('dash-weather');
+  if (!el) return;
+  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
+  const key    = AREX_CONFIG?.owmKey;
+
+  const toggleBtn = `<button class="weather-toggle" onclick="toggleWeatherWidget()" title="${hidden ? 'Mostrar' : 'Ocultar'}">${hidden ? '◎' : '⊙'}</button>`;
+
+  if (!key) {
+    el.innerHTML = `
+      <div class="dash-w-header">
+        <span class="dash-w-title">CLIMA — HERMOSILLO</span>
+        <button class="dash-w-link" onclick="document.getElementById('modal-config').classList.remove('hidden')">CONFIGURAR →</button>
+      </div>
+      <div class="dash-empty">Agrega tu OpenWeatherMap API Key en /config para ver el clima</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="dash-w-header">
+      <span class="dash-w-title">CLIMA — HERMOSILLO</span>
+      ${toggleBtn}
+    </div>
+    <div class="weather-body${hidden ? ' hidden' : ''}">
+      <span class="dash-empty" style="font-size:0.65rem">Cargando...</span>
+    </div>`;
+
+  fetchWeather().then(data => {
+    const body = el.querySelector('.weather-body');
+    if (!body) return;
+    if (!data) {
+      body.innerHTML = '<div class="dash-empty">Sin datos — verifica tu API Key en /config</div>';
+      return;
+    }
+    const icon  = _weatherIcon(data.weather[0].id);
+    const desc  = data.weather[0].description.replace(/^\w/, c => c.toUpperCase());
+    const temp  = Math.round(data.main.temp);
+    const feels = Math.round(data.main.feels_like);
+    const hum   = data.main.humidity;
+    const wind  = Math.round(data.wind.speed * 3.6);
+    const tmax  = Math.round(data.main.temp_max);
+    const tmin  = Math.round(data.main.temp_min);
+    body.innerHTML = `
+      <div class="weather-main">
+        <span class="weather-icon">${icon}</span>
+        <span class="weather-temp">${temp}°<span class="weather-unit">C</span></span>
+        <span class="weather-desc">${desc}</span>
+      </div>
+      <div class="weather-details">
+        <div class="weather-stat"><span class="wst-label">SENSACIÓN</span><span class="wst-val">${feels}°C</span></div>
+        <div class="weather-stat"><span class="wst-label">HUMEDAD</span><span class="wst-val">${hum}%</span></div>
+        <div class="weather-stat"><span class="wst-label">VIENTO</span><span class="wst-val">${wind} km/h</span></div>
+        <div class="weather-stat"><span class="wst-label">MÁX / MÍN</span><span class="wst-val">${tmax}° / ${tmin}°</span></div>
+      </div>`;
+  });
+}
+
+function toggleWeatherWidget() {
+  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
+  localStorage.setItem(WEATHER_HIDE_KEY, hidden ? '0' : '1');
+  renderWeatherWidget();
+}
+window.toggleWeatherWidget = toggleWeatherWidget;
+
+// ── Exponer funciones de render al scope global para jarvis.js
+// (app.js es módulo ES6 — sus funciones no son globales por defecto)
+window.renderDashboard = renderDashboard;
+window.renderSOSModule = renderSOSModule;
+
+// Actualiza countdowns de recordatorios cada 30 segundos
+setInterval(() => {
+  document.querySelectorAll('.rec-cd[data-de]').forEach(el => {
+    el.textContent = fmtCountdown(parseInt(el.dataset.de));
+  });
+}, 30000);
 
 // Punto de entrada — siempre registrar el handler del setup
 setupSaveHandler();

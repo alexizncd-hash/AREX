@@ -1,5 +1,15 @@
-const CACHE = 'arex-v5';
-const SHELL = ['./index.html', './icon.svg', './manifest.json'];
+const CACHE = 'arex-v6';
+const SHELL = [
+  './index.html',
+  './style.css',
+  './app.js',
+  './jarvis.js',
+  './finanzas.js',
+  './finanzas.css',
+  './finanzas-data.js',
+  './manifest.json',
+  './icon.svg',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
@@ -16,11 +26,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // No cachear llamadas a APIs externas
   const url = e.request.url;
   if (url.includes('groq.com') || url.includes('tavily') ||
       url.includes('firebase') || url.includes('gstatic') ||
-      url.includes('cdnjs') || url.includes('jsdelivr')) return;
+      url.includes('cdnjs') || url.includes('jsdelivr') ||
+      url.includes('openweathermap.org')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))

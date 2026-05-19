@@ -447,6 +447,7 @@ const FinanzasModule = {
     });
 
     this.actualizarMetricas();
+    this.renderDashboard();
     document.getElementById('edit-ok')?.classList.remove('hidden');
     setTimeout(() => document.getElementById('edit-ok')?.classList.add('hidden'), 2500);
   },
