@@ -412,6 +412,24 @@ main {
 }
 .msg.file .bubble { border-left:3px solid var(--orange); background:rgba(255,153,0,0.04); }
 
+/* ── Pills de acciones ejecutadas ───────────────────── */
+.accion-pills {
+  display:flex; flex-wrap:wrap; gap:5px;
+  margin-top:6px; animation:appear 0.3s ease-out;
+}
+.apill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:20px;
+  font-size:0.65rem; letter-spacing:1px;
+  border:1px solid; max-width:240px;
+}
+.apill span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.apill-tarea  { color:#00d4ff; border-color:rgba(0,212,255,0.35); background:rgba(0,212,255,0.06); }
+.apill-nota   { color:#00ffaa; border-color:rgba(0,255,170,0.35); background:rgba(0,255,170,0.06); }
+.apill-habito { color:#ffaa00; border-color:rgba(255,170,0,0.35); background:rgba(255,170,0,0.06); }
+.apill-rec    { color:#ff9944; border-color:rgba(255,153,68,0.35); background:rgba(255,153,68,0.06); }
+.apill-nav    { color:#8888aa; border-color:rgba(136,136,170,0.25); background:rgba(136,136,170,0.04); }
+
 .msg-actions {
   display:flex; gap:4px; opacity:0; transition:opacity 0.15s; height:0; overflow:hidden;
 }

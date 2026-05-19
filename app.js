@@ -125,10 +125,51 @@ function saveMemoria(entries) {
   localStorage.setItem('arex_memoria', JSON.stringify(entries));
 }
 function buildMemoriaSection() {
-  const entries = loadMemoria();
-  if (!entries.length) return '';
-  return `\n\nMEMORIA PERMANENTE (datos que Alexiz guardó para referencia constante):\n${entries.map((e, i) => `${i + 1}. ${e.text}`).join('\n')}`;
+  const entries  = loadMemoria();
+  const lastUser = history.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+  const hechos   = getHechosRelevantes(lastUser, 8);
+  let section = '';
+  if (entries.length) section += `MEMORIA PERMANENTE (datos fijos de Alexiz):\n${entries.map((e,i) => `${i+1}. ${e.text}`).join('\n')}`;
+  if (hechos.length)  section += `${section?'\n\n':''}HECHOS APRENDIDOS EN CONVERSACIONES:\n${hechos.map(h => `- [${h.fecha}] ${h.texto}`).join('\n')}`;
+  return section ? `\n\n${section}` : '';
 }
+
+/* ── Memoria de hechos ──────────────────────────────── */
+function getHechos() { return JSON.parse(localStorage.getItem('arex_hechos') || '[]'); }
+function saveHechos(arr) { localStorage.setItem('arex_hechos', JSON.stringify(arr)); }
+
+function addHecho(texto, fuente = 'auto') {
+  if (!texto?.trim()) return;
+  const arr = getHechos();
+  if (arr.some(h => h.texto.toLowerCase() === texto.toLowerCase().trim())) return;
+  arr.unshift({ id: String(Date.now()), texto: texto.trim(), fecha: _todayStr(), fuente });
+  if (arr.length > 300) arr.splice(300);
+  saveHechos(arr);
+}
+
+function deleteHecho(id) {
+  saveHechos(getHechos().filter(h => h.id !== id));
+}
+
+function getHechosRelevantes(query, max = 10) {
+  const all = getHechos();
+  if (!query) return all.slice(0, max);
+  const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  if (!words.length) return all.slice(0, max);
+  return all
+    .map(h => ({ ...h, score: words.filter(w => h.texto.toLowerCase().includes(w)).length }))
+    .filter(h => h.score > 0)
+    .sort((a, b) => b.score - a.score || b.id.localeCompare(a.id))
+    .slice(0, max);
+}
+
+function renderHechosList() {
+  const hechos = getHechos();
+  if (!hechos.length) return addMsg('arex', 'Sin hechos almacenados aún. AREX los aprende automáticamente de las conversaciones, o dime explícitamente "recuerda que..."');
+  const txt = hechos.slice(0, 30).map((h, i) => `**${i+1}.** [${h.fecha}] ${h.texto}`).join('\n');
+  addMsg('arex', `📚 **HECHOS APRENDIDOS** (${hechos.length} total):\n\n${txt}\n\n_Usa \`/hechos borrar N\` para eliminar el hecho #N._`);
+}
+window.deleteHecho = deleteHecho;
 
 /* ── System prompt ──────────────────────────────────── */
 function buildSystemBase() {
@@ -202,7 +243,25 @@ REGLAS:
 
 FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
 "Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
-"Aquí el análisis." | "Datos disponibles." | "Operación completada."`.trim();
+"Aquí el análisis." | "Datos disponibles." | "Operación completada."
+
+SISTEMA DE ACCIONES — LEE ESTO CON ATENCIÓN:
+Puedes ejecutar acciones reales dentro de AREX usando etiquetas al FINAL de tu respuesta.
+Úsalas cuando el usuario pida crear algo, o cuando detectes que debes guardar información.
+
+Crear tarea:       <arex:accion tipo="addTarea" texto="descripción" fecha="YYYY-MM-DD" prioridad="alta|media|baja"/>
+Crear nota:        <arex:accion tipo="addNota" titulo="título" cuerpo="contenido completo"/>
+Crear hábito:      <arex:accion tipo="addHabito" nombre="nombre" emoji="🎯"/>
+Recordatorio:      <arex:accion tipo="recordar" msg="mensaje" mins="30"/>
+Guardar hecho:     <arex:accion tipo="hecho" texto="dato importante sobre Alexiz"/>
+Abrir módulo:      <arex:accion tipo="modulo" nombre="tareas|notas|finanzas|habitos|inicio"/>
+
+REGLAS DE ACCIONES:
+- Usa SOLO si hay intención clara del usuario de crear algo, o si aprendes un hecho nuevo relevante.
+- Para "hecho": úsalo cuando aprendas metas, decisiones, datos personales, contexto importante de Alexiz.
+- Las etiquetas van AL FINAL del texto, nunca en medio de la respuesta.
+- En tu texto NO menciones las etiquetas — solo confirma brevemente lo que hiciste ("Tarea creada.", "Guardado.").
+- Puedes incluir múltiples acciones en una respuesta.`.trim();
 }
 
 const EXAM_ADDON = `
@@ -1296,25 +1355,100 @@ function _attachRunBtn(wrap, text) {
   if (/<!DOCTYPE|<html/i.test(code)) setTimeout(() => openCodePanel(code), 400);
 }
 
+/* ── Sistema de acciones ────────────────────────────── */
+const _ACCION_RE = /<arex:accion([^>]*)\/>/g;
+
+function _parseAttrs(str) {
+  const a = {};
+  str.replace(/(\w+)="([^"]*)"/g, (_, k, v) => { a[k] = v; });
+  return a;
+}
+
+function addNotaProgrammatic(titulo, cuerpo) {
+  const arr  = getNotas();
+  const id   = String(Date.now());
+  arr.unshift({ id, titulo: titulo || '', cuerpo: cuerpo || '', pinned: false, color: '', createdAt: Date.now(), updatedAt: Date.now() });
+  saveNotas(arr);
+  if (document.getElementById('module-notas')?.classList.contains('active')) renderNotas();
+  renderDashboard();
+}
+
+function _stripAcciones(text) {
+  return text.replace(/<arex:accion[^>]*\/>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function ejecutarAcciones(rawText, wrap) {
+  const pills = [];
+  const re    = /<arex:accion([^>]*)\/>/g;
+  let m;
+  while ((m = re.exec(rawText)) !== null) {
+    const a = _parseAttrs(m[1]);
+    switch (a.tipo) {
+      case 'addTarea':
+        addTarea(a.texto || '', a.fecha || '', a.prioridad || 'media');
+        pills.push({ icon: '✓', label: `Tarea: ${a.texto || ''}`, cls: 'apill-tarea' });
+        break;
+      case 'addNota':
+        addNotaProgrammatic(a.titulo || '', a.cuerpo || '');
+        pills.push({ icon: '📝', label: a.titulo ? `Nota: ${a.titulo}` : 'Nota creada', cls: 'apill-nota' });
+        break;
+      case 'addHabito':
+        addHabito(a.nombre || a.texto || '', a.emoji || '🎯');
+        pills.push({ icon: '🔥', label: `Hábito: ${a.nombre || a.texto || ''}`, cls: 'apill-habito' });
+        break;
+      case 'recordar': {
+        const ms = (parseInt(a.mins) || 30) * 60000;
+        saveReminder(ms, a.msg || a.texto || '');
+        pills.push({ icon: '⏰', label: `Recordatorio: ${a.msg || a.texto || ''}`, cls: 'apill-rec' });
+        break;
+      }
+      case 'hecho':
+        addHecho(a.texto || '', 'arex');
+        break;
+      case 'modulo':
+        AREXNav?.cambiarModulo(a.nombre || '');
+        pills.push({ icon: '→', label: `Módulo: ${a.nombre || ''}`, cls: 'apill-nav' });
+        break;
+    }
+  }
+
+  if (pills.length && wrap) {
+    const el = document.createElement('div');
+    el.className = 'accion-pills';
+    el.innerHTML = pills.map(p =>
+      `<span class="apill ${p.cls}">${p.icon} <span>${p.label.replace(/</g,'&lt;').slice(0,60)}</span></span>`
+    ).join('');
+    wrap.appendChild(el);
+  }
+
+  return pills.length;
+}
+
 async function renderArexReply(wrap, text) {
-  await typewrite(wrap.querySelector('.bubble'), text);
-  _msgRaw.set(wrap, text);
-  _attachRunBtn(wrap, text);
+  const clean = _stripAcciones(text);
+  await typewrite(wrap.querySelector('.bubble'), clean);
+  _msgRaw.set(wrap, clean);
+  _attachRunBtn(wrap, clean);
+  ejecutarAcciones(text, wrap);
 }
 
 async function streamArexReply(wrap, webCtx) {
   const bubble = wrap.querySelector('.bubble');
+  bubble.classList.add('streaming');
   bubble.textContent = '';
   const full = await callGroqStream(webCtx, accumulated => {
-    bubble.textContent = accumulated;
+    bubble.textContent = _stripAcciones(accumulated);
     chat.scrollTop = chat.scrollHeight;
   });
-  bubble.innerHTML = renderMarkdown(full);
+  bubble.classList.remove('streaming');
+  const clean = _stripAcciones(full);
+  bubble.innerHTML = renderMarkdown(clean);
   applyHighlight(bubble);
-  _msgRaw.set(wrap, full);
+  _msgRaw.set(wrap, clean);
   chat.scrollTop = chat.scrollHeight;
-  _attachRunBtn(wrap, full);
-  return full;
+  _attachRunBtn(wrap, clean);
+  await ejecutarAcciones(full, wrap);
+  return clean;
 }
 
 /* ── Indicador pensando ─────────────────────────────── */
@@ -1587,6 +1721,7 @@ const VOICE_CMDS = [
   { phrases:['modo examen','activar examen','modo de examen'],      cmd:'/examen'   },
   { phrases:['abrir notas','ver notas','mis notas'],                cmd:'/notas'    },
   { phrases:['ver estadísticas','estadísticas del sistema'],        cmd:'/stats'    },
+  { phrases:['ver hechos','mis hechos','qué recuerdas','memoria aprendida'], cmd:'/hechos' },
   { phrases:['ver comandos','mostrar ayuda','ayuda'],               cmd:'/ayuda'    },
   { phrases:['activar búsqueda','búsqueda web','buscar en internet'], cmd:'__search__' },
   { phrases:['resumir conversación','resume la conversación'],      cmd:'/resumir'  },
@@ -2366,6 +2501,18 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'hechos': {
+      if (args?.startsWith('borrar ')) {
+        const n = parseInt(args.split(' ')[1]) - 1;
+        const arr = getHechos();
+        if (arr[n]) { deleteHecho(arr[n].id); addMsg('arex', `Hecho #${n+1} eliminado.`); }
+        else addMsg('arex', 'Número de hecho inválido. Usa `/hechos` para ver la lista.');
+      } else {
+        renderHechosList();
+      }
+      break;
+    }
+
     case 'recordar': {
       await requestNotifPerm();
       if (!args) {
@@ -2542,6 +2689,15 @@ async function handleSend() {
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
+
+  // Detectar "recuerda que..." → guardar hecho inmediatamente
+  const recuerdaMatch = msg.match(/^recuerda(?:\s+que)?\s+(.+)/i);
+  if (recuerdaMatch) {
+    addHecho(recuerdaMatch[1], 'manual');
+    addMsg('user', msg);
+    addMsg('arex', `Guardado en memoria: "${recuerdaMatch[1]}"`);
+    return;
+  }
 
   // Detectar URLs en el mensaje
   const msgURLs = extractURLs(msg);
