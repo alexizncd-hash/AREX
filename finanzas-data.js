@@ -241,7 +241,8 @@ const FINANZAS_DATA = {
       { mes: 'Ene 2026', oro: 1566, crea: 74,  plata: 0 },
       { mes: 'Feb 2026', oro: 1456, crea: 103, plata: 0 },
       { mes: 'Mar 2026', oro: 1570, crea: 84,  plata: 0 },
-      { mes: 'Abr 2026', oro: 1188, crea: 90,  plata: 0 }
+      { mes: 'Abr 2026', oro: 1188, crea: 90,  plata: 0 },
+      { mes: 'May 2026', oro: 0,    crea: 0,   plata: 0 }
     ],
     totalIntereses: 10445 + 387 + 3232,
     totalPenalizaciones: 1904,

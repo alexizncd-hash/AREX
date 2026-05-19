@@ -1,12 +1,16 @@
 {
+  "id": "arex-personal",
   "name": "AREX — Sistema de Inteligencia Personal",
   "short_name": "AREX",
-  "description": "Sistema de inteligencia personal de Alexiz",
+  "description": "Sistema de inteligencia personal de Alexiz — IA, finanzas, tareas y más",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#020c14",
   "theme_color": "#00d4ff",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "categories": ["productivity", "finance", "utilities"],
   "icons": [
     {
       "src": "icon.svg",

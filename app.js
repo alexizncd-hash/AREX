@@ -242,10 +242,21 @@ function applyHighlight(el) {
   el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
 }
 
-/* ── PDF.js worker ──────────────────────────────────── */
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* ── PDF.js (lazy) ──────────────────────────────────── */
+const PDF_SRC    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDF_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let _pdfReady = false;
+async function ensurePdfJs() {
+  if (_pdfReady) return;
+  if (typeof pdfjsLib === 'undefined') {
+    await new Promise((ok, fail) => {
+      const s = document.createElement('script');
+      s.src = PDF_SRC; s.onload = ok; s.onerror = fail;
+      document.head.appendChild(s);
+    });
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+  _pdfReady = true;
 }
 
 /* ── Estado global ──────────────────────────────────── */
@@ -1416,7 +1427,7 @@ async function handleMultipleURLs(urls, question) {
 
 /* ── Procesamiento de archivos ──────────────────────── */
 async function extractPDF(file) {
-  if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js no disponible. Recarga la página.');
+  await ensurePdfJs();
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   let text = '';
@@ -2435,12 +2446,12 @@ if ('serviceWorker' in navigator) {
 /* ── Secuencia de arranque ──────────────────────────── */
 async function boot() {
   const lines = [
-    'Iniciando AREX v3.0...',
-    'Cargando módulos de IA...',
+    'Iniciando AREX v4.0...',
+    'Cargando módulos — IA · Finanzas · Tareas · SOS...',
     'Conectando Firebase...',
     'Restaurando memoria de sesión...',
-    'Cargando sistema de voz...',
-    'Activando búsqueda web...',
+    'Activando recordatorios y notificaciones...',
+    'Activando búsqueda web y sistema de clima...',
     'Todos los sistemas en línea.'
   ];
   const bootLines = document.getElementById('boot-lines');
