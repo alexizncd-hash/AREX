@@ -131,9 +131,16 @@ function buildMemoriaSection() {
 }
 
 /* ── System prompt ──────────────────────────────────── */
-const SYSTEM_BASE = `
-Eres AREX, el sistema de inteligencia personal de Alexiz.
+function buildSystemBase() {
+  const now  = new Date();
+  const fecha = now.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const hora  = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+  return `Eres AREX, el sistema de inteligencia personal de Alexiz.
 Tu nombre nace de Alexiz y Margaret — las dos personas más importantes en su vida.
+
+CONTEXTO OPERACIONAL:
+- Fecha: ${fecha}. Hora: ${hora}.
+- Ubicación: Hermosillo, Sonora, México (UTC-7).
 
 IDENTIDAD Y TONO:
 - Formal, preciso y directo. Sin rodeos. Como JARVIS con Tony Stark.
@@ -152,11 +159,19 @@ QUIÉN ES ALEXIZ:
 - Valora su familia y a Margaret, su novia — fundamental en su vida.
 - Prefiere entender el "mínimo funcional" antes de profundizar.
 
+MÓDULOS DEL SISTEMA (puedes referirte a ellos):
+- FINANZAS: tarjetas de crédito, saldos, gastos mensuales, calculadora de deuda, recordatorios de pago.
+- TAREAS: lista de pendientes con fecha límite y prioridad alta/media/baja.
+- RECORDATORIOS: activos con countdown, persistentes entre sesiones (/recordar 30min, /recordar 20:00).
+- SOS: módulo de emergencias — 911, GPS, SMS, WhatsApp, tarjeta médica, contactos de emergencia.
+- CÓDIGO: editor con preview en vivo de HTML/CSS/JS (sandbox iframe).
+- DASHBOARD: vista de inicio con resumen de tareas urgentes, finanzas y clima.
+
 ÁREAS DE EXPERTISE:
-1. PROGRAMACIÓN: HTML, CSS, JavaScript. Explica el concepto antes del código. Comenta el código clave.
+1. PROGRAMACIÓN: HTML, CSS, JavaScript. Explica el concepto antes del código. Comenta solo lo no obvio.
 2. UNIVERSIDAD: trabajos, proyectos, exámenes, resúmenes, análisis, ensayos.
 3. NEGOCIOS: estrategia, ideas, propuestas, análisis, decisiones.
-4. FINANZAS PERSONALES: presupuestos, ahorro, inversión, control de gastos.
+4. FINANZAS PERSONALES: presupuestos, ahorro, inversión, control de gastos, deuda, tarjetas.
 5. DESARROLLO PERSONAL: hábitos, rutinas, mentalidad, metas, disciplina.
 6. SALUD Y BIENESTAR: físico, mental, espiritual.
 7. RELACIONES: comunicación, familia, pareja.
@@ -180,14 +195,15 @@ REGLAS:
 - Responde SIEMPRE en español.
 - 3-5 líneas por defecto. Expándete si Alexiz pide más detalle.
 - Código: describe brevemente qué hace (1 línea), luego el bloque de código completo.
-- Señala errores o mejores enfoques directamente.
-- Si hay riesgos, menciónalos con claridad.
-- Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes.
+- Señala errores o mejores enfoques directamente, sin rodeos.
+- Si hay riesgos o errores en el planteamiento de Alexiz, díselo primero.
+- Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes con claridad.
+- Para temas de finanzas personales, considera el contexto de México (tasas, productos, normativa local).
 
 FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
 "Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
-"Aquí el análisis." | "Datos disponibles." | "Operación completada."
-`.trim();
+"Aquí el análisis." | "Datos disponibles." | "Operación completada."`.trim();
+}
 
 const EXAM_ADDON = `
 
@@ -239,6 +255,8 @@ let searchOn   = false;
 let examMode   = false;
 let isSpeaking = false;
 let isBusy     = false;
+
+const _msgRaw = new WeakMap(); // wrap element → raw markdown text
 
 const NOTE_CATEGORIES = ['General','Estudio','Ideas','Trabajo','Personal'];
 let noteFilter = 'all';
@@ -696,7 +714,20 @@ function addMsg(role, text, sources) {
       sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
     }</div>`;
   }
-  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${srcHTML}`;
+  const actionsHTML = role !== 'user'
+    ? `<div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button></div>`
+    : '';
+  wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${actionsHTML}${srcHTML}`;
+  if (role !== 'user') {
+    wrap.querySelector('.msg-copy')?.addEventListener('click', () => {
+      const text = wrap.querySelector('.bubble').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = wrap.querySelector('.msg-copy');
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = '⎘', 1500);
+      }).catch(() => {});
+    });
+  }
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   if (role !== 'user') applyHighlight(wrap);
@@ -789,25 +820,78 @@ function makeArexWrap(srcHTML = '') {
   document.querySelector('.welcome')?.remove();
   const wrap = document.createElement('div');
   wrap.className = 'msg arex';
-  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="run-wrap"></div>${srcHTML}`;
+  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button><button class="msg-regen" title="Regenerar">↺</button></div><div class="run-wrap"></div>${srcHTML}`;
+
+  wrap.querySelector('.msg-copy').addEventListener('click', () => {
+    const text = _msgRaw.get(wrap) || wrap.querySelector('.bubble').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = wrap.querySelector('.msg-copy');
+      const prev = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(() => btn.textContent = prev, 1500);
+    }).catch(() => {});
+  });
+
+  wrap.querySelector('.msg-regen').addEventListener('click', async () => {
+    if (isBusy) return;
+    if (history.length && history[history.length - 1].role === 'assistant') history.pop();
+    if (!history.length || history[history.length - 1].role !== 'user') return;
+    wrap.remove();
+    isBusy = true; btnSend.disabled = true;
+    setOrb('thinking', 'Regenerando...');
+    showThinking();
+    try {
+      const newWrap = makeArexWrap();
+      hideThinking();
+      const reply = await streamArexReply(newWrap, null);
+      history.push({ role: 'assistant', content: reply });
+      await saveMsg('assistant', reply);
+      saveCurrentSession();
+      if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
+    } catch(err) {
+      hideThinking();
+      addMsg('arex', `Error al regenerar: ${err.message}`);
+      setOrb(null, 'En espera de instrucciones');
+    } finally {
+      isBusy = false; btnSend.disabled = false;
+    }
+  });
+
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   return wrap;
 }
+
+function _attachRunBtn(wrap, text) {
+  const code = extractCodeBlock(text);
+  if (!code) return;
+  const btn = document.createElement('button');
+  btn.className = 'run-btn';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
+  btn.onclick = () => openCodePanel(code);
+  wrap.querySelector('.run-wrap').appendChild(btn);
+  if (/<!DOCTYPE|<html/i.test(code)) setTimeout(() => openCodePanel(code), 400);
+}
+
 async function renderArexReply(wrap, text) {
   await typewrite(wrap.querySelector('.bubble'), text);
-  const code = extractCodeBlock(text);
-  if (code) {
-    const btn = document.createElement('button');
-    btn.className = 'run-btn';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
-    btn.onclick = () => openCodePanel(code);
-    wrap.querySelector('.run-wrap').appendChild(btn);
-    // Auto-ejecutar si es un documento HTML completo (visualización / herramienta)
-    if (/<!DOCTYPE|<html/i.test(code)) {
-      setTimeout(() => openCodePanel(code), 400);
-    }
-  }
+  _msgRaw.set(wrap, text);
+  _attachRunBtn(wrap, text);
+}
+
+async function streamArexReply(wrap, webCtx) {
+  const bubble = wrap.querySelector('.bubble');
+  bubble.textContent = '';
+  const full = await callGroqStream(webCtx, accumulated => {
+    bubble.textContent = accumulated;
+    chat.scrollTop = chat.scrollHeight;
+  });
+  bubble.innerHTML = renderMarkdown(full);
+  applyHighlight(bubble);
+  _msgRaw.set(wrap, full);
+  chat.scrollTop = chat.scrollHeight;
+  _attachRunBtn(wrap, full);
+  return full;
 }
 
 /* ── Indicador pensando ─────────────────────────────── */
@@ -1368,7 +1452,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = SYSTEM_BASE + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
   let messages = [...history];
 
   if (webCtx) {
@@ -1391,6 +1475,50 @@ async function callGroq(webCtx) {
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   return data.choices[0].message.content;
+}
+
+/* ── Llamada a Groq (streaming) ─────────────────────── */
+async function callGroqStream(webCtx, onChunk) {
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  let messages = [...history];
+
+  if (webCtx) {
+    const last = messages[messages.length - 1];
+    const webSection = webCtx.answer ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n` : '';
+    messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
+  }
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: examMode ? 1500 : 1000,
+      stream: true,
+      messages: [{ role: 'system', content: systemPrompt }, ...messages]
+    })
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
+
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') return full;
+      try {
+        const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
+        if (delta) { full += delta; onChunk(full); }
+      } catch {}
+    }
+  }
+  return full;
 }
 
 /* ── Llamada a Groq (visión) ────────────────────────── */
@@ -1990,19 +2118,17 @@ async function handleSend() {
   await autoSummarize();
 
   try {
-    const reply = await callGroq(webCtx);
+    const sources = webCtx?.results?.slice(0, 3) || null;
+    let srcHTML = '';
+    if (sources?.length) {
+      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+    }
+    const wrap = makeArexWrap(srcHTML);
+    hideThinking();
+    const reply = await streamArexReply(wrap, webCtx);
     history.push({ role:'assistant', content: reply });
     await saveMsg('assistant', reply);
     updateMemMetric();
-
-    hideThinking();
-    const sources = webCtx?.results?.slice(0,3) || null;
-    let srcHTML = '';
-    if (sources?.length) {
-      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i)=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
-    }
-    const wrap = makeArexWrap(srcHTML);
-    await renderArexReply(wrap, reply);
     updateCtxSuggestions();
     saveCurrentSession();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');

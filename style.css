@@ -412,6 +412,22 @@ main {
 }
 .msg.file .bubble { border-left:3px solid var(--orange); background:rgba(255,153,0,0.04); }
 
+.msg-actions {
+  display:flex; gap:4px; opacity:0; transition:opacity 0.15s; height:0; overflow:hidden;
+}
+.msg.arex:hover .msg-actions {
+  opacity:1; height:auto; overflow:visible;
+}
+.msg-copy, .msg-regen {
+  background:rgba(0,15,28,0.9); border:1px solid rgba(0,212,255,0.15);
+  color:rgba(0,212,255,0.45); font-family:var(--font); font-size:0.62rem;
+  letter-spacing:1px; padding:2px 7px; cursor:pointer; border-radius:2px;
+  transition:all 0.15s;
+}
+.msg-copy:hover, .msg-regen:hover {
+  color:var(--cyan); border-color:rgba(0,212,255,0.5);
+}
+
 .sources { margin-top:6px; font-size:10px; color:var(--text-muted); letter-spacing:1px; }
 .sources a { color:var(--cyan-dim); text-decoration:none; }
 .sources a:hover { color:var(--cyan); }
