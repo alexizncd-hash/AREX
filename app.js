@@ -428,6 +428,10 @@ function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
   renderTareas();
 }
+function updateTarea(id, changes) {
+  saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
+  renderTareas();
+}
 function renderTareas() {
   const all     = getTareas();
   const pending = sortPending(all.filter(t => !t.done));
@@ -448,9 +452,56 @@ function renderTareas() {
           ${t.fecha && t.done ? `<span class="tarea-fecha-done">📅 ${new Date(t.fecha+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>` : ''}
         </div>
       </div>
-      <button class="tarea-del" data-id="${t.id}">✕</button>`;
+      <div class="tarea-actions">
+        ${!t.done ? '<button class="tarea-edit" title="Editar">✎</button>' : ''}
+        <button class="tarea-del" title="Eliminar">✕</button>
+      </div>`;
+
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
-    div.querySelector('.tarea-del').addEventListener('click', () => deleteTarea(t.id));
+
+    div.querySelector('.tarea-edit')?.addEventListener('click', () => {
+      let _ep = t.prioridad || 'media';
+      div.innerHTML = `
+        <div class="tarea-edit-form">
+          <input class="tarea-edit-text" type="text" value="${t.text.replace(/"/g,'&quot;')}" placeholder="Descripción..."/>
+          <div class="tarea-edit-row">
+            <input class="tarea-edit-fecha" type="date" value="${t.fecha || ''}"/>
+            <div class="tarea-edit-prio-btns">
+              <button class="tep${t.prioridad==='alta'?' active':''}" data-p="alta">ALTA</button>
+              <button class="tep${(!t.prioridad||t.prioridad==='media')?' active':''}" data-p="media">MEDIA</button>
+              <button class="tep${t.prioridad==='baja'?' active':''}" data-p="baja">BAJA</button>
+            </div>
+          </div>
+          <div class="tarea-edit-btns">
+            <button class="tarea-edit-save">GUARDAR</button>
+            <button class="tarea-edit-cancel">CANCELAR</button>
+          </div>
+        </div>`;
+      div.querySelectorAll('.tep').forEach(b => b.addEventListener('click', () => {
+        _ep = b.dataset.p;
+        div.querySelectorAll('.tep').forEach(x => x.classList.toggle('active', x === b));
+      }));
+      div.querySelector('.tarea-edit-save').addEventListener('click', () => {
+        const text = div.querySelector('.tarea-edit-text').value.trim();
+        if (!text) return;
+        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep });
+      });
+      div.querySelector('.tarea-edit-cancel').addEventListener('click', () => renderTareas());
+      div.querySelector('.tarea-edit-text').select();
+    });
+
+    let _tap = false, _tapTimer;
+    div.querySelector('.tarea-del').addEventListener('click', function() {
+      if (_tap) {
+        clearTimeout(_tapTimer); deleteTarea(t.id);
+      } else {
+        _tap = true; this.textContent = '?'; this.classList.add('confirming');
+        _tapTimer = setTimeout(() => {
+          _tap = false; this.textContent = '✕'; this.classList.remove('confirming');
+        }, 2000);
+      }
+    });
+
     return div;
   };
 
@@ -1650,6 +1701,7 @@ async function loadStats() {
 /* ── Auto-compresión al llegar a 80 mensajes ────────── */
 async function autoSummarize() {
   if (history.length < 80) return;
+  addMsg('arex', '📋 Optimizando memoria de conversación — comprimiendo historial...');
   const toCompress = history.slice(0, -15);
   const toKeep     = history.slice(-15);
   try {
@@ -1681,16 +1733,6 @@ async function requestNotifPerm() {
     await Notification.requestPermission();
   }
 }
-function scheduleReminder(ms, message) {
-  setTimeout(() => {
-    if (Notification.permission === 'granted') {
-      new Notification('AREX — Recordatorio', { body: message, icon:'icon.svg' });
-    }
-    addMsg('arex', `⏰ Recordatorio: ${message}`);
-    if (voiceOn) arexSpeak(`Recordatorio: ${message}`);
-  }, ms);
-}
-
 /* ── Recordatorios persistentes ─────────────────────── */
 function getRecordatorios() { return JSON.parse(localStorage.getItem('arex_recordatorios') || '[]'); }
 function saveRecordatorios(arr) { localStorage.setItem('arex_recordatorios', JSON.stringify(arr)); }

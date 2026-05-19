@@ -953,11 +953,46 @@ footer {
 .tarea-urg-badge.urg-pronto  { color:#f97316; }
 .tarea-urg-badge.urg-semana  { color:#f59e0b; }
 .tarea-fecha-done { font-size:0.6rem; color:#1e4a60; }
-.tarea-del {
+.tarea-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; opacity:0; transition:opacity 0.15s; }
+.tarea-item:hover .tarea-actions { opacity:1; }
+.tarea-edit, .tarea-del {
   background:none; border:none; color:#1e4a60; cursor:pointer;
-  font-size:10px; padding:0 2px; flex-shrink:0; transition:color 0.15s;
+  font-size:11px; padding:2px 4px; flex-shrink:0; transition:all 0.15s; border-radius:2px;
 }
-.tarea-del:hover { color:#ef4444; }
+.tarea-edit:hover { color:var(--cyan); }
+.tarea-del:hover  { color:#ef4444; }
+.tarea-del.confirming { color:#ef4444; font-weight:700; }
+
+/* Formulario de edición inline */
+.tarea-edit-form { display:flex; flex-direction:column; gap:6px; width:100%; padding:2px 0; }
+.tarea-edit-text {
+  background:rgba(0,15,28,0.8); border:1px solid rgba(0,212,255,0.3);
+  color:var(--text-main); font-family:var(--font); font-size:12px;
+  padding:5px 8px; border-radius:3px; outline:none; width:100%;
+}
+.tarea-edit-text:focus { border-color:var(--cyan); }
+.tarea-edit-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.tarea-edit-fecha {
+  background:rgba(0,15,28,0.8); border:1px solid rgba(0,212,255,0.2);
+  color:var(--text-main); font-family:var(--font); font-size:11px;
+  padding:3px 6px; border-radius:3px; outline:none;
+}
+.tarea-edit-prio-btns { display:flex; gap:4px; }
+.tep {
+  background:none; border:1px solid rgba(0,212,255,0.15);
+  color:#1e4a60; font-family:var(--font); font-size:0.55rem;
+  letter-spacing:1px; padding:2px 6px; cursor:pointer; border-radius:2px; transition:all 0.15s;
+}
+.tep.active, .tep:hover { color:var(--cyan); border-color:rgba(0,212,255,0.5); }
+.tarea-edit-btns { display:flex; gap:6px; }
+.tarea-edit-save, .tarea-edit-cancel {
+  background:none; border:1px solid rgba(0,212,255,0.2);
+  color:rgba(0,212,255,0.6); font-family:var(--font); font-size:0.55rem;
+  letter-spacing:2px; padding:3px 10px; cursor:pointer; border-radius:2px; transition:all 0.15s;
+}
+.tarea-edit-save:hover  { background:rgba(0,212,255,0.1); color:var(--cyan); border-color:var(--cyan); }
+.tarea-edit-cancel:hover { color:#ef4444; border-color:rgba(239,68,68,0.4); }
+
 .tarea-empty { font-size:10px; color:#1e4a60; padding:6px 0; letter-spacing:1px; }
 .tareas-count.has-urgentes { color:#ef4444; }
 .dock-badge.urgente { background:#ef4444; box-shadow:0 0 6px rgba(239,68,68,0.5); }
