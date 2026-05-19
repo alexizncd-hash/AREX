@@ -3073,7 +3073,49 @@ window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(
 
 // PWA
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW:', e));
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Detectar cuando el SW se actualiza en segundo plano
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker?.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          _showUpdateBanner();
+        }
+      });
+    });
+  }).catch(e => console.warn('SW:', e));
+
+  // Mensaje del SW activo indicando nueva versión
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') _showUpdateBanner();
+  });
+}
+
+function _showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.innerHTML = `
+    <span>⬆ Nueva versión de AREX disponible</span>
+    <button onclick="window.location.reload(true)">ACTUALIZAR</button>
+    <button onclick="this.parentElement.remove()" style="opacity:0.5;font-size:10px">×</button>
+  `;
+  banner.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:rgba(0,14,26,0.97);border:1px solid rgba(0,212,255,0.5);
+    color:#00d4ff;font-family:monospace;font-size:11px;letter-spacing:1px;
+    padding:10px 14px;border-radius:6px;z-index:9999;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 0 20px rgba(0,212,255,0.2);
+    animation:appear 0.3s ease-out;
+    white-space:nowrap;
+  `;
+  banner.querySelector('button').style.cssText = `
+    background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.5);
+    color:#00d4ff;font-family:monospace;font-size:10px;letter-spacing:2px;
+    padding:4px 10px;border-radius:3px;cursor:pointer;
+  `;
+  document.body.appendChild(banner);
 }
 
 /* ── Secuencia de arranque ──────────────────────────── */
