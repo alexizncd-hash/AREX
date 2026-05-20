@@ -231,6 +231,7 @@ Reglas de código para el panel:
 - Si piden juego → Canvas con game loop, controles de teclado/mouse
 - Si piden gráfica → Canvas dibujado a mano con los datos
 - Si piden herramienta → HTML/CSS/JS funcional completo
+- CRÍTICO: antes de cerrar el bloque de código, verifica mentalmente que no haya comas dobles, paréntesis sin cerrar ni variables sin declarar. ctx.arc() requiere exactamente 5 argumentos: (x, y, radius, startAngle, endAngle).
 
 REGLAS:
 - Responde SIEMPRE en español.
@@ -1256,12 +1257,20 @@ function extractCodeBlock(text) {
   }
   return best;
 }
+const _CP_ERR_HANDLER = `<script>(function(){function _arexErr(m,l){if(document.getElementById('__ae'))return;var d=document.createElement('div');d.id='__ae';d.style.cssText='position:fixed;top:0;left:0;right:0;background:rgba(200,28,28,0.94);color:#fff;font-family:monospace;font-size:11px;padding:8px 12px;z-index:99999;word-break:break-all;line-height:1.5';d.textContent='⚠ Error'+(l?' — l\xednea '+l:'')+': '+m;(document.body||document.documentElement).appendChild(d);}window.onerror=function(m,s,l){_arexErr(m,l);return true;};window.addEventListener('error',function(e){_arexErr(e.message||e.type,e.lineno);});})();<\/script>`;
+const _CP_META = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}canvas,img,video{max-width:100%;height:auto}</style>`;
+
 function wrapCodeIfNeeded(code) {
-  if (/<!DOCTYPE|<html/i.test(code)) return code;
-  if (!/^\s*</.test(code)) {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{box-sizing:border-box}body{margin:0;background:#020c14;color:#e0f4ff;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;}</style></head><body><script>${code}<\/script></body></html>`;
+  if (/<!DOCTYPE|<html/i.test(code)) {
+    // Full HTML — inject error handler + responsive meta after opening <head>
+    if (/<head>/i.test(code))  return code.replace(/<head>/i,  '<head>'  + _CP_META + _CP_ERR_HANDLER);
+    if (/<body[^>]*>/i.test(code)) return code.replace(/<body([^>]*)>/i, '<body$1>' + _CP_ERR_HANDLER);
+    return _CP_ERR_HANDLER + code;
   }
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{box-sizing:border-box}body{margin:0;background:#020c14;color:#e0f4ff;}</style></head><body>${code}</body></html>`;
+  if (!/^\s*</.test(code)) {
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8">${_CP_META}${_CP_ERR_HANDLER}<style>body{margin:0;background:#020c14;color:#e0f4ff;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;}</style></head><body><script>${code}<\/script></body></html>`;
+  }
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${_CP_META}${_CP_ERR_HANDLER}<style>body{margin:0;background:#020c14;color:#e0f4ff;}</style></head><body>${code}</body></html>`;
 }
 function runInIframe(code) {
   document.getElementById('cp-iframe').srcdoc = wrapCodeIfNeeded(code);
