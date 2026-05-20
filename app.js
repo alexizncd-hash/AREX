@@ -639,7 +639,8 @@ function renderNotas() {
   notas.sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt));
 
   if (!notas.length) {
-    el.innerHTML = `<div class="notas-empty">${q ? `Sin resultados para "${q}"` : 'Sin notas — toca + NUEVA para crear una'}</div>`;
+    const safeQ = q.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    el.innerHTML = `<div class="notas-empty">${q ? `Sin resultados para "${safeQ}"` : 'Sin notas — toca + NUEVA para crear una'}</div>`;
     return;
   }
 
@@ -1444,7 +1445,7 @@ async function renderArexReply(wrap, text) {
   await typewrite(wrap.querySelector('.bubble'), clean);
   _msgRaw.set(wrap, clean);
   _attachRunBtn(wrap, clean);
-  ejecutarAcciones(text, wrap);
+  await ejecutarAcciones(text, wrap);
 }
 
 async function streamArexReply(wrap, webCtx) {
@@ -2619,6 +2620,7 @@ async function handleCommand(cmd) {
     case 'memoria': {
       const memoriaModal = document.getElementById('modal-memoria');
       const memoriaList  = document.getElementById('memoria-list');
+      if (!memoriaModal || !memoriaList) break;
       const entries = loadMemoria();
       memoriaList.innerHTML = '';
       if (!entries.length) {
@@ -2839,12 +2841,14 @@ document.getElementById('tarea-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') _doAddTarea();
 });
 document.getElementById('btn-tarea-hoy')?.addEventListener('click', () => {
-  document.getElementById('tarea-fecha').value = _todayStr();
+  const f = document.getElementById('tarea-fecha');
+  if (f) f.value = _todayStr();
   document.getElementById('tarea-input')?.focus();
 });
 document.getElementById('btn-tarea-man')?.addEventListener('click', () => {
   const d = new Date(); d.setDate(d.getDate() + 1);
-  document.getElementById('tarea-fecha').value = d.toISOString().slice(0, 10);
+  const f = document.getElementById('tarea-fecha');
+  if (f) f.value = d.toISOString().slice(0, 10);
   document.getElementById('tarea-input')?.focus();
 });
 btnSend.addEventListener('click', handleSend);
@@ -2928,7 +2932,7 @@ document.getElementById('btn-close-context').addEventListener('click', () => mod
 document.getElementById('btn-close-atajos').addEventListener('click',  () => modalAtalos.classList.add('hidden'));
 document.getElementById('btn-close-memoria').addEventListener('click', () => document.getElementById('modal-memoria').classList.add('hidden'));
 const modalMemoria = document.getElementById('modal-memoria');
-[modalStats, modalHelp, modalConfig, modalContext, modalAtalos, modalMemoria].forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
+[modalStats, modalHelp, modalConfig, modalContext, modalAtalos, modalMemoria].filter(m => m).forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.add('hidden'); }));
 
 // Agregar entrada de memoria
 document.getElementById('memoria-add').addEventListener('click', () => {

@@ -91,7 +91,7 @@ const FinanzasModule = {
     const tarjetasOrdenadas = [...getFinanzasData().tarjetas].sort((a, b) => a.prioridad - b.prioridad);
 
     tarjetasOrdenadas.forEach(tarjeta => {
-      const porcentajeUso   = ((tarjeta.saldo / tarjeta.limite) * 100).toFixed(1);
+      const porcentajeUso   = tarjeta.limite > 0 ? ((tarjeta.saldo / tarjeta.limite) * 100).toFixed(1) : '0.0';
       const prioridadTexto  = tarjeta.prioridad === 1 ? 'URGENTE' : tarjeta.prioridad === 2 ? 'ALTA' : 'MEDIA';
       const prioridadClass  = tarjeta.prioridad === 1 ? 'urgente' : tarjeta.prioridad === 2 ? 'alta'  : 'media';
 
@@ -150,7 +150,7 @@ const FinanzasModule = {
     const ingreso = getFinanzasData().config.ingresoMensual;
 
     gastosOrdenados.forEach(gasto => {
-      const pctGastos  = ((gasto.monto / totalGastos) * 100).toFixed(1);
+      const pctGastos  = totalGastos > 0 ? ((gasto.monto / totalGastos) * 100).toFixed(1) : '0.0';
       const pctIngreso = ingreso > 0 ? ((gasto.monto / ingreso) * 100).toFixed(1) : '—';
       const bar = document.createElement('div');
       bar.className = 'gasto-bar';
@@ -258,7 +258,7 @@ const FinanzasModule = {
       el.className = 'calendario-dia';
       if (dia === hoy.getDate()) el.classList.add('hoy');
 
-      const tienePago = FINANZAS_DATA.tarjetas.some(t => t.fechaCorte === dia || t.fechaLimite === dia);
+      const tienePago = getFinanzasData().tarjetas.some(t => t.fechaCorte === dia || t.fechaLimite === dia);
       if (tienePago) {
         el.classList.add('tiene-pago');
         el.innerHTML = `<span class="dia-numero">${dia}</span><span class="dia-indicador">💳</span>`;
