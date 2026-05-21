@@ -2149,18 +2149,23 @@ header {
   .dock-bottom,
   .dock-sos-sep { display: none; }
 
-  /* Nav se reparte de forma uniforme horizontalmente */
+  /* Nav scrollable horizontalmente cuando hay muchos botones */
   .dock-nav {
     flex-direction: row;
     width: 100%;
-    justify-content: space-around;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
     gap: 0;
     flex: 1;
   }
+  .dock-nav::-webkit-scrollbar { display: none; }
 
   /* Botones de nav en barra inferior */
   #dock .nav-btn {
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 56px;
     flex-direction: column;
     padding: 8px 4px;
     min-height: 50px;

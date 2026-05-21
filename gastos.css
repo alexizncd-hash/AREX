@@ -1,0 +1,104 @@
+/* ══════════════════════════════════════════════════════
+   AREX — Módulo Gastos Personales
+   ══════════════════════════════════════════════════════ */
+
+/* ── Panel activo ── */
+#module-gastos.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
+
+/* ── Vistas ── */
+#module-gastos .neg-view { display: none; }
+#module-gastos .neg-view.active { display: block; }
+
+/* ── Navegación de mes ── */
+.gp-mes-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Lista de categorías ── */
+.gp-cats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ── Fila de categoría ── */
+.gp-cat-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+/* ── Icono de categoría ── */
+.gp-cat-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Info de categoría (nombre + barra) ── */
+.gp-cat-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Nombre de categoría ── */
+.gp-cat-name {
+  font-size: 11px;
+  color: var(--text-main);
+}
+
+/* ── Barra de progreso (fondo) ── */
+.gp-cat-track {
+  height: 4px;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* ── Barra de progreso (relleno) ── */
+.gp-cat-fill {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.gp-cat-fill.over {
+  background: #ff6644;
+}
+
+/* ── Columna de números (gasto / presupuesto) ── */
+.gp-cat-nums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── Texto de presupuesto debajo del gasto ── */
+.gp-cat-pres {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .gp-cat-name { font-size: 10px; }
+  .gp-cat-nums { font-size: 10px; }
+}

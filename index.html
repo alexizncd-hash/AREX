@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
 <link rel="stylesheet" href="finanzas.css"/>
 <link rel="stylesheet" href="negocio.css"/>
+<link rel="stylesheet" href="gastos.css"/>
+<link rel="stylesheet" href="metas.css"/>
 </head>
 <body>
 
@@ -452,6 +454,22 @@
         <path d="M16 10a4 4 0 0 1-8 0"/>
       </svg>
       <span class="dock-label">NEGOCIO</span>
+    </button>
+    <button class="nav-btn" data-module="gastos" data-tooltip="Gastos personales">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <path d="M2 10h20"/>
+        <path d="M7 15h.01M11 15h2"/>
+      </svg>
+      <span class="dock-label">GASTOS</span>
+    </button>
+    <button class="nav-btn" data-module="metas" data-tooltip="Metas y objetivos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="6"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+      <span class="dock-label">METAS</span>
     </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1005,12 +1023,42 @@
   </div>
 </div>
 
+<!-- ── Módulo: Gastos Personales ── -->
+<div id="module-gastos" class="module-panel">
+  <div class="neg-subnav">
+    <button class="neg-tab active" data-view="resumen">RESUMEN</button>
+    <button class="neg-tab" data-view="historial">HISTORIAL</button>
+    <button class="neg-tab" data-view="presupuesto">PRESUPUESTO</button>
+  </div>
+  <div class="neg-content">
+    <div class="neg-view active" data-view="resumen"     id="gp-resumen-content"></div>
+    <div class="neg-view"        data-view="historial"   id="gp-hist-content"></div>
+    <div class="neg-view"        data-view="presupuesto" id="gp-pres-content"></div>
+  </div>
+</div>
+
+<!-- ── Módulo: Metas ── -->
+<div id="module-metas" class="module-panel">
+  <div class="neg-subnav">
+    <button class="neg-tab active" data-view="activas">ACTIVAS</button>
+    <button class="neg-tab" data-view="nueva">+ NUEVA</button>
+    <button class="neg-tab" data-view="completadas">LOGRADAS</button>
+  </div>
+  <div class="neg-content">
+    <div class="neg-view active" data-view="activas"     id="metas-activas-content"></div>
+    <div class="neg-view"        data-view="nueva"       id="metas-nueva-content"></div>
+    <div class="neg-view"        data-view="completadas" id="metas-comp-content"></div>
+  </div>
+</div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
 <script src="finanzas-data.js"></script>
 <script src="finanzas.js"></script>
 <script src="negocio.js"></script>
+<script src="gastos.js"></script>
+<script src="metas.js"></script>
 <script src="jarvis.js"></script>
 
 <!-- Marked (Markdown parser) -->

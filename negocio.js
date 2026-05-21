@@ -13,6 +13,7 @@ function getNegocioData() {
       costoKg:      30,   // precio de compra por kg
       rendimiento:  1.8,  // medio litros por kg
       costoEmpaque: 0.5,  // costo del vaso/envase
+      metaMensual:  0,    // meta de ventas por mes
     },
     inventario: { stockKg: 0, historial: [] },
     sucursales: [],
@@ -93,6 +94,21 @@ function renderNegDashboard() {
     ...data.gastos.slice(-3).map(g => ({ fecha: g.fecha, tipo: 'gasto', desc: g.concepto, monto: g.monto }))
   ].sort((a, b) => b.fecha - a.fecha).slice(0, 6);
 
+  // ── Gráfica últimos 7 días ──
+  const chartDays = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const end   = start + 86400000;
+    const tot   = data.ventas.filter(v => v.fecha >= start && v.fecha < end).reduce((a, v) => a + v.total, 0);
+    chartDays.push({ label: d.toLocaleDateString('es-MX', { weekday:'short' }).slice(0,3).toUpperCase(), total: tot });
+  }
+  const chartMax = Math.max(...chartDays.map(d => d.total), 1);
+
+  // ── Meta mensual ──
+  const meta    = data.config.metaMensual || 0;
+  const metaPct = meta > 0 ? Math.min(100, (totalVentas / meta) * 100).toFixed(0) : 0;
+
   document.getElementById('neg-dash-content').innerHTML = `
     <div class="neg-kpi-grid">
       <div class="neg-kpi ${data.inventario.stockKg < 5 ? 'neg-kpi-warn' : ''}">
@@ -114,6 +130,30 @@ function renderNegDashboard() {
         <div class="neg-kpi-lbl">SUCURSALES</div>
         <div class="neg-kpi-val">${data.sucursales.filter(s => s.activa).length}</div>
         <div class="neg-kpi-sub">${top ? 'Top: ' + top[0] : 'Sin ventas'}</div>
+      </div>
+    </div>
+
+    ${meta > 0 ? `
+    <div class="neg-meta-bar">
+      <div class="neg-meta-label">
+        <span>META MENSUAL</span>
+        <span>${$MXN(totalVentas)} / ${$MXN(meta)} · ${metaPct}%</span>
+      </div>
+      <div class="neg-meta-track">
+        <div class="neg-meta-fill ${parseInt(metaPct) >= 100 ? 'complete' : ''}" style="width:${metaPct}%"></div>
+      </div>
+    </div>` : ''}
+
+    <div class="neg-chart">
+      <div class="neg-chart-title">VENTAS ÚLTIMOS 7 DÍAS</div>
+      <div class="neg-chart-bars">
+        ${chartDays.map(d => `
+          <div class="neg-chart-col">
+            <div class="neg-chart-bar-wrap">
+              <div class="neg-chart-bar ${d.total > 0 ? 'has-val' : ''}" style="height:${Math.round((d.total/chartMax)*100)}%"></div>
+            </div>
+            <div class="neg-chart-lbl">${d.label}</div>
+          </div>`).join('')}
       </div>
     </div>
 
@@ -601,6 +641,10 @@ function renderNegConfig() {
         <label>Costo de empaque por medio litro ($)</label>
         <input type="number" id="neg-c-empaque"  class="neg-input" value="${cfg.costoEmpaque}" step="0.1"/>
       </div>
+      <div class="neg-cfg-fila">
+        <label>Meta de ventas mensual ($) — 0 = sin meta</label>
+        <input type="number" id="neg-c-meta" class="neg-input" value="${cfg.metaMensual || 0}" step="100" min="0"/>
+      </div>
       <button class="neg-btn-primary" onclick="negGuardarConfig()">GUARDAR CONFIGURACIÓN</button>
     </div>
 
@@ -621,6 +665,7 @@ function negGuardarConfig() {
   data.config.costoKg      = get('neg-c-costokg') || data.config.costoKg;
   data.config.rendimiento  = get('neg-c-rend')    || data.config.rendimiento;
   data.config.costoEmpaque = get('neg-c-empaque') ?? 0;
+  data.config.metaMensual  = get('neg-c-meta')    || 0;
   saveNegocioData(data);
   renderNegConfig();
 }

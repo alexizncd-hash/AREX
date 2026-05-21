@@ -1,0 +1,160 @@
+/* ══════════════════════════════════════════════════════
+   AREX — Módulo Metas
+   ══════════════════════════════════════════════════════ */
+
+/* Panel activo */
+#module-metas.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
+
+/* Vistas */
+#module-metas .neg-view { display: none; }
+#module-metas .neg-view.active { display: block; }
+
+/* ── Tarjeta de meta ── */
+.meta-card {
+  border: 1px solid rgba(0,212,255,0.12);
+  background: rgba(0,14,26,0.5);
+  border-radius: 6px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meta-card.meta-done {
+  opacity: 0.7;
+}
+
+/* ── Cabecera ── */
+.meta-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.meta-titulo {
+  font-size: 13px;
+  color: var(--text-main);
+  margin-top: 4px;
+}
+
+.meta-cat-badge {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  border: 1px solid;
+  padding: 1px 6px;
+  border-radius: 2px;
+  display: inline-block;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Descripción ── */
+.meta-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Barra de progreso ── */
+.meta-progress-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(0,212,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.meta-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.meta-pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Pie de tarjeta ── */
+.meta-footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.meta-val {
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.meta-dias {
+  color: var(--text-muted);
+}
+
+/* ── Acciones ── */
+.meta-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.meta-update-input {
+  flex: 1;
+}
+
+/* ── Botón LOGRADA ── */
+.meta-btn-done {
+  padding: 6px 12px;
+  background: rgba(0,255,170,0.08);
+  border: 1px solid #00ffaa;
+  color: #00ffaa;
+  font-family: var(--font);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.meta-btn-done:hover { background: rgba(0,255,170,0.18); }
+.meta-btn-done:active { transform: translateY(1px); }
+
+/* ── Etiqueta de lograda (vista completadas) ── */
+.meta-lograda-lbl {
+  font-size: 10px;
+  color: #00ffaa;
+  letter-spacing: 1px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .meta-actions { flex-wrap: wrap; }
+}
+@media (max-width: 400px) {
+  .meta-card { padding: 0.7rem; }
+}
