@@ -2151,7 +2151,7 @@ async function analyzeImage(dataURL, question) {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
     body: JSON.stringify({
-      model:'llama-3.2-11b-vision-preview', max_tokens:1000,
+      model:'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens:1000,
       messages:[{ role:'user', content:[
         { type:'image_url', image_url:{ url: dataURL } },
         { type:'text', text: question }
