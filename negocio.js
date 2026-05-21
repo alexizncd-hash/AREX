@@ -206,7 +206,7 @@ function negRegistrarVenta() {
   // Descontar inventario automáticamente
   const kgUsados = cantidad / data.config.rendimiento;
   data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kgUsados);
-  data.inventario.historial.push({ fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
+  data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
 
   saveNegocioData(data);
   renderNegVentas();
@@ -289,6 +289,12 @@ function renderNegInventario() {
       <button class="neg-btn-primary" onclick="negAgregarStock()">AGREGAR STOCK</button>
     </div>
 
+    <div class="neg-form-card" style="border-color:rgba(255,153,0,0.2)">
+      <div class="neg-form-title" style="color:#ff9900">CORRECCIÓN MANUAL DE STOCK</div>
+      <input type="number" id="neg-i-ajuste" class="neg-input" placeholder="Stock correcto en kg (ej: 12.5)" step="0.1" min="0" style="width:100%"/>
+      <button class="neg-btn-primary" style="border-color:#ff9900;color:#ff9900" onclick="negAjustarStock()">ESTABLECER STOCK</button>
+    </div>
+
     <div class="neg-section-title">MOVIMIENTOS RECIENTES</div>
     ${data.inventario.historial.length === 0
       ? '<div class="neg-empty">Sin movimientos registrados.</div>'
@@ -301,7 +307,8 @@ function renderNegInventario() {
               </div>
               <div class="neg-li-bot">
                 <span>${$DATE(h.fecha)}</span>
-                ${h.nota ? `<span>${h.nota}</span>` : ''}
+                ${h.nota ? `<span>${escHTML(h.nota)}</span>` : ''}
+                ${h.id ? `<button class="neg-del" onclick="negEliminarHistorial('${h.id}')">✕</button>` : ''}
               </div>
             </div>`).join('')}
         </div>`}
@@ -319,7 +326,7 @@ function negAgregarStock() {
   const fecha = new Date(fechaStr + 'T12:00:00').getTime();
   data.inventario.stockKg += kg;
   data.inventario.historial.push({
-    fecha, tipo: 'entrada', kg,
+    id: String(Date.now()), fecha, tipo: 'entrada', kg,
     nota: costo > 0 ? `Compra ${$MXN(costo)}` : ''
   });
 
@@ -331,6 +338,29 @@ function negAgregarStock() {
     });
   }
 
+  saveNegocioData(data);
+  renderNegInventario();
+}
+
+function negAjustarStock() {
+  const kg = parseFloat(document.getElementById('neg-i-ajuste').value);
+  if (isNaN(kg) || kg < 0) { alert('Ingresa el valor correcto de stock en kg'); return; }
+  if (!confirm(`¿Establecer el stock en ${kg.toFixed(1)} kg? Esto reemplaza el valor actual.`)) return;
+  const data = getNegocioData();
+  const ant  = data.inventario.stockKg;
+  data.inventario.stockKg = kg;
+  data.inventario.historial.push({
+    id: String(Date.now()), fecha: Date.now(), tipo: kg >= ant ? 'entrada' : 'salida',
+    kg: Math.abs(kg - ant), nota: `Corrección manual (era ${$KG(ant)})`
+  });
+  saveNegocioData(data);
+  renderNegInventario();
+}
+
+function negEliminarHistorial(id) {
+  if (!confirm('¿Eliminar este movimiento del historial?')) return;
+  const data = getNegocioData();
+  data.inventario.historial = data.inventario.historial.filter(h => h.id !== id);
   saveNegocioData(data);
   renderNegInventario();
 }
@@ -610,6 +640,8 @@ window.negEliminarVenta       = negEliminarVenta;
 window.negEditarVenta         = negEditarVenta;
 window.negGuardarEditVenta    = negGuardarEditVenta;
 window.negAgregarStock        = negAgregarStock;
+window.negAjustarStock        = negAjustarStock;
+window.negEliminarHistorial   = negEliminarHistorial;
 window.negAgregarSucursal     = negAgregarSucursal;
 window.negToggleSucursal      = negToggleSucursal;
 window.negEliminarSucursal    = negEliminarSucursal;
