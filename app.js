@@ -232,6 +232,8 @@ Reglas de código para el panel:
 - Si piden gráfica → Canvas dibujado a mano con los datos
 - Si piden herramienta → HTML/CSS/JS funcional completo
 - CRÍTICO: antes de cerrar el bloque de código, verifica mentalmente que no haya comas dobles, paréntesis sin cerrar ni variables sin declarar. ctx.arc() requiere exactamente 5 argumentos: (x, y, radius, startAngle, endAngle).
+- CANVAS RESPONSIVO: SIEMPRE define el tamaño así: const W = Math.min(600, window.innerWidth); const H = W; canvas.width = W; canvas.height = H; — nunca uses width/height fijos mayores al viewport.
+- CANVAS CLICKS: SIEMPRE usa getBoundingClientRect() para coordenadas: const r = canvas.getBoundingClientRect(); const x = (e.clientX - r.left) * (canvas.width / r.width); const y = (e.clientY - r.top) * (canvas.height / r.height);
 
 REGLAS:
 - Responde SIEMPRE en español.
@@ -1259,7 +1261,39 @@ function extractCodeBlock(text) {
   return best;
 }
 const _CP_ERR_HANDLER = `<script>(function(){function _arexErr(m,l){if(document.getElementById('__ae'))return;var d=document.createElement('div');d.id='__ae';d.style.cssText='position:fixed;top:0;left:0;right:0;background:rgba(200,28,28,0.94);color:#fff;font-family:monospace;font-size:11px;padding:8px 12px;z-index:99999;word-break:break-all;line-height:1.5';d.textContent='⚠ Error'+(l?' — l\xednea '+l:'')+': '+m;(document.body||document.documentElement).appendChild(d);}window.onerror=function(m,s,l){_arexErr(m,l);return true;};window.addEventListener('error',function(e){_arexErr(e.message||e.type,e.lineno);});})();<\/script>`;
-const _CP_META = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}canvas,img,video{max-width:100%;height:auto}</style>`;
+const _CP_META = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0}canvas,img,video{max-width:100%;height:auto;display:block}</style><script>(function(){
+  /* Hace el canvas responsivo y corrige coordenadas de click al escalar */
+  var _origAEL = HTMLCanvasElement.prototype.addEventListener;
+  HTMLCanvasElement.prototype.addEventListener = function(type, fn, opts) {
+    var cv = this;
+    if (['click','mousedown','mousemove','mouseup','touchstart','touchend','touchmove'].indexOf(type) !== -1) {
+      _origAEL.call(cv, type, function(e) {
+        var r = cv.getBoundingClientRect();
+        var scaleX = cv.width / (r.width || cv.width);
+        var scaleY = cv.height / (r.height || cv.height);
+        if (Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01) {
+          /* Corregir clientX/Y para que coincidan con el sistema de coordenadas del canvas */
+          try {
+            Object.defineProperty(e, 'clientX', { get: function(){ return r.left + (e.__cx !== undefined ? e.__cx : (e.__cx = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0))) * scaleX - r.left * (scaleX - 1); }, configurable:true });
+            Object.defineProperty(e, 'clientY', { get: function(){ return r.top  + (e.__cy !== undefined ? e.__cy : (e.__cy = (e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0))) * scaleY - r.top  * (scaleY - 1); }, configurable:true });
+          } catch(_) {}
+        }
+        fn(e);
+      }, opts);
+    } else { _origAEL.call(cv, type, fn, opts); }
+  };
+  /* Aplicar aspect-ratio al canvas para que height:auto funcione correctamente */
+  function _fitCanvas() {
+    document.querySelectorAll('canvas').forEach(function(cv) {
+      var W = parseInt(cv.getAttribute('width')) || 0;
+      var H = parseInt(cv.getAttribute('height')) || 0;
+      if (W && H) { cv.style.aspectRatio = W + '/' + H; cv.style.maxWidth = '100%'; cv.style.height = 'auto'; }
+    });
+  }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', _fitCanvas); }
+  else { _fitCanvas(); }
+  window.addEventListener('resize', _fitCanvas);
+})();<\/script>`;
 
 function wrapCodeIfNeeded(code) {
   if (/<!DOCTYPE|<html/i.test(code)) {
