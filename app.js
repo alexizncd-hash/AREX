@@ -2828,12 +2828,13 @@ document.getElementById('tarea-prio-btns')?.addEventListener('click', e => {
 });
 
 function _doAddTarea() {
-  const inp   = document.getElementById('tarea-input');
-  const fecha = document.getElementById('tarea-fecha')?.value || '';
+  const inp    = document.getElementById('tarea-input');
+  const fechaEl = document.getElementById('tarea-fecha');
+  const fecha  = fechaEl?.value || '';
   if (!inp?.value.trim()) return;
   addTarea(inp.value.trim(), fecha, _prioActual);
   inp.value = '';
-  if (document.getElementById('tarea-fecha')) document.getElementById('tarea-fecha').value = '';
+  if (fechaEl) fechaEl.value = '';
 }
 
 document.getElementById('tarea-add-btn')?.addEventListener('click', _doAddTarea);
