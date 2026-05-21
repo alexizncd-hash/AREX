@@ -43,6 +43,8 @@ const $KG   = n => `${Number(n).toFixed(1)} kg`;
 const $DATE = d => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const inicioMes = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const escHTML = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Navegación de vistas ────────────────────────────
 function switchNegocioView(view) {
@@ -160,15 +162,16 @@ function renderNegVentas() {
       : `<div class="neg-list">
           ${data.ventas.slice().reverse().map(v => {
             const s = data.sucursales.find(s => s.id === v.sucursalId);
-            return `<div class="neg-list-item">
+            return `<div class="neg-list-item" data-venta-id="${v.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${s ? s.nombre : 'Sin sucursal'}</span>
+                <span class="neg-li-name">${escHTML(s ? s.nombre : 'Sin sucursal')}</span>
                 <span class="neg-profit">${$MXN(v.total)}</span>
               </div>
               <div class="neg-li-bot">
                 <span>${$DATE(v.fecha)}</span>
                 <span>${v.cantidad} ML × ${$MXN(v.precioUnitario)}</span>
-                <button class="neg-del" onclick="negEliminarVenta('${v.id}')">✕</button>
+                <button class="neg-edit" onclick="negEditarVenta('${v.id}')">editar</button>
+                <button class="neg-del"  onclick="negEliminarVenta('${v.id}')">✕</button>
               </div>
             </div>`;
           }).join('')}
@@ -213,6 +216,51 @@ function negEliminarVenta(id) {
   if (!confirm('¿Eliminar esta venta?')) return;
   const data = getNegocioData();
   data.ventas = data.ventas.filter(v => v.id !== id);
+  saveNegocioData(data);
+  renderNegVentas();
+}
+
+function negEditarVenta(id) {
+  const data = getNegocioData();
+  const v = data.ventas.find(v => v.id === id);
+  if (!v) return;
+  const el = document.querySelector(`[data-venta-id="${id}"]`);
+  if (!el) return;
+  const fechaStr = new Date(v.fecha).toISOString().slice(0, 10);
+  el.innerHTML = `
+    <div class="neg-form-row">
+      <select id="neg-ve-suc-${id}" class="neg-select">
+        ${data.sucursales.map(s =>
+          `<option value="${s.id}" ${s.id === v.sucursalId ? 'selected' : ''}>${escAttr(s.nombre)}</option>`
+        ).join('')}
+      </select>
+      <input type="number" id="neg-ve-cant-${id}" class="neg-input" value="${v.cantidad}" placeholder="ML" min="1"/>
+    </div>
+    <div class="neg-form-row">
+      <input type="number" id="neg-ve-precio-${id}" class="neg-input" value="${v.precioUnitario}" placeholder="Precio/ML" step="0.5"/>
+      <input type="date"   id="neg-ve-fecha-${id}"  class="neg-input" value="${fechaStr}"/>
+    </div>
+    <div class="neg-form-row" style="margin-top:0.2rem">
+      <button class="neg-btn-primary" onclick="negGuardarEditVenta('${id}')">GUARDAR</button>
+      <button class="neg-btn-primary neg-btn-cancel" onclick="renderNegVentas()">CANCELAR</button>
+    </div>`;
+}
+
+function negGuardarEditVenta(id) {
+  const data     = getNegocioData();
+  const v        = data.ventas.find(v => v.id === id);
+  if (!v) return;
+  const sucId    = document.getElementById(`neg-ve-suc-${id}`)?.value;
+  const cantidad = parseInt(document.getElementById(`neg-ve-cant-${id}`)?.value);
+  const precio   = parseFloat(document.getElementById(`neg-ve-precio-${id}`)?.value);
+  const fechaStr = document.getElementById(`neg-ve-fecha-${id}`)?.value;
+  if (!cantidad || cantidad < 1) { alert('Ingresa la cantidad'); return; }
+  if (!precio   || precio   <= 0) { alert('Ingresa el precio'); return; }
+  v.sucursalId    = sucId;
+  v.cantidad      = cantidad;
+  v.precioUnitario = precio;
+  v.total         = cantidad * precio;
+  v.fecha         = new Date(fechaStr + 'T12:00:00').getTime();
   saveNegocioData(data);
   renderNegVentas();
 }
@@ -308,16 +356,17 @@ function renderNegSucursales() {
             const vm  = data.ventas.filter(v => v.sucursalId === s.id && v.fecha >= im);
             const tot = vm.reduce((a, v) => a + v.total, 0);
             const ml  = vm.reduce((a, v) => a + v.cantidad, 0);
-            return `<div class="neg-list-item ${!s.activa ? 'neg-inactive' : ''}">
+            return `<div class="neg-list-item ${!s.activa ? 'neg-inactive' : ''}" data-suc-id="${s.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${s.nombre}</span>
+                <span class="neg-li-name">${escHTML(s.nombre)}</span>
                 <span class="neg-badge ${s.activa ? '' : 'neg-badge-off'}">${s.activa ? 'ACTIVA' : 'PAUSADA'}</span>
               </div>
               <div class="neg-li-bot">
                 <span>${ml} ML · ${$MXN(tot)} este mes</span>
-                ${s.contacto ? `<span>${s.contacto}</span>` : ''}
-                <button class="neg-del" onclick="negToggleSucursal('${s.id}')" style="color:var(--text-muted)">${s.activa ? 'pausar' : 'activar'}</button>
-                <button class="neg-del" onclick="negEliminarSucursal('${s.id}')">✕</button>
+                ${s.contacto ? `<span>${escHTML(s.contacto)}</span>` : ''}
+                <button class="neg-edit" onclick="negEditarSucursal('${s.id}')">editar</button>
+                <button class="neg-del"  onclick="negToggleSucursal('${s.id}')" style="color:var(--text-muted)">${s.activa ? 'pausar' : 'activar'}</button>
+                <button class="neg-del"  onclick="negEliminarSucursal('${s.id}')">✕</button>
               </div>
             </div>`;
           }).join('')}
@@ -348,6 +397,34 @@ function negEliminarSucursal(id) {
   const data = getNegocioData();
   data.sucursales = data.sucursales.filter(s => s.id !== id);
   saveNegocioData(data);
+  renderNegSucursales();
+}
+
+function negEditarSucursal(id) {
+  const data = getNegocioData();
+  const s = data.sucursales.find(s => s.id === id);
+  if (!s) return;
+  const el = document.querySelector(`[data-suc-id="${id}"]`);
+  if (!el) return;
+  el.innerHTML = `
+    <input id="neg-se-nom-${id}"  class="neg-input" value="${escAttr(s.nombre)}"          placeholder="Nombre" style="margin-bottom:0.4rem"/>
+    <input id="neg-se-con-${id}"  class="neg-input" value="${escAttr(s.contacto || '')}"  placeholder="Contacto (opcional)" style="margin-bottom:0.4rem"/>
+    <div class="neg-form-row">
+      <button class="neg-btn-primary" onclick="negGuardarEditSucursal('${id}')">GUARDAR</button>
+      <button class="neg-btn-primary neg-btn-cancel" onclick="renderNegSucursales()">CANCELAR</button>
+    </div>`;
+}
+
+function negGuardarEditSucursal(id) {
+  const nombre = document.getElementById(`neg-se-nom-${id}`)?.value.trim();
+  if (!nombre) { alert('Ingresa el nombre'); return; }
+  const data = getNegocioData();
+  const s = data.sucursales.find(s => s.id === id);
+  if (s) {
+    s.nombre   = nombre;
+    s.contacto = document.getElementById(`neg-se-con-${id}`)?.value.trim() || '';
+    saveNegocioData(data);
+  }
   renderNegSucursales();
 }
 
@@ -388,15 +465,16 @@ function renderNegGastos() {
       ? '<div class="neg-empty">Sin gastos registrados.</div>'
       : `<div class="neg-list">
           ${data.gastos.slice().reverse().map(g => `
-            <div class="neg-list-item">
+            <div class="neg-list-item" data-gasto-id="${g.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${g.concepto}</span>
+                <span class="neg-li-name">${escHTML(g.concepto)}</span>
                 <span class="neg-loss">${$MXN(g.monto)}</span>
               </div>
               <div class="neg-li-bot">
                 <span>${$DATE(g.fecha)}</span>
                 <span class="neg-badge">${TIPOS[g.tipo] || g.tipo}</span>
-                <button class="neg-del" onclick="negEliminarGasto('${g.id}')">✕</button>
+                <button class="neg-edit" onclick="negEditarGasto('${g.id}')">editar</button>
+                <button class="neg-del"  onclick="negEliminarGasto('${g.id}')">✕</button>
               </div>
             </div>`).join('')}
         </div>`}
@@ -422,6 +500,46 @@ function negEliminarGasto(id) {
   if (!confirm('¿Eliminar este gasto?')) return;
   const data = getNegocioData();
   data.gastos = data.gastos.filter(g => g.id !== id);
+  saveNegocioData(data);
+  renderNegGastos();
+}
+
+function negEditarGasto(id) {
+  const data = getNegocioData();
+  const g = data.gastos.find(g => g.id === id);
+  if (!g) return;
+  const el = document.querySelector(`[data-gasto-id="${id}"]`);
+  if (!el) return;
+  const fechaStr = new Date(g.fecha).toISOString().slice(0, 10);
+  const TIPOS = { materia_prima: 'Materia prima', empaque: 'Empaque', transporte: 'Transporte', otro: 'Otro' };
+  const opts = Object.entries(TIPOS).map(([v,l]) =>
+    `<option value="${v}" ${g.tipo === v ? 'selected' : ''}>${l}</option>`).join('');
+  el.innerHTML = `
+    <div class="neg-form-row">
+      <select id="neg-ge-tipo-${id}" class="neg-select">${opts}</select>
+      <input type="number" id="neg-ge-monto-${id}"   class="neg-input" value="${g.monto}" placeholder="Monto" step="1"/>
+    </div>
+    <div class="neg-form-row">
+      <input type="text" id="neg-ge-concepto-${id}" class="neg-input" value="${escAttr(g.concepto)}" placeholder="Descripción"/>
+      <input type="date" id="neg-ge-fecha-${id}"    class="neg-input" value="${fechaStr}"/>
+    </div>
+    <div class="neg-form-row" style="margin-top:0.2rem">
+      <button class="neg-btn-primary" onclick="negGuardarEditGasto('${id}')">GUARDAR</button>
+      <button class="neg-btn-primary neg-btn-cancel" onclick="renderNegGastos()">CANCELAR</button>
+    </div>`;
+}
+
+function negGuardarEditGasto(id) {
+  const data    = getNegocioData();
+  const g       = data.gastos.find(g => g.id === id);
+  if (!g) return;
+  const monto   = parseFloat(document.getElementById(`neg-ge-monto-${id}`)?.value);
+  if (!monto || monto <= 0) { alert('Ingresa el monto'); return; }
+  g.tipo      = document.getElementById(`neg-ge-tipo-${id}`)?.value    || g.tipo;
+  g.monto     = monto;
+  g.concepto  = document.getElementById(`neg-ge-concepto-${id}`)?.value.trim() || g.concepto;
+  const fs    = document.getElementById(`neg-ge-fecha-${id}`)?.value;
+  if (fs) g.fecha = new Date(fs + 'T12:00:00').getTime();
   saveNegocioData(data);
   renderNegGastos();
 }
@@ -485,17 +603,26 @@ function initNegocioModule() {
 }
 
 // ── Exports globales ────────────────────────────────
-window.renderNegocioModule  = () => switchNegocioView('dashboard');
-window.switchNegocioView    = switchNegocioView;
-window.negRegistrarVenta    = negRegistrarVenta;
-window.negEliminarVenta     = negEliminarVenta;
-window.negAgregarStock      = negAgregarStock;
-window.negAgregarSucursal   = negAgregarSucursal;
-window.negToggleSucursal    = negToggleSucursal;
-window.negEliminarSucursal  = negEliminarSucursal;
-window.negRegistrarGasto    = negRegistrarGasto;
-window.negEliminarGasto     = negEliminarGasto;
-window.negGuardarConfig     = negGuardarConfig;
+window.renderNegocioModule    = () => switchNegocioView('dashboard');
+window.switchNegocioView      = switchNegocioView;
+window.negRegistrarVenta      = negRegistrarVenta;
+window.negEliminarVenta       = negEliminarVenta;
+window.negEditarVenta         = negEditarVenta;
+window.negGuardarEditVenta    = negGuardarEditVenta;
+window.negAgregarStock        = negAgregarStock;
+window.negAgregarSucursal     = negAgregarSucursal;
+window.negToggleSucursal      = negToggleSucursal;
+window.negEliminarSucursal    = negEliminarSucursal;
+window.negEditarSucursal      = negEditarSucursal;
+window.negGuardarEditSucursal = negGuardarEditSucursal;
+window.negRegistrarGasto      = negRegistrarGasto;
+window.negEliminarGasto       = negEliminarGasto;
+window.negEditarGasto         = negEditarGasto;
+window.negGuardarEditGasto    = negGuardarEditGasto;
+window.negGuardarConfig       = negGuardarConfig;
+window.renderNegVentas        = renderNegVentas;
+window.renderNegSucursales    = renderNegSucursales;
+window.renderNegGastos        = renderNegGastos;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initNegocioModule);

@@ -1824,7 +1824,8 @@ function startListening() {
   setOrb('listening','Escuchando...');
   rec.onresult = async e => {
     btnMic.classList.remove('on');
-    const transcript = e.results[0][0].transcript;
+    const transcript = e.results?.[0]?.[0]?.transcript;
+    if (!transcript) return;
     const lower = transcript.toLowerCase().trim();
 
     // Detectar comandos de voz
@@ -2169,7 +2170,9 @@ async function callGroq(webCtx) {
   });
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
-  return data.choices[0].message.content;
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Respuesta inválida de API');
+  return content;
 }
 
 /* ── Llamada a Groq (streaming) ─────────────────────── */
@@ -2231,7 +2234,9 @@ async function analyzeImage(dataURL, question) {
   });
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
-  return data.choices[0].message.content;
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Respuesta inválida de API');
+  return content;
 }
 
 /* ── Firebase: guardar mensaje ──────────────────────── */
@@ -2365,7 +2370,8 @@ async function autoSummarize() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    const summary = data.choices[0].message.content;
+    const summary = data?.choices?.[0]?.message?.content;
+    if (!summary) return;
     history = [{ role:'assistant', content:`[Resumen de conversación anterior]\n${summary}` }, ...toKeep];
     updateMemMetric();
   } catch(e) { console.warn('Auto-summarize:', e); }
@@ -2548,7 +2554,8 @@ async function handleCommand(cmd) {
         });
         if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
         const data = await res.json();
-        const summaryText = data.choices[0].message.content;
+        const summaryText = data?.choices?.[0]?.message?.content;
+        if (!summaryText) return;
         history.push({ role:'assistant', content: `[Resumen]\n${summaryText}` });
         await saveMsg('assistant', `[Resumen]\n${summaryText}`);
         updateMemMetric();
@@ -3428,7 +3435,8 @@ async function generarBriefing() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    const briefing = data.choices[0].message.content;
+    const briefing = data?.choices?.[0]?.message?.content;
+    if (!briefing) return;
     localStorage.setItem('arex_briefing_date', hoy);
     addMsg('arex', `**Briefing — ${today.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'short' })}**\n\n${briefing}`);
   } catch(e) { console.warn('Briefing:', e); }

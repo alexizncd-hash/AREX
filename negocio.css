@@ -223,6 +223,25 @@
 }
 .neg-del:hover { color: #ff4444; }
 
+.neg-edit {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  transition: color 0.15s;
+  font-family: var(--font);
+}
+.neg-edit:hover { color: var(--cyan); }
+
+.neg-btn-cancel {
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-muted);
+}
+.neg-btn-cancel:hover { background: rgba(255,255,255,0.05); }
+
 /* ── Actividad ── */
 .neg-activity { display: flex; flex-direction: column; gap: 5px; }
 .neg-act-item {
