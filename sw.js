@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v12';
-const VERSION = 'v12';
+const CACHE   = 'arex-v13';
+const VERSION = 'v13';
 const SHELL = [
   './index.html',
   './style.css',
@@ -22,7 +22,6 @@ self.addEventListener('activate', e => {
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     ).then(() => {
-      // Notificar a todos los clientes que hay nueva versión
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
         list.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: VERSION }));
       });
@@ -39,8 +38,11 @@ self.addEventListener('fetch', e => {
       url.includes('frankfurter') ||
       url.includes('openweathermap.org')) return;
 
-  // Network-first para el shell principal (garantiza versión fresca)
-  if (url.includes('index.html') || url.endsWith('/') || url.endsWith('/AREX/')) {
+  // Network-first para todo el shell — siempre archivos frescos cuando hay internet
+  const isShell = SHELL.some(f => url.endsWith(f.replace('./', '/'))) ||
+                  url.endsWith('/') || url.endsWith('/AREX/') || url.includes('index.html');
+
+  if (isShell) {
     e.respondWith(
       fetch(e.request).then(res => {
         const clone = res.clone();
@@ -51,7 +53,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first para el resto del shell
+  // Cache-first para recursos externos (highlight.js, fuentes, etc.)
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
