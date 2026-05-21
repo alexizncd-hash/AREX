@@ -1,0 +1,504 @@
+// ══════════════════════════════════════════════════════
+// AREX — Módulo Negocio (Frijol)
+// Gestión de inventario, ventas, sucursales y gastos
+// ══════════════════════════════════════════════════════
+
+const NEGOCIO_KEY = 'arex_negocio';
+
+function getNegocioData() {
+  const defaults = {
+    config: {
+      variedad:     'Frijol Pinto',
+      precioVenta:  12,   // precio por medio litro
+      costoKg:      30,   // precio de compra por kg
+      rendimiento:  1.8,  // medio litros por kg
+      costoEmpaque: 0.5,  // costo del vaso/envase
+    },
+    inventario: { stockKg: 0, historial: [] },
+    sucursales: [],
+    ventas:     [],
+    gastos:     []
+  };
+  try {
+    const raw = localStorage.getItem(NEGOCIO_KEY);
+    if (!raw) return defaults;
+    const saved = JSON.parse(raw);
+    return {
+      config:     { ...defaults.config,     ...saved.config },
+      inventario: { ...defaults.inventario, ...saved.inventario },
+      sucursales: saved.sucursales || [],
+      ventas:     saved.ventas     || [],
+      gastos:     saved.gastos     || []
+    };
+  } catch { return defaults; }
+}
+
+function saveNegocioData(data) {
+  localStorage.setItem(NEGOCIO_KEY, JSON.stringify(data));
+}
+
+// ── Formatters ──────────────────────────────────────
+const $MXN  = n => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const $KG   = n => `${Number(n).toFixed(1)} kg`;
+const $DATE = d => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const inicioMes = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+
+// ── Navegación de vistas ────────────────────────────
+function switchNegocioView(view) {
+  document.querySelectorAll('#module-negocio .neg-view').forEach(v =>
+    v.classList.toggle('active', v.dataset.view === view));
+  document.querySelectorAll('#module-negocio .neg-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.view === view));
+  const renders = {
+    dashboard:  renderNegDashboard,
+    ventas:     renderNegVentas,
+    inventario: renderNegInventario,
+    sucursales: renderNegSucursales,
+    gastos:     renderNegGastos,
+    config:     renderNegConfig
+  };
+  renders[view]?.();
+}
+
+// ── Dashboard ───────────────────────────────────────
+function renderNegDashboard() {
+  const data = getNegocioData();
+  const im   = inicioMes();
+  const ventasMes  = data.ventas.filter(v => v.fecha >= im);
+  const gastosMes  = data.gastos.filter(g => g.fecha >= im);
+  const totalVentas = ventasMes.reduce((a, v) => a + v.total, 0);
+  const totalGastos = gastosMes.reduce((a, g) => a + g.monto, 0);
+  const ganancia    = totalVentas - totalGastos;
+  const mlVendidos  = ventasMes.reduce((a, v) => a + v.cantidad, 0);
+  const mlDisp      = Math.floor(data.inventario.stockKg * data.config.rendimiento);
+  const margen      = totalVentas > 0 ? ((ganancia / totalVentas) * 100).toFixed(1) : '—';
+
+  const porSuc = {};
+  ventasMes.forEach(v => {
+    const s = data.sucursales.find(s => s.id === v.sucursalId);
+    const n = s ? s.nombre : 'Sin sucursal';
+    porSuc[n] = (porSuc[n] || 0) + v.total;
+  });
+  const top = Object.entries(porSuc).sort((a, b) => b[1] - a[1])[0];
+
+  const recientes = [
+    ...data.ventas.slice(-5).map(v => ({
+      fecha: v.fecha, tipo: 'venta',
+      desc: data.sucursales.find(s => s.id === v.sucursalId)?.nombre || 'Sin sucursal',
+      monto: v.total
+    })),
+    ...data.gastos.slice(-3).map(g => ({ fecha: g.fecha, tipo: 'gasto', desc: g.concepto, monto: g.monto }))
+  ].sort((a, b) => b.fecha - a.fecha).slice(0, 6);
+
+  document.getElementById('neg-dash-content').innerHTML = `
+    <div class="neg-kpi-grid">
+      <div class="neg-kpi ${data.inventario.stockKg < 5 ? 'neg-kpi-warn' : ''}">
+        <div class="neg-kpi-lbl">STOCK</div>
+        <div class="neg-kpi-val">${$KG(data.inventario.stockKg)}</div>
+        <div class="neg-kpi-sub">≈ ${mlDisp} medio litros</div>
+      </div>
+      <div class="neg-kpi">
+        <div class="neg-kpi-lbl">VENTAS MES</div>
+        <div class="neg-kpi-val">${$MXN(totalVentas)}</div>
+        <div class="neg-kpi-sub">${mlVendidos} ML vendidos</div>
+      </div>
+      <div class="neg-kpi">
+        <div class="neg-kpi-lbl">GANANCIA MES</div>
+        <div class="neg-kpi-val ${ganancia >= 0 ? 'neg-profit' : 'neg-loss'}">${$MXN(ganancia)}</div>
+        <div class="neg-kpi-sub">Margen: ${margen}%</div>
+      </div>
+      <div class="neg-kpi">
+        <div class="neg-kpi-lbl">SUCURSALES</div>
+        <div class="neg-kpi-val">${data.sucursales.filter(s => s.activa).length}</div>
+        <div class="neg-kpi-sub">${top ? 'Top: ' + top[0] : 'Sin ventas'}</div>
+      </div>
+    </div>
+
+    <button class="neg-btn-primary" onclick="switchNegocioView('ventas')">+ REGISTRAR VENTA</button>
+
+    <div class="neg-section-title">ACTIVIDAD RECIENTE</div>
+    ${recientes.length === 0
+      ? '<div class="neg-empty">Sin actividad registrada aún.</div>'
+      : `<div class="neg-activity">
+          ${recientes.map(r => `
+            <div class="neg-act-item">
+              <span class="neg-act-dot" style="background:${r.tipo === 'venta' ? '#00ffaa' : '#ff9900'}"></span>
+              <span class="neg-act-desc">${$DATE(r.fecha)} · ${r.desc}</span>
+              <span class="${r.tipo === 'venta' ? 'neg-profit' : 'neg-loss'}">${r.tipo === 'venta' ? '' : '-'}${$MXN(r.monto)}</span>
+            </div>`).join('')}
+        </div>`}
+  `;
+}
+
+// ── Ventas ──────────────────────────────────────────
+function renderNegVentas() {
+  const data = getNegocioData();
+
+  document.getElementById('neg-ventas-content').innerHTML = `
+    <div class="neg-form-card">
+      <div class="neg-form-title">NUEVA VENTA</div>
+      <div class="neg-form-row">
+        <select id="neg-v-suc" class="neg-select">
+          <option value="">Selecciona sucursal...</option>
+          ${data.sucursales.filter(s => s.activa).map(s =>
+            `<option value="${s.id}">${s.nombre}</option>`).join('')}
+        </select>
+        <input type="number" id="neg-v-cant" class="neg-input" placeholder="Medio litros" min="1" step="1"/>
+      </div>
+      <div class="neg-form-row">
+        <input type="number" id="neg-v-precio" class="neg-input" placeholder="Precio/ML (por defecto: $${data.config.precioVenta})" step="0.5"/>
+        <input type="date"   id="neg-v-fecha"  class="neg-input" value="${todayISO()}"/>
+      </div>
+      <div id="neg-v-preview" class="neg-total-preview"></div>
+      <button class="neg-btn-primary" onclick="negRegistrarVenta()">REGISTRAR VENTA</button>
+    </div>
+
+    <div class="neg-section-title">HISTORIAL (${data.ventas.length} ventas)</div>
+    ${data.ventas.length === 0
+      ? '<div class="neg-empty">Sin ventas registradas.</div>'
+      : `<div class="neg-list">
+          ${data.ventas.slice().reverse().map(v => {
+            const s = data.sucursales.find(s => s.id === v.sucursalId);
+            return `<div class="neg-list-item">
+              <div class="neg-li-top">
+                <span class="neg-li-name">${s ? s.nombre : 'Sin sucursal'}</span>
+                <span class="neg-profit">${$MXN(v.total)}</span>
+              </div>
+              <div class="neg-li-bot">
+                <span>${$DATE(v.fecha)}</span>
+                <span>${v.cantidad} ML × ${$MXN(v.precioUnitario)}</span>
+                <button class="neg-del" onclick="negEliminarVenta('${v.id}')">✕</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`}
+  `;
+
+  ['neg-v-cant','neg-v-precio'].forEach(id =>
+    document.getElementById(id)?.addEventListener('input', () => {
+      const cant   = parseFloat(document.getElementById('neg-v-cant').value)   || 0;
+      const precio = parseFloat(document.getElementById('neg-v-precio').value) || data.config.precioVenta;
+      const total  = cant * precio;
+      document.getElementById('neg-v-preview').textContent = total > 0 ? `Total: ${$MXN(total)}` : '';
+    })
+  );
+}
+
+function negRegistrarVenta() {
+  const data      = getNegocioData();
+  const sucId     = document.getElementById('neg-v-suc').value;
+  const cantidad  = parseInt(document.getElementById('neg-v-cant').value);
+  const precio    = parseFloat(document.getElementById('neg-v-precio').value) || data.config.precioVenta;
+  const fechaStr  = document.getElementById('neg-v-fecha').value;
+
+  if (!sucId)               { alert('Selecciona una sucursal');  return; }
+  if (!cantidad || cantidad < 1) { alert('Ingresa la cantidad');  return; }
+
+  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  const total = cantidad * precio;
+
+  data.ventas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidad, precioUnitario: precio, total });
+
+  // Descontar inventario automáticamente
+  const kgUsados = cantidad / data.config.rendimiento;
+  data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kgUsados);
+  data.inventario.historial.push({ fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
+
+  saveNegocioData(data);
+  renderNegVentas();
+}
+
+function negEliminarVenta(id) {
+  if (!confirm('¿Eliminar esta venta?')) return;
+  const data = getNegocioData();
+  data.ventas = data.ventas.filter(v => v.id !== id);
+  saveNegocioData(data);
+  renderNegVentas();
+}
+
+// ── Inventario ──────────────────────────────────────
+function renderNegInventario() {
+  const data    = getNegocioData();
+  const mlDisp  = Math.floor(data.inventario.stockKg * data.config.rendimiento);
+  const stockBajo = data.inventario.stockKg < 5;
+
+  document.getElementById('neg-inv-content').innerHTML = `
+    <div class="neg-stock-hero ${stockBajo ? 'neg-stock-low' : ''}">
+      <div class="neg-stock-val">${$KG(data.inventario.stockKg)}</div>
+      <div class="neg-stock-lbl">STOCK ACTUAL</div>
+      <div class="neg-stock-sub">≈ ${mlDisp} medio litros disponibles</div>
+      ${stockBajo ? '<div class="neg-stock-alert">⚠ Stock bajo — considera reabastecer</div>' : ''}
+    </div>
+
+    <div class="neg-form-card">
+      <div class="neg-form-title">ENTRADA DE PRODUCTO</div>
+      <div class="neg-form-row">
+        <input type="number" id="neg-i-kg"    class="neg-input" placeholder="Kilogramos comprados" step="0.5" min="0.5"/>
+        <input type="number" id="neg-i-costo" class="neg-input" placeholder="Costo total ($)" step="10"/>
+      </div>
+      <input type="date" id="neg-i-fecha" class="neg-input" value="${todayISO()}" style="width:100%"/>
+      <button class="neg-btn-primary" onclick="negAgregarStock()">AGREGAR STOCK</button>
+    </div>
+
+    <div class="neg-section-title">MOVIMIENTOS RECIENTES</div>
+    ${data.inventario.historial.length === 0
+      ? '<div class="neg-empty">Sin movimientos registrados.</div>'
+      : `<div class="neg-list">
+          ${data.inventario.historial.slice().reverse().slice(0, 25).map(h => `
+            <div class="neg-list-item">
+              <div class="neg-li-top">
+                <span class="neg-li-name">${h.tipo === 'entrada' ? '↑ Entrada' : '↓ Salida'} — ${$KG(h.kg)}</span>
+                <span class="${h.tipo === 'entrada' ? 'neg-profit' : 'neg-loss'}">${h.tipo === 'entrada' ? '+' : '-'}${$KG(h.kg)}</span>
+              </div>
+              <div class="neg-li-bot">
+                <span>${$DATE(h.fecha)}</span>
+                ${h.nota ? `<span>${h.nota}</span>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>`}
+  `;
+}
+
+function negAgregarStock() {
+  const data     = getNegocioData();
+  const kg       = parseFloat(document.getElementById('neg-i-kg').value);
+  const costo    = parseFloat(document.getElementById('neg-i-costo').value) || 0;
+  const fechaStr = document.getElementById('neg-i-fecha').value;
+
+  if (!kg || kg <= 0) { alert('Ingresa los kilogramos'); return; }
+
+  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  data.inventario.stockKg += kg;
+  data.inventario.historial.push({
+    fecha, tipo: 'entrada', kg,
+    nota: costo > 0 ? `Compra ${$MXN(costo)}` : ''
+  });
+
+  if (costo > 0) {
+    data.gastos.push({
+      id: String(Date.now()), fecha,
+      concepto: `Compra ${$KG(kg)} de frijol`,
+      monto: costo, tipo: 'materia_prima'
+    });
+  }
+
+  saveNegocioData(data);
+  renderNegInventario();
+}
+
+// ── Sucursales ──────────────────────────────────────
+function renderNegSucursales() {
+  const data = getNegocioData();
+  const im   = inicioMes();
+
+  document.getElementById('neg-suc-content').innerHTML = `
+    <div class="neg-form-card">
+      <div class="neg-form-title">NUEVO PUNTO DE VENTA</div>
+      <input type="text" id="neg-s-nombre"   class="neg-input" placeholder="Nombre del abarrote / tienda" style="width:100%"/>
+      <input type="text" id="neg-s-contacto" class="neg-input" placeholder="Contacto (opcional)" style="width:100%;margin-top:0.5rem"/>
+      <button class="neg-btn-primary" onclick="negAgregarSucursal()">AGREGAR</button>
+    </div>
+
+    <div class="neg-section-title">PUNTOS DE VENTA (${data.sucursales.length})</div>
+    ${data.sucursales.length === 0
+      ? '<div class="neg-empty">Sin puntos de venta registrados.<br>Agrega el primer abarrote donde vendes.</div>'
+      : `<div class="neg-list">
+          ${data.sucursales.map(s => {
+            const vm  = data.ventas.filter(v => v.sucursalId === s.id && v.fecha >= im);
+            const tot = vm.reduce((a, v) => a + v.total, 0);
+            const ml  = vm.reduce((a, v) => a + v.cantidad, 0);
+            return `<div class="neg-list-item ${!s.activa ? 'neg-inactive' : ''}">
+              <div class="neg-li-top">
+                <span class="neg-li-name">${s.nombre}</span>
+                <span class="neg-badge ${s.activa ? '' : 'neg-badge-off'}">${s.activa ? 'ACTIVA' : 'PAUSADA'}</span>
+              </div>
+              <div class="neg-li-bot">
+                <span>${ml} ML · ${$MXN(tot)} este mes</span>
+                ${s.contacto ? `<span>${s.contacto}</span>` : ''}
+                <button class="neg-del" onclick="negToggleSucursal('${s.id}')" style="color:var(--text-muted)">${s.activa ? 'pausar' : 'activar'}</button>
+                <button class="neg-del" onclick="negEliminarSucursal('${s.id}')">✕</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`}
+  `;
+}
+
+function negAgregarSucursal() {
+  const nombre = document.getElementById('neg-s-nombre').value.trim();
+  if (!nombre) { alert('Ingresa el nombre'); return; }
+  const data    = getNegocioData();
+  const contacto = document.getElementById('neg-s-contacto').value.trim();
+  data.sucursales.push({ id: String(Date.now()), nombre, contacto, activa: true });
+  saveNegocioData(data);
+  renderNegSucursales();
+}
+
+function negToggleSucursal(id) {
+  const data = getNegocioData();
+  const s = data.sucursales.find(s => s.id === id);
+  if (s) s.activa = !s.activa;
+  saveNegocioData(data);
+  renderNegSucursales();
+}
+
+function negEliminarSucursal(id) {
+  if (!confirm('¿Eliminar este punto de venta?')) return;
+  const data = getNegocioData();
+  data.sucursales = data.sucursales.filter(s => s.id !== id);
+  saveNegocioData(data);
+  renderNegSucursales();
+}
+
+// ── Gastos ──────────────────────────────────────────
+function renderNegGastos() {
+  const data      = getNegocioData();
+  const im        = inicioMes();
+  const gastosMes = data.gastos.filter(g => g.fecha >= im);
+  const totalMes  = gastosMes.reduce((a, g) => a + g.monto, 0);
+  const TIPOS     = { materia_prima: 'Materia prima', empaque: 'Empaque', transporte: 'Transporte', otro: 'Otro' };
+
+  document.getElementById('neg-gast-content').innerHTML = `
+    <div class="neg-resumen-gasto">
+      <div class="neg-kpi-lbl">GASTOS DEL MES</div>
+      <div class="neg-kpi-val neg-loss">${$MXN(totalMes)}</div>
+    </div>
+
+    <div class="neg-form-card">
+      <div class="neg-form-title">REGISTRAR GASTO</div>
+      <div class="neg-form-row">
+        <select id="neg-g-tipo" class="neg-select">
+          <option value="materia_prima">Materia prima</option>
+          <option value="empaque">Empaque / envases</option>
+          <option value="transporte">Transporte</option>
+          <option value="otro">Otro</option>
+        </select>
+        <input type="number" id="neg-g-monto"   class="neg-input" placeholder="Monto ($)" step="1"/>
+      </div>
+      <div class="neg-form-row">
+        <input type="text" id="neg-g-concepto" class="neg-input" placeholder="Descripción"/>
+        <input type="date" id="neg-g-fecha"    class="neg-input" value="${todayISO()}"/>
+      </div>
+      <button class="neg-btn-primary" onclick="negRegistrarGasto()">REGISTRAR</button>
+    </div>
+
+    <div class="neg-section-title">HISTORIAL DE GASTOS</div>
+    ${data.gastos.length === 0
+      ? '<div class="neg-empty">Sin gastos registrados.</div>'
+      : `<div class="neg-list">
+          ${data.gastos.slice().reverse().map(g => `
+            <div class="neg-list-item">
+              <div class="neg-li-top">
+                <span class="neg-li-name">${g.concepto}</span>
+                <span class="neg-loss">${$MXN(g.monto)}</span>
+              </div>
+              <div class="neg-li-bot">
+                <span>${$DATE(g.fecha)}</span>
+                <span class="neg-badge">${TIPOS[g.tipo] || g.tipo}</span>
+                <button class="neg-del" onclick="negEliminarGasto('${g.id}')">✕</button>
+              </div>
+            </div>`).join('')}
+        </div>`}
+  `;
+}
+
+function negRegistrarGasto() {
+  const data     = getNegocioData();
+  const tipo     = document.getElementById('neg-g-tipo').value;
+  const monto    = parseFloat(document.getElementById('neg-g-monto').value);
+  const concepto = document.getElementById('neg-g-concepto').value.trim() || tipo;
+  const fechaStr = document.getElementById('neg-g-fecha').value;
+
+  if (!monto || monto <= 0) { alert('Ingresa el monto'); return; }
+
+  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  data.gastos.push({ id: String(Date.now()), fecha, tipo, concepto, monto });
+  saveNegocioData(data);
+  renderNegGastos();
+}
+
+function negEliminarGasto(id) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  const data = getNegocioData();
+  data.gastos = data.gastos.filter(g => g.id !== id);
+  saveNegocioData(data);
+  renderNegGastos();
+}
+
+// ── Configuración ───────────────────────────────────
+function renderNegConfig() {
+  const data = getNegocioData();
+  const cfg  = data.config;
+  const costoML  = (cfg.costoKg / cfg.rendimiento) + cfg.costoEmpaque;
+  const ganML    = cfg.precioVenta - costoML;
+  const margenPct = cfg.precioVenta > 0 ? ((ganML / cfg.precioVenta) * 100).toFixed(1) : 0;
+
+  document.getElementById('neg-cfg-content').innerHTML = `
+    <div class="neg-form-card">
+      <div class="neg-form-title">PRECIOS Y COSTOS</div>
+      <div class="neg-cfg-fila">
+        <label>Precio de venta por medio litro ($)</label>
+        <input type="number" id="neg-c-pventa"   class="neg-input" value="${cfg.precioVenta}"  step="0.5"/>
+      </div>
+      <div class="neg-cfg-fila">
+        <label>Costo de compra por kilogramo ($)</label>
+        <input type="number" id="neg-c-costokg"  class="neg-input" value="${cfg.costoKg}"     step="1"/>
+      </div>
+      <div class="neg-cfg-fila">
+        <label>Rendimiento — medio litros por kg</label>
+        <input type="number" id="neg-c-rend"     class="neg-input" value="${cfg.rendimiento}" step="0.1" min="0.1"/>
+      </div>
+      <div class="neg-cfg-fila">
+        <label>Costo de empaque por medio litro ($)</label>
+        <input type="number" id="neg-c-empaque"  class="neg-input" value="${cfg.costoEmpaque}" step="0.1"/>
+      </div>
+      <button class="neg-btn-primary" onclick="negGuardarConfig()">GUARDAR CONFIGURACIÓN</button>
+    </div>
+
+    <div class="neg-calc-card">
+      <div class="neg-form-title">RENTABILIDAD ACTUAL</div>
+      <div class="neg-calc-row"><span>Costo por medio litro</span><span class="neg-loss">${$MXN(costoML)}</span></div>
+      <div class="neg-calc-row"><span>Precio de venta</span><span>${$MXN(cfg.precioVenta)}</span></div>
+      <div class="neg-calc-row neg-calc-divider"><span>Ganancia por ML</span><span class="${ganML >= 0 ? 'neg-profit' : 'neg-loss'}">${$MXN(ganML)}</span></div>
+      <div class="neg-calc-row"><span>Margen de ganancia</span><span class="${ganML >= 0 ? 'neg-profit' : 'neg-loss'}">${margenPct}%</span></div>
+    </div>
+  `;
+}
+
+function negGuardarConfig() {
+  const data = getNegocioData();
+  const get  = id => parseFloat(document.getElementById(id).value);
+  data.config.precioVenta  = get('neg-c-pventa')  || data.config.precioVenta;
+  data.config.costoKg      = get('neg-c-costokg') || data.config.costoKg;
+  data.config.rendimiento  = get('neg-c-rend')    || data.config.rendimiento;
+  data.config.costoEmpaque = get('neg-c-empaque') ?? 0;
+  saveNegocioData(data);
+  renderNegConfig();
+}
+
+// ── Init ────────────────────────────────────────────
+function initNegocioModule() {
+  document.querySelectorAll('#module-negocio .neg-tab').forEach(tab =>
+    tab.addEventListener('click', () => switchNegocioView(tab.dataset.view)));
+  switchNegocioView('dashboard');
+}
+
+// ── Exports globales ────────────────────────────────
+window.renderNegocioModule  = () => switchNegocioView('dashboard');
+window.switchNegocioView    = switchNegocioView;
+window.negRegistrarVenta    = negRegistrarVenta;
+window.negEliminarVenta     = negEliminarVenta;
+window.negAgregarStock      = negAgregarStock;
+window.negAgregarSucursal   = negAgregarSucursal;
+window.negToggleSucursal    = negToggleSucursal;
+window.negEliminarSucursal  = negEliminarSucursal;
+window.negRegistrarGasto    = negRegistrarGasto;
+window.negEliminarGasto     = negEliminarGasto;
+window.negGuardarConfig     = negGuardarConfig;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNegocioModule);
+} else {
+  initNegocioModule();
+}

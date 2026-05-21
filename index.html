@@ -10,6 +10,7 @@
 <!-- Highlight.js CSS (en head para evitar FOUC) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
 <link rel="stylesheet" href="finanzas.css"/>
+<link rel="stylesheet" href="negocio.css"/>
 </head>
 <body>
 
@@ -429,6 +430,14 @@
         <polyline points="22 4 12 14.01 9 11.01"/>
       </svg>
       <span class="dock-label">HÁBITOS</span>
+    </button>
+    <button class="nav-btn" data-module="negocio" data-tooltip="Mi Negocio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+      </svg>
+      <span class="dock-label">NEGOCIO</span>
     </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -962,11 +971,32 @@
   </div>
 </footer>
 
+<!-- ── Módulo: Negocio (Frijol) ── -->
+<div id="module-negocio" class="module-panel">
+  <div class="neg-subnav">
+    <button class="neg-tab active" data-view="dashboard">📊 Dashboard</button>
+    <button class="neg-tab" data-view="ventas">💰 Ventas</button>
+    <button class="neg-tab" data-view="inventario">📦 Inventario</button>
+    <button class="neg-tab" data-view="sucursales">🏪 Sucursales</button>
+    <button class="neg-tab" data-view="gastos">📋 Gastos</button>
+    <button class="neg-tab" data-view="config">⚙ Config</button>
+  </div>
+  <div class="neg-content">
+    <div class="neg-view active" data-view="dashboard"><div id="neg-dash-content"></div></div>
+    <div class="neg-view" data-view="ventas"><div id="neg-ventas-content"></div></div>
+    <div class="neg-view" data-view="inventario"><div id="neg-inv-content"></div></div>
+    <div class="neg-view" data-view="sucursales"><div id="neg-suc-content"></div></div>
+    <div class="neg-view" data-view="gastos"><div id="neg-gast-content"></div></div>
+    <div class="neg-view" data-view="config"><div id="neg-cfg-content"></div></div>
+  </div>
+</div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
 <script src="finanzas-data.js"></script>
 <script src="finanzas.js"></script>
+<script src="negocio.js"></script>
 <script src="jarvis.js"></script>
 
 <!-- Marked (Markdown parser) -->

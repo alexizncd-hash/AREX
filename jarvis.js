@@ -38,12 +38,13 @@ const AREXNav = {
 
   actualizarEstadoSistema(modulo) {
     const statusEl = document.getElementById('sys-val');
-    const estados  = { inicio: 'INICIO', chat: 'ACTIVO', finanzas: 'FINANZAS', tareas: 'TAREAS', notas: 'NOTAS', habitos: 'HÁBITOS', sos: 'SOS' };
+    const estados  = { inicio: 'INICIO', chat: 'ACTIVO', finanzas: 'FINANZAS', tareas: 'TAREAS', notas: 'NOTAS', habitos: 'HÁBITOS', sos: 'SOS', negocio: 'NEGOCIO' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
-    if (modulo === 'inicio'  && typeof renderDashboard === 'function') renderDashboard();
-    if (modulo === 'notas'   && typeof renderNotas     === 'function') renderNotas();
-    if (modulo === 'habitos' && typeof renderHabitos   === 'function') renderHabitos();
-    if (modulo === 'sos'     && typeof renderSOSModule === 'function') renderSOSModule();
+    if (modulo === 'inicio'   && typeof renderDashboard    === 'function') renderDashboard();
+    if (modulo === 'notas'    && typeof renderNotas        === 'function') renderNotas();
+    if (modulo === 'habitos'  && typeof renderHabitos      === 'function') renderHabitos();
+    if (modulo === 'sos'      && typeof renderSOSModule    === 'function') renderSOSModule();
+    if (modulo === 'negocio'  && typeof renderNegocioModule === 'function') renderNegocioModule();
   }
 };
 
