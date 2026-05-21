@@ -234,6 +234,43 @@ Reglas de código para el panel:
 - CRÍTICO: antes de cerrar el bloque de código, verifica mentalmente que no haya comas dobles, paréntesis sin cerrar ni variables sin declarar. ctx.arc() requiere exactamente 5 argumentos: (x, y, radius, startAngle, endAngle).
 - CANVAS RESPONSIVO: SIEMPRE define el tamaño así: const W = Math.min(600, window.innerWidth); const H = W; canvas.width = W; canvas.height = H; — nunca uses width/height fijos mayores al viewport.
 - CANVAS CLICKS: SIEMPRE usa getBoundingClientRect() para coordenadas: const r = canvas.getBoundingClientRect(); const x = (e.clientX - r.left) * (canvas.width / r.width); const y = (e.clientY - r.top) * (canvas.height / r.height);
+- ANIMACIÓN: usa requestAnimationFrame, nunca setInterval para animaciones.
+- TOOLTIP: para info al hacer click/hover usa un div HTML flotante, nunca alert().
+- ÓRBITAS: dibuja los anillos de órbita antes de los planetas (ctx.strokeStyle con opacity baja).
+- COLORES: diferencia visualmente cada elemento — no uses el mismo color para todo.
+
+PATRONES DE REFERENCIA — copia estos exactos en tu código:
+
+// ── Canvas responsivo (siempre al inicio):
+const W = Math.min(600, window.innerWidth - 16);
+const H = W;
+canvas.width = W; canvas.height = H;
+
+// ── requestAnimationFrame (nunca setInterval para animar):
+function loop() { draw(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+// ── Click con coords correctas (nunca clientX - offsetLeft):
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (W / r.width);
+  const y = (e.clientY - r.top)  * (H / r.height);
+  // usar x, y para hit-testing
+});
+
+// ── Tooltip HTML (nunca alert):
+const tip = document.createElement('div');
+tip.style.cssText = 'position:fixed;background:rgba(0,14,26,0.95);border:1px solid #00d4ff;color:#00d4ff;padding:6px 12px;border-radius:4px;font:11px monospace;pointer-events:none;display:none;z-index:99';
+document.body.appendChild(tip);
+function showTip(text, ex, ey) { tip.textContent = text; tip.style.left = ex+8+'px'; tip.style.top = ey+8+'px'; tip.style.display='block'; }
+function hideTip() { tip.style.display='none'; }
+
+// ── Órbita dibujada:
+ctx.save(); ctx.strokeStyle='rgba(0,212,255,0.15)'; ctx.lineWidth=1;
+ctx.beginPath(); ctx.arc(cx, cy, orbit, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+
+// ── Paleta de colores diferenciada para múltiples elementos:
+const COLORS = ['#e8c47a','#c2955c','#4fa3e0','#c1440e','#c88b3a','#e4d191','#7de8e8','#4060ff'];
 
 REGLAS:
 - Responde SIEMPRE en español.
