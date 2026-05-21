@@ -1712,6 +1712,7 @@ function renderSOSModule() {
   renderSOSContacts();
   renderSOSMedico();
   renderSOSShareRow();
+  if (!_sosGPS) sosGetGPS();
 }
 
 function sosGetGPS() {
@@ -3566,15 +3567,30 @@ async function fetchExchangeRate() {
     const { rate, ts } = JSON.parse(cached);
     if (Date.now() - ts < FX_TTL) return rate;
   }
-  try {
-    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN');
-    if (!res.ok) return null;
-    const data = await res.json();
-    const rate = data.rates?.MXN;
-    if (!rate) return null;
-    localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rate, ts: Date.now() }));
-    return rate;
-  } catch { return null; }
+  const apis = [
+    async () => {
+      const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN');
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d.rates?.MXN || null;
+    },
+    async () => {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d.rates?.MXN || null;
+    }
+  ];
+  for (const api of apis) {
+    try {
+      const rate = await api();
+      if (rate) {
+        localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rate, ts: Date.now() }));
+        return rate;
+      }
+    } catch { /* intenta siguiente */ }
+  }
+  return null;
 }
 
 async function renderExchangeWidget() {
