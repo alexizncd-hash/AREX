@@ -3303,32 +3303,20 @@ async function boot() {
 
 // ── CLIMA ─────────────────────────────────────────────────────────────────
 const WEATHER_CACHE_KEY = 'arex_weather_cache';
-const WEATHER_HIDE_KEY  = 'arex_weather_hidden';
 const WEATHER_TTL       = 30 * 60 * 1000;
 
-async function fetchWeather() {
-  const key = AREX_CONFIG?.owmKey;
-  if (!key) return null;
-  const cached = localStorage.getItem(WEATHER_CACHE_KEY);
-  if (cached) {
-    const { data, ts } = JSON.parse(cached);
-    if (Date.now() - ts < WEATHER_TTL) return data;
-  }
-  try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=Hermosillo,MX&appid=${encodeURIComponent(key)}&units=metric&lang=es`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-    return data;
-  } catch { return null; }
+function _windDir(deg) {
+  if (deg == null) return '';
+  const dirs = ['N','NE','E','SE','S','SO','O','NO'];
+  return dirs[Math.round(deg / 45) % 8];
 }
 
 function _weatherIcon(id) {
   if (id >= 200 && id < 300) return '⛈';
   if (id >= 300 && id < 400) return '🌦';
-  if (id >= 500 && id < 600) return '🌧';
+  if (id >= 500 && id < 511) return '🌧';
+  if (id === 511)             return '🌨';
+  if (id >= 512 && id < 600) return '🌧';
   if (id >= 600 && id < 700) return '❄';
   if (id >= 700 && id < 800) return '🌫';
   if (id === 800)             return '☀';
@@ -3337,69 +3325,213 @@ function _weatherIcon(id) {
   return '☁';
 }
 
+function _condLabel(id) {
+  if (id >= 200 && id < 300) return 'TORMENTA ELÉCTRICA';
+  if (id >= 300 && id < 400) return 'LLOVIZNA';
+  if (id >= 500 && id < 511) return 'LLUVIA';
+  if (id === 511)             return 'LLUVIA HELADA';
+  if (id >= 512 && id < 600) return 'LLUVIA INTENSA';
+  if (id >= 600 && id < 611) return 'NIEVE';
+  if (id >= 611 && id < 620) return 'AGUANIEVE';
+  if (id >= 620 && id < 700) return 'NEVADA INTENSA';
+  if (id >= 700 && id < 800) return 'NEBLINA / POLVO';
+  if (id === 800)             return 'DESPEJADO';
+  return 'NUBLADO';
+}
+
+function _makeGlobeSVG(lat, lon) {
+  const R = 42, cx = 50, cy = 50;
+  const lr = (lat || 29) * Math.PI / 180;
+  const dX = cx;
+  const dY = (cy - Math.sin(lr) * R).toFixed(1);
+
+  let mer = '';
+  for (const a of [0, 45, 90, 135]) {
+    const rx = (Math.abs(Math.sin(a * Math.PI / 180)) * R).toFixed(1);
+    mer += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${R}" stroke="rgba(0,212,255,0.16)" stroke-width="0.5" fill="none"/>`;
+  }
+  let par = '';
+  for (const [p, op, sw] of [[-60,.10,.4],[-30,.13,.4],[0,.30,.7],[30,.13,.4],[60,.10,.4]]) {
+    const py = (cy - Math.sin(p*Math.PI/180)*R).toFixed(1);
+    const hw = (Math.cos(p*Math.PI/180)*R).toFixed(1);
+    par += `<line x1="${(cx-parseFloat(hw)).toFixed(1)}" y1="${py}" x2="${(cx+parseFloat(hw)).toFixed(1)}" y2="${py}" stroke="rgba(0,212,255,${op})" stroke-width="${sw}"/>`;
+  }
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:84px;height:84px;filter:drop-shadow(0 0 10px rgba(0,212,255,0.35))">
+    <defs>
+      <radialGradient id="wgb" cx="38%" cy="32%">
+        <stop offset="0%" stop-color="#0e2f42"/>
+        <stop offset="100%" stop-color="#000b16"/>
+      </radialGradient>
+      <clipPath id="wgc"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath>
+    </defs>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#wgb)"/>
+    <g clip-path="url(#wgc)">${par}${mer}</g>
+    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(0,212,255,0.55)" stroke-width="0.9"/>
+    <ellipse cx="36" cy="26" rx="13" ry="7" fill="rgba(255,255,255,0.035)" transform="rotate(-18,36,26)"/>
+    <circle cx="${dX}" cy="${dY}" r="2.8" fill="#00d4ff"/>
+    <circle cx="${dX}" cy="${dY}" r="2.8" fill="none" stroke="#00d4ff" stroke-width="1.2">
+      <animate attributeName="r" from="2.8" to="11" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" from="0.9" to="0" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="${dX}" cy="${dY}" r="2.8" fill="none" stroke="#00d4ff" stroke-width="0.6">
+      <animate attributeName="r" from="2.8" to="16" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" from="0.5" to="0" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
+    </circle>
+  </svg>`;
+}
+
+async function _getCoords() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 8000, maximumAge: WEATHER_TTL }
+    );
+  });
+}
+
+async function fetchWeather() {
+  const key = AREX_CONFIG?.owmKey;
+  if (!key) return null;
+
+  const cached = (() => { try { return JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)); } catch { return null; } })();
+  const coords = await _getCoords();
+  const lat = coords?.lat ?? cached?.lat ?? 29.0729;
+  const lon = coords?.lon ?? cached?.lon ?? -110.9559;
+
+  if (cached?.current && Date.now() - cached.ts < WEATHER_TTL) {
+    const dl = Math.abs((cached.lat||0) - lat), dlo = Math.abs((cached.lon||0) - lon);
+    if (dl < 0.1 && dlo < 0.1) return cached;
+  }
+
+  try {
+    const base = `appid=${encodeURIComponent(key)}&units=metric&lang=es`;
+    const [rW, rF] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&${base}`),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&${base}&cnt=8`)
+    ]);
+    if (!rW.ok) return null;
+    const current  = await rW.json();
+    const forecast = rF.ok ? await rF.json() : null;
+    const result   = { current, forecast, lat, lon, ts: Date.now() };
+    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(result));
+    return result;
+  } catch { return cached || null; }
+}
+
 function renderWeatherWidget() {
   const el = document.getElementById('dash-weather');
   if (!el) return;
-  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
-  const key    = AREX_CONFIG?.owmKey;
-
-  const toggleBtn = `<button class="weather-toggle" onclick="toggleWeatherWidget()" title="${hidden ? 'Mostrar' : 'Ocultar'}">${hidden ? '◎' : '⊙'}</button>`;
+  const key = AREX_CONFIG?.owmKey;
 
   if (!key) {
     el.innerHTML = `
       <div class="dash-w-header">
-        <span class="dash-w-title">CLIMA — HERMOSILLO</span>
+        <span class="dash-w-title">CLIMA</span>
         <button class="dash-w-link" onclick="document.getElementById('modal-config').classList.remove('hidden')">CONFIGURAR →</button>
       </div>
       <div class="dash-empty">Agrega tu OpenWeatherMap API Key en /config para ver el clima</div>`;
     return;
   }
 
-  el.innerHTML = `
-    <div class="dash-w-header">
-      <span class="dash-w-title">CLIMA — HERMOSILLO</span>
-      ${toggleBtn}
-    </div>
-    <div class="weather-body${hidden ? ' hidden' : ''}">
-      <span class="dash-empty" style="font-size:0.65rem">Cargando...</span>
-    </div>`;
+  el.innerHTML = `<div class="wx-loading">Obteniendo ubicación y clima...</div>`;
 
-  fetchWeather().then(data => {
-    const body = el.querySelector('.weather-body');
-    if (!body) return;
-    if (!data) {
-      body.innerHTML = '<div class="dash-empty">Sin datos — verifica tu API Key en /config</div>';
+  fetchWeather().then(result => {
+    if (!result?.current) {
+      el.innerHTML = `<div class="dash-empty">Sin datos — verifica tu OpenWeatherMap API Key</div>`;
       return;
     }
-    const icon  = _weatherIcon(data.weather[0].id);
-    const desc  = data.weather[0].description.replace(/^\w/, c => c.toUpperCase());
-    const temp  = Math.round(data.main.temp);
-    const feels = Math.round(data.main.feels_like);
-    const hum   = data.main.humidity;
-    const wind  = Math.round(data.wind.speed * 3.6);
-    const tmax  = Math.round(data.main.temp_max);
-    const tmin  = Math.round(data.main.temp_min);
-    body.innerHTML = `
-      <div class="weather-main">
-        <span class="weather-icon">${icon}</span>
-        <span class="weather-temp">${temp}°<span class="weather-unit">C</span></span>
-        <span class="weather-desc">${desc}</span>
-      </div>
-      <div class="weather-details">
-        <div class="weather-stat"><span class="wst-label">SENSACIÓN</span><span class="wst-val">${feels}°C</span></div>
-        <div class="weather-stat"><span class="wst-label">HUMEDAD</span><span class="wst-val">${hum}%</span></div>
-        <div class="weather-stat"><span class="wst-label">VIENTO</span><span class="wst-val">${wind} km/h</span></div>
-        <div class="weather-stat"><span class="wst-label">MÁX / MÍN</span><span class="wst-val">${tmax}° / ${tmin}°</span></div>
+    const { current: d, forecast: fc, lat, lon } = result;
+    const wid   = d.weather[0].id;
+    const icon  = _weatherIcon(wid);
+    const desc  = d.weather[0].description.replace(/^\w/, c => c.toUpperCase());
+    const temp  = Math.round(d.main.temp);
+    const feels = Math.round(d.main.feels_like);
+    const hum   = d.main.humidity;
+    const wind  = Math.round(d.wind.speed * 3.6);
+    const gust  = d.wind.gust ? Math.round(d.wind.gust * 3.6) : null;
+    const tmax  = Math.round(d.main.temp_max);
+    const tmin  = Math.round(d.main.temp_min);
+    const pres  = d.main.pressure;
+    const vis   = d.visibility != null ? (d.visibility / 1000).toFixed(0) + ' km' : '—';
+    const cld   = d.clouds?.all ?? '—';
+    const wdir  = _windDir(d.wind.deg);
+    const city  = d.name || '';
+    const ctry  = d.sys?.country || '';
+    const rain  = d.rain?.['1h'] || 0;
+    const snow  = d.snow?.['1h'] || 0;
+
+    const tempClr = temp >= 40 ? '#ff3333' : temp >= 35 ? '#ff7700' : temp >= 30 ? '#ffaa00' : temp <= 2 ? '#88ccff' : '#00d4ff';
+
+    const minsAgo = Math.round((Date.now() - result.ts) / 60000);
+    const fresh   = minsAgo === 0 ? 'ahora' : `hace ${minsAgo} min`;
+
+    const maxPop = fc ? Math.max(...fc.list.slice(0,4).map(x => x.pop||0)) : null;
+    const popPct = maxPop != null ? Math.round(maxPop * 100) : null;
+    const precipType = snow > 0 ? '❄ NIEVE' : rain > 0 ? '🌧 LLUVIA' : '💧';
+    const precipAmt  = rain > 0 ? `${rain.toFixed(1)} mm` : snow > 0 ? `${snow.toFixed(1)} mm` : '';
+
+    const precipHtml = popPct != null ? `
+      <div class="wx-precip">
+        <span class="wx-precip-lbl">PRECIP ${precipType}</span>
+        <div class="wx-pop-row">
+          <div class="wx-pop-bar"><div class="wx-pop-fill" style="width:${popPct}%"></div></div>
+          <span class="wx-pop-pct">${popPct}%</span>
+          ${precipAmt ? `<span class="wx-pop-amt">${precipAmt}</span>` : ''}
+        </div>
+      </div>` : '';
+
+    let fcHtml = '';
+    if (fc?.list?.length) {
+      const slots = fc.list.slice(0, 4).map(f => {
+        const fi   = _weatherIcon(f.weather[0].id);
+        const ft   = Math.round(f.main.temp);
+        const fp   = f.pop > 0.09 ? `<span class="wfc-pop">${Math.round(f.pop*100)}%</span>` : '';
+        const fh   = new Date(f.dt * 1000).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+        return `<div class="wfc-item"><span class="wfc-time">${fh}</span><span class="wfc-icon">${fi}</span><span class="wfc-temp">${ft}°</span>${fp}</div>`;
+      }).join('');
+      fcHtml = `<div class="wx-fc-title">PRÓXIMAS 12H</div><div class="wx-fc-strip">${slots}</div>`;
+    }
+
+    el.innerHTML = `
+      <div class="wx-card">
+        <div class="wx-globe-row">
+          <div class="wx-globe-wrap">${_makeGlobeSVG(lat, lon)}</div>
+          <div class="wx-loc">
+            <div class="wx-city">${city}${ctry ? ', '+ctry : ''}</div>
+            <div class="wx-coords">${Math.abs(lat).toFixed(4)}° ${lat>=0?'N':'S'} &nbsp; ${Math.abs(lon).toFixed(4)}° ${lon>=0?'E':'O'}</div>
+            <div class="wx-fresh">Actualizado ${fresh} <button class="wx-refresh" onclick="refreshWeather()" title="Actualizar">↺</button></div>
+          </div>
+        </div>
+        <div class="wx-main-row">
+          <span class="wx-big-icon">${icon}</span>
+          <span class="wx-big-temp" style="color:${tempClr}">${temp}°<span class="wx-unit">C</span></span>
+          <div class="wx-cond">
+            <div class="wx-desc">${desc}</div>
+            <div class="wx-sub">Sensación ${feels}°C &nbsp;·&nbsp; ${tmax}° / ${tmin}°</div>
+          </div>
+          <div class="wx-cond-badge">${_condLabel(wid)}</div>
+        </div>
+        <div class="wx-stats">
+          <div class="wx-s"><span class="wxs-l">HUMEDAD</span><span class="wxs-v">${hum}%</span></div>
+          <div class="wx-s"><span class="wxs-l">VIENTO</span><span class="wxs-v">${wind} <small>${wdir}</small></span>${gust?`<span class="wxs-sub">ráf. ${gust} km/h</span>`:''}</div>
+          <div class="wx-s"><span class="wxs-l">PRESIÓN</span><span class="wxs-v">${pres}<small> hPa</small></span></div>
+          <div class="wx-s"><span class="wxs-l">VISIBILIDAD</span><span class="wxs-v">${vis}</span></div>
+          <div class="wx-s"><span class="wxs-l">NUBES</span><span class="wxs-v">${cld}%</span></div>
+          <div class="wx-s"><span class="wxs-l">CONDICIÓN</span><span class="wxs-v wxs-cond">${_condLabel(wid)}</span></div>
+        </div>
+        ${precipHtml}
+        ${fcHtml}
       </div>`;
   });
 }
 
-function toggleWeatherWidget() {
-  const hidden = localStorage.getItem(WEATHER_HIDE_KEY) === '1';
-  localStorage.setItem(WEATHER_HIDE_KEY, hidden ? '0' : '1');
+function refreshWeather() {
+  localStorage.removeItem(WEATHER_CACHE_KEY);
   renderWeatherWidget();
 }
-window.toggleWeatherWidget = toggleWeatherWidget;
+window.refreshWeather = refreshWeather;
 
 // ── Exponer funciones de render al scope global para jarvis.js
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
