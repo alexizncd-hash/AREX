@@ -333,7 +333,31 @@
   font-size: 8px;
   letter-spacing: 3px;
   color: var(--cyan);
+}
+.neg-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.6rem;
+}
+.neg-chart-tabs { display: flex; gap: 3px; }
+.neg-chart-tab {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  padding: 3px 7px;
+  background: transparent;
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.neg-chart-tab:hover { border-color: var(--cyan); color: var(--cyan); }
+.neg-chart-tab.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0,212,255,0.08);
 }
 .neg-chart-bars {
   display: flex;

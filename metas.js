@@ -107,7 +107,10 @@ function renderMetasActivas() {
             <span class="meta-cat-badge" style="color:${cat.c};border-color:${cat.c};">${_escH(cat.l.toUpperCase())}</span>
             <div class="meta-titulo">${_escH(m.titulo)}</div>
           </div>
-          <button class="neg-del" onclick="metaEliminar('${_escA(m.id)}')">&#x2715;</button>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button class="neg-edit" onclick="metaEditar('${_escA(m.id)}')">✎</button>
+            <button class="neg-del" onclick="metaEliminar('${_escA(m.id)}')">&#x2715;</button>
+          </div>
         </div>
         ${m.descripcion ? `<div class="meta-desc">${_escH(m.descripcion)}</div>` : ''}
         <div class="meta-progress-row">
@@ -323,6 +326,54 @@ function mtTipoChange() {
   fields.style.display = tipo === 'porcentaje' ? 'none' : '';
 }
 
+function metaEditar(id) {
+  const card = document.getElementById(`meta-card-${id}`);
+  if (!card) return;
+  const m = getMetas().find(x => x.id === id);
+  if (!m) return;
+  const catOpts = Object.entries(METAS_CATS)
+    .map(([k, v]) => `<option value="${k}"${m.categoria === k ? ' selected' : ''}>${v.l}</option>`)
+    .join('');
+  card.innerHTML = `
+    <div class="neg-form-title">EDITAR META</div>
+    <div class="neg-cfg-fila">
+      <label>Título</label>
+      <input type="text" id="me-t-${_escA(id)}" class="neg-input" value="${_escA(m.titulo)}" maxlength="80"/>
+    </div>
+    <div class="neg-cfg-fila">
+      <label>Descripción</label>
+      <input type="text" id="me-d-${_escA(id)}" class="neg-input" value="${_escA(m.descripcion || '')}" maxlength="200"/>
+    </div>
+    <div class="neg-form-row">
+      <div class="neg-cfg-fila" style="flex:1;">
+        <label>Categoría</label>
+        <select id="me-c-${_escA(id)}" class="neg-select">${catOpts}</select>
+      </div>
+      <div class="neg-cfg-fila" style="flex:1;">
+        <label>Fecha límite</label>
+        <input type="date" id="me-f-${_escA(id)}" class="neg-input" value="${m.fechaLimite || ''}"/>
+      </div>
+    </div>
+    <div class="neg-form-row">
+      <button class="neg-btn-primary" style="flex:1;" onclick="metaGuardarEdit('${_escA(id)}')">GUARDAR</button>
+      <button class="neg-btn-primary neg-btn-cancel" style="flex:1;" onclick="renderMetasActivas()">CANCELAR</button>
+    </div>`;
+}
+
+function metaGuardarEdit(id) {
+  const metas = getMetas();
+  const m = metas.find(x => x.id === id);
+  if (!m) return;
+  const titulo = (document.getElementById(`me-t-${id}`)?.value || '').trim();
+  if (!titulo) { alert('El título es obligatorio.'); return; }
+  m.titulo      = titulo;
+  m.descripcion = (document.getElementById(`me-d-${id}`)?.value || '').trim();
+  m.categoria   = document.getElementById(`me-c-${id}`)?.value || m.categoria;
+  m.fechaLimite = document.getElementById(`me-f-${id}`)?.value || '';
+  saveMetas(metas);
+  renderMetasActivas();
+}
+
 // ── Init ─────────────────────────────────────────────
 function initMetasModule() {
   document.querySelectorAll('#module-metas .neg-tab').forEach(tab =>
@@ -337,6 +388,8 @@ window.metaCrear            = metaCrear;
 window.metaActualizar       = metaActualizar;
 window.metaCompletar        = metaCompletar;
 window.metaEliminar         = metaEliminar;
+window.metaEditar           = metaEditar;
+window.metaGuardarEdit      = metaGuardarEdit;
 window.mtTipoChange         = mtTipoChange;
 
 // ── Bootstrap ────────────────────────────────────────

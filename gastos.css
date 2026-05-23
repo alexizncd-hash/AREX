@@ -97,6 +97,30 @@
   color: var(--text-muted);
 }
 
+/* ── Banner de alerta de presupuesto excedido ── */
+.gp-alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255,100,68,0.07);
+  border: 1px solid rgba(255,100,68,0.3);
+  border-left: 3px solid #ff6644;
+  border-radius: 4px;
+}
+.gp-alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.gp-alert-body { display: flex; flex-direction: column; gap: 4px; }
+.gp-alert-title { font-size: 9px; letter-spacing: 2px; color: #ff6644; }
+.gp-alert-cats { display: flex; flex-wrap: wrap; gap: 5px; }
+.gp-alert-cat {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255,100,68,0.1);
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+.gp-alert-cat strong { color: #ff6644; }
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .gp-cat-name { font-size: 10px; }

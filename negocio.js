@@ -2,6 +2,7 @@
 // AREX — Módulo Negocio (Frijol)
 // Gestión de inventario, ventas, sucursales y gastos
 // ══════════════════════════════════════════════════════
+let _negChartPeriod = '7d';
 
 const NEGOCIO_KEY = 'arex_negocio';
 
@@ -94,14 +95,27 @@ function renderNegDashboard() {
     ...data.gastos.slice(-3).map(g => ({ fecha: g.fecha, tipo: 'gasto', desc: g.concepto, monto: g.monto }))
   ].sort((a, b) => b.fecha - a.fecha).slice(0, 6);
 
-  // ── Gráfica últimos 7 días ──
+  // ── Gráfica ──
   const chartDays = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const end   = start + 86400000;
-    const tot   = data.ventas.filter(v => v.fecha >= start && v.fecha < end).reduce((a, v) => a + v.total, 0);
-    chartDays.push({ label: d.toLocaleDateString('es-MX', { weekday:'short' }).slice(0,3).toUpperCase(), total: tot });
+  if (_negChartPeriod === '7d') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const end   = start + 86400000;
+      const tot   = data.ventas.filter(v => v.fecha >= start && v.fecha < end).reduce((a, v) => a + v.total, 0);
+      chartDays.push({ label: d.toLocaleDateString('es-MX', { weekday:'short' }).slice(0,3).toUpperCase(), total: tot });
+    }
+  } else {
+    const now = new Date();
+    const som = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const weeks = Math.ceil(dim / 7);
+    for (let w = 0; w < weeks; w++) {
+      const wS = som + w * 7 * 86400000;
+      const wE = Math.min(wS + 7 * 86400000, som + dim * 86400000);
+      const tot = data.ventas.filter(v => v.fecha >= wS && v.fecha < wE).reduce((a, v) => a + v.total, 0);
+      chartDays.push({ label: `S${w + 1}`, total: tot });
+    }
   }
   const chartMax = Math.max(...chartDays.map(d => d.total), 1);
 
@@ -145,7 +159,13 @@ function renderNegDashboard() {
     </div>` : ''}
 
     <div class="neg-chart">
-      <div class="neg-chart-title">VENTAS ÚLTIMOS 7 DÍAS</div>
+      <div class="neg-chart-header">
+        <span class="neg-chart-title">${_negChartPeriod === '7d' ? 'VENTAS ÚLTIMOS 7 DÍAS' : 'VENTAS ESTE MES'}</span>
+        <div class="neg-chart-tabs">
+          <button class="neg-chart-tab${_negChartPeriod === '7d' ? ' active' : ''}" onclick="negChartPeriod('7d')">7 DÍAS</button>
+          <button class="neg-chart-tab${_negChartPeriod === 'mes' ? ' active' : ''}" onclick="negChartPeriod('mes')">MES</button>
+        </div>
+      </div>
       <div class="neg-chart-bars">
         ${chartDays.map(d => `
           <div class="neg-chart-col">
@@ -677,8 +697,14 @@ function initNegocioModule() {
   switchNegocioView('dashboard');
 }
 
+function negChartPeriod(p) {
+  _negChartPeriod = p;
+  renderNegDashboard();
+}
+
 // ── Exports globales ────────────────────────────────
 window.renderNegocioModule    = () => switchNegocioView('dashboard');
+window.negChartPeriod         = negChartPeriod;
 window.switchNegocioView      = switchNegocioView;
 window.negRegistrarVenta      = negRegistrarVenta;
 window.negEliminarVenta       = negEliminarVenta;

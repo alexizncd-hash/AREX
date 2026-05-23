@@ -331,6 +331,8 @@ async function syncConfigToFirestore() {
   if (!db) return;
   try {
     await setDoc(doc(db, 'arex', 'config'), window.AREX_CONFIG);
+    window._arexLastSync = Date.now();
+    _renderSyncBadge();
   } catch(e) { console.warn('syncConfig:', e); }
 }
 
@@ -1016,6 +1018,15 @@ function importarBackup(file) {
 window.exportarBackup  = exportarBackup;
 window.importarBackup  = importarBackup;
 
+function _renderSyncBadge() {
+  const badge = document.getElementById('dash-sync-badge');
+  if (!badge) return;
+  if (!window._arexLastSync) { badge.textContent = ''; return; }
+  const mins = Math.round((Date.now() - window._arexLastSync) / 60000);
+  const ok   = mins < 5;
+  badge.innerHTML = `<span style="color:${ok?'#00ffaa':'#ff9900'}">● FB ${mins === 0 ? 'SYNC' : mins + 'min'}</span>`;
+}
+
 function renderDashboard() {
   const el = document.getElementById('dash-content');
   if (!el) return;
@@ -1058,6 +1069,7 @@ function renderDashboard() {
         ${urgentes.length
           ? `<span class="dash-stat dash-stat-alert">${urgentes.length} URGENTE${urgentes.length!==1?'S':''}</span>`
           : `<span class="dash-stat">${pendientes.length} PENDIENTE${pendientes.length!==1?'S':''}</span>`}
+        <span id="dash-sync-badge" class="dash-sync-badge"></span>
       </div>
     </div>
 
@@ -3283,6 +3295,7 @@ async function boot() {
   }
 
   await pullConfigFromFirestore();
+  if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
   await loadHistory();
   await requestNotifPerm();
   updateCtxBadge();

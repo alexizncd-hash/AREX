@@ -1207,6 +1207,7 @@ footer {
 .dash-quick-stats { display:flex; gap:8px; }
 .dash-stat { font-size:0.6rem; letter-spacing:1px; color:var(--text-muted); }
 .dash-stat-alert { color:#ef4444; font-weight:700; letter-spacing:1px; font-size:0.6rem; }
+.dash-sync-badge { font-size:0.5rem; letter-spacing:1px; }
 
 .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 @media(max-width:640px) { .dash-grid { grid-template-columns:1fr; } }

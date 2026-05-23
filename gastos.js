@@ -131,6 +131,18 @@ function renderGpResumen() {
     data.presupuesto[k] > 0 || porCat[k] > 0
   );
 
+  const overCats = catsActivas.filter(k => data.presupuesto[k] > 0 && porCat[k] > data.presupuesto[k]);
+  const alertBanner = overCats.length > 0 ? `
+    <div class="gp-alert-banner">
+      <span class="gp-alert-icon">⚠</span>
+      <div class="gp-alert-body">
+        <span class="gp-alert-title">PRESUPUESTO EXCEDIDO</span>
+        <div class="gp-alert-cats">
+          ${overCats.map(k => `<span class="gp-alert-cat">${GP_CATS[k].e} ${GP_CATS[k].l} <strong>+${_$MXN(porCat[k] - data.presupuesto[k])}</strong></span>`).join('')}
+        </div>
+      </div>
+    </div>` : '';
+
   const catsHTML = catsActivas.length === 0
     ? '<div class="neg-empty">Sin categorías activas este mes.<br>Configura un presupuesto o registra un gasto.</div>'
     : `<div class="gp-cats">
@@ -178,6 +190,7 @@ function renderGpResumen() {
       </div>
     </div>
 
+    ${alertBanner}
     <div class="neg-section-title">CATEGORÍAS</div>
     ${catsHTML}
 
