@@ -3352,45 +3352,211 @@ function _condLabel(id) {
   return 'NUBLADO';
 }
 
-function _makeGlobeSVG(lat, lon) {
-  const R = 42, cx = 50, cy = 50;
-  const lr = (lat || 29) * Math.PI / 180;
-  const dX = cx;
-  const dY = (cy - Math.sin(lr) * R).toFixed(1);
+// ── Globe canvas — animated rotating Earth ───────────
+const _WGL = { lat:0, lon:0, rotY:0, paused:false, animId:null, drag:null, dragRotY:0 };
+let _wglH = null; // event handler refs for cleanup
 
-  let mer = '';
-  for (const a of [0, 45, 90, 135]) {
-    const rx = (Math.abs(Math.sin(a * Math.PI / 180)) * R).toFixed(1);
-    mer += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${R}" stroke="rgba(0,212,255,0.16)" stroke-width="0.5" fill="none"/>`;
+// Simplified continent outlines [lon, lat] — traced clockwise
+const _GEO = [
+  // North America
+  [[-165,71],[-140,70],[-120,72],[-100,73],[-85,73],[-78,72],[-68,64],
+   [-55,47],[-65,44],[-70,43],[-75,35],[-80,32],[-88,30],[-97,26],
+   [-104,19],[-90,14],[-86,10],[-78,8],[-82,10],[-90,22],[-97,26],
+   [-110,23],[-118,34],[-124,49],[-130,54],[-140,58],[-148,60],
+   [-155,55],[-165,65],[-165,71]],
+  // South America
+  [[-78,8],[-62,11],[-52,4],[-50,0],[-35,-5],[-35,-12],[-38,-16],
+   [-43,-23],[-48,-28],[-52,-33],[-55,-35],[-58,-38],[-65,-45],
+   [-68,-54],[-72,-50],[-70,-30],[-70,-18],[-75,-10],[-78,-2],[-78,8]],
+  // Europe
+  [[-10,36],[-9,44],[0,43],[8,44],[14,41],[18,40],[22,38],[26,38],
+   [28,41],[28,48],[22,55],[18,57],[14,57],[18,65],[24,70],[22,68],
+   [16,58],[10,57],[5,58],[2,52],[0,50],[-2,49],[-5,44],[-5,36],[-10,36]],
+  // Africa
+  [[-17,15],[-17,25],[-12,30],[-8,35],[0,37],[10,37],[15,38],[22,37],
+   [30,31],[35,22],[37,15],[43,12],[36,5],[34,-1],[35,-11],[40,-20],
+   [35,-26],[27,-30],[25,-34],[18,-34],[12,-34],[18,-28],[22,-20],
+   [18,-16],[12,-12],[9,-5],[9,4],[2,6],[-5,5],[-15,5],[-17,9],[-17,15]],
+  // Asia
+  [[26,48],[30,42],[36,22],[43,12],[55,23],[72,22],[78,8],[82,8],
+   [88,22],[97,22],[100,13],[103,1],[108,-7],[115,4],[120,15],
+   [121,25],[122,38],[128,38],[135,35],[140,42],[142,52],[140,60],
+   [135,68],[140,72],[130,74],[110,73],[90,73],[72,68],[58,70],
+   [52,68],[50,65],[55,62],[58,52],[50,54],[40,62],[32,62],[26,52],[26,48]],
+  // Australia
+  [[114,-26],[118,-20],[122,-18],[128,-15],[131,-12],[136,-12],
+   [140,-17],[142,-18],[145,-15],[148,-20],[152,-24],[152,-28],
+   [148,-38],[144,-38],[138,-36],[132,-34],[116,-34],[114,-26]],
+  // Greenland
+  [[-50,60],[-38,68],[-25,72],[-22,76],[-28,80],[-38,83],
+   [-50,83],[-58,75],[-58,70],[-55,65],[-50,60]],
+];
+
+function _wp(lat, lon, rotY) {
+  const lr = lat * Math.PI / 180;
+  const vl = (lon + rotY) * Math.PI / 180;
+  return { x: Math.cos(lr) * Math.sin(vl), y: -Math.sin(lr), v: Math.cos(vl) > -0.04 };
+}
+
+function _drawGlobe() {
+  const cv = document.getElementById('wx-globe');
+  if (!cv) { cancelAnimationFrame(_WGL.animId); return; }
+  const ctx = cv.getContext('2d');
+  const W = cv.width, R = W * 0.43, cx = W / 2, cy = W / 2;
+
+  if (!_WGL.paused && _WGL.drag === null) _WGL.rotY -= 0.13;
+  ctx.clearRect(0, 0, W, W);
+
+  // Base
+  const bg = ctx.createRadialGradient(cx - R*.28, cy - R*.32, 0, cx, cy, R);
+  bg.addColorStop(0, '#103a52'); bg.addColorStop(.55, '#071d2e'); bg.addColorStop(1, '#020d1a');
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = bg; ctx.fill();
+
+  // Clip all interior drawing to globe circle
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+
+  // Grid helper
+  const seg = (pts) => {
+    ctx.beginPath(); let f = true;
+    for (const [px, py, v] of pts) {
+      if (!v) { f = true; continue; }
+      f ? ctx.moveTo(cx + R*px, cy + R*py) : ctx.lineTo(cx + R*px, cy + R*py);
+      f = false;
+    }
+    ctx.stroke();
+  };
+
+  // Meridians
+  ctx.strokeStyle = 'rgba(0,212,255,0.11)'; ctx.lineWidth = 0.5;
+  for (let ln = 0; ln < 360; ln += 30) {
+    seg(Array.from({length:61}, (_,i) => { const p=_wp(-90+i*3,ln,_WGL.rotY); return[p.x,p.y,p.v]; }));
   }
-  let par = '';
-  for (const [p, op, sw] of [[-60,.10,.4],[-30,.13,.4],[0,.30,.7],[30,.13,.4],[60,.10,.4]]) {
-    const py = (cy - Math.sin(p*Math.PI/180)*R).toFixed(1);
-    const hw = (Math.cos(p*Math.PI/180)*R).toFixed(1);
-    par += `<line x1="${(cx-parseFloat(hw)).toFixed(1)}" y1="${py}" x2="${(cx+parseFloat(hw)).toFixed(1)}" y2="${py}" stroke="rgba(0,212,255,${op})" stroke-width="${sw}"/>`;
+  // Parallels
+  for (let la = -60; la <= 60; la += 30) {
+    ctx.strokeStyle = la===0 ? 'rgba(0,212,255,0.32)' : 'rgba(0,212,255,0.12)';
+    ctx.lineWidth   = la===0 ? 0.9 : 0.45;
+    seg(Array.from({length:181}, (_,i) => { const p=_wp(la,-180+i*2,_WGL.rotY); return[p.x,p.y,p.v]; }));
   }
-  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:84px;height:84px;filter:drop-shadow(0 0 10px rgba(0,212,255,0.35))">
-    <defs>
-      <radialGradient id="wgb" cx="38%" cy="32%">
-        <stop offset="0%" stop-color="#0e2f42"/>
-        <stop offset="100%" stop-color="#000b16"/>
-      </radialGradient>
-      <clipPath id="wgc"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath>
-    </defs>
-    <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#wgb)"/>
-    <g clip-path="url(#wgc)">${par}${mer}</g>
-    <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(0,212,255,0.55)" stroke-width="0.9"/>
-    <ellipse cx="36" cy="26" rx="13" ry="7" fill="rgba(255,255,255,0.035)" transform="rotate(-18,36,26)"/>
-    <circle cx="${dX}" cy="${dY}" r="2.8" fill="#00d4ff"/>
-    <circle cx="${dX}" cy="${dY}" r="2.8" fill="none" stroke="#00d4ff" stroke-width="1.2">
-      <animate attributeName="r" from="2.8" to="11" dur="2s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" from="0.9" to="0" dur="2s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="${dX}" cy="${dY}" r="2.8" fill="none" stroke="#00d4ff" stroke-width="0.6">
-      <animate attributeName="r" from="2.8" to="16" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" from="0.5" to="0" dur="2.5s" begin="0.8s" repeatCount="indefinite"/>
-    </circle>
-  </svg>`;
+
+  // Tropics
+  ctx.strokeStyle = 'rgba(0,212,255,0.07)'; ctx.lineWidth = 0.3;
+  for (const la of [-66.5, -23.5, 23.5, 66.5]) {
+    seg(Array.from({length:181}, (_,i) => { const p=_wp(la,-180+i*2,_WGL.rotY); return[p.x,p.y,p.v]; }));
+  }
+
+  // Continents
+  for (const poly of _GEO) {
+    ctx.beginPath();
+    let f = true, pv = false;
+    for (const [ln, la] of poly) {
+      const p = _wp(la, ln, _WGL.rotY);
+      const px = cx + R*p.x, py = cy + R*p.y;
+      if (p.v) { (!f && pv) ? ctx.lineTo(px, py) : ctx.moveTo(px, py); f = false; }
+      pv = p.v;
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,212,255,0.17)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,212,255,0.65)'; ctx.lineWidth = 0.9; ctx.stroke();
+  }
+
+  // Location marker
+  const up = _wp(_WGL.lat, _WGL.lon, _WGL.rotY);
+  if (up.v) {
+    const px = cx + R*up.x, py = cy + R*up.y;
+    const t  = (Date.now() % 2000) / 2000;
+    const t2 = ((Date.now() + 900) % 2600) / 2600;
+    // Crosshair lines
+    ctx.strokeStyle = 'rgba(0,212,255,0.35)'; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.moveTo(px-14,py); ctx.lineTo(px-5,py);
+    ctx.moveTo(px+5,py); ctx.lineTo(px+14,py);
+    ctx.moveTo(px,py-14); ctx.lineTo(px,py-5);
+    ctx.moveTo(px,py+5); ctx.lineTo(px,py+14); ctx.stroke();
+    // Core dot
+    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI*2);
+    ctx.fillStyle = '#00d4ff'; ctx.fill();
+    // Bright center
+    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI*2);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    // Pulse rings
+    ctx.beginPath(); ctx.arc(px, py, 3.5 + t*15, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(0,212,255,${0.85*(1-t)})`; ctx.lineWidth = 1.8; ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, 3.5 + t2*22, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(0,212,255,${0.4*(1-t2)})`; ctx.lineWidth = 0.9; ctx.stroke();
+  }
+
+  ctx.restore(); // end globe clip
+
+  // Globe border
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(0,212,255,0.75)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Atmosphere
+  const atmo = ctx.createRadialGradient(cx, cy, R*.82, cx, cy, R*1.22);
+  atmo.addColorStop(0,   'rgba(0,212,255,0)');
+  atmo.addColorStop(0.35,'rgba(0,212,255,0.12)');
+  atmo.addColorStop(0.7, 'rgba(0,100,200,0.05)');
+  atmo.addColorStop(1,   'rgba(0,212,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, R*1.2, 0, Math.PI*2);
+  ctx.fillStyle = atmo; ctx.fill();
+
+  // Specular highlight
+  const spec = ctx.createRadialGradient(cx-R*.3, cy-R*.34, 0, cx-R*.22, cy-R*.28, R*.55);
+  spec.addColorStop(0, 'rgba(200,240,255,0.12)');
+  spec.addColorStop(1, 'rgba(200,240,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2);
+  ctx.fillStyle = spec; ctx.fill();
+
+  // HUD corner brackets
+  const m=8, s=15, x0=cx-R-m, y0=cy-R-m, x1=cx+R+m, y1=cy+R+m;
+  ctx.strokeStyle = 'rgba(0,212,255,0.5)'; ctx.lineWidth = 1.5;
+  for (const [bx,by,dx,dy] of [[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]]) {
+    ctx.beginPath(); ctx.moveTo(bx, by+dy*s); ctx.lineTo(bx, by); ctx.lineTo(bx+dx*s, by);
+    ctx.stroke();
+  }
+
+  // Pause indicator
+  if (_WGL.paused) {
+    ctx.fillStyle = 'rgba(0,212,255,0.5)';
+    ctx.font = `${W*.11}px monospace`; ctx.textAlign = 'center';
+    ctx.fillText('⏸', cx, cy + R + W*.13);
+  }
+
+  _WGL.animId = requestAnimationFrame(_drawGlobe);
+}
+
+function _initWxGlobe(lat, lon) {
+  const cv = document.getElementById('wx-globe');
+  if (!cv) return;
+  cancelAnimationFrame(_WGL.animId);
+  if (_wglH) {
+    document.removeEventListener('mousemove', _wglH.mv);
+    document.removeEventListener('touchmove', _wglH.mt);
+    document.removeEventListener('mouseup',   _wglH.up);
+    document.removeEventListener('touchend',  _wglH.up);
+  }
+  Object.assign(_WGL, { lat, lon, rotY: -lon, paused: false, drag: null });
+  const up = () => { _WGL.drag = null; };
+  const mv = e => { if (_WGL.drag === null) return; _WGL.rotY = _WGL.dragRotY - (e.clientX - _WGL.drag) * 0.5; };
+  const mt = e => { if (_WGL.drag === null) return; _WGL.rotY = _WGL.dragRotY - (e.touches[0].clientX - _WGL.drag) * 0.5; };
+  _wglH = { mv, mt, up };
+  cv.onmousedown  = e => { _WGL.drag = e.clientX; _WGL.dragRotY = _WGL.rotY; cv.style.cursor='grabbing'; };
+  cv.onmouseup    = () => { cv.style.cursor='grab'; };
+  cv.ontouchstart = e => { _WGL.drag = e.touches[0].clientX; _WGL.dragRotY = _WGL.rotY; e.preventDefault(); };
+  document.addEventListener('mousemove', mv);
+  document.addEventListener('touchmove', mt, { passive: true });
+  document.addEventListener('mouseup',  up);
+  document.addEventListener('touchend', up);
+  _drawGlobe();
+}
+window._wglToggle = () => { _WGL.paused = !_WGL.paused; };
+
+function _makeGlobeHTML() {
+  return `<canvas id="wx-globe" width="220" height="220"
+    onclick="window._wglToggle()"
+    style="width:110px;height:110px;cursor:grab;display:block;"
+    title="Arrastra para rotar · Toca para pausar"></canvas>`;
 }
 
 async function _getCoords() {
@@ -3510,7 +3676,7 @@ function renderWeatherWidget() {
     el.innerHTML = `
       <div class="wx-card">
         <div class="wx-globe-row">
-          <div class="wx-globe-wrap">${_makeGlobeSVG(lat, lon)}</div>
+          <div class="wx-globe-wrap">${_makeGlobeHTML()}</div>
           <div class="wx-loc">
             <div class="wx-city">${city}${ctry ? ', '+ctry : ''}</div>
             <div class="wx-coords">${Math.abs(lat).toFixed(4)}° ${lat>=0?'N':'S'} &nbsp; ${Math.abs(lon).toFixed(4)}° ${lon>=0?'E':'O'}</div>
@@ -3537,10 +3703,12 @@ function renderWeatherWidget() {
         ${precipHtml}
         ${fcHtml}
       </div>`;
+    _initWxGlobe(lat, lon);
   });
 }
 
 function refreshWeather() {
+  cancelAnimationFrame(_WGL.animId);
   localStorage.removeItem(WEATHER_CACHE_KEY);
   renderWeatherWidget();
 }

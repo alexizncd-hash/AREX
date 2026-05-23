@@ -1309,7 +1309,7 @@ footer {
 
 /* Globe row */
 .wx-globe-row { display:flex; gap:0.9rem; align-items:center; }
-.wx-globe-wrap { flex-shrink:0; }
+.wx-globe-wrap { flex-shrink:0; width:110px; height:110px; }
 .wx-loc { flex:1; display:flex; flex-direction:column; gap:3px; }
 .wx-city {
   font-size:0.82rem; color:var(--text-main);
