@@ -340,4 +340,8 @@ window.metaEliminar         = metaEliminar;
 window.mtTipoChange         = mtTipoChange;
 
 // ── Bootstrap ────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', initMetasModule);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMetasModule);
+} else {
+  initMetasModule();
+}
