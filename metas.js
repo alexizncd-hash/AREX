@@ -27,6 +27,7 @@ function getMetas() {
 
 function saveMetas(arr) {
   localStorage.setItem(METAS_KEY, JSON.stringify(arr));
+  if (typeof arexSyncData === 'function') arexSyncData(METAS_KEY);
 }
 
 // ── Navegación ──────────────────────────────────────

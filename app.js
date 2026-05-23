@@ -349,6 +349,45 @@ async function pullConfigFromFirestore() {
   } catch(e) { console.warn('pullConfig:', e); }
 }
 
+// Generic sync: push any localStorage key to Firestore doc arex/{key}
+async function arexSyncData(lsKey) {
+  if (!db) return;
+  try {
+    const raw = localStorage.getItem(lsKey);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    // Firestore docs must be objects; wrap arrays
+    const toStore = Array.isArray(payload) ? { _arr: payload } : payload;
+    await setDoc(doc(db, 'arex_data', lsKey), toStore);
+    window._arexLastSync = Date.now();
+    _renderSyncBadge();
+  } catch(e) { console.warn('arexSyncData:', lsKey, e); }
+}
+
+// Pull all synced module data back from Firestore on boot
+async function pullAllModuleData() {
+  if (!db) return;
+  const keys = ['arex_negocio','arex_gastos_pers','arex_metas','arex_salud','arex_agenda',
+                 'arex_tareas','arex_recordatorios','arex_habitos','arex_memoria','arex_hechos',
+                 'arex_context','arex_atajos','arex_sos'];
+  for (const key of keys) {
+    try {
+      const snap = await getDoc(doc(db, 'arex_data', key));
+      if (!snap.exists()) continue;
+      const data = snap.data();
+      // Unwrap arrays
+      const toStore = data._arr !== undefined ? data._arr : data;
+      // Only overwrite if remote is newer (by checking if local exists)
+      const local = localStorage.getItem(key);
+      if (!local) {
+        localStorage.setItem(key, JSON.stringify(toStore));
+      }
+    } catch(e) { console.warn('pullModuleData:', key, e); }
+  }
+}
+
+window.arexSyncData = arexSyncData;
+
 /* ── Markdown ───────────────────────────────────────── */
 if (typeof marked !== 'undefined') {
   marked.use({ breaks: true, gfm: true });
@@ -1135,6 +1174,22 @@ function renderDashboard() {
       <div class="dash-notas-body"></div>
     </div>
 
+    <div id="dash-agenda-widget" class="dash-widget dash-w-full" style="display:none">
+      <div class="dash-w-header">
+        <span class="dash-w-title">📅 AGENDA HOY</span>
+        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('agenda')">VER TODO →</button>
+      </div>
+      <div id="dash-agenda-body" class="dash-agenda-list"></div>
+    </div>
+
+    <div id="dash-salud-widget" class="dash-widget dash-w-full" style="display:none">
+      <div class="dash-w-header">
+        <span class="dash-w-title">❤️ SALUD HOY</span>
+        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('salud')">VER →</button>
+      </div>
+      <div id="dash-salud-body"></div>
+    </div>
+
     <div class="dash-widget dash-w-full">
       <div class="dash-w-header">
         <span class="dash-w-title">RECORDATORIOS</span>
@@ -1159,6 +1214,73 @@ function renderDashboard() {
   renderWeatherWidget();
   renderHabitosWidget();
   renderNotasWidget();
+  _renderDashAgendaWidget();
+  _renderDashSaludWidget();
+}
+
+function _renderDashAgendaWidget() {
+  const w = document.getElementById('dash-agenda-widget');
+  const b = document.getElementById('dash-agenda-body');
+  if (!w || !b || typeof getAgendaData !== 'function') return;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const mañana = new Date(); mañana.setDate(mañana.getDate() + 1);
+  const mStr = mañana.toISOString().slice(0, 10);
+  const data = getAgendaData();
+  const hoyEvs = data.eventos.filter(e => e.fecha === hoy || e.fecha === mStr)
+    .sort((a, b) => { const da = a.fecha + (a.hora||'00:00'); const db = b.fecha + (b.hora||'00:00'); return da.localeCompare(db); })
+    .slice(0, 5);
+  if (!hoyEvs.length) { w.style.display = 'none'; return; }
+  w.style.display = '';
+  b.innerHTML = hoyEvs.map(e => {
+    const isHoy = e.fecha === hoy;
+    const hora  = e.hora ? `<span class="dash-ag-hora">${e.hora}</span>` : `<span class="dash-ag-fecha">${isHoy ? 'HOY' : 'MAN'}</span>`;
+    return `<div class="dash-ag-item">
+      <span class="dash-ag-icon">📌</span>
+      <span class="dash-ag-titulo">${e.titulo.replace(/</g,'&lt;')}</span>
+      ${hora}
+    </div>`;
+  }).join('');
+}
+
+function _renderDashSaludWidget() {
+  const w = document.getElementById('dash-salud-widget');
+  const b = document.getElementById('dash-salud-body');
+  if (!w || !b || typeof getSaludData !== 'function') return;
+  const data = getSaludData();
+  const hoy  = new Date().toISOString().slice(0, 10);
+  const reg  = data.registros.find(r => r.fecha === hoy);
+  if (!reg && !data.registros.length) { w.style.display = 'none'; return; }
+  w.style.display = '';
+  const r  = reg || { agua: 0, sueno: 0, ejercicioMins: 0 };
+  const m  = data.metas;
+  const pAgua = m.agua > 0    ? Math.min(100, Math.round((r.agua / m.agua) * 100)) : 0;
+  const pSuen = m.sueno > 0   ? Math.min(100, Math.round((r.sueno / m.sueno) * 100)) : 0;
+  const pEjer = m.ejercicio > 0 ? Math.min(100, Math.round((r.ejercicioMins / m.ejercicio) * 100)) : 0;
+  b.innerHTML = `
+    <div class="dash-salud-row">
+      <div class="dash-salud-item" style="flex:1">
+        <span class="dash-salud-icon">💧</span>
+        <div style="flex:1">
+          <span class="dash-salud-val">${r.agua}/${m.agua}</span>
+          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pAgua}%;background:${pAgua>=100?'#00ffaa':'var(--cyan)'}"></div></div>
+        </div>
+      </div>
+      <div class="dash-salud-item" style="flex:1">
+        <span class="dash-salud-icon">😴</span>
+        <div style="flex:1">
+          <span class="dash-salud-val">${r.sueno}h/${m.sueno}h</span>
+          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pSuen}%;background:${pSuen>=100?'#00ffaa':'rgba(120,80,255,0.7)'}"></div></div>
+        </div>
+      </div>
+      <div class="dash-salud-item" style="flex:1">
+        <span class="dash-salud-icon">🏃</span>
+        <div style="flex:1">
+          <span class="dash-salud-val">${r.ejercicioMins}/${m.ejercicio}min</span>
+          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pEjer}%;background:${pEjer>=100?'#00ffaa':'rgba(0,255,170,0.5)'}"></div></div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderSessionsList() {
@@ -3295,6 +3417,7 @@ async function boot() {
   }
 
   await pullConfigFromFirestore();
+  await pullAllModuleData();
   if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
   await loadHistory();
   await requestNotifPerm();
@@ -3718,6 +3841,7 @@ window.refreshWeather = refreshWeather;
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.renderSOSModule = renderSOSModule;
+window.getTareas       = getTareas;
 
 // Actualiza countdowns de recordatorios cada 30 segundos
 setInterval(() => {

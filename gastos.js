@@ -53,6 +53,7 @@ function getGastosData() {
 
 function saveGastosData(data) {
   localStorage.setItem(GP_KEY, JSON.stringify(data));
+  if (typeof arexSyncData === 'function') arexSyncData(GP_KEY);
 }
 
 // ── Navegación de vistas ─────────────────────────────

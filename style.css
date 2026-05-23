@@ -1679,6 +1679,22 @@ footer {
 .dash-hab-nombre { flex:1; font-size:0.76rem; color:var(--text); }
 .dash-hab-streak { font-size:0.72rem; color:var(--text-muted); }
 
+/* ── Dashboard Salud widget ─────────────────────────── */
+.dash-salud-row { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+.dash-salud-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted); flex:1; min-width:80px; }
+.dash-salud-icon { font-size:13px; flex-shrink:0; }
+.dash-salud-val  { display:block; font-size:10px; color:var(--text-main); margin-bottom:3px; }
+.dash-salud-bar  { height:3px; background:rgba(0,212,255,0.1); border-radius:2px; overflow:hidden; }
+.dash-salud-fill { height:100%; border-radius:2px; transition:width 0.4s ease; }
+
+/* ── Dashboard Agenda widget ─────────────────────────── */
+.dash-agenda-list { display:flex; flex-direction:column; gap:4px; }
+.dash-ag-item { display:flex; align-items:center; gap:7px; font-size:11px; padding:4px 0; border-bottom:1px solid rgba(0,212,255,0.05); }
+.dash-ag-icon   { font-size:13px; flex-shrink:0; }
+.dash-ag-titulo { flex:1; color:var(--text-main); }
+.dash-ag-hora   { font-size:10px; color:var(--cyan); white-space:nowrap; }
+.dash-ag-fecha  { font-size:9px; color:var(--text-muted); letter-spacing:1px; }
+
 /* ── Vista Calendario ────────────────────────────────── */
 .tvt-wrap { display:flex; gap:0.25rem; margin-left:auto; }
 .tvt {

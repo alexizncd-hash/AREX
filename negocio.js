@@ -37,6 +37,7 @@ function getNegocioData() {
 
 function saveNegocioData(data) {
   localStorage.setItem(NEGOCIO_KEY, JSON.stringify(data));
+  if (typeof arexSyncData === 'function') arexSyncData(NEGOCIO_KEY);
 }
 
 // ── Formatters ──────────────────────────────────────
@@ -66,14 +67,40 @@ function switchNegocioView(view) {
 }
 
 // ── Dashboard ───────────────────────────────────────
+function _mesAnterior() {
+  const now = new Date();
+  const s = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+  const e = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  return { s, e };
+}
+
+function _diffPct(curr, prev) {
+  if (prev === 0) return curr > 0 ? '100' : null;
+  return ((curr - prev) / prev * 100).toFixed(0);
+}
+
+function _trend(curr, prev) {
+  if (prev == null || curr == null) return '';
+  const pct = _diffPct(curr, prev);
+  if (pct === null) return '';
+  const up = Number(pct) >= 0;
+  return `<span class="neg-kpi-trend ${up ? 'neg-profit' : 'neg-loss'}">${up ? '↑' : '↓'}${Math.abs(pct)}%</span>`;
+}
+
 function renderNegDashboard() {
   const data = getNegocioData();
   const im   = inicioMes();
+  const { s: imAnt, e: imAntFin } = _mesAnterior();
   const ventasMes  = data.ventas.filter(v => v.fecha >= im);
   const gastosMes  = data.gastos.filter(g => g.fecha >= im);
+  const ventasAnt  = data.ventas.filter(v => v.fecha >= imAnt && v.fecha < imAntFin);
+  const gastosAnt  = data.gastos.filter(g => g.fecha >= imAnt && g.fecha < imAntFin);
   const totalVentas = ventasMes.reduce((a, v) => a + v.total, 0);
   const totalGastos = gastosMes.reduce((a, g) => a + g.monto, 0);
   const ganancia    = totalVentas - totalGastos;
+  const totalVentasAnt = ventasAnt.reduce((a, v) => a + v.total, 0);
+  const totalGastosAnt = gastosAnt.reduce((a, g) => a + g.monto, 0);
+  const gananciaAnt    = totalVentasAnt - totalGastosAnt;
   const mlVendidos  = ventasMes.reduce((a, v) => a + v.cantidad, 0);
   const mlDisp      = Math.floor(data.inventario.stockKg * data.config.rendimiento);
   const margen      = totalVentas > 0 ? ((ganancia / totalVentas) * 100).toFixed(1) : '—';
@@ -131,14 +158,14 @@ function renderNegDashboard() {
         <div class="neg-kpi-sub">≈ ${mlDisp} medio litros</div>
       </div>
       <div class="neg-kpi">
-        <div class="neg-kpi-lbl">VENTAS MES</div>
+        <div class="neg-kpi-lbl">VENTAS MES ${_trend(totalVentas, totalVentasAnt)}</div>
         <div class="neg-kpi-val">${$MXN(totalVentas)}</div>
-        <div class="neg-kpi-sub">${mlVendidos} ML vendidos</div>
+        <div class="neg-kpi-sub">${mlVendidos} ML · ant: ${$MXN(totalVentasAnt)}</div>
       </div>
       <div class="neg-kpi">
-        <div class="neg-kpi-lbl">GANANCIA MES</div>
+        <div class="neg-kpi-lbl">GANANCIA MES ${_trend(ganancia, gananciaAnt)}</div>
         <div class="neg-kpi-val ${ganancia >= 0 ? 'neg-profit' : 'neg-loss'}">${$MXN(ganancia)}</div>
-        <div class="neg-kpi-sub">Margen: ${margen}%</div>
+        <div class="neg-kpi-sub">Margen: ${margen}% · ant: ${$MXN(gananciaAnt)}</div>
       </div>
       <div class="neg-kpi">
         <div class="neg-kpi-lbl">SUCURSALES</div>
@@ -177,7 +204,10 @@ function renderNegDashboard() {
       </div>
     </div>
 
-    <button class="neg-btn-primary" onclick="switchNegocioView('ventas')">+ REGISTRAR VENTA</button>
+    <div class="neg-form-row" style="gap:0.5rem">
+      <button class="neg-btn-primary" style="flex:1" onclick="switchNegocioView('ventas')">+ REGISTRAR VENTA</button>
+      <button class="neg-btn-primary" style="flex:0 0 auto;padding:9px 14px;letter-spacing:1px;font-size:9px" onclick="negExportarMes()" title="Exportar resumen del mes">⬇ RESUMEN</button>
+    </div>
 
     <div class="neg-section-title">ACTIVIDAD RECIENTE</div>
     ${recientes.length === 0
@@ -190,6 +220,46 @@ function renderNegDashboard() {
               <span class="${r.tipo === 'venta' ? 'neg-profit' : 'neg-loss'}">${r.tipo === 'venta' ? '' : '-'}${$MXN(r.monto)}</span>
             </div>`).join('')}
         </div>`}
+    <div id="neg-export-box" class="neg-export-box" style="display:none"></div>
+  `;
+}
+
+// ── Exportar resumen mensual ─────────────────────────
+function negExportarMes() {
+  const data = getNegocioData();
+  const im   = inicioMes();
+  const { s: imAnt, e: imAntFin } = _mesAnterior();
+  const now  = new Date();
+  const mesNom = now.toLocaleDateString('es-MX', { month:'long', year:'numeric' }).toUpperCase();
+  const ventasMes  = data.ventas.filter(v => v.fecha >= im);
+  const gastosMes  = data.gastos.filter(g => g.fecha >= im);
+  const ventasAnt  = data.ventas.filter(v => v.fecha >= imAnt && v.fecha < imAntFin);
+  const gastosAnt  = data.gastos.filter(g => g.fecha >= imAnt && g.fecha < imAntFin);
+  const totalVentas = ventasMes.reduce((a, v) => a + v.total, 0);
+  const totalGastos = gastosMes.reduce((a, g) => a + g.monto, 0);
+  const ganancia    = totalVentas - totalGastos;
+  const totalVentasAnt = ventasAnt.reduce((a, v) => a + v.total, 0);
+  const gananciaAnt    = ventasAnt.reduce((a, v) => a + v.total, 0) - gastosAnt.reduce((a, g) => a + g.monto, 0);
+
+  const pct = totalVentasAnt > 0 ? (((totalVentas - totalVentasAnt) / totalVentasAnt) * 100).toFixed(1) : 'N/A';
+
+  const txt = [
+    `RESUMEN MENSUAL — ${mesNom}`,
+    `─────────────────────────────`,
+    `VENTAS:         ${$MXN(totalVentas)} (ant: ${$MXN(totalVentasAnt)}, ${pct !== 'N/A' ? (Number(pct) >= 0 ? '+' : '') + pct + '%' : 'N/A'})`,
+    `GASTOS:         ${$MXN(totalGastos)}`,
+    `GANANCIA NETA:  ${$MXN(ganancia)}`,
+    `TRANSACCIONES:  ${ventasMes.length} ventas · ${gastosMes.length} gastos`,
+    `─────────────────────────────`,
+    `Generado por AREX · ${new Date().toLocaleString('es-MX')}`
+  ].join('\n');
+
+  const box = document.getElementById('neg-export-box');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = `
+    <pre class="neg-export-txt">${txt}</pre>
+    <button class="neg-btn-primary" style="margin-top:6px;font-size:9px" onclick="navigator.clipboard?.writeText(${JSON.stringify(txt)}).then(()=>{this.textContent='✓ COPIADO';setTimeout(()=>this.textContent='COPIAR',1500)})">COPIAR</button>
   `;
 }
 
@@ -723,6 +793,7 @@ window.negEliminarGasto       = negEliminarGasto;
 window.negEditarGasto         = negEditarGasto;
 window.negGuardarEditGasto    = negGuardarEditGasto;
 window.negGuardarConfig       = negGuardarConfig;
+window.negExportarMes         = negExportarMes;
 window.renderNegVentas        = renderNegVentas;
 window.renderNegSucursales    = renderNegSucursales;
 window.renderNegGastos        = renderNegGastos;

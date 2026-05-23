@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="negocio.css"/>
 <link rel="stylesheet" href="gastos.css"/>
 <link rel="stylesheet" href="metas.css"/>
+<link rel="stylesheet" href="salud.css"/>
+<link rel="stylesheet" href="agenda.css"/>
 </head>
 <body>
 
@@ -470,6 +472,21 @@
         <circle cx="12" cy="12" r="2"/>
       </svg>
       <span class="dock-label">METAS</span>
+    </button>
+    <button class="nav-btn" data-module="salud" data-tooltip="Salud y bienestar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+      <span class="dock-label">SALUD</span>
+    </button>
+    <button class="nav-btn" data-module="agenda" data-tooltip="Agenda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span class="dock-label">AGENDA</span>
     </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1051,6 +1068,34 @@
   </div>
 </div>
 
+<!-- ── Módulo: Salud ── -->
+<div id="module-salud" class="module-panel">
+  <div class="neg-subnav">
+    <button class="neg-tab active" data-view="hoy">HOY</button>
+    <button class="neg-tab" data-view="historial">HISTORIAL</button>
+    <button class="neg-tab" data-view="config">⚙ METAS</button>
+  </div>
+  <div class="neg-content">
+    <div class="sal-view active" data-view="hoy"       id="sal-hoy-content"></div>
+    <div class="sal-view"        data-view="historial"  id="sal-hist-content"></div>
+    <div class="sal-view"        data-view="config"     id="sal-cfg-content"></div>
+  </div>
+</div>
+
+<!-- ── Módulo: Agenda ── -->
+<div id="module-agenda" class="module-panel">
+  <div class="neg-subnav">
+    <button class="neg-tab active" data-view="hoy">HOY</button>
+    <button class="neg-tab" data-view="semana">SEMANA</button>
+    <button class="neg-tab" data-view="nuevo">+ EVENTO</button>
+  </div>
+  <div class="neg-content">
+    <div class="ag-view active" data-view="hoy"    id="ag-hoy-content"></div>
+    <div class="ag-view"        data-view="semana"  id="ag-sem-content"></div>
+    <div class="ag-view"        data-view="nuevo"   id="ag-nuevo-content"></div>
+  </div>
+</div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
@@ -1059,6 +1104,8 @@
 <script src="negocio.js"></script>
 <script src="gastos.js"></script>
 <script src="metas.js"></script>
+<script src="salud.js"></script>
+<script src="agenda.js"></script>
 <script src="jarvis.js"></script>
 
 <!-- Marked (Markdown parser) -->

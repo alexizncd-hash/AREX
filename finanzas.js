@@ -365,17 +365,108 @@ const FinanzasModule = {
   },
 
   renderGraficaProyeccion(proyeccion) {
-    const canvas = document.getElementById('proyeccion-chart');
-    if (!canvas) return;
-    const container = canvas.parentElement;
-    container.innerHTML = `
-      <div class="grafica-placeholder">
-        <p>📈 Proyección de ${proyeccion.length} meses</p>
-        <p>Deuda inicial: ${formatearMoneda(calcularDeudaTotal())}</p>
-        <p>Deuda final: ${formatearMoneda(proyeccion[proyeccion.length - 1]?.total || 0)}</p>
-        <p class="nota-grafica">💡 Gráfica detallada disponible próximamente</p>
-      </div>
-    `;
+    const container = document.querySelector('.proyeccion-section');
+    if (!container) return;
+    if (!proyeccion || proyeccion.length < 2) {
+      container.innerHTML = '<h4 class="section-subtitle">📈 Proyección de Reducción</h4><p style="color:#4a7a96;font-size:12px;text-align:center;padding:1rem">Sin datos suficientes. Ajusta los parámetros.</p>';
+      return;
+    }
+
+    container.innerHTML = '<h4 class="section-subtitle">📈 Proyección de Reducción de Deuda</h4><canvas id="proyeccion-chart" style="width:100%;display:block"></canvas>';
+    const cv = document.getElementById('proyeccion-chart');
+    if (!cv) return;
+
+    const W = cv.parentElement.clientWidth || 320;
+    const H = Math.min(180, Math.max(120, Math.round(W * 0.35)));
+    cv.width  = W;
+    cv.height = H;
+    cv.style.height = H + 'px';
+
+    const ctx = cv.getContext('2d');
+    const PAD = { top: 14, right: 12, bottom: 28, left: 52 };
+    const gW  = W - PAD.left - PAD.right;
+    const gH  = H - PAD.top  - PAD.bottom;
+
+    const maxDeuda = Math.max(...proyeccion.map(p => p.total), 1);
+    const step     = Math.max(1, Math.floor(proyeccion.length / 6));
+    const months   = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const now      = new Date();
+
+    // Background
+    ctx.fillStyle = 'rgba(0,14,26,0.0)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(0,212,255,0.07)';
+    ctx.lineWidth   = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = PAD.top + (gH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
+      const val = maxDeuda - (maxDeuda / 4) * i;
+      ctx.fillStyle = '#4a7a96';
+      ctx.font      = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText('$' + (val >= 1000 ? (val/1000).toFixed(0) + 'k' : val.toFixed(0)), PAD.left - 4, y + 3);
+    }
+
+    // Area fill
+    ctx.beginPath();
+    proyeccion.forEach((p, i) => {
+      const x = PAD.left + (i / (proyeccion.length - 1)) * gW;
+      const y = PAD.top  + (1 - p.total / maxDeuda) * gH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    const lastX = PAD.left + gW;
+    ctx.lineTo(lastX, PAD.top + gH);
+    ctx.lineTo(PAD.left, PAD.top + gH);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + gH);
+    grad.addColorStop(0, 'rgba(0,212,255,0.25)');
+    grad.addColorStop(1, 'rgba(0,212,255,0.02)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth   = 2;
+    proyeccion.forEach((p, i) => {
+      const x = PAD.left + (i / (proyeccion.length - 1)) * gW;
+      const y = PAD.top  + (1 - p.total / maxDeuda) * gH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Zero line (if debt reaches 0)
+    const zeroY = PAD.top + gH;
+    ctx.strokeStyle = 'rgba(0,255,170,0.3)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(PAD.left, zeroY); ctx.lineTo(PAD.left + gW, zeroY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // X labels
+    ctx.fillStyle = '#4a7a96';
+    ctx.font      = '8px monospace';
+    ctx.textAlign = 'center';
+    proyeccion.forEach((p, i) => {
+      if (i % step !== 0 && i !== proyeccion.length - 1) return;
+      const x = PAD.left + (i / (proyeccion.length - 1)) * gW;
+      const mo = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      ctx.fillText(months[mo.getMonth()], x, H - 8);
+    });
+
+    // Final dot + label
+    const lx = PAD.left + gW;
+    const ly = PAD.top + (1 - (proyeccion[proyeccion.length - 1]?.total || 0) / maxDeuda) * gH;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ffaa';
+    ctx.fill();
+    ctx.fillStyle = '#00ffaa';
+    ctx.font      = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatearMoneda(proyeccion[proyeccion.length - 1]?.total || 0), lx, ly - 8);
   },
 
   // ── EDITOR ─────────────────────────────────────────────

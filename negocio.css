@@ -423,6 +423,31 @@
 }
 .neg-meta-fill.complete { background: #00ffaa; }
 
+/* ── KPI trend badge ── */
+.neg-kpi-trend {
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin-left: 4px;
+  opacity: 0.9;
+}
+
+/* ── Export box ── */
+.neg-export-box {
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 4px;
+  background: rgba(0,14,26,0.6);
+  padding: 0.7rem 0.9rem;
+  margin-top: 0.3rem;
+}
+.neg-export-txt {
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  margin: 0 0 0.4rem;
+  line-height: 1.6;
+}
+
 @media (max-width: 600px) {
   .neg-kpi-grid { grid-template-columns: 1fr 1fr; }
   .neg-kpi-val  { font-size: 15px; }
