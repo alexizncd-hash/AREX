@@ -48,6 +48,7 @@ function setupSaveHandler() {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('boot-screen').style.display = 'flex';
     initFirebase();
+    syncConfigToFirestore();
     boot();
   });
 }
@@ -324,6 +325,26 @@ function initFirebase() {
     db = getFirestore(fbApp);
     fbInitialized = true;
   } catch(e) { console.warn('Firebase init:', e); }
+}
+
+async function syncConfigToFirestore() {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, 'arex', 'config'), window.AREX_CONFIG);
+  } catch(e) { console.warn('syncConfig:', e); }
+}
+
+async function pullConfigFromFirestore() {
+  if (!db) return;
+  try {
+    const snap = await getDoc(doc(db, 'arex', 'config'));
+    if (!snap.exists()) return;
+    const remote = snap.data();
+    // Keep local firebase credentials (already bootstrapped), fill rest from remote
+    const merged = { ...remote, firebase: window.AREX_CONFIG?.firebase ?? remote.firebase };
+    localStorage.setItem('arex_config', JSON.stringify(merged));
+    window.AREX_CONFIG = merged;
+  } catch(e) { console.warn('pullConfig:', e); }
 }
 
 /* ── Markdown ───────────────────────────────────────── */
@@ -3091,6 +3112,8 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   };
   localStorage.setItem('arex_config', JSON.stringify(config));
   window.AREX_CONFIG = config;
+  initFirebase();
+  syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
 });
 
@@ -3259,6 +3282,7 @@ async function boot() {
     bootBar.style.width = ((i+1)/lines.length*100) + '%';
   }
 
+  await pullConfigFromFirestore();
   await loadHistory();
   await requestNotifPerm();
   updateCtxBadge();
