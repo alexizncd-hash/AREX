@@ -13,8 +13,6 @@
 <link rel="stylesheet" href="negocio.css"/>
 <link rel="stylesheet" href="gastos.css"/>
 <link rel="stylesheet" href="metas.css"/>
-<link rel="stylesheet" href="salud.css"/>
-<link rel="stylesheet" href="agenda.css"/>
 </head>
 <body>
 
@@ -442,13 +440,6 @@
       </svg>
       <span class="dock-label">NOTAS</span>
     </button>
-    <button class="nav-btn" data-module="habitos" data-tooltip="Hábitos">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
-      <span class="dock-label">HÁBITOS</span>
-    </button>
     <button class="nav-btn" data-module="negocio" data-tooltip="Mi Negocio">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -473,35 +464,12 @@
       </svg>
       <span class="dock-label">METAS</span>
     </button>
-    <button class="nav-btn" data-module="salud" data-tooltip="Salud y bienestar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-      </svg>
-      <span class="dock-label">SALUD</span>
-    </button>
-    <button class="nav-btn" data-module="agenda" data-tooltip="Agenda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/>
-        <line x1="3" y1="10" x2="21" y2="10"/>
-      </svg>
-      <span class="dock-label">AGENDA</span>
-    </button>
     <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="16 18 22 12 16 6"/>
         <polyline points="8 6 2 12 8 18"/>
       </svg>
       <span class="dock-label">CÓDIGO</span>
-    </button>
-    <div class="dock-sos-sep"></div>
-    <button class="nav-btn nav-btn-sos" data-module="sos" data-tooltip="Emergencias">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <span class="dock-label">SOS</span>
     </button>
   </nav>
   <div class="dock-bottom">
@@ -891,28 +859,6 @@
   </div>
 </div>
 
-<!-- ── Hábitos ── -->
-<div id="module-habitos" class="module-panel">
-  <div class="habitos-layout">
-    <div class="habitos-topbar">
-      <div>
-        <div class="hab-title">HÁBITOS</div>
-        <div class="hab-subtitle" id="hab-subtitle">Cargando...</div>
-      </div>
-      <button id="hab-add-btn" class="hab-add-btn">+ NUEVO</button>
-    </div>
-    <div id="hab-list" class="hab-list"></div>
-    <div id="hab-form" class="hab-form hidden">
-      <input id="hab-emoji" class="hab-emoji-input" placeholder="🎯" maxlength="2" value="🎯"/>
-      <input id="hab-nombre" class="hab-input" placeholder="Nombre del hábito..." autocomplete="off"/>
-      <div class="hab-form-btns">
-        <button id="hab-form-save" class="hab-form-save">GUARDAR</button>
-        <button id="hab-form-cancel" class="hab-form-cancel">CANCELAR</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ── Notas ── -->
 <div id="module-notas" class="module-panel">
   <div class="notas-layout">
@@ -921,78 +867,6 @@
       <button class="notas-add-btn" id="notas-add-btn">+ NUEVA</button>
     </div>
     <div id="notas-list" class="notas-list"></div>
-  </div>
-</div>
-
-<!-- ── SOS / Emergencias ── -->
-<div id="module-sos" class="module-panel">
-  <div class="sos-layout">
-
-    <div class="sos-topbar">
-      <span class="sos-topbar-title">🚨 EMERGENCIAS</span>
-      <button class="sos-cfg-btn" id="sos-edit-toggle">⚙ CONFIGURAR</button>
-    </div>
-
-    <!-- Botón 911 -->
-    <a href="tel:911" class="sos-911-btn">
-      <span class="sos-911-ring"></span>
-      <span class="sos-911-inner">
-        <span class="sos-911-label">🆘 LLAMAR AL 911</span>
-        <span class="sos-911-sub">Toca para marcar directamente</span>
-      </span>
-    </a>
-
-    <div class="sos-grid">
-
-      <!-- Ubicación -->
-      <div class="sos-card">
-        <div class="sos-card-title">📍 UBICACIÓN</div>
-        <div class="sos-loc-row">
-          <span id="sos-loc-text">Hermosillo, Sonora, México</span>
-          <button class="sos-loc-btn" id="sos-get-loc">GPS</button>
-        </div>
-        <div id="sos-share-row" class="sos-share-row"></div>
-        <button class="sos-copy-msg-btn" id="sos-copy-msg">📋 COPIAR MENSAJE DE EMERGENCIA</button>
-      </div>
-
-      <!-- Info médica -->
-      <div class="sos-card sos-card-medico">
-        <div class="sos-card-title">🩺 INFORMACIÓN MÉDICA</div>
-        <div id="sos-medico-card"></div>
-      </div>
-
-    </div>
-
-    <!-- Contactos -->
-    <div class="sos-card sos-card-full">
-      <div class="sos-card-title">👥 CONTACTOS DE EMERGENCIA</div>
-      <div id="sos-contacts-list" class="sos-contacts-grid"></div>
-    </div>
-
-    <!-- Panel de configuración (oculto por defecto) -->
-    <div id="sos-edit-panel" class="sos-edit-panel hidden">
-      <div class="sos-edit-block">
-        <div class="sos-edit-block-title">AGREGAR CONTACTO</div>
-        <div class="sos-edit-form">
-          <input id="sos-add-name"  class="sos-input" placeholder="Nombre"/>
-          <input id="sos-add-rel"   class="sos-input" placeholder="Relación (Mamá, Papá, Novia…)"/>
-          <input id="sos-add-phone" class="sos-input" placeholder="Teléfono (10 dígitos)" type="tel"/>
-          <button class="sos-edit-save-btn" id="sos-add-contact-btn">+ AGREGAR</button>
-        </div>
-        <div id="sos-edit-contacts-list" class="sos-edit-contacts-list"></div>
-      </div>
-      <div class="sos-edit-block">
-        <div class="sos-edit-block-title">INFORMACIÓN MÉDICA</div>
-        <div class="sos-edit-form">
-          <input id="sos-med-sangre" class="sos-input" placeholder="Tipo de sangre (ej. O+)"/>
-          <input id="sos-med-alergias" class="sos-input" placeholder="Alergias"/>
-          <input id="sos-med-meds" class="sos-input" placeholder="Medicamentos actuales"/>
-          <input id="sos-med-cond" class="sos-input" placeholder="Condiciones médicas"/>
-          <button class="sos-edit-save-btn" id="sos-save-medico-btn">GUARDAR DATOS MÉDICOS</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -1068,34 +942,6 @@
   </div>
 </div>
 
-<!-- ── Módulo: Salud ── -->
-<div id="module-salud" class="module-panel">
-  <div class="neg-subnav">
-    <button class="neg-tab active" data-view="hoy">HOY</button>
-    <button class="neg-tab" data-view="historial">HISTORIAL</button>
-    <button class="neg-tab" data-view="config">⚙ METAS</button>
-  </div>
-  <div class="neg-content">
-    <div class="sal-view active" data-view="hoy"       id="sal-hoy-content"></div>
-    <div class="sal-view"        data-view="historial"  id="sal-hist-content"></div>
-    <div class="sal-view"        data-view="config"     id="sal-cfg-content"></div>
-  </div>
-</div>
-
-<!-- ── Módulo: Agenda ── -->
-<div id="module-agenda" class="module-panel">
-  <div class="neg-subnav">
-    <button class="neg-tab active" data-view="hoy">HOY</button>
-    <button class="neg-tab" data-view="semana">SEMANA</button>
-    <button class="neg-tab" data-view="nuevo">+ EVENTO</button>
-  </div>
-  <div class="neg-content">
-    <div class="ag-view active" data-view="hoy"    id="ag-hoy-content"></div>
-    <div class="ag-view"        data-view="semana"  id="ag-sem-content"></div>
-    <div class="ag-view"        data-view="nuevo"   id="ag-nuevo-content"></div>
-  </div>
-</div>
-
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
@@ -1104,8 +950,6 @@
 <script src="negocio.js"></script>
 <script src="gastos.js"></script>
 <script src="metas.js"></script>
-<script src="salud.js"></script>
-<script src="agenda.js"></script>
 <script src="jarvis.js"></script>
 
 <!-- Marked (Markdown parser) -->

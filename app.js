@@ -292,7 +292,6 @@ Puedes ejecutar acciones reales dentro de AREX usando etiquetas al FINAL de tu r
 
 Crear tarea:       <arex:accion tipo="addTarea" texto="descripción" fecha="YYYY-MM-DD" prioridad="alta|media|baja"/>
 Crear nota:        <arex:accion tipo="addNota" titulo="título" cuerpo="contenido completo"/>
-Crear hábito:      <arex:accion tipo="addHabito" nombre="nombre" emoji="🎯"/>
 Recordatorio:      <arex:accion tipo="recordar" msg="mensaje" mins="30"/>
 Guardar hecho:     <arex:accion tipo="hecho" texto="dato importante sobre Alexiz"/>
 Abrir módulo:      <arex:accion tipo="modulo" nombre="tareas|notas|finanzas|habitos|inicio"/>
@@ -367,9 +366,9 @@ async function arexSyncData(lsKey) {
 // Pull all synced module data back from Firestore on boot
 async function pullAllModuleData() {
   if (!db) return;
-  const keys = ['arex_negocio','arex_gastos_pers','arex_metas','arex_salud','arex_agenda',
-                 'arex_tareas','arex_recordatorios','arex_habitos','arex_memoria','arex_hechos',
-                 'arex_context','arex_atajos','arex_sos'];
+  const keys = ['arex_negocio','arex_gastos_pers','arex_metas',
+                 'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
+                 'arex_context','arex_atajos'];
   for (const key of keys) {
     try {
       const snap = await getDoc(doc(db, 'arex_data', key));
@@ -815,138 +814,7 @@ function renderNotasWidget() {
     </div>`).join('');
 }
 
-// ── Módulo Hábitos ───────────────────────────────────────
-function getHabitos() { return JSON.parse(localStorage.getItem('arex_habitos') || '[]'); }
-function saveHabitos(arr) { localStorage.setItem('arex_habitos', JSON.stringify(arr)); }
-
 function _todayStr() { return new Date().toISOString().slice(0, 10); }
-
-function _getStreak(h) {
-  const today = _todayStr();
-  let streak = 0;
-  const d = new Date(); d.setHours(0, 0, 0, 0);
-  while (true) {
-    const s = d.toISOString().slice(0, 10);
-    if (!h.history.includes(s)) {
-      if (streak === 0 && s === today) { d.setDate(d.getDate() - 1); continue; }
-      break;
-    }
-    streak++; d.setDate(d.getDate() - 1);
-  }
-  return streak;
-}
-
-function _last7(h) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    const s = d.toISOString().slice(0, 10);
-    return { date: s, checked: h.history.includes(s), isToday: i === 6 };
-  });
-}
-
-function checkHabito(id) {
-  const today = _todayStr();
-  saveHabitos(getHabitos().map(h => {
-    if (h.id !== id) return h;
-    const history = h.history.includes(today)
-      ? h.history.filter(d => d !== today)
-      : [...h.history, today];
-    return { ...h, history };
-  }));
-  renderHabitos(); renderDashboard();
-}
-
-function deleteHabito(id) {
-  saveHabitos(getHabitos().filter(h => h.id !== id));
-  renderHabitos(); renderDashboard();
-}
-
-function addHabito(nombre, emoji) {
-  if (!nombre.trim()) return;
-  saveHabitos([...getHabitos(), { id: String(Date.now()), nombre: nombre.trim(), emoji: emoji || '🎯', history: [], created: Date.now() }]);
-  renderHabitos();
-}
-
-function renderHabitos() {
-  const el = document.getElementById('hab-list');
-  if (!el) return;
-  const habitos = getHabitos();
-  const today = _todayStr();
-
-  const sub = document.getElementById('hab-subtitle');
-  if (sub) {
-    const done = habitos.filter(h => h.history.includes(today)).length;
-    sub.textContent = habitos.length
-      ? `${done}/${habitos.length} completados hoy`
-      : 'Sin hábitos aún';
-  }
-
-  if (!habitos.length) {
-    el.innerHTML = '<div class="hab-empty">Sin hábitos — toca + NUEVO para agregar uno</div>';
-    return;
-  }
-
-  el.innerHTML = '';
-  habitos.forEach(h => {
-    const streak = _getStreak(h);
-    const done   = h.history.includes(today);
-    const div    = document.createElement('div');
-    div.className = 'hab-card' + (done ? ' checked' : '');
-    div.innerHTML = `
-      <button class="hab-check${done ? ' done' : ''}" data-id="${h.id}">
-        <span class="hab-emoji">${h.emoji}</span>
-        ${done ? '<span class="hab-tick">✓</span>' : ''}
-      </button>
-      <div class="hab-info">
-        <div class="hab-nombre">${h.nombre.replace(/</g,'&lt;')}</div>
-        <div class="hab-dots">${_last7(h).map(d =>
-          `<span class="hab-dot${d.checked?' on':''}${d.isToday?' today':''}"></span>`
-        ).join('')}</div>
-      </div>
-      <div class="hab-right">
-        <div class="hab-streak">${streak}<span class="hab-sl"> racha</span></div>
-        <button class="hab-del">✕</button>
-      </div>`;
-
-    div.querySelector('.hab-check').addEventListener('click', () => checkHabito(h.id));
-    let _hdt = null;
-    const db = div.querySelector('.hab-del');
-    db.addEventListener('click', () => {
-      if (_hdt) { clearTimeout(_hdt); deleteHabito(h.id); return; }
-      db.classList.add('confirming'); db.textContent = '¿?';
-      _hdt = setTimeout(() => { db.classList.remove('confirming'); db.textContent = '✕'; _hdt = null; }, 2000);
-    });
-    el.appendChild(div);
-  });
-}
-window.renderHabitos = renderHabitos;
-
-function renderHabitosWidget() {
-  const el = document.getElementById('dash-habitos-widget');
-  if (!el) return;
-  const habitos = getHabitos();
-  if (!habitos.length) { el.style.display = 'none'; return; }
-  el.style.display = '';
-  const today = _todayStr();
-  const done  = habitos.filter(h => h.history.includes(today)).length;
-  el.querySelector('.dash-hab-body').innerHTML = `
-    <div class="dash-hab-progress">
-      <div class="dhp-bar"><div class="dhp-fill" style="width:${Math.round(done/habitos.length*100)}%"></div></div>
-      <span class="dhp-label">${done}/${habitos.length} hoy</span>
-    </div>
-    ${habitos.map(h => {
-      const isDone = h.history.includes(today);
-      const streak = _getStreak(h);
-      return `<div class="dash-hab-item${isDone?' done':''}">
-        <button class="dash-hab-check${isDone?' done':''}" data-id="${h.id}">${isDone?'✓':h.emoji}</button>
-        <span class="dash-hab-nombre">${h.nombre.replace(/</g,'&lt;')}</span>
-        ${streak > 1 ? `<span class="dash-hab-streak">🔥${streak}</span>` : ''}
-      </div>`;
-    }).join('')}`;
-  el.querySelectorAll('.dash-hab-check').forEach(btn =>
-    btn.addEventListener('click', () => checkHabito(btn.dataset.id))
-  );
-}
 
 // ── Vista Calendario ─────────────────────────────────────
 let _calYear  = new Date().getFullYear();
@@ -1158,36 +1026,12 @@ function renderDashboard() {
 
     <div id="dash-weather" class="dash-widget dash-w-full"></div>
 
-    <div id="dash-habitos-widget" class="dash-widget dash-w-full" style="display:none">
-      <div class="dash-w-header">
-        <span class="dash-w-title">🔥 HÁBITOS DE HOY</span>
-        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('habitos')">VER TODOS →</button>
-      </div>
-      <div class="dash-hab-body"></div>
-    </div>
-
     <div id="dash-notas-widget" class="dash-widget dash-w-full" style="display:none">
       <div class="dash-w-header">
         <span class="dash-w-title">📌 NOTAS FIJADAS</span>
         <button class="dash-w-link" onclick="AREXNav.cambiarModulo('notas')">VER TODAS →</button>
       </div>
       <div class="dash-notas-body"></div>
-    </div>
-
-    <div id="dash-agenda-widget" class="dash-widget dash-w-full" style="display:none">
-      <div class="dash-w-header">
-        <span class="dash-w-title">📅 AGENDA HOY</span>
-        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('agenda')">VER TODO →</button>
-      </div>
-      <div id="dash-agenda-body" class="dash-agenda-list"></div>
-    </div>
-
-    <div id="dash-salud-widget" class="dash-widget dash-w-full" style="display:none">
-      <div class="dash-w-header">
-        <span class="dash-w-title">❤️ SALUD HOY</span>
-        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('salud')">VER →</button>
-      </div>
-      <div id="dash-salud-body"></div>
     </div>
 
     <div class="dash-widget dash-w-full">
@@ -1212,75 +1056,7 @@ function renderDashboard() {
   );
 
   renderWeatherWidget();
-  renderHabitosWidget();
   renderNotasWidget();
-  _renderDashAgendaWidget();
-  _renderDashSaludWidget();
-}
-
-function _renderDashAgendaWidget() {
-  const w = document.getElementById('dash-agenda-widget');
-  const b = document.getElementById('dash-agenda-body');
-  if (!w || !b || typeof getAgendaData !== 'function') return;
-  const hoy = new Date().toISOString().slice(0, 10);
-  const mañana = new Date(); mañana.setDate(mañana.getDate() + 1);
-  const mStr = mañana.toISOString().slice(0, 10);
-  const data = getAgendaData();
-  const hoyEvs = data.eventos.filter(e => e.fecha === hoy || e.fecha === mStr)
-    .sort((a, b) => { const da = a.fecha + (a.hora||'00:00'); const db = b.fecha + (b.hora||'00:00'); return da.localeCompare(db); })
-    .slice(0, 5);
-  if (!hoyEvs.length) { w.style.display = 'none'; return; }
-  w.style.display = '';
-  b.innerHTML = hoyEvs.map(e => {
-    const isHoy = e.fecha === hoy;
-    const hora  = e.hora ? `<span class="dash-ag-hora">${e.hora}</span>` : `<span class="dash-ag-fecha">${isHoy ? 'HOY' : 'MAN'}</span>`;
-    return `<div class="dash-ag-item">
-      <span class="dash-ag-icon">📌</span>
-      <span class="dash-ag-titulo">${e.titulo.replace(/</g,'&lt;')}</span>
-      ${hora}
-    </div>`;
-  }).join('');
-}
-
-function _renderDashSaludWidget() {
-  const w = document.getElementById('dash-salud-widget');
-  const b = document.getElementById('dash-salud-body');
-  if (!w || !b || typeof getSaludData !== 'function') return;
-  const data = getSaludData();
-  const hoy  = new Date().toISOString().slice(0, 10);
-  const reg  = data.registros.find(r => r.fecha === hoy);
-  if (!reg && !data.registros.length) { w.style.display = 'none'; return; }
-  w.style.display = '';
-  const r  = reg || { agua: 0, sueno: 0, ejercicioMins: 0 };
-  const m  = data.metas;
-  const pAgua = m.agua > 0    ? Math.min(100, Math.round((r.agua / m.agua) * 100)) : 0;
-  const pSuen = m.sueno > 0   ? Math.min(100, Math.round((r.sueno / m.sueno) * 100)) : 0;
-  const pEjer = m.ejercicio > 0 ? Math.min(100, Math.round((r.ejercicioMins / m.ejercicio) * 100)) : 0;
-  b.innerHTML = `
-    <div class="dash-salud-row">
-      <div class="dash-salud-item" style="flex:1">
-        <span class="dash-salud-icon">💧</span>
-        <div style="flex:1">
-          <span class="dash-salud-val">${r.agua}/${m.agua}</span>
-          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pAgua}%;background:${pAgua>=100?'#00ffaa':'var(--cyan)'}"></div></div>
-        </div>
-      </div>
-      <div class="dash-salud-item" style="flex:1">
-        <span class="dash-salud-icon">😴</span>
-        <div style="flex:1">
-          <span class="dash-salud-val">${r.sueno}h/${m.sueno}h</span>
-          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pSuen}%;background:${pSuen>=100?'#00ffaa':'rgba(120,80,255,0.7)'}"></div></div>
-        </div>
-      </div>
-      <div class="dash-salud-item" style="flex:1">
-        <span class="dash-salud-icon">🏃</span>
-        <div style="flex:1">
-          <span class="dash-salud-val">${r.ejercicioMins}/${m.ejercicio}min</span>
-          <div class="dash-salud-bar"><div class="dash-salud-fill" style="width:${pEjer}%;background:${pEjer>=100?'#00ffaa':'rgba(0,255,170,0.5)'}"></div></div>
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 function renderSessionsList() {
@@ -1634,10 +1410,6 @@ async function ejecutarAcciones(rawText, wrap) {
         addNotaProgrammatic(a.titulo || '', a.cuerpo || '');
         pills.push({ icon: '📝', label: a.titulo ? `Nota: ${a.titulo}` : 'Nota creada', cls: 'apill-nota' });
         break;
-      case 'addHabito':
-        addHabito(a.nombre || a.texto || '', a.emoji || '🎯');
-        pills.push({ icon: '🔥', label: `Hábito: ${a.nombre || a.texto || ''}`, cls: 'apill-habito' });
-        break;
       case 'recordar': {
         const ms = (parseInt(a.mins) || 30) * 60000;
         saveReminder(ms, a.msg || a.texto || '');
@@ -1765,197 +1537,6 @@ function scheduleTaskNotifications() {
   });
 }
 window.requestNotifPermission = requestNotifPermission;
-
-/* ── Módulo SOS / Emergencias ───────────────────────── */
-const SOS_DEFAULT = { contactos: [], medico: { tipoSangre:'', alergias:'', medicamentos:'', condiciones:'' } };
-function getSOSData()      { return JSON.parse(localStorage.getItem('arex_sos') || JSON.stringify(SOS_DEFAULT)); }
-function saveSOSData(data) { localStorage.setItem('arex_sos', JSON.stringify(data)); }
-
-let _sosGPS = null; // { lat, lng, accuracy }
-
-function _emergencyMsg() {
-  const loc = _sosGPS
-    ? `GPS: ${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}\nhttps://maps.google.com/?q=${_sosGPS.lat},${_sosGPS.lng}`
-    : 'Hermosillo, Sonora, México';
-  return `🆘 EMERGENCIA 🆘\nSoy Alexiz Cejudo. Necesito ayuda urgente.\n📍 Ubicación:\n${loc}\nPor favor llama al 911 o ven a ayudarme.`;
-}
-
-function _fmtPhone(raw) {
-  const d = raw.replace(/\D/g, '');
-  return d.startsWith('52') ? d : '52' + d;
-}
-
-function renderSOSContacts() {
-  const el = document.getElementById('sos-contacts-list');
-  if (!el) return;
-  const { contactos } = getSOSData();
-  if (!contactos.length) {
-    el.innerHTML = '<div class="sos-empty">Sin contactos — toca ⚙ CONFIGURAR para agregar</div>';
-    return;
-  }
-  const msg = encodeURIComponent(_emergencyMsg());
-  el.innerHTML = contactos.map(c => {
-    const p = c.telefono.replace(/\D/g, '');
-    const wa = _fmtPhone(p);
-    return `<div class="sos-contact-card">
-      <div class="sos-contact-info">
-        <div class="sos-contact-name">${c.nombre.replace(/</g,'&lt;')}</div>
-        <div class="sos-contact-rel">${c.relacion.replace(/</g,'&lt;')}</div>
-        <div class="sos-contact-phone">${c.telefono}</div>
-      </div>
-      <div class="sos-contact-btns">
-        <a href="tel:${p}" class="sos-btn sos-call">📞 LLAMAR</a>
-        <a href="sms:${p}?body=${msg}" class="sos-btn sos-sms">💬 SMS</a>
-        <a href="https://wa.me/${wa}?text=${msg}" target="_blank" class="sos-btn sos-wa">📲 WA</a>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderSOSMedico() {
-  const el = document.getElementById('sos-medico-card');
-  if (!el) return;
-  const { medico } = getSOSData();
-  const row = (label, val, empty) => `
-    <div class="sos-med-row${!val ? ' sos-med-empty' : ''}">
-      <span class="sos-med-label">${label}</span>
-      <span class="sos-med-val">${val || empty}</span>
-    </div>`;
-  el.innerHTML = `<div class="sos-med-grid">
-    ${row('SANGRE',       medico.tipoSangre,   '—')}
-    ${row('ALERGIAS',     medico.alergias,     'Ninguna')}
-    ${row('MEDICAMENTOS', medico.medicamentos, 'Ninguno')}
-    ${row('CONDICIONES',  medico.condiciones,  'Ninguna')}
-  </div>`;
-}
-
-function renderSOSShareRow() {
-  const el = document.getElementById('sos-share-row');
-  if (!el) return;
-  const { contactos } = getSOSData();
-  const msg = encodeURIComponent(_emergencyMsg());
-  el.innerHTML = contactos.length
-    ? contactos.map(c =>
-        `<a href="https://wa.me/${_fmtPhone(c.telefono)}?text=${msg}" target="_blank"
-            class="sos-share-wa">💬 ${c.nombre.replace(/</g,'&lt;')}</a>`
-      ).join('')
-    : '';
-}
-
-function renderSOSEditContacts() {
-  const el = document.getElementById('sos-edit-contacts-list');
-  if (!el) return;
-  const { contactos } = getSOSData();
-  if (!contactos.length) { el.innerHTML = '<div class="sos-empty">Sin contactos aún</div>'; return; }
-  el.innerHTML = contactos.map((c, i) => `
-    <div class="sos-edit-contact-row">
-      <span>${c.nombre} · ${c.relacion} · ${c.telefono}</span>
-      <button class="sos-del-contact" data-i="${i}">✕</button>
-    </div>`).join('');
-  el.querySelectorAll('.sos-del-contact').forEach(btn =>
-    btn.addEventListener('click', () => {
-      const d = getSOSData();
-      d.contactos.splice(parseInt(btn.dataset.i), 1);
-      saveSOSData(d);
-      renderSOSModule();
-      renderSOSEditContacts();
-    })
-  );
-}
-
-function renderSOSModule() {
-  renderSOSContacts();
-  renderSOSMedico();
-  renderSOSShareRow();
-  if (!_sosGPS) sosGetGPS();
-}
-
-function sosGetGPS() {
-  const locEl  = document.getElementById('sos-loc-text');
-  const gpsBtn = document.getElementById('sos-get-loc');
-  if (!locEl || !gpsBtn) return;
-  if (!navigator.geolocation) { locEl.textContent = 'GPS no disponible'; return; }
-  gpsBtn.textContent = '...';
-  gpsBtn.disabled = true;
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      _sosGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) };
-      locEl.innerHTML = `<strong>${_sosGPS.lat.toFixed(5)}, ${_sosGPS.lng.toFixed(5)}</strong> <small>±${_sosGPS.accuracy}m</small>`;
-      gpsBtn.textContent = '↻';
-      gpsBtn.disabled = false;
-      renderSOSShareRow();
-      renderSOSContacts();
-    },
-    () => {
-      _sosGPS = null;
-      locEl.textContent = 'Sin GPS — Hermosillo, Sonora, México';
-      gpsBtn.textContent = 'GPS';
-      gpsBtn.disabled = false;
-    },
-    { enableHighAccuracy: true, timeout: 12000 }
-  );
-}
-
-function initSOSEvents() {
-  document.getElementById('sos-get-loc')?.addEventListener('click', sosGetGPS);
-
-  document.getElementById('sos-copy-msg')?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(_emergencyMsg());
-      const btn = document.getElementById('sos-copy-msg');
-      const orig = btn.textContent;
-      btn.textContent = '✓ COPIADO';
-      setTimeout(() => { btn.textContent = orig; }, 2000);
-    } catch { /* clipboard not available */ }
-  });
-
-  document.getElementById('sos-edit-toggle')?.addEventListener('click', () => {
-    const panel = document.getElementById('sos-edit-panel');
-    const isOpen = !panel.classList.contains('hidden');
-    panel.classList.toggle('hidden', isOpen);
-    document.getElementById('sos-edit-toggle').textContent = isOpen ? '⚙ CONFIGURAR' : '✕ CERRAR';
-    if (!isOpen) { renderSOSEditContacts(); _prefillSOSMedico(); }
-  });
-
-  document.getElementById('sos-add-contact-btn')?.addEventListener('click', () => {
-    const nombre  = document.getElementById('sos-add-name').value.trim();
-    const relacion = document.getElementById('sos-add-rel').value.trim();
-    const telefono = document.getElementById('sos-add-phone').value.trim();
-    if (!nombre || !telefono) return;
-    const d = getSOSData();
-    d.contactos.push({ id: String(Date.now()), nombre, relacion: relacion || 'Contacto', telefono });
-    saveSOSData(d);
-    document.getElementById('sos-add-name').value = '';
-    document.getElementById('sos-add-rel').value  = '';
-    document.getElementById('sos-add-phone').value = '';
-    renderSOSModule();
-    renderSOSEditContacts();
-  });
-
-  document.getElementById('sos-save-medico-btn')?.addEventListener('click', () => {
-    const d = getSOSData();
-    d.medico = {
-      tipoSangre:   document.getElementById('sos-med-sangre').value.trim(),
-      alergias:     document.getElementById('sos-med-alergias').value.trim(),
-      medicamentos: document.getElementById('sos-med-meds').value.trim(),
-      condiciones:  document.getElementById('sos-med-cond').value.trim(),
-    };
-    saveSOSData(d);
-    renderSOSMedico();
-    const btn = document.getElementById('sos-save-medico-btn');
-    btn.textContent = '✓ GUARDADO';
-    setTimeout(() => { btn.textContent = 'GUARDAR DATOS MÉDICOS'; }, 2000);
-  });
-}
-
-function _prefillSOSMedico() {
-  const { medico } = getSOSData();
-  const f = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-  f('sos-med-sangre',   medico.tipoSangre);
-  f('sos-med-alergias', medico.alergias);
-  f('sos-med-meds',     medico.medicamentos);
-  f('sos-med-cond',     medico.condiciones);
-}
 
 /* ── Comandos de voz ────────────────────────────────── */
 const VOICE_CMDS = [
@@ -3295,27 +2876,6 @@ document.getElementById('sidebar-overlay').addEventListener('click', closeSideba
 document.getElementById('notas-add-btn').addEventListener('click', addNota);
 document.getElementById('notas-search').addEventListener('input', renderNotas);
 
-// Hábitos
-document.getElementById('hab-add-btn').addEventListener('click', () => {
-  document.getElementById('hab-form').classList.toggle('hidden');
-  document.getElementById('hab-nombre').focus();
-});
-document.getElementById('hab-form-save').addEventListener('click', () => {
-  const nombre = document.getElementById('hab-nombre').value.trim();
-  const emoji  = document.getElementById('hab-emoji').value.trim() || '🎯';
-  if (!nombre) return;
-  addHabito(nombre, emoji);
-  document.getElementById('hab-nombre').value = '';
-  document.getElementById('hab-emoji').value  = '🎯';
-  document.getElementById('hab-form').classList.add('hidden');
-});
-document.getElementById('hab-form-cancel').addEventListener('click', () => {
-  document.getElementById('hab-form').classList.add('hidden');
-});
-document.getElementById('hab-nombre').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('hab-form-save').click();
-});
-
 // Calendario de tareas
 document.getElementById('cal-prev').addEventListener('click', () => {
   _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; }
@@ -3425,8 +2985,6 @@ async function boot() {
   updateSidebarAll();
   renderTareas();
   restoreReminders();
-  initSOSEvents();
-  renderSOSModule();
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
@@ -3840,7 +3398,6 @@ window.refreshWeather = refreshWeather;
 // ── Exponer funciones de render al scope global para jarvis.js
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
-window.renderSOSModule = renderSOSModule;
 window.getTareas       = getTareas;
 
 // Actualiza countdowns de recordatorios cada 30 segundos
@@ -3866,8 +3423,6 @@ async function generarBriefing() {
   if (localStorage.getItem('arex_briefing_date') === hoy) return;
 
   const tareas = getTareas().filter(t => !t.done);
-  const habitos = getHabitos();
-  const habitosPendientes = habitos.filter(h => !h.history.includes(hoy));
   const recs = getRecordatorios().filter(r => !r.disparado);
   const today = new Date();
 
@@ -3879,7 +3434,6 @@ async function generarBriefing() {
     `Tareas urgentes: ${tareasUrgentes.map(t => t.text).join(', ') || 'ninguna'}`,
     `Tareas para hoy: ${tareasHoy.map(t => t.text).join(', ') || 'ninguna'}`,
     `Total pendiente: ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`,
-    `Hábitos pendientes: ${habitosPendientes.map(h => `${h.emoji} ${h.nombre}`).join(', ') || 'todos completados'}`,
     `Recordatorios activos: ${recs.slice(0,3).map(r => r.msg).join(', ') || 'ninguno'}`,
   ].join('\n');
 
