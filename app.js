@@ -304,6 +304,65 @@ REGLAS DE ACCIONES:
 - Puedes incluir múltiples acciones en una respuesta.`.trim();
 }
 
+/* ── Contexto de módulos (data real de Alexiz) ──────── */
+function buildModuleContext() {
+  const parts = [];
+  try {
+    // Finanzas
+    if (typeof getFinanzasData === 'function') {
+      const fin  = getFinanzasData();
+      const deuda = typeof calcularDeudaTotal === 'function' ? calcularDeudaTotal() : 0;
+      const margen = typeof calcularMargen === 'function' ? calcularMargen() : 0;
+      const pagos = typeof obtenerProximosPagos === 'function' ? obtenerProximosPagos(7) : [];
+      const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0,maximumFractionDigits:0})}`;
+      let finTxt = `FINANZAS: ingreso=${fmtM(fin.config.ingresoMensual)}, deuda_total=${fmtM(deuda)}, margen_mensual=${fmtM(margen)}`;
+      if (pagos.length) finTxt += `, próximos_pagos=[${pagos.slice(0,3).map(p=>`${p.tarjeta} en ${p.diasRestantes}d (${fmtM(p.pagoMinimo)})`).join(', ')}]`;
+      parts.push(finTxt);
+    }
+  } catch(e) {}
+  try {
+    // Negocio
+    if (typeof getNegocioData === 'function') {
+      const neg = getNegocioData();
+      const now = Date.now();
+      const im  = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+      const vM  = neg.ventas.filter(v => v.fecha >= im).reduce((a,v)=>a+v.total,0);
+      const gM  = neg.gastos.filter(g => g.fecha >= im).reduce((a,g)=>a+g.monto,0);
+      const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
+      parts.push(`NEGOCIO (${neg.config.variedad}): ventas_mes=${fmtM(vM)}, gastos_mes=${fmtM(gM)}, ganancia_mes=${fmtM(vM-gM)}, stock=${neg.inventario.stockKg}kg`);
+    }
+  } catch(e) {}
+  try {
+    // Gastos personales
+    if (typeof getGastosData === 'function') {
+      const gp   = getGastosData();
+      const mesKey = new Date().toISOString().slice(0,7);
+      const gastosMes = gp.transacciones?.filter(t => t.fecha?.startsWith(mesKey)) || [];
+      const totalMes  = gastosMes.reduce((a,t)=>a+t.monto,0);
+      const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
+      if (totalMes > 0) parts.push(`GASTOS_PERSONALES: total_mes=${fmtM(totalMes)}, transacciones=${gastosMes.length}`);
+    }
+  } catch(e) {}
+  try {
+    // Metas
+    if (typeof getMetas === 'function') {
+      const metas = getMetas().filter(m => !m.completada);
+      if (metas.length) parts.push(`METAS_ACTIVAS: [${metas.slice(0,5).map(m=>`"${m.titulo}"`).join(', ')}]`);
+    }
+  } catch(e) {}
+  try {
+    // Tareas urgentes
+    const tareas = getTareas().filter(t => !t.done);
+    const hoy = new Date().toISOString().slice(0,10);
+    const urgentes = tareas.filter(t => t.fecha && t.fecha <= hoy);
+    if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>t.text.slice(0,40)).join(', ')}]`);
+    else if (tareas.length) parts.push(`TAREAS_PENDIENTES: ${tareas.length} total`);
+  } catch(e) {}
+
+  if (!parts.length) return '';
+  return `\n\nDATA EN TIEMPO REAL (usa esto cuando Alexiz pregunte sobre sus finanzas, negocio, gastos, metas o tareas):\n${parts.join('\n')}`;
+}
+
 const EXAM_ADDON = `
 
 MODO EXAMEN ACTIVO:
@@ -1885,7 +1944,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -1914,7 +1973,7 @@ async function callGroq(webCtx) {
 
 /* ── Llamada a Groq (streaming) ─────────────────────── */
 async function callGroqStream(webCtx, onChunk) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -2137,12 +2196,21 @@ function fmtCountdown(disparaEn) {
   return `en ${Math.floor(h / 24)}d`;
 }
 
+function _fireReminderNotification(msg) {
+  if (Notification.permission !== 'granted') return;
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.ready.then(reg => reg.showNotification('AREX — Recordatorio', { body: msg, icon: 'icon.svg' })).catch(() => {});
+  } else {
+    new Notification('AREX — Recordatorio', { body: msg, icon: 'icon.svg' });
+  }
+}
+
 function armReminder(rec) {
   const ms = rec.disparaEn - Date.now();
   if (ms <= 0) return;
   setTimeout(() => {
     saveRecordatorios(getRecordatorios().map(r => r.id === rec.id ? { ...r, disparado: true } : r));
-    if (Notification.permission === 'granted') new Notification('AREX — Recordatorio', { body: rec.msg, icon:'icon.svg' });
+    _fireReminderNotification(rec.msg);
     addMsg('arex', `⏰ **Recordatorio:** ${rec.msg}`);
     if (voiceOn) arexSpeak(`Recordatorio: ${rec.msg}`);
     _refreshRecWidget();
@@ -2155,11 +2223,15 @@ function restoreReminders() {
   let changed = false;
   all.forEach(r => {
     if (!r.disparado) {
-      if (r.disparaEn <= now) { r.disparado = true; r.perdido = true; changed = true; }
-      else armReminder(r);
+      if (r.disparaEn <= now) {
+        r.disparado = true; changed = true;
+        _fireReminderNotification(r.msg);
+        addMsg('arex', `⏰ **Recordatorio (llegó mientras estabas fuera):** ${r.msg}`);
+        if (voiceOn) arexSpeak(`Recordatorio: ${r.msg}`);
+      } else armReminder(r);
     }
   });
-  if (changed) saveRecordatorios(all);
+  if (changed) { saveRecordatorios(all); _refreshRecWidget(); }
 }
 
 function saveReminder(ms, msg) {
@@ -2985,6 +3057,7 @@ async function boot() {
   updateSidebarAll();
   renderTareas();
   restoreReminders();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreReminders(); });
 
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
@@ -3461,34 +3534,58 @@ window.generarBriefing = generarBriefing;
 
 // ── BÚSQUEDA GLOBAL ───────────────────────────────────────────────────────────
 function buscarGlobal(q) {
-  if (!q.trim()) return { tareas:[], notas:[], hechos:[], recordatorios:[] };
+  if (!q.trim()) return { tareas:[], notas:[], hechos:[], recordatorios:[], metas:[], gastos:[], negocio:[] };
   const ql = q.toLowerCase();
   const match = s => s?.toLowerCase().includes(ql);
+
+  let metas = [], gastos = [], negocio = [];
+  try { if (typeof getMetas === 'function') metas = getMetas().filter(m => match(m.titulo) || match(m.descripcion)); } catch(e) {}
+  try {
+    if (typeof getGastosData === 'function') {
+      const gp = getGastosData();
+      gastos = (gp.transacciones || []).filter(t => match(t.concepto) || match(t.categoria));
+    }
+  } catch(e) {}
+  try {
+    if (typeof getNegocioData === 'function') {
+      const neg = getNegocioData();
+      const ventas = (neg.ventas || []).filter(v => match(v.sucursal) || match(v.notas));
+      const gNeg   = (neg.gastos || []).filter(g => match(g.concepto) || match(g.categoria));
+      negocio = [...ventas.map(v => ({ tipo:'venta',  texto: v.sucursal || 'Venta', monto: v.total })),
+                 ...gNeg.map(g  => ({ tipo:'gasto',   texto: g.concepto || 'Gasto', monto: g.monto }))];
+    }
+  } catch(e) {}
+
   return {
     tareas:        getTareas().filter(t => !t.done && (match(t.text) || match(t.fecha))),
     notas:         getNotas().filter(n => match(n.titulo) || match(n.cuerpo)),
     hechos:        getHechos().filter(h => match(h.texto)),
-    recordatorios: getRecordatorios().filter(r => !r.disparado && match(r.msg))
+    recordatorios: getRecordatorios().filter(r => !r.disparado && match(r.msg)),
+    metas, gastos, negocio
   };
 }
 
 function renderBusquedaGlobal(q) {
   const el = document.getElementById('busqueda-results');
   if (!el) return;
-  if (!q.trim()) { el.innerHTML = '<div class="bg-empty">Escribe para buscar en tareas, notas, memoria y recordatorios</div>'; return; }
-  const { tareas, notas, hechos, recordatorios } = buscarGlobal(q);
-  const total = tareas.length + notas.length + hechos.length + recordatorios.length;
+  if (!q.trim()) { el.innerHTML = '<div class="bg-empty">Escribe para buscar en tareas, notas, memoria, recordatorios, metas, gastos y negocio</div>'; return; }
+  const { tareas, notas, hechos, recordatorios, metas, gastos, negocio } = buscarGlobal(q);
+  const total = tareas.length + notas.length + hechos.length + recordatorios.length + metas.length + gastos.length + negocio.length;
   if (!total) { el.innerHTML = `<div class="bg-empty">Sin resultados para "${q}"</div>`; return; }
 
   const safeRe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const hl = t => t.replace(new RegExp(safeRe, 'gi'), m => `<mark class="bg-hl">${m}</mark>`);
   const safe = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const fmtP = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
   let html = '';
   if (tareas.length)        html += `<div class="bg-group"><div class="bg-gtitle">TAREAS (${tareas.length})</div>${tareas.slice(0,6).map(t => `<div class="bg-item" data-mod="tareas"><span class="bg-ico">✓</span><span>${hl(safe(t.text))}</span></div>`).join('')}</div>`;
   if (notas.length)         html += `<div class="bg-group"><div class="bg-gtitle">NOTAS (${notas.length})</div>${notas.slice(0,5).map(n => `<div class="bg-item" data-mod="notas"><span class="bg-ico">📝</span><span>${hl(safe(n.titulo || n.cuerpo.slice(0,60)))}</span></div>`).join('')}</div>`;
   if (hechos.length)        html += `<div class="bg-group"><div class="bg-gtitle">MEMORIA (${hechos.length})</div>${hechos.slice(0,5).map(h => `<div class="bg-item" data-mod="chat"><span class="bg-ico">🧠</span><span>${hl(safe(h.texto))}</span></div>`).join('')}</div>`;
   if (recordatorios.length) html += `<div class="bg-group"><div class="bg-gtitle">RECORDATORIOS (${recordatorios.length})</div>${recordatorios.slice(0,3).map(r => `<div class="bg-item" data-mod="inicio"><span class="bg-ico">⏰</span><span>${hl(safe(r.msg))}</span></div>`).join('')}</div>`;
+  if (metas.length)         html += `<div class="bg-group"><div class="bg-gtitle">METAS (${metas.length})</div>${metas.slice(0,4).map(m => `<div class="bg-item" data-mod="metas"><span class="bg-ico">🎯</span><span>${hl(safe(m.titulo))}</span></div>`).join('')}</div>`;
+  if (gastos.length)        html += `<div class="bg-group"><div class="bg-gtitle">GASTOS (${gastos.length})</div>${gastos.slice(0,4).map(t => `<div class="bg-item" data-mod="gastos"><span class="bg-ico">💸</span><span>${hl(safe(t.concepto))} <small>${fmtP(t.monto)}</small></span></div>`).join('')}</div>`;
+  if (negocio.length)       html += `<div class="bg-group"><div class="bg-gtitle">NEGOCIO (${negocio.length})</div>${negocio.slice(0,4).map(n => `<div class="bg-item" data-mod="negocio"><span class="bg-ico">${n.tipo==='venta'?'💰':'🏷'}</span><span>${hl(safe(n.texto))} <small>${fmtP(n.monto)}</small></span></div>`).join('')}</div>`;
 
   el.innerHTML = html;
   el.querySelectorAll('.bg-item[data-mod]').forEach(item => {
