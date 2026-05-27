@@ -205,8 +205,6 @@ MÓDULOS DEL SISTEMA (puedes referirte a ellos):
 - FINANZAS: tarjetas de crédito, saldos, gastos mensuales, calculadora de deuda, recordatorios de pago.
 - TAREAS: lista de pendientes con fecha límite y prioridad alta/media/baja.
 - RECORDATORIOS: activos con countdown, persistentes entre sesiones (/recordar 30min, /recordar 20:00).
-- SOS: módulo de emergencias — 911, GPS, SMS, WhatsApp, tarjeta médica, contactos de emergencia.
-- CÓDIGO: editor con preview en vivo de HTML/CSS/JS (sandbox iframe).
 - DASHBOARD: vista de inicio con resumen de tareas urgentes, finanzas y clima.
 
 ÁREAS DE EXPERTISE:
@@ -220,58 +218,6 @@ MÓDULOS DEL SISTEMA (puedes referirte a ellos):
 8. PRODUCTIVIDAD: organización, priorización, gestión del tiempo.
 9. ANÁLISIS Y DECISIONES: pros/contras, escenarios, riesgos.
 10. CONOCIMIENTO GENERAL: responde con precisión cualquier tema.
-
-CAPACIDAD CRÍTICA — PANEL DE CÓDIGO EN VIVO:
-AREX está integrado con un panel de ejecución de código en tiempo real. Cuando Alexiz pide una visualización, juego, animación, simulación, herramienta o cualquier cosa interactiva, AREX SIEMPRE genera el código HTML/CSS/JS completo. El sistema muestra automáticamente un botón "▶ EJECUTAR EN AREX" que abre el resultado directamente en la app.
-NUNCA digas que no puedes renderizar, ejecutar o mostrar cosas. NUNCA redirijas a links externos para algo que se puede construir con código. SIEMPRE genera el código y el usuario lo ejecuta con un clic.
-Reglas de código para el panel:
-- Usa Canvas 2D o CSS puro — sin librerías externas (no Chart.js, no Three.js, no D3)
-- Código siempre autocontenido: todo en un solo bloque HTML (estilos y scripts inline)
-- Fondo: #020c14 (negro azulado), colores principales: #00d4ff (cian), #00ffaa (verde), #ff9900 (naranja)
-- Si piden sistema solar → Canvas con planetas orbitando, click para info
-- Si piden juego → Canvas con game loop, controles de teclado/mouse
-- Si piden gráfica → Canvas dibujado a mano con los datos
-- Si piden herramienta → HTML/CSS/JS funcional completo
-- CRÍTICO: antes de cerrar el bloque de código, verifica mentalmente que no haya comas dobles, paréntesis sin cerrar ni variables sin declarar. ctx.arc() requiere exactamente 5 argumentos: (x, y, radius, startAngle, endAngle).
-- CANVAS RESPONSIVO: SIEMPRE define el tamaño así: const W = Math.min(600, window.innerWidth); const H = W; canvas.width = W; canvas.height = H; — nunca uses width/height fijos mayores al viewport.
-- CANVAS CLICKS: SIEMPRE usa getBoundingClientRect() para coordenadas: const r = canvas.getBoundingClientRect(); const x = (e.clientX - r.left) * (canvas.width / r.width); const y = (e.clientY - r.top) * (canvas.height / r.height);
-- ANIMACIÓN: usa requestAnimationFrame, nunca setInterval para animaciones.
-- TOOLTIP: para info al hacer click/hover usa un div HTML flotante, nunca alert().
-- ÓRBITAS: dibuja los anillos de órbita antes de los planetas (ctx.strokeStyle con opacity baja).
-- COLORES: diferencia visualmente cada elemento — no uses el mismo color para todo.
-
-PATRONES DE REFERENCIA — copia estos exactos en tu código:
-
-// ── Canvas responsivo (siempre al inicio):
-const W = Math.min(600, window.innerWidth - 16);
-const H = W;
-canvas.width = W; canvas.height = H;
-
-// ── requestAnimationFrame (nunca setInterval para animar):
-function loop() { draw(); requestAnimationFrame(loop); }
-requestAnimationFrame(loop);
-
-// ── Click con coords correctas (nunca clientX - offsetLeft):
-canvas.addEventListener('click', e => {
-  const r = canvas.getBoundingClientRect();
-  const x = (e.clientX - r.left) * (W / r.width);
-  const y = (e.clientY - r.top)  * (H / r.height);
-  // usar x, y para hit-testing
-});
-
-// ── Tooltip HTML (nunca alert):
-const tip = document.createElement('div');
-tip.style.cssText = 'position:fixed;background:rgba(0,14,26,0.95);border:1px solid #00d4ff;color:#00d4ff;padding:6px 12px;border-radius:4px;font:11px monospace;pointer-events:none;display:none;z-index:99';
-document.body.appendChild(tip);
-function showTip(text, ex, ey) { tip.textContent = text; tip.style.left = ex+8+'px'; tip.style.top = ey+8+'px'; tip.style.display='block'; }
-function hideTip() { tip.style.display='none'; }
-
-// ── Órbita dibujada:
-ctx.save(); ctx.strokeStyle='rgba(0,212,255,0.15)'; ctx.lineWidth=1;
-ctx.beginPath(); ctx.arc(cx, cy, orbit, 0, Math.PI*2); ctx.stroke(); ctx.restore();
-
-// ── Paleta de colores diferenciada para múltiples elementos:
-const COLORS = ['#e8c47a','#c2955c','#4fa3e0','#c1440e','#c88b3a','#e4d191','#7de8e8','#4060ff'];
 
 REGLAS:
 - Responde SIEMPRE en español.
@@ -1275,111 +1221,12 @@ function typewrite(bubble, text) {
   });
 }
 
-/* ── Código en vivo ─────────────────────────────────── */
-function extractCodeBlock(text) {
-  // Acepta cualquier lenguaje o ninguno: ```html, ```js, ```, ```python, etc.
-  const re = /```[^\n`]*\n([\s\S]+?)```/g;
-  let best = null;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const code = m[1].trim();
-    if (code.length > 60 && (!best || code.length > best.length)) best = code;
-  }
-  return best;
-}
-const _CP_ERR_HANDLER = `<script>(function(){function _arexErr(m,l){if(document.getElementById('__ae'))return;var d=document.createElement('div');d.id='__ae';d.style.cssText='position:fixed;top:0;left:0;right:0;background:rgba(200,28,28,0.94);color:#fff;font-family:monospace;font-size:11px;padding:8px 12px;z-index:99999;word-break:break-all;line-height:1.5';d.textContent='⚠ Error'+(l?' — l\xednea '+l:'')+': '+m;(document.body||document.documentElement).appendChild(d);}window.onerror=function(m,s,l){_arexErr(m,l);return true;};window.addEventListener('error',function(e){_arexErr(e.message||e.type,e.lineno);});})();<\/script>`;
-const _CP_META = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0}canvas,img,video{max-width:100%;height:auto;display:block}</style><script>(function(){
-  /* Hace el canvas responsivo y corrige coordenadas de click al escalar */
-  var _origAEL = HTMLCanvasElement.prototype.addEventListener;
-  HTMLCanvasElement.prototype.addEventListener = function(type, fn, opts) {
-    var cv = this;
-    if (['click','mousedown','mousemove','mouseup','touchstart','touchend','touchmove'].indexOf(type) !== -1) {
-      _origAEL.call(cv, type, function(e) {
-        var r = cv.getBoundingClientRect();
-        var scaleX = cv.width / (r.width || cv.width);
-        var scaleY = cv.height / (r.height || cv.height);
-        if (Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01) {
-          /* Corregir clientX/Y para que coincidan con el sistema de coordenadas del canvas */
-          try {
-            Object.defineProperty(e, 'clientX', { get: function(){ return r.left + (e.__cx !== undefined ? e.__cx : (e.__cx = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0))) * scaleX - r.left * (scaleX - 1); }, configurable:true });
-            Object.defineProperty(e, 'clientY', { get: function(){ return r.top  + (e.__cy !== undefined ? e.__cy : (e.__cy = (e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0))) * scaleY - r.top  * (scaleY - 1); }, configurable:true });
-          } catch(_) {}
-        }
-        fn(e);
-      }, opts);
-    } else { _origAEL.call(cv, type, fn, opts); }
-  };
-  /* Aplicar aspect-ratio al canvas para que height:auto funcione correctamente */
-  function _fitCanvas() {
-    document.querySelectorAll('canvas').forEach(function(cv) {
-      var W = parseInt(cv.getAttribute('width')) || 0;
-      var H = parseInt(cv.getAttribute('height')) || 0;
-      if (W && H) { cv.style.aspectRatio = W + '/' + H; cv.style.maxWidth = '100%'; cv.style.height = 'auto'; }
-    });
-  }
-  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', _fitCanvas); }
-  else { _fitCanvas(); }
-  window.addEventListener('resize', _fitCanvas);
-})();<\/script>`;
-
-function wrapCodeIfNeeded(code) {
-  if (/<!DOCTYPE|<html/i.test(code)) {
-    // Full HTML — inject error handler + responsive meta after opening <head>
-    if (/<head>/i.test(code))  return code.replace(/<head>/i,  '<head>'  + _CP_META + _CP_ERR_HANDLER);
-    if (/<body[^>]*>/i.test(code)) return code.replace(/<body([^>]*)>/i, '<body$1>' + _CP_ERR_HANDLER);
-    return _CP_ERR_HANDLER + code;
-  }
-  if (!/^\s*</.test(code)) {
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8">${_CP_META}${_CP_ERR_HANDLER}<style>body{margin:0;background:#020c14;color:#e0f4ff;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;}</style></head><body><script>${code}<\/script></body></html>`;
-  }
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${_CP_META}${_CP_ERR_HANDLER}<style>body{margin:0;background:#020c14;color:#e0f4ff;}</style></head><body>${code}</body></html>`;
-}
-function runInIframe(code) {
-  document.getElementById('cp-iframe').srcdoc = wrapCodeIfNeeded(code);
-}
-const CODE_TEMPLATE = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AREX Código</title>
-<style>
-  body { margin: 0; font-family: monospace; background: #030d18; color: #00d4ff; padding: 1rem; }
-</style>
-</head>
-<body>
-  <h1>Hola desde AREX</h1>
-  <p>Edita este código o pídele a AREX que genere algo.</p>
-  <script>
-    // Tu código aquí
-  <\/script>
-</body>
-</html>`;
-
-function openCodePanel(code) {
-  const src = code || CODE_TEMPLATE;
-  document.getElementById('cp-editor').value = src;
-  document.getElementById('code-panel').classList.remove('hidden');
-  // Si es plantilla vacía, abre en el editor para que el usuario escriba de inmediato
-  switchCpTab(code ? 'preview' : 'code');
-  if (code) requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
-}
-function closeCpPanel() {
-  document.getElementById('code-panel').classList.add('hidden');
-  setTimeout(() => { document.getElementById('cp-iframe').srcdoc = ''; }, 300);
-}
-function switchCpTab(tab) {
-  document.querySelectorAll('.cp-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.getElementById('cp-preview-pane').classList.toggle('hidden', tab !== 'preview');
-  document.getElementById('cp-code-pane').classList.toggle('hidden',   tab !== 'code');
-}
-
 /* ── Helpers de render de respuesta AREX ────────────── */
 function makeArexWrap(srcHTML = '') {
   document.querySelector('.welcome')?.remove();
   const wrap = document.createElement('div');
   wrap.className = 'msg arex';
-  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button><button class="msg-regen" title="Regenerar">↺</button></div><div class="run-wrap"></div>${srcHTML}`;
+  wrap.innerHTML = `<span class="who">AREX</span><div class="bubble"></div><div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button><button class="msg-regen" title="Regenerar">↺</button></div>${srcHTML}`;
 
   wrap.querySelector('.msg-copy').addEventListener('click', () => {
     const text = _msgRaw.get(wrap) || wrap.querySelector('.bubble').textContent;
@@ -1419,17 +1266,6 @@ function makeArexWrap(srcHTML = '') {
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   return wrap;
-}
-
-function _attachRunBtn(wrap, text) {
-  const code = extractCodeBlock(text);
-  if (!code) return;
-  const btn = document.createElement('button');
-  btn.className = 'run-btn';
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg> EJECUTAR EN AREX';
-  btn.onclick = () => openCodePanel(code);
-  wrap.querySelector('.run-wrap').appendChild(btn);
-  if (/<!DOCTYPE|<html/i.test(code)) setTimeout(() => openCodePanel(code), 400);
 }
 
 /* ── Sistema de acciones ────────────────────────────── */
@@ -1501,7 +1337,6 @@ async function renderArexReply(wrap, text) {
   const clean = _stripAcciones(text);
   await typewrite(wrap.querySelector('.bubble'), clean);
   _msgRaw.set(wrap, clean);
-  _attachRunBtn(wrap, clean);
   await ejecutarAcciones(text, wrap);
 }
 
@@ -1519,7 +1354,6 @@ async function streamArexReply(wrap, webCtx) {
   applyHighlight(bubble);
   _msgRaw.set(wrap, clean);
   chat.scrollTop = chat.scrollHeight;
-  _attachRunBtn(wrap, clean);
   await ejecutarAcciones(full, wrap);
   return clean;
 }
@@ -2480,17 +2314,6 @@ async function handleCommand(cmd) {
       break;
     }
 
-    case 'run': {
-      let found = null;
-      for (let i = history.length - 1; i >= 0; i--) {
-        found = extractCodeBlock(history[i].content);
-        if (found) break;
-      }
-      if (found) { openCodePanel(found); }
-      else { openCodePanel(''); addMsg('arex','No encontré código reciente — abrí el editor con una plantilla vacía.'); }
-      break;
-    }
-
     case 'tarea': {
       if (!args) { addMsg('arex', 'Uso: `/tarea texto !alta @2026-05-25`\n- `!alta` / `!media` / `!baja` → prioridad\n- `@YYYY-MM-DD` → fecha límite'); break; }
       const prioMatch = args.match(/!(alta|media|baja)/i);
@@ -2552,14 +2375,6 @@ async function handleCommand(cmd) {
 
 /* ── Sugerencias contextuales de comandos ───────────── */
 const CTX_RULES = [
-  {
-    cmd: '/run', icon: '▶', label: 'run', reason: 'código detectado',
-    priority: 0, execute: true,
-    check: () => {
-      const last = history[history.length - 1];
-      return last?.role === 'assistant' && last.content.includes('```');
-    }
-  },
   {
     cmd: '/recordar', icon: '⏰', label: 'recordar', reason: 'fecha mencionada',
     priority: 0, execute: false, fill: '/recordar ',
@@ -2902,33 +2717,6 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
-});
-
-// Panel de código en vivo
-document.querySelectorAll('.cp-tab').forEach(tab =>
-  tab.addEventListener('click', () => switchCpTab(tab.dataset.tab))
-);
-document.getElementById('cp-close').addEventListener('click', closeCpPanel);
-document.getElementById('dock-btn-codigo').addEventListener('click', () => {
-  const currentCode = document.getElementById('cp-editor').value.trim();
-  openCodePanel(currentCode || '');
-});
-document.getElementById('cp-run-btn').addEventListener('click', () => {
-  const code = document.getElementById('cp-editor').value.trim();
-  if (code) {
-    switchCpTab('preview');
-    requestAnimationFrame(() => requestAnimationFrame(() => runInIframe(code)));
-  }
-});
-document.getElementById('cp-copy').addEventListener('click', async () => {
-  const code = document.getElementById('cp-editor').value;
-  try {
-    await navigator.clipboard.writeText(code);
-    const btn = document.getElementById('cp-copy');
-    const orig = btn.textContent;
-    btn.textContent = 'COPIADO ✓';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  } catch { /* no disponible */ }
 });
 
 // Búsqueda global — Ctrl+K / Esc

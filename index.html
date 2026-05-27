@@ -237,12 +237,6 @@
         <div class="cmd-row"><span>Requiere Tavily API Key en /config</span></div>
       </div>
       <div class="cmd-group">
-        <div class="cmd-group-title">CÓDIGO EN VIVO</div>
-        <div class="cmd-row"><code>/run</code><span>Abre el último código generado en el panel de preview</span></div>
-        <div class="cmd-row"><span>Cuando AREX genera código aparece el botón ▶ EJECUTAR EN AREX</span></div>
-        <div class="cmd-row"><span>Panel con dos pestañas: PREVIEW (resultado) y CÓDIGO (editable)</span></div>
-      </div>
-      <div class="cmd-group">
         <div class="cmd-group-title">AUTO-BÚSQUEDA</div>
         <div class="cmd-row"><span>AREX detecta cuándo necesita datos en tiempo real (precios, noticias, clima) y activa la búsqueda sin que lo pidas</span></div>
       </div>
@@ -348,34 +342,6 @@
   </div>
 </div>
 
-<!-- ── Panel: Código en vivo ── -->
-<div id="code-panel" class="code-panel hidden">
-  <div class="cp-header">
-    <div class="cp-tabs">
-      <button class="cp-tab active" data-tab="preview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        PREVIEW
-      </button>
-      <button class="cp-tab" data-tab="code">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        CÓDIGO
-      </button>
-    </div>
-    <span class="cp-title">AREX — CÓDIGO EN VIVO</span>
-    <div class="cp-actions">
-      <button id="cp-copy" class="cp-action-btn">COPIAR</button>
-      <button id="cp-run-btn" class="cp-action-btn cp-run">▶ EJECUTAR</button>
-      <button id="cp-close" class="btn-close" title="Cerrar panel">✕</button>
-    </div>
-  </div>
-  <div id="cp-preview-pane" class="cp-pane">
-    <iframe id="cp-iframe" sandbox="allow-scripts" title="Vista previa AREX"></iframe>
-  </div>
-  <div id="cp-code-pane" class="cp-pane hidden">
-    <textarea id="cp-editor" class="cp-editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
-  </div>
-</div>
-
 <!-- ── Modal: Memoria permanente ── -->
 <div id="modal-memoria" class="modal hidden">
   <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
@@ -463,13 +429,6 @@
         <circle cx="12" cy="12" r="2"/>
       </svg>
       <span class="dock-label">METAS</span>
-    </button>
-    <button class="nav-btn" id="dock-btn-codigo" data-tooltip="Editor de código">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="16 18 22 12 16 6"/>
-        <polyline points="8 6 2 12 8 18"/>
-      </svg>
-      <span class="dock-label">CÓDIGO</span>
     </button>
   </nav>
   <div class="dock-bottom">
