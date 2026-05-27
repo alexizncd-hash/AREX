@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v25';
-const VERSION = 'v25';
+const CACHE   = 'arex-v26';
+const VERSION = 'v26';
 const SHELL = [
   './index.html',
   './style.css',
@@ -14,6 +14,7 @@ const SHELL = [
   './gastos.css',
   './metas.js',
   './metas.css',
+  './webxr.js',
   './manifest.json',
   './icon.svg',
 ];

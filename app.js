@@ -3384,6 +3384,7 @@ window.refreshWeather = refreshWeather;
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.getTareas       = getTareas;
+window._arexHistory    = () => history;  // para WebXR panels
 
 // Actualiza countdowns de recordatorios cada 30 segundos
 setInterval(() => {

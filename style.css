@@ -417,6 +417,28 @@ main {
 /* ── Mode pill AR ─────────────────────────────────── */
 .mp-ar { color:var(--cyan); border:1px solid var(--cyan); background:rgba(0,212,255,0.08); }
 
+/* ── Botón ENTRAR AR ──────────────────────────────── */
+#btn-enter-ar {
+  display:flex; align-items:center; gap:5px;
+  margin-top:10px;
+  background:transparent;
+  border:1px solid rgba(0,212,255,0.35);
+  color:rgba(0,212,255,0.6);
+  font-family:var(--font); font-size:8px; letter-spacing:3px;
+  padding:5px 14px; border-radius:2px; cursor:pointer;
+  transition:all 0.25s; white-space:nowrap;
+}
+#btn-enter-ar:hover {
+  border-color:var(--cyan); color:var(--cyan);
+  box-shadow:0 0 12px rgba(0,212,255,0.25);
+}
+#btn-enter-ar[data-active="true"] {
+  border-color:var(--green); color:var(--green);
+  box-shadow:0 0 14px rgba(0,255,170,0.25);
+  animation:badge-glow 2s ease-in-out infinite;
+}
+#btn-enter-ar svg { opacity:0.8; }
+
 .status-txt {
   font-size:10px; color:var(--text-muted);
   letter-spacing:2px; text-transform:uppercase;
