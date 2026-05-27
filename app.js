@@ -429,8 +429,11 @@ let history    = [];
 let voiceOn    = false;
 let searchOn   = false;
 let examMode   = false;
+let continuousMode = false;
 let isSpeaking = false;
 let isBusy     = false;
+let _continuousRec     = null;
+let _continuousRestart = true;
 
 const _msgRaw = new WeakMap(); // wrap element → raw markdown text
 
@@ -1130,20 +1133,25 @@ function syncModeBtn(id, active) {
   if (st) st.textContent = active ? 'ON' : 'OFF';
 }
 function updateSidebarModes() {
-  syncModeBtn('sb-search', searchOn);
-  syncModeBtn('sb-exam',   examMode);
-  syncModeBtn('sb-voice',  voiceOn);
+  syncModeBtn('sb-search',     searchOn);
+  syncModeBtn('sb-exam',       examMode);
+  syncModeBtn('sb-voice',      voiceOn);
+  syncModeBtn('sb-continuous', continuousMode);
+  orb.classList.toggle('ar-active', continuousMode);
+  const arHud = document.getElementById('ar-hud');
+  if (arHud) arHud.classList.toggle('visible', continuousMode);
   // Mode strip
   const strip = document.getElementById('mode-strip');
   const modeVal = document.getElementById('sb-mode-val');
   if (!strip) return;
   const pills = [];
+  if (continuousMode) pills.push(`<span class="mode-pill mp-ar">MODO AR</span>`);
   if (searchOn) pills.push(`<span class="mode-pill mp-search">BÚSQUEDA ACTIVA</span>`);
   if (examMode) pills.push(`<span class="mode-pill mp-exam">MODO EXAMEN</span>`);
   if (voiceOn)  pills.push(`<span class="mode-pill mp-voice">VOZ ACTIVA</span>`);
   strip.innerHTML = pills.join('');
   strip.classList.toggle('hidden', pills.length === 0);
-  if (modeVal) modeVal.textContent = examMode ? 'EXAMEN' : searchOn ? 'BÚSQUEDA' : 'ESTÁNDAR';
+  if (modeVal) modeVal.textContent = continuousMode ? 'MODO AR' : examMode ? 'EXAMEN' : searchOn ? 'BÚSQUEDA' : 'ESTÁNDAR';
 }
 function updateSessionStats() {
   const sbMsgs = document.getElementById('sb-msgs');
@@ -1162,7 +1170,7 @@ function updateSidebarAll() {
 function setOrb(state, label) {
   orb.classList.remove('speaking','listening','thinking','searching');
   if (state) orb.classList.add(state);
-  statusTxt.textContent = label;
+  statusTxt.textContent = (!state && continuousMode) ? 'MODO AR — ESCUCHANDO' : (label ?? 'En espera de instrucciones');
 }
 
 /* ── Render mensajes ────────────────────────────────── */
@@ -1377,15 +1385,36 @@ function getMaleVoice() {
       || voices.find(v => v.lang.startsWith('es'));
 }
 function arexSpeak(text) {
-  if (!voiceOn) return;
+  if (!voiceOn && !continuousMode) return;
   window.speechSynthesis.cancel();
   isSpeaking = true;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
   const v = getMaleVoice(); if (v) u.voice = v;
-  u.onstart = () => setOrb('speaking','Transmitiendo respuesta');
-  u.onend   = () => { isSpeaking = false; setOrb(null,'En espera de instrucciones'); };
-  u.onerror = () => { isSpeaking = false; setOrb(null,'En espera de instrucciones'); };
+  u.onstart = () => {
+    setOrb('speaking','Transmitiendo respuesta');
+    if (continuousMode && _continuousRec) {
+      _continuousRestart = false;
+      try { _continuousRec.stop(); } catch(e) {}
+    }
+  };
+  u.onend = () => {
+    isSpeaking = false;
+    setOrb(null);
+    if (continuousMode) {
+      _continuousRestart = true;
+      setTimeout(() => {
+        if (continuousMode && _continuousRec) {
+          try { _continuousRec.start(); } catch(e) {}
+        }
+      }, 700);
+    }
+  };
+  u.onerror = () => {
+    isSpeaking = false;
+    setOrb(null);
+    if (continuousMode) { _continuousRestart = true; }
+  };
   window.speechSynthesis.speak(u);
 }
 
@@ -1480,6 +1509,100 @@ function startListening() {
   rec.onend   = () => btnMic.classList.remove('on');
   rec.start();
 }
+
+/* ── Modo AR — Voz Continua con Wake Word ───────────── */
+const AR_ACKS = ['¿Qué necesitas?','A tus órdenes.','Dime.','Listo.','Escuchando.'];
+
+function startContinuousMode() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    addMsg('arex', 'Reconocimiento de voz no disponible en este navegador.');
+    continuousMode = false;
+    updateSidebarModes();
+    return;
+  }
+  _continuousRestart = true;
+  const rec = new SR();
+  rec.lang = 'es-MX';
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  _continuousRec = rec;
+
+  rec.onresult = async e => {
+    if (isSpeaking || isBusy) return;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (!e.results[i].isFinal) continue;
+      const transcript = e.results[i][0].transcript.trim();
+      const lower = transcript.toLowerCase();
+      const wakeIdx = lower.search(/\barex\b/);
+      if (wakeIdx === -1) continue;
+
+      const cmd = transcript.slice(wakeIdx + 4).replace(/^[,.:!¡¿\s]+/, '').trim();
+      window.speechSynthesis.cancel();
+
+      if (!cmd) {
+        const ack = AR_ACKS[Math.floor(Math.random() * AR_ACKS.length)];
+        addMsg('arex', ack);
+        arexSpeak(ack);
+      } else {
+        setOrb('listening', 'Procesando comando de voz...');
+        txt.value = cmd;
+        await updateStats('voice');
+        await handleSend();
+      }
+    }
+  };
+
+  rec.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'audio-capture') return;
+    if (e.error === 'not-allowed') {
+      addMsg('arex', 'Permiso de micrófono denegado. Actívalo en la configuración del navegador.');
+      continuousMode = false;
+      _continuousRestart = false;
+      updateSidebarModes();
+    }
+  };
+
+  rec.onend = () => {
+    if (continuousMode && _continuousRestart) {
+      setTimeout(() => {
+        if (continuousMode && _continuousRec) {
+          try { rec.start(); } catch(err) {}
+        }
+      }, 300);
+    }
+  };
+
+  try { rec.start(); } catch(err) {
+    addMsg('arex', 'No se pudo iniciar el reconocimiento de voz.');
+    continuousMode = false;
+    updateSidebarModes();
+  }
+}
+
+function stopContinuousMode() {
+  _continuousRestart = false;
+  if (_continuousRec) {
+    try { _continuousRec.abort(); } catch(e) {}
+    _continuousRec = null;
+  }
+}
+
+function toggleContinuousMode() {
+  continuousMode = !continuousMode;
+  if (continuousMode) {
+    startContinuousMode();
+    setOrb(null);
+    addMsg('arex', '🎙 **Modo AR activado.** Di **"AREX"** seguido de tu comando.\n\nEjemplos:\n- *"AREX, ¿cuánto debo en mis finanzas?"*\n- *"AREX, crea una tarea para mañana"*\n- *"AREX, ¿cuáles son mis metas activas?"*');
+  } else {
+    stopContinuousMode();
+    setOrb(null);
+    addMsg('arex', 'Modo AR desactivado.');
+  }
+  updateSidebarModes();
+}
+window.toggleContinuousMode = toggleContinuousMode;
 
 /* ── Auto-búsqueda por contexto ─────────────────────── */
 const AUTO_SEARCH_KW = [
@@ -2763,6 +2886,7 @@ document.getElementById('sb-exam').addEventListener('click', () => {
   txt.value = '/examen'; handleCommand('/examen'); txt.value = '';
 });
 document.getElementById('sb-voice').addEventListener('click', () => btnVoice.click());
+document.getElementById('sb-continuous').addEventListener('click', toggleContinuousMode);
 
 // Voces
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();

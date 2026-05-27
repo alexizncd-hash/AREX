@@ -365,6 +365,58 @@ main {
 
 .orb.searching .orb-core { animation:spin 0.5s linear infinite; background:var(--orange); box-shadow:0 0 12px var(--orange); }
 
+/* ── Modo AR — anillos orbitales ───────────────────── */
+@keyframes ar-ring-cw  { to { transform: rotate(360deg);  } }
+@keyframes ar-ring-ccw { to { transform: rotate(-360deg); } }
+
+.orb.ar-active::before {
+  content:''; position:absolute; inset:-8px; border-radius:50%;
+  border:1.5px solid transparent;
+  border-top-color:var(--cyan);
+  border-right-color:rgba(0,212,255,0.35);
+  animation:ar-ring-cw 2.4s linear infinite;
+  pointer-events:none;
+}
+.orb.ar-active::after {
+  content:''; position:absolute; inset:-15px; border-radius:50%;
+  border:1px solid transparent;
+  border-bottom-color:rgba(0,212,255,0.45);
+  border-left-color:rgba(0,212,255,0.18);
+  animation:ar-ring-ccw 4.8s linear infinite;
+  pointer-events:none;
+}
+.orb.ar-active {
+  box-shadow:0 0 28px rgba(0,212,255,0.35),0 0 56px rgba(0,212,255,0.12),inset 0 0 22px rgba(0,212,255,0.12);
+}
+
+/* ── AR HUD indicator ─────────────────────────────── */
+#ar-hud {
+  display:none; position:fixed; bottom:88px; left:50%;
+  transform:translateX(-50%);
+  font-size:8px; letter-spacing:3px; color:var(--cyan);
+  background:rgba(0,15,28,0.82);
+  border:1px solid rgba(0,212,255,0.28);
+  padding:5px 16px 5px 10px; border-radius:20px;
+  pointer-events:none; white-space:nowrap;
+  backdrop-filter:blur(6px);
+  animation:ar-hud-pulse 3s ease-in-out infinite;
+  z-index:10;
+  align-items:center; gap:8px;
+}
+#ar-hud.visible { display:flex; }
+.ar-hud-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);
+  animation:ar-hud-dot 1.4s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes ar-hud-pulse { 0%,100%{opacity:0.55;} 50%{opacity:1;} }
+@keyframes ar-hud-dot   { 0%,100%{transform:scale(1);} 50%{transform:scale(1.6);} }
+
+/* ── Mode pill AR ─────────────────────────────────── */
+.mp-ar { color:var(--cyan); border:1px solid var(--cyan); background:rgba(0,212,255,0.08); }
+
 .status-txt {
   font-size:10px; color:var(--text-muted);
   letter-spacing:2px; text-transform:uppercase;
