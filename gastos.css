@@ -74,7 +74,7 @@
 /* ── Barra de progreso (relleno) ── */
 .gp-cat-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0099bb, #00d4ff);
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(0,212,255,0.3);
   transition: width 0.4s ease;
