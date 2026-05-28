@@ -6,6 +6,9 @@
 <title>AREX — Sistema de Inteligencia Personal</title>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#00d4ff"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"/>
 <!-- Highlight.js CSS (en head para evitar FOUC) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
@@ -630,11 +633,11 @@
 
   <!-- Sub-navegación -->
   <div class="finanzas-subnav">
-    <button class="subnav-btn active" data-view="dashboard">📊 Dashboard</button>
-    <button class="subnav-btn" data-view="recordatorios">🔔 Recordatorios</button>
-    <button class="subnav-btn" data-view="calculadora">🧮 Calculadora</button>
-    <button class="subnav-btn" data-view="editar">✏️ Editar datos</button>
-    <button class="subnav-btn subnav-ia" id="btn-analizar-ia">🤖 Analizar con IA</button>
+    <button class="subnav-btn active" data-view="dashboard">Dashboard</button>
+    <button class="subnav-btn" data-view="recordatorios">Recordatorios</button>
+    <button class="subnav-btn" data-view="calculadora">Calculadora</button>
+    <button class="subnav-btn" data-view="editar">Editar datos</button>
+    <button class="subnav-btn subnav-ia" id="btn-analizar-ia">Analizar con IA</button>
   </div>
 
   <!-- Vista: Dashboard -->
@@ -642,28 +645,24 @@
     <div class="finanzas-container">
       <div class="metrics-grid">
         <div class="metric-card ingreso">
-          <div class="metric-icon">💵</div>
           <div class="metric-content">
             <span class="metric-label">Ingreso Mensual</span>
             <span class="metric-value" id="metric-ingreso">$11,250</span>
           </div>
         </div>
         <div class="metric-card deuda">
-          <div class="metric-icon">💳</div>
           <div class="metric-content">
             <span class="metric-label">Deuda Total</span>
             <span class="metric-value" id="metric-deuda">$37,327</span>
           </div>
         </div>
         <div class="metric-card gastos">
-          <div class="metric-icon">📊</div>
           <div class="metric-content">
             <span class="metric-label">Gastos Mensuales</span>
             <span class="metric-value" id="metric-gastos">$11,185</span>
           </div>
         </div>
         <div class="metric-card margen">
-          <div class="metric-icon">💰</div>
           <div class="metric-content">
             <span class="metric-label">Margen</span>
             <span class="metric-value critical" id="metric-margen">$65</span>
@@ -678,11 +677,11 @@
       </div>
 
       <div class="deudas-section">
-        <h3 class="section-title">💳 Tus Tarjetas de Crédito</h3>
+        <h3 class="section-title">Tarjetas de Crédito</h3>
         <div class="tarjetas-grid" id="tarjetas-grid"></div>
       </div>
       <div class="gastos-section">
-        <h3 class="section-title">📊 Distribución de Gastos</h3>
+        <h3 class="section-title">Distribución de Gastos</h3>
         <div class="chart-container" id="gastos-chart"></div>
       </div>
     </div>
@@ -691,14 +690,14 @@
   <!-- Vista: Recordatorios -->
   <div class="finanzas-view" id="view-recordatorios">
     <div class="finanzas-container">
-      <h3 class="section-title">🔔 Próximos Pagos</h3>
+      <h3 class="section-title">Próximos Pagos</h3>
       <div class="alertas-container" id="alertas-urgentes"></div>
       <div class="calendario-section">
-        <h4 class="section-subtitle">📅 Calendario del Mes</h4>
+        <h4 class="section-subtitle">Calendario del Mes</h4>
         <div class="calendario-grid" id="calendario"></div>
       </div>
       <div class="tarjetas-list-section">
-        <h4 class="section-subtitle">💳 Todas las Tarjetas</h4>
+        <h4 class="section-subtitle">Todas las Tarjetas</h4>
         <div class="tarjetas-list" id="tarjetas-list"></div>
       </div>
     </div>
@@ -707,7 +706,7 @@
   <!-- Vista: Calculadora -->
   <div class="finanzas-view" id="view-calculadora">
     <div class="finanzas-container">
-      <h3 class="section-title">🧮 Simulador de Liquidación</h3>
+      <h3 class="section-title">Simulador de Liquidación</h3>
       <div class="calculadora-controls">
         <div class="control-group">
           <label>💰 Pago Extra Mensual: $<span id="pago-extra-label">500</span></label>
@@ -744,11 +743,11 @@
         </div>
       </div>
       <div class="orden-liquidacion">
-        <h4 class="section-subtitle">📋 Orden de Liquidación</h4>
+        <h4 class="section-subtitle">Orden de Liquidación</h4>
         <div id="orden-list"></div>
       </div>
       <div class="proyeccion-section">
-        <h4 class="section-subtitle">📈 Proyección de Reducción</h4>
+        <h4 class="section-subtitle">Proyección de Reducción</h4>
         <canvas id="proyeccion-chart"></canvas>
       </div>
     </div>
@@ -822,11 +821,11 @@
   </div>
   <div class="tareas-body" id="tareas-body">
     <div class="tareas-col">
-      <div class="tareas-col-title">⏳ PENDIENTES</div>
+      <div class="tareas-col-title">PENDIENTES</div>
       <div id="tareas-list-pending" class="tareas-list"></div>
     </div>
     <div class="tareas-col">
-      <div class="tareas-col-title">✓ COMPLETADAS</div>
+      <div class="tareas-col-title">COMPLETADAS</div>
       <div id="tareas-list-done" class="tareas-list"></div>
     </div>
   </div>
@@ -879,12 +878,12 @@
 <!-- ── Módulo: Negocio (Frijol) ── -->
 <div id="module-negocio" class="module-panel">
   <div class="neg-subnav">
-    <button class="neg-tab active" data-view="dashboard">📊 Dashboard</button>
-    <button class="neg-tab" data-view="ventas">💰 Ventas</button>
-    <button class="neg-tab" data-view="inventario">📦 Inventario</button>
-    <button class="neg-tab" data-view="sucursales">🏪 Sucursales</button>
-    <button class="neg-tab" data-view="gastos">📋 Gastos</button>
-    <button class="neg-tab" data-view="config">⚙ Config</button>
+    <button class="neg-tab active" data-view="dashboard">Dashboard</button>
+    <button class="neg-tab" data-view="ventas">Ventas</button>
+    <button class="neg-tab" data-view="inventario">Inventario</button>
+    <button class="neg-tab" data-view="sucursales">Sucursales</button>
+    <button class="neg-tab" data-view="gastos">Gastos</button>
+    <button class="neg-tab" data-view="config">Config</button>
   </div>
   <div class="neg-content">
     <div class="neg-view active" data-view="dashboard"><div id="neg-dash-content"></div></div>

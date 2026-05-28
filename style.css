@@ -1,31 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+
 /* ═══════════════════════════════════════════════════════
    AREX — Sistema de Inteligencia Personal
    Paleta: Negro profundo + Cian eléctrico (#00d4ff)
 ═══════════════════════════════════════════════════════ */
 
 :root {
-  --cyan:       #00d4ff;
-  --cyan-dim:   #0099bb;
-  --cyan-glow:  rgba(0,212,255,0.15);
-  --cyan-pulse: rgba(0,212,255,0.4);
-  --bg-dark:    #020c14;
-  --bg-panel:   rgba(0,20,35,0.88);
-  --text-main:  #e0f4ff;
-  --text-muted: #4a7a96;
-  --border:     rgba(0,212,255,0.2);
-  --green:      #00ffaa;
-  --orange:     #ff9900;
-  --font:       'Courier New','Lucida Console',monospace;
-  /* aliases usados internamente */
-  --text:       #e0f4ff;
-  --glass:      rgba(0,15,28,0.55);
+  --cyan:         #00d4ff;
+  --cyan-dim:     #0099bb;
+  --cyan-glow:    rgba(0,212,255,0.18);
+  --cyan-pulse:   rgba(0,212,255,0.45);
+  --purple:       #8B5CF6;
+  --purple-glow:  rgba(139,92,246,0.18);
+  --bg-dark:      #020810;
+  --bg-panel:     rgba(0,10,22,0.92);
+  --text-main:    #e8f4ff;
+  --text-muted:   #4a7a96;
+  --border:       rgba(0,212,255,0.16);
+  --green:        #00ffaa;
+  --orange:       #ff9900;
+  --font:         'Share Tech Mono', 'Courier New', monospace;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+  /* aliases */
+  --text:         #e8f4ff;
+  --glass:        rgba(0,6,18,0.7);
 }
 
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:100%; height:100%; height:100dvh; overflow:hidden; }
 body {
   background:var(--bg-dark); color:var(--text-main);
-  font-family:var(--font);
+  font-family:var(--font-body);
   display:flex; flex-direction:row; align-items:stretch;
 }
 
@@ -47,8 +54,9 @@ body {
   width:38px; height:38px; border-radius:50%;
   border:1.5px solid var(--cyan);
   display:flex; align-items:center; justify-content:center;
-  font-size:14px; font-weight:bold; color:var(--cyan);
-  box-shadow:0 0 12px var(--cyan-pulse),inset 0 0 8px var(--cyan-glow);
+  font-size:13px; font-weight:700; color:var(--cyan);
+  font-family:var(--font-display);
+  box-shadow:0 0 14px var(--cyan-pulse),inset 0 0 10px var(--cyan-glow);
   animation:logo-pulse 3s ease-in-out infinite;
 }
 .dock-nav {
@@ -273,9 +281,18 @@ body {
 /* ── Fondo HUD ──────────────────────────────────────── */
 .hud-grid {
   position:fixed; inset:0;
-  background-image:radial-gradient(circle,rgba(0,212,255,0.07) 1px,transparent 1px);
-  background-size:40px 40px;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.028) 1px, transparent 1px);
+  background-size:64px 64px;
   z-index:0; pointer-events:none;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 100% 55% at 50% -5%, rgba(0,212,255,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 95%, rgba(139,92,246,0.05) 0%, transparent 50%);
 }
 .scan-line {
   position:fixed; top:0; left:0; width:100%; height:2px;
