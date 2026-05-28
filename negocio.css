@@ -35,8 +35,8 @@
   padding: 5px 12px;
   font-size: 9px;
   letter-spacing: 2px;
-  border: 1px solid rgba(0,212,255,0.18);
-  border-radius: 2px;
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 6px;
   color: var(--text-muted);
   cursor: pointer;
   font-family: var(--font);
@@ -47,9 +47,10 @@
 }
 .neg-tab:hover  { border-color: var(--cyan); color: var(--cyan); }
 .neg-tab.active {
-  border-color: var(--cyan);
+  border-color: rgba(0,212,255,0.6);
   color: var(--cyan);
-  background: rgba(0,212,255,0.08);
+  background: rgba(0,212,255,0.1);
+  box-shadow: 0 0 10px rgba(0,212,255,0.15), inset 0 0 6px rgba(0,212,255,0.04);
 }
 
 /* ── Área de contenido ── */
@@ -71,11 +72,19 @@
   gap: 0.6rem;
 }
 .neg-kpi {
-  border: 1px solid rgba(0,212,255,0.14);
-  background: rgba(0,14,26,0.6);
-  border-radius: 4px;
-  padding: 0.7rem 0.9rem;
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(0,212,255,0.12);
+  background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  backdrop-filter: blur(16px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.neg-kpi:hover {
+  border-color: rgba(0,212,255,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
 }
 .neg-kpi.neg-kpi-warn { border-color: rgba(255,153,0,0.4); }
 .neg-kpi-lbl { font-size: 8px; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 4px; }

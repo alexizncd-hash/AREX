@@ -20,13 +20,22 @@
 
 /* ── Tarjeta de meta ── */
 .meta-card {
-  border: 1px solid rgba(0,212,255,0.12);
-  background: rgba(0,14,26,0.5);
-  border-radius: 6px;
-  padding: 0.9rem;
+  border: 1px solid rgba(0,212,255,0.1);
+  background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  backdrop-filter: blur(16px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.meta-card:hover {
+  border-color: rgba(0,212,255,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 16px rgba(0,212,255,0.04);
 }
 
 .meta-card.meta-done {
@@ -45,7 +54,9 @@
 .meta-titulo {
   font-size: 13px;
   color: var(--text-main);
-  margin-top: 4px;
+  margin-top: 2px;
+  font-family: var(--font-body);
+  font-weight: 500;
 }
 
 .meta-cat-badge {
@@ -76,8 +87,8 @@
 
 .meta-track {
   flex: 1;
-  height: 6px;
-  background: rgba(0,212,255,0.1);
+  height: 5px;
+  background: rgba(0,212,255,0.08);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -85,7 +96,9 @@
 .meta-fill {
   height: 100%;
   border-radius: 3px;
-  transition: width 0.4s ease;
+  background: linear-gradient(90deg, #0099bb, #00d4ff);
+  box-shadow: 0 0 6px rgba(0,212,255,0.4);
+  transition: width 0.5s ease;
 }
 
 .meta-pct {
