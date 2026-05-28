@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v28';
-const VERSION = 'v28';
+const CACHE   = 'arex-v29';
+const VERSION = 'v29';
 const SHELL = [
   './index.html',
   './style.css',
@@ -46,7 +46,7 @@ self.addEventListener('fetch', e => {
       url.includes('firebase') || url.includes('gstatic') ||
       url.includes('cdnjs') || url.includes('jsdelivr') ||
       url.includes('frankfurter') || url.includes('er-api.com') ||
-      url.includes('openweathermap.org')) return;
+      url.includes('openweathermap.org') || url.includes('googleapis.com')) return;
 
   // Network-first para todo el shell — siempre archivos frescos cuando hay internet
   const isShell = SHELL.some(f => url.endsWith(f.replace('./', '/'))) ||
