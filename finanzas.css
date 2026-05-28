@@ -156,7 +156,7 @@ main#module-chat.module-panel.active {
   color: #7ba8c0;
   min-width: 150px;
   padding-left: 0.6rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 .edit-fields {
   display: flex;
@@ -182,7 +182,7 @@ main#module-chat.module-panel.active {
   border-radius: 3px;
   color: #e0f4ff;
   padding: 0.35rem 0.6rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.88rem;
   width: 100%;
   transition: border-color 0.2s;
@@ -208,7 +208,7 @@ main#module-chat.module-panel.active {
   color: #00d4ff;
   border-radius: 3px;
   cursor: pointer;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   letter-spacing: 1px;
   transition: all 0.2s;
@@ -221,7 +221,7 @@ main#module-chat.module-panel.active {
   color: #4a7a96;
   border-radius: 3px;
   cursor: pointer;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   transition: all 0.2s;
 }
@@ -272,7 +272,7 @@ main#module-chat.module-panel.active {
   font-size: 0.9rem;
   color: #4a7a96;
   margin: 1.2rem 0 0.8rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -408,7 +408,7 @@ main#module-chat.module-panel.active {
 .tarjeta-numero {
   font-size: 0.78rem;
   color: #4a7a96;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 .tarjeta-prioridad {
@@ -461,7 +461,7 @@ main#module-chat.module-panel.active {
 .metrica-valor {
   font-size: 0.95rem;
   color: #e0f4ff;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-weight: bold;
 }
 
@@ -480,7 +480,7 @@ main#module-chat.module-panel.active {
 
 .barra-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0099bb, #00d4ff) !important;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan)) !important;
   border-radius: 3px;
   box-shadow: 0 0 6px rgba(0,212,255,0.4);
   transition: width 0.5s ease;
@@ -564,7 +564,7 @@ main#module-chat.module-panel.active {
   font-size: 0.78rem;
 }
 
-.gasto-monto        { color: #00d4ff; font-family: 'Courier New', monospace; font-weight: bold; }
+.gasto-monto        { color: #00d4ff; font-family: var(--font-mono); font-weight: bold; }
 .gasto-porcentaje   { color: #4a7a96; }
 .gasto-ingreso-pct  { color: #2a5a70; font-size: 0.72rem; }
 .gasto-reducible    {
@@ -592,7 +592,7 @@ main#module-chat.module-panel.active {
   font-size: 0.82rem;
   color: #e0f4ff;
   margin-bottom: 0.8rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -634,7 +634,7 @@ main#module-chat.module-panel.active {
 }
 
 .alerta-fecha  { font-size: 0.75rem; color: #4a7a96; margin-bottom: 0.15rem; }
-.alerta-monto  { font-size: 0.82rem; color: #e0f4ff; font-family: 'Courier New', monospace; }
+.alerta-monto  { font-size: 0.82rem; color: #e0f4ff; font-family: var(--font-mono); }
 
 .alerta-badge {
   padding: 0.4rem 0.8rem;
@@ -746,7 +746,7 @@ main#module-chat.module-panel.active {
 .list-info-item { display: flex; flex-direction: column; gap: 0.15rem; }
 
 .list-label { font-size: 0.68rem; color: #4a7a96; text-transform: uppercase; letter-spacing: 0.5px; }
-.list-valor { font-size: 0.85rem; color: #e0f4ff; font-family: 'Courier New', monospace; }
+.list-valor { font-size: 0.85rem; color: #e0f4ff; font-family: var(--font-mono); }
 
 /* ── Calculadora ──────────────────────────────────────────── */
 
@@ -765,7 +765,7 @@ main#module-chat.module-panel.active {
   font-size: 0.88rem;
   color: #e0f4ff;
   margin-bottom: 0.8rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 1px;
 }
 
@@ -824,7 +824,7 @@ main#module-chat.module-panel.active {
   text-align: center;
   font-size: 0.9rem;
   line-height: 1.5;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 .strategy-btn:hover {
@@ -873,7 +873,7 @@ main#module-chat.module-panel.active {
 
 .resultado-icono { font-size: 1.8rem; margin-bottom: 0.4rem; }
 .resultado-label { font-size: 0.72rem; color: #4a7a96; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 1px; }
-.resultado-valor { font-size: 1.4rem; color: #00d4ff; font-weight: bold; font-family: 'Courier New', monospace; }
+.resultado-valor { font-size: 1.4rem; color: #00d4ff; font-weight: bold; font-family: var(--font-mono); }
 
 /* Orden de liquidación */
 
@@ -936,7 +936,7 @@ main#module-chat.module-panel.active {
   color: #e0f4ff;
   font-size: 0.9rem;
   margin: 0.4rem 0;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 .nota-grafica { color: #4a7a96 !important; font-size: 0.78rem !important; margin-top: 0.8rem !important; }
