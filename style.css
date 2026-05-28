@@ -146,7 +146,7 @@ body {
 .sidebar.open { left:0; }
 .sidebar-overlay {
   position:fixed; inset:0; z-index:799;
-  background:rgba(0,0,0,0.55); backdrop-filter:blur(2px);
+  background:rgba(0,0,0,0.55);
 }
 .sidebar-hdr {
   display:flex; justify-content:space-between; align-items:center;
@@ -312,7 +312,7 @@ header {
   width:100%; max-width:960px;
   display:flex; justify-content:space-between; align-items:center;
   padding:0.7rem 2rem; border-bottom:1px solid var(--border);
-  backdrop-filter:blur(12px);
+
   background:rgba(2,12,20,0.75);
 }
 .sys-info { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:130px; }
@@ -415,7 +415,7 @@ main {
   border:1px solid rgba(0,212,255,0.28);
   padding:5px 16px 5px 10px; border-radius:20px;
   pointer-events:none; white-space:nowrap;
-  backdrop-filter:blur(6px);
+
   animation:ar-hud-pulse 3s ease-in-out infinite;
   z-index:10;
   align-items:center; gap:8px;
@@ -465,7 +465,7 @@ main {
   box-shadow:0 0 30px rgba(0,212,255,0.15);
   display:flex; flex-direction:column;
   font-family:var(--font); overflow:hidden;
-  backdrop-filter:blur(10px);
+
 }
 .vp-header {
   display:flex; align-items:center; justify-content:space-between;
@@ -568,7 +568,7 @@ main {
   display:flex; flex-direction:column; gap:0.7rem;
   scrollbar-width:thin; scrollbar-color:var(--cyan-dim) transparent;
   transition:border-color 0.2s, box-shadow 0.2s;
-  backdrop-filter:blur(16px);
+
   box-shadow:0 4px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.05);
 }
 .chat.drag-over { border-color:var(--cyan); background:rgba(0,212,255,0.04); }
@@ -587,14 +587,14 @@ main {
   background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.2);
   border-right:3px solid var(--cyan); color:var(--text-main);
   border-radius:12px 2px 12px 12px;
-  backdrop-filter:blur(8px);
+
 }
 .msg.arex .bubble {
   background:rgba(0,12,26,0.75); border:1px solid rgba(0,212,255,0.1);
   border-left:3px solid var(--cyan); color:var(--text-main);
   box-shadow:0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(0,212,255,0.04);
   border-radius:2px 12px 12px 12px;
-  backdrop-filter:blur(12px);
+
 }
 .msg.file .bubble { border-left:3px solid var(--orange); background:rgba(255,153,0,0.04); }
 
@@ -646,7 +646,7 @@ main {
   width:100%; display:flex; gap:8px; align-items:center;
   border:1px solid rgba(0,212,255,0.14);
   background:rgba(0,8,18,0.88);
-  backdrop-filter:blur(20px);
+
   border-radius:10px; padding:9px 14px;
   transition:border-color 0.2s, box-shadow 0.2s;
   box-shadow:0 4px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,212,255,0.06);
@@ -715,7 +715,7 @@ footer {
   padding:9px 12px; border-radius:6px; font-size:12px;
   background:rgba(0,10,22,0.7); position:relative;
   animation:appear 0.2s ease-out;
-  backdrop-filter:blur(8px);
+
   transition:border-color 0.2s;
 }
 .note-item:hover { border-color:rgba(0,212,255,0.25); }
@@ -756,7 +756,7 @@ footer {
   background:linear-gradient(135deg, rgba(0,10,22,0.97) 0%, rgba(0,5,15,0.99) 100%);
   border-radius:10px; overflow:hidden;
   animation:appear 0.2s ease-out;
-  backdrop-filter:blur(24px);
+
   box-shadow:0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(0,212,255,0.04);
 }
 .modal-header {
@@ -1955,23 +1955,7 @@ body::before {
   background-size: 44px 44px;
 }
 
-/* ── Scanline sutil ─────────────────────────────────── */
-body::after {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 2;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0,0,0,0.025) 3px,
-    rgba(0,0,0,0.025) 4px
-  );
-  animation: scanmove 8s linear infinite;
-}
-@keyframes scanmove {
-  0%   { background-position: 0 0; }
-  100% { background-position: 0 44px; }
-}
+/* scanline removida — GPU load en Meta Quest */
 
 /* ── Scrollbar global neón ──────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: rgba(0,212,255,0.28) transparent; }
@@ -2027,7 +2011,7 @@ body::after {
   background: rgba(0,14,26,0.7);
   border-left: 2px solid var(--cyan);
   box-shadow: -4px 0 16px rgba(0,212,255,0.08), 0 2px 24px rgba(0,0,0,0.35);
-  backdrop-filter: blur(4px);
+
 }
 .msg.user .bubble {
   background: rgba(0,212,255,0.07);
@@ -2051,7 +2035,7 @@ body::after {
 /* ── Header: glassmorphism mejorado ─────────────────── */
 header {
   background: rgba(1,8,16,0.85);
-  backdrop-filter: blur(20px) saturate(180%);
+
   border-bottom: 1px solid rgba(0,212,255,0.1);
   box-shadow: 0 1px 30px rgba(0,0,0,0.4);
 }
@@ -2061,7 +2045,7 @@ header {
   position: relative;
   border: 1px solid rgba(0,212,255,0.1);
   background: rgba(2,10,20,0.6);
-  backdrop-filter: blur(8px);
+
   transition: border-color 0.25s, box-shadow 0.25s;
 }
 .dash-widget:hover {
@@ -2086,7 +2070,7 @@ header {
 .nota-card {
   position: relative;
   background: rgba(2,10,20,0.7);
-  backdrop-filter: blur(6px);
+
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .nota-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
@@ -2094,7 +2078,7 @@ header {
 /* ── Hábitos: tarjeta mejorada ──────────────────────── */
 .hab-card {
   background: rgba(2,10,20,0.7);
-  backdrop-filter: blur(6px);
+
   transition: border-color 0.2s, transform 0.15s;
 }
 .hab-card:hover { transform: translateX(2px); }
@@ -2143,7 +2127,7 @@ header {
 /* ── Modal: glassmorphism ───────────────────────────── */
 .modal-box {
   background: rgba(2,10,20,0.92);
-  backdrop-filter: blur(20px) saturate(180%);
+
   border: 1px solid rgba(0,212,255,0.15);
   box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 30px rgba(0,212,255,0.05);
 }
@@ -2157,7 +2141,7 @@ header {
 /* ── Sidebar: glassmorphism ─────────────────────────── */
 .sidebar {
   background: rgba(1,8,18,0.96);
-  backdrop-filter: blur(20px);
+
   border-right: 1px solid rgba(0,212,255,0.1);
 }
 
@@ -2231,7 +2215,7 @@ header {
 .busqueda-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(2,12,20,0.92);
-  backdrop-filter: blur(8px);
+
   display: flex; align-items: flex-start; justify-content: center;
   padding-top: 80px;
   animation: appear 0.15s ease-out;

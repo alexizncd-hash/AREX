@@ -295,7 +295,7 @@ main#module-chat.module-panel.active {
   border: 1px solid rgba(0,212,255,0.1);
   border-radius: 12px;
   transition: all 0.3s ease;
-  backdrop-filter: blur(20px);
+
   position: relative;
   overflow: hidden;
 }
@@ -378,7 +378,7 @@ main#module-chat.module-panel.active {
   border-radius: 10px;
   padding: 1.2rem;
   transition: all 0.3s ease;
-  backdrop-filter: blur(16px);
+
   position: relative;
   overflow: hidden;
 }
@@ -511,7 +511,7 @@ main#module-chat.module-panel.active {
   border: 1px solid rgba(0,212,255,0.1);
   border-radius: 10px;
   padding: 1.2rem;
-  backdrop-filter: blur(12px);
+
 }
 
 .gasto-bar { margin: 0.8rem 0; }

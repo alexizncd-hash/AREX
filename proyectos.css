@@ -50,7 +50,7 @@
   border-left: 3px solid var(--proj-color, var(--cyan));
   padding: 0.9rem 1rem;
   border-radius: 8px;
-  backdrop-filter: blur(16px);
+
   transition: all 0.3s ease;
   position: relative;
 }
