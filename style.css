@@ -439,6 +439,90 @@ main {
 }
 #btn-enter-ar svg { opacity:0.8; }
 
+/* ── Vision Panel ─────────────────────────────────── */
+#vision-panel {
+  position:fixed; bottom:100px; right:16px;
+  width:300px; background:rgba(0,10,20,0.96);
+  border:1px solid rgba(0,212,255,0.5);
+  border-radius:4px; z-index:800;
+  box-shadow:0 0 30px rgba(0,212,255,0.15);
+  display:flex; flex-direction:column;
+  font-family:var(--font); overflow:hidden;
+  backdrop-filter:blur(10px);
+}
+.vp-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px; background:rgba(0,212,255,0.07);
+  border-bottom:1px solid rgba(0,212,255,0.15);
+}
+.vp-title {
+  font-size:9px; letter-spacing:3px; color:var(--cyan);
+  display:flex; align-items:center; gap:7px;
+}
+.vp-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 6px var(--green);
+  animation:ar-hud-dot 1.2s ease-in-out infinite;
+}
+.vp-head-btns { display:flex; gap:4px; }
+.vp-btn-sm {
+  background:transparent; border:1px solid rgba(0,212,255,0.25);
+  color:var(--text-muted); font-size:10px; padding:2px 7px;
+  cursor:pointer; border-radius:2px; font-family:var(--font);
+  transition:all 0.2s;
+}
+.vp-btn-sm:hover { color:var(--cyan); border-color:var(--cyan); }
+.vp-close:hover  { color:#ff4455; border-color:#ff4455; }
+
+.vp-video-wrap {
+  position:relative; width:100%; aspect-ratio:16/9;
+  background:#000; overflow:hidden;
+}
+#vis-video { width:100%; height:100%; object-fit:cover; display:block; }
+
+.vp-scan-line {
+  position:absolute; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity:0; pointer-events:none; top:0;
+}
+.vp-scan-line.active {
+  opacity:0.8;
+  animation:vp-scan 1.4s ease-in-out infinite;
+}
+@keyframes vp-scan { 0%{top:0;} 100%{top:100%;} }
+
+.vp-status {
+  position:absolute; bottom:6px; left:10px;
+  font-size:8px; letter-spacing:2px; color:var(--cyan);
+  background:rgba(0,10,20,0.75); padding:2px 8px;
+  border-radius:2px; pointer-events:none;
+}
+.vp-actions {
+  display:flex; gap:6px; padding:8px 10px 4px;
+}
+.vp-btn {
+  flex:1; background:rgba(0,212,255,0.05);
+  border:1px solid rgba(0,212,255,0.25);
+  color:var(--text-muted); font-family:var(--font);
+  font-size:8px; letter-spacing:1.5px; padding:7px 4px;
+  cursor:pointer; border-radius:2px; transition:all 0.2s;
+}
+.vp-btn:hover { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.1); }
+
+.vp-btn-cont {
+  margin:0 10px 10px; background:transparent;
+  border:1px solid rgba(0,212,255,0.2);
+  color:var(--text-muted); font-family:var(--font);
+  font-size:8px; letter-spacing:2px; padding:6px;
+  cursor:pointer; border-radius:2px; transition:all 0.2s;
+  width:calc(100% - 20px);
+}
+.vp-btn-cont:hover { border-color:var(--cyan); color:var(--cyan); }
+.vp-btn-cont.on { border-color:var(--green); color:var(--green); background:rgba(0,255,170,0.06); }
+
+/* ── Vision button in toolbar ─────────────────────── */
+#btn-vision.active { color:var(--green); }
+
 .status-txt {
   font-size:10px; color:var(--text-muted);
   letter-spacing:2px; text-transform:uppercase;

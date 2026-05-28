@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="negocio.css"/>
 <link rel="stylesheet" href="gastos.css"/>
 <link rel="stylesheet" href="metas.css"/>
+<link rel="stylesheet" href="proyectos.css"/>
 </head>
 <body>
 
@@ -434,6 +435,12 @@
       </svg>
       <span class="dock-label">METAS</span>
     </button>
+    <button class="nav-btn" data-module="proyectos" data-tooltip="Proyectos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="dock-label">PROYECTOS</span>
+    </button>
   </nav>
   <div class="dock-bottom">
     <div class="dock-pulse-dot"></div>
@@ -576,6 +583,14 @@
       </svg>
     </button>
     <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none"/>
+
+    <!-- Visión en vivo AREX -->
+    <button class="btn" id="btn-vision" title="AREX Vision — cámara en vivo" onclick="openVision()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
 
     <input type="text" id="txt" placeholder="Escribe un mensaje o /ayuda..." autocomplete="off"/>
 
@@ -909,6 +924,8 @@
   </div>
 </div>
 
+<div id="module-proyectos" class="module-panel"></div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
@@ -917,6 +934,7 @@
 <script src="negocio.js"></script>
 <script src="gastos.js"></script>
 <script src="metas.js"></script>
+<script src="proyectos.js"></script>
 <script src="jarvis.js"></script>
 
 <!-- Marked (Markdown parser) -->
@@ -936,6 +954,8 @@
 <script type="module" src="app.js"></script>
 <!-- WebXR AR Panels (Fase 3) -->
 <script type="module" src="webxr.js"></script>
+<!-- Visión en vivo (Fase 4) -->
+<script type="module" src="vision.js"></script>
 
 </body>
 </html>

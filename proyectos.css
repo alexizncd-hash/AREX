@@ -1,0 +1,102 @@
+/* ── AREX Proyectos ──────────────────────────────────── */
+#module-proyectos { flex-direction:column; overflow:hidden; }
+
+.proj-wrap {
+  display:flex; flex-direction:column; gap:1rem;
+  padding:1rem 1rem 0; overflow-y:auto; flex:1;
+}
+
+.proj-header {
+  display:flex; align-items:center; gap:0.8rem;
+}
+.proj-title {
+  font-size:11px; letter-spacing:4px; color:var(--cyan);
+  font-weight:bold; margin:0;
+}
+.proj-count {
+  font-size:9px; letter-spacing:2px; color:var(--text-muted);
+  border:1px solid var(--border); padding:2px 8px; border-radius:2px;
+}
+
+.proj-nuevo {
+  display:flex; flex-direction:column; gap:0.4rem;
+}
+.proj-input {
+  background:rgba(0,20,35,0.6); border:1px solid var(--border);
+  color:var(--text-main); font-family:var(--font); font-size:11px;
+  padding:8px 12px; border-radius:2px; outline:none;
+  transition:border-color 0.2s;
+}
+.proj-input:focus { border-color:var(--cyan); }
+.proj-input::placeholder { color:var(--text-muted); }
+.proj-add-btn {
+  background:transparent; border:1px solid var(--cyan);
+  color:var(--cyan); font-family:var(--font); font-size:9px;
+  letter-spacing:2px; padding:8px; cursor:pointer;
+  border-radius:2px; transition:all 0.2s;
+}
+.proj-add-btn:hover { background:rgba(0,212,255,0.08); }
+
+.proj-section-label {
+  font-size:8px; letter-spacing:3px; color:var(--text-muted);
+  border-bottom:1px solid var(--border); padding-bottom:4px;
+}
+
+.proj-list { display:flex; flex-direction:column; gap:0.5rem; }
+
+.proj-card {
+  background:rgba(0,20,35,0.7);
+  border:1px solid var(--border);
+  border-left:3px solid var(--proj-color, var(--cyan));
+  padding:0.8rem 1rem; border-radius:2px;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.proj-card:hover {
+  border-color:rgba(0,212,255,0.4);
+  box-shadow:0 0 10px rgba(0,212,255,0.06);
+}
+.proj-card.proj-done { opacity:0.55; }
+
+.proj-card-top {
+  display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem;
+}
+.proj-color-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+}
+.proj-nombre {
+  flex:1; font-size:12px; color:var(--text-main); letter-spacing:1px;
+  outline:none; min-height:18px;
+}
+.proj-nombre[contenteditable="true"] {
+  border-bottom:1px solid var(--cyan); padding-bottom:1px;
+}
+.proj-card-actions {
+  display:flex; gap:4px;
+}
+.proj-card-actions button {
+  background:transparent; border:none; color:var(--text-muted);
+  font-size:11px; cursor:pointer; padding:2px 5px;
+  border-radius:2px; transition:color 0.2s;
+}
+.proj-card-actions button:hover { color:var(--cyan); }
+
+.proj-desc {
+  font-size:10px; color:var(--text-muted); margin:0 0 0.4rem 1rem;
+  letter-spacing:0.5px; line-height:1.5;
+}
+
+.proj-stats {
+  display:flex; flex-wrap:wrap; gap:0.4rem; margin-left:1rem;
+}
+.proj-stat {
+  font-size:9px; letter-spacing:1px; color:var(--text-muted);
+  background:rgba(0,212,255,0.05);
+  border:1px solid rgba(0,212,255,0.12);
+  padding:2px 8px; border-radius:10px;
+}
+
+.proj-empty {
+  text-align:center; color:var(--text-muted);
+  font-size:11px; padding:2rem; line-height:1.8;
+}
+.proj-empty em { color:var(--cyan); font-style:normal; }

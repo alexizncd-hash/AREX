@@ -1471,6 +1471,9 @@ const VOICE_CMDS = [
   { phrases:['ver comandos','mostrar ayuda','ayuda'],               cmd:'/ayuda'    },
   { phrases:['activar búsqueda','búsqueda web','buscar en internet'], cmd:'__search__' },
   { phrases:['resumir conversación','resume la conversación'],      cmd:'/resumir'  },
+  { phrases:['qué ves','qué estás viendo','describe lo que ves','enciende la cámara'], cmd:'__vision_describe__' },
+  { phrases:['identifica esto','qué es esto','identifica el producto','escanea esto'], cmd:'__vision_product__' },
+  { phrases:['lee esto','lee el texto','escanea el texto'],         cmd:'__vision_text__'    },
 ];
 
 /* ── Reconocimiento de voz ──────────────────────────── */
@@ -1490,12 +1493,11 @@ function startListening() {
     // Detectar comandos de voz
     for (const vc of VOICE_CMDS) {
       if (vc.phrases.some(p => lower.includes(p))) {
-        if (vc.cmd === '__search__') {
-          btnSearch.click();
-        } else {
-          txt.value = vc.cmd;
-          await handleSend();
-        }
+        if (vc.cmd === '__search__')          { btnSearch.click(); }
+        else if (vc.cmd === '__vision_describe__') { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('describe'); }
+        else if (vc.cmd === '__vision_product__')  { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('product');  }
+        else if (vc.cmd === '__vision_text__')     { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('text');     }
+        else { txt.value = vc.cmd; await handleSend(); }
         return;
       }
     }
@@ -1546,6 +1548,17 @@ function startContinuousMode() {
         addMsg('arex', ack);
         arexSpeak(ack);
       } else {
+        // Comandos especiales de visión desde modo AR
+        const cmdL = cmd.toLowerCase();
+        if (/qué ves|qué estás viendo|describe/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+          arexSpeak('Analizando.'); window.captureAndAnalyze('describe'); continue;
+        }
+        if (/identifica|qué es esto|escanea/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+          arexSpeak('Identificando.'); window.captureAndAnalyze('product'); continue;
+        }
+        if (/lee esto|lee el texto/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+          arexSpeak('Leyendo.'); window.captureAndAnalyze('text'); continue;
+        }
         setOrb('listening', 'Procesando comando de voz...');
         txt.value = cmd;
         await updateStats('voice');
@@ -2434,6 +2447,22 @@ async function handleCommand(cmd) {
       document.getElementById('cfg2-error').style.display = 'none';
       _updateNotifStatus();
       modalConfig.classList.remove('hidden');
+      break;
+    }
+
+    case 'proyecto': {
+      if (!args) { addMsg('arex', 'Uso: `/proyecto nombre — descripción`\nEjemplo: `/proyecto Tesis — trabajo final de ingeniería`'); break; }
+      const sepIdx = args.indexOf('—');
+      const nombre = (sepIdx > -1 ? args.slice(0, sepIdx) : args).trim();
+      const desc   = (sepIdx > -1 ? args.slice(sepIdx + 1) : '').trim();
+      if (typeof proyectoCrear === 'function') {
+        const p = proyectoCrear(nombre, desc);
+        if (p) {
+          addMsg('arex', `Proyecto **"${p.nombre}"** creado.${desc ? ` *${desc}*` : ''}\n\nPuedes verlo en el módulo PROYECTOS del dock.`);
+          if (voiceOn || continuousMode) arexSpeak(`Proyecto ${p.nombre} creado.`);
+          AREXNav?.cambiarModulo('proyectos');
+        }
+      }
       break;
     }
 
