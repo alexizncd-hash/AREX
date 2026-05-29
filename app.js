@@ -3,11 +3,9 @@
    Motor: Groq (llama-3.3-70b) + Tavily + Firebase
 ═══════════════════════════════════════════════════════ */
 
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs,
-         query, orderBy, limit, deleteDoc,
-         doc, setDoc, getDoc, increment }
-  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+/* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
+let initializeApp, getFirestore, collection, addDoc, getDocs,
+    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -322,9 +320,13 @@ MODO EXAMEN ACTIVO:
 let db = null;
 let fbInitialized = false;
 const SESSION = Date.now().toString();
-function initFirebase() {
+async function initFirebase() {
   if (fbInitialized || !AREX_CONFIG.firebase?.apiKey) return;
   try {
+    ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
+    ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
+       limit, deleteDoc, doc, setDoc, getDoc, increment }
+      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
     fbInitialized = true;
