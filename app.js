@@ -281,10 +281,10 @@ function buildModuleContext() {
     if (typeof getGastosData === 'function') {
       const gp   = getGastosData();
       const mesKey = new Date().toISOString().slice(0,7);
-      const gastosMes = gp.transacciones?.filter(t => t.fecha?.startsWith(mesKey)) || [];
+      const gastosMes = (gp.gastos || []).filter(t => t.fecha?.startsWith(mesKey));
       const totalMes  = gastosMes.reduce((a,t)=>a+t.monto,0);
       const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
-      if (totalMes > 0) parts.push(`GASTOS_PERSONALES: total_mes=${fmtM(totalMes)}, transacciones=${gastosMes.length}`);
+      if (totalMes > 0) parts.push(`GASTOS_PERSONALES: total_mes=${fmtM(totalMes)}, gastos=${gastosMes.length}`);
     }
   } catch(e) {}
   try {
@@ -1481,7 +1481,7 @@ const VOICE_CMDS = [
 /* ── Reconocimiento de voz ──────────────────────────── */
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible en este navegador.'); return; }
+  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible. Usa Chrome o Edge — Firefox y algunos navegadores móviles no lo soportan.'); return; }
   const rec = new SR();
   rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
   btnMic.classList.add('on');
@@ -1520,7 +1520,7 @@ const AR_ACKS = ['¿Qué necesitas?','A tus órdenes.','Dime.','Listo.','Escucha
 function startContinuousMode() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    addMsg('arex', 'Reconocimiento de voz no disponible en este navegador.');
+    addMsg('arex', 'Modo AR no disponible. El reconocimiento de voz continuo requiere Chrome o Edge en HTTPS.');
     continuousMode = false;
     updateSidebarModes();
     return;
@@ -3487,15 +3487,16 @@ function buscarGlobal(q) {
   try {
     if (typeof getGastosData === 'function') {
       const gp = getGastosData();
-      gastos = (gp.transacciones || []).filter(t => match(t.concepto) || match(t.categoria));
+      gastos = (gp.gastos || []).filter(t => match(t.concepto) || match(t.categoria));
     }
   } catch(e) {}
   try {
     if (typeof getNegocioData === 'function') {
-      const neg = getNegocioData();
-      const ventas = (neg.ventas || []).filter(v => match(v.sucursal) || match(v.notas));
+      const neg    = getNegocioData();
+      const sucMap = Object.fromEntries((neg.sucursales || []).map(s => [s.id, s.nombre]));
+      const ventas = (neg.ventas || []).filter(v => match(sucMap[v.sucursalId] || '') || match(String(v.total || '')));
       const gNeg   = (neg.gastos || []).filter(g => match(g.concepto) || match(g.categoria));
-      negocio = [...ventas.map(v => ({ tipo:'venta',  texto: v.sucursal || 'Venta', monto: v.total })),
+      negocio = [...ventas.map(v => ({ tipo:'venta',  texto: sucMap[v.sucursalId] || 'Venta', monto: v.total })),
                  ...gNeg.map(g  => ({ tipo:'gasto',   texto: g.concepto || 'Gasto', monto: g.monto }))];
     }
   } catch(e) {}
