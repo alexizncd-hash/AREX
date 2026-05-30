@@ -190,14 +190,25 @@ async function _analyze(mode, extra = '') {
 
   try {
     let reply;
+    let geminiErr = null;
 
+    // Try Gemini first, auto-fallback to Groq on failure
     if (geminiKey) {
-      reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
-    } else if (groqKey) {
+      try {
+        reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
+      } catch (e) {
+        geminiErr = e.message;
+        console.warn('Gemini failed, trying Groq:', e.message);
+      }
+    }
+
+    if (!reply && groqKey) {
       reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 25000);
-    } else {
-      _say('Configura Groq o Gemini API Key en /config para usar Visión.');
-      return;
+    }
+
+    if (!reply) {
+      if (geminiErr) throw new Error(geminiErr);
+      throw new Error('Configura Groq o Gemini API Key en /config para usar Visión.');
     }
 
     // Show in chat
