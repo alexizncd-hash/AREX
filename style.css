@@ -29,9 +29,14 @@
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:100%; height:100%; height:100dvh; overflow:hidden; }
 body {
-  background:var(--bg-dark); color:var(--text-main);
+  background:#000; color:var(--text-main);
   font-family:var(--font-body);
   display:flex; flex-direction:row; align-items:stretch;
+}
+
+/* Star field canvas — injected by JS */
+#star-canvas {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
 }
 
 /* ── Dock lateral ───────────────────────────────────── */
@@ -62,9 +67,9 @@ body {
   gap:0.3rem; flex:1;
 }
 #dock .nav-btn {
-  width:52px; display:flex; flex-direction:column;
+  width:52px; min-height:44px; display:flex; flex-direction:column;
   align-items:center; justify-content:center;
-  gap:0.25rem; padding:0.65rem 0;
+  gap:0.25rem; padding:0.55rem 0;
   background:transparent; border:1px solid transparent;
   border-radius:8px; color:#2a5a72;
   cursor:pointer; transition:all 0.2s ease;
@@ -278,21 +283,15 @@ body {
   transition:width 0.3s ease;
 }
 
-/* ── Fondo HUD ──────────────────────────────────────── */
-.hud-grid {
-  position:fixed; inset:0;
-  background-image:
-    linear-gradient(rgba(0,212,255,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.028) 1px, transparent 1px);
-  background-size:64px 64px;
-  z-index:0; pointer-events:none;
-}
+/* ── Fondo ──────────────────────────────────────────── */
+/* star-canvas creado por JS — fondo puro negro con estrellas */
+.hud-grid { display:none; } /* desactivado — usamos canvas */
 body::before {
   content:'';
   position:fixed; inset:0; pointer-events:none; z-index:0;
   background:
-    radial-gradient(ellipse 100% 55% at 50% -5%, rgba(0,212,255,0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 90% 95%, rgba(139,92,246,0.05) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,212,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 50% 100%, rgba(0,5,14,0.8) 0%, transparent 100%);
 }
 .scan-line {
   position:fixed; top:0; left:0; width:100%; height:2px;
@@ -311,20 +310,57 @@ header {
   position:relative; z-index:10;
   width:100%; max-width:960px;
   display:flex; justify-content:space-between; align-items:center;
-  padding:0.7rem 2rem; border-bottom:1px solid var(--border);
-
-  background:rgba(2,12,20,0.75);
+  padding:0.55rem 1rem; border-bottom:1px solid rgba(0,212,255,0.08);
+  background:rgba(0,0,0,0.7);
+  gap:0.5rem;
 }
-.sys-info { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:130px; }
-.sys-info.right { text-align:right; flex-direction:column; gap:2px; align-items:flex-end; }
-.sys-info .lbl { font-size:9px; color:var(--text-muted); letter-spacing:3px; }
-.sys-info .val { font-size:12px; color:var(--cyan); letter-spacing:2px; font-family:var(--font-mono); }
-.logo-wrap { display:flex; align-items:center; gap:12px; }
+.hdr-left  { display:flex; align-items:center; gap:0.5rem; flex:1; }
+.hdr-right { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
+.hdr-pill-left {
+  display:flex; align-items:center; gap:7px;
+  background:rgba(0,10,22,0.8);
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:20px; padding:5px 14px;
+  font-size:9px; letter-spacing:2px; color:var(--text-main);
+  font-family:var(--font); white-space:nowrap;
+}
+.hdr-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 6px var(--green);
+  flex-shrink:0; animation:pulse-dot 2s ease-in-out infinite;
+}
+.hdr-pill-name { color:var(--cyan); font-weight:700; }
+.hdr-sep { color:rgba(0,212,255,0.3); margin:0 2px; }
+.hdr-mode {
+  color:var(--text-muted); letter-spacing:1.5px;
+  transition:color 0.3s;
+}
+.hdr-mode.procesando { color:var(--cyan); animation:pulse 1s ease-in-out infinite; }
+.hdr-mode.hablando   { color:var(--green); animation:pulse 1s ease-in-out infinite; }
+.hdr-mode.escuchando { color:var(--green); }
+.hdr-clock {
+  font-family:var(--font-mono); font-size:11px; color:var(--text-muted);
+  letter-spacing:2px; white-space:nowrap;
+}
+.hdr-pill-right {
+  background:rgba(0,10,22,0.8);
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:20px; padding:5px 14px;
+  font-size:9px; letter-spacing:2px; color:var(--cyan);
+  font-family:var(--font); cursor:pointer; white-space:nowrap;
+  transition:all 0.2s;
+}
+.hdr-pill-right:hover {
+  background:rgba(0,212,255,0.08);
+  border-color:var(--cyan);
+  box-shadow:0 0 10px rgba(0,212,255,0.2);
+}
+/* keep logo-ring for dock compatibility */
 .logo-ring {
   width:46px; height:46px; border-radius:50%;
   border:2px solid var(--cyan);
   display:flex; align-items:center; justify-content:center;
-  box-shadow:0 0 20px var(--cyan-pulse), 0 0 40px rgba(0,212,255,0.2), inset 0 0 16px var(--cyan-glow);
+  box-shadow:0 0 20px var(--cyan-pulse), inset 0 0 16px var(--cyan-glow);
   animation:logo-pulse 3s ease-in-out infinite;
 }
 @keyframes logo-pulse {
@@ -332,6 +368,7 @@ header {
   50%    { box-shadow:0 0 28px var(--cyan-pulse),inset 0 0 22px var(--cyan-glow); }
 }
 .logo-letter { font-size:16px; font-weight:900; color:var(--cyan); font-family:var(--font-display); }
+.logo-wrap { display:flex; align-items:center; gap:12px; }
 .logo-wrap h1 { font-size:20px; letter-spacing:10px; font-weight:700; color:var(--text-main); font-family:var(--font-display); }
 
 /* ── Main ───────────────────────────────────────────── */
@@ -540,12 +577,49 @@ main {
 /* ── Vision button in toolbar ─────────────────────── */
 #btn-vision.active { color:var(--green); }
 
-.status-txt {
-  font-size:9px; color:var(--text-muted);
-  letter-spacing:3px; text-transform:uppercase;
-  margin-top:60px; text-align:center; min-height:16px;
-  font-family:var(--font-display);
+/* Status float — ABOVE the orb, like Danny's JARVIS */
+.status-float {
+  font-size:9px; letter-spacing:2.5px; text-transform:uppercase;
+  font-family:var(--font);
+  background:rgba(0,10,22,0.82);
+  border:1px solid rgba(0,212,255,0.28);
+  border-radius:20px; padding:5px 16px;
+  color:var(--cyan); white-space:nowrap;
+  margin-bottom:10px;
+  transition:all 0.3s;
+  animation:status-float-glow 3s ease-in-out infinite;
 }
+@keyframes status-float-glow {
+  0%,100%{ box-shadow:0 0 6px rgba(0,212,255,0.1); }
+  50%    { box-shadow:0 0 14px rgba(0,212,255,0.25); }
+}
+/* keep .status-txt as alias for JS compatibility */
+.status-txt { display:none; }
+
+/* ── Quick modules grid ────────────────────────────── */
+.quick-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:0.6rem; margin-top:1.2rem; width:100%; max-width:320px;
+}
+.quick-btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; padding:14px 8px;
+  background:rgba(0,10,22,0.8);
+  border:1px solid rgba(0,212,255,0.18);
+  border-radius:12px; cursor:pointer; color:var(--text-muted);
+  font-family:var(--font); font-size:8px; letter-spacing:2px;
+  transition:all 0.2s; min-height:72px;
+}
+.quick-btn:hover {
+  border-color:rgba(0,212,255,0.5); color:var(--cyan);
+  background:rgba(0,212,255,0.06);
+  box-shadow:0 0 16px rgba(0,212,255,0.12);
+  transform:translateY(-2px);
+}
+.quick-btn:active { transform:translateY(0); }
+.quick-btn span { display:block; font-size:8px; letter-spacing:2px; }
+/* icon size inside quick button */
+.quick-btn > :first-child:not(span) { font-size:22px; line-height:1; }
 
 /* ── Exam badge ─────────────────────────────────────── */
 .exam-badge {
@@ -618,19 +692,24 @@ main {
 
 .msg-actions {
   display:flex; gap:4px; opacity:0; transition:opacity 0.15s; height:0; overflow:hidden;
+  margin-top:4px;
 }
 .msg.arex:hover .msg-actions {
   opacity:1; height:auto; overflow:visible;
 }
-.msg-copy, .msg-regen {
+/* On touch devices, always show actions */
+@media (hover:none) {
+  .msg.arex .msg-actions { opacity:0.7; height:auto; overflow:visible; }
+}
+.msg-copy, .msg-regen, .msg-star {
   background:rgba(0,15,28,0.9); border:1px solid rgba(0,212,255,0.15);
-  color:rgba(0,212,255,0.45); font-family:var(--font); font-size:0.62rem;
-  letter-spacing:1px; padding:2px 7px; cursor:pointer; border-radius:2px;
-  transition:all 0.15s;
+  color:rgba(0,212,255,0.45); font-family:var(--font); font-size:0.65rem;
+  letter-spacing:1px; padding:3px 8px; cursor:pointer; border-radius:12px;
+  transition:all 0.15s; min-width:28px; min-height:28px;
+  display:flex; align-items:center; justify-content:center;
 }
-.msg-copy:hover, .msg-regen:hover {
-  color:var(--cyan); border-color:rgba(0,212,255,0.5);
-}
+.msg-copy:hover, .msg-regen:hover { color:var(--cyan); border-color:rgba(0,212,255,0.5); }
+.msg-star:hover { color:var(--orange); border-color:rgba(255,153,0,0.5); }
 
 .sources { margin-top:6px; font-size:10px; color:var(--text-muted); letter-spacing:1px; }
 .sources a { color:var(--cyan-dim); text-decoration:none; }
@@ -2453,13 +2532,13 @@ header {
     padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* ── Reactor / Orb: más compacto en móvil ── */
-  .reactor-wrap { padding: 0.2rem 0; }
-  .reactor-ring.outer { width: 80px; height: 80px; }
-  .reactor-ring.mid   { width: 65px; height: 65px; }
-  .orb { width: 52px; height: 52px; }
-  .orb-core { width: 16px; height: 16px; }
-  .status-txt { margin-top: 38px; font-size: 9px; }
+  /* ── Reactor / Orb: tamaño móvil ── */
+  .reactor-wrap { padding: 0.3rem 0; }
+  .reactor-ring.outer { width: 100px; height: 100px; }
+  .reactor-ring.mid   { width: 80px; height: 80px; }
+  .orb { width: 64px; height: 64px; }
+  .orb-core { width: 20px; height: 20px; }
+  .status-float { font-size: 8px; padding: 4px 12px; margin-bottom: 8px; }
 
   /* ── Chat: mejor comportamiento con teclado virtual ── */
   .chat {
@@ -2469,16 +2548,24 @@ header {
   .msg { max-width: 95%; }
   .msg .bubble { font-size: 12px; padding: 8px 12px; }
 
-  /* ── Input bar: targets táctiles más grandes ── */
+  /* ── Input bar: targets táctiles 44px mínimo ── */
   .input-bar { padding: 6px 8px; gap: 6px; }
   .input-bar .btn {
-    padding: 8px;
-    min-width: 36px; min-height: 36px;
+    padding: 10px;
+    min-width: 44px; min-height: 44px;
   }
-  .input-bar .btn svg { width: 18px; height: 18px; }
+  .input-bar .btn svg { width: 20px; height: 20px; }
   /* Ocultar botones menos usados en móvil — siguen accesibles vía /buscar /voz */
   #btn-search, #btn-voice { display: none; }
-  #txt { font-size: 14px; }
+  /* 16px mínimo para evitar zoom en iOS */
+  #txt, .tarea-input, .cfg-input, .proj-input, .notas-search { font-size: 16px !important; }
+  /* Quick grid en móvil */
+  .quick-grid { grid-template-columns: repeat(3,1fr); gap: 0.5rem; max-width:100%; }
+  .quick-btn { padding: 12px 6px; min-height: 66px; }
+  /* Header compacto móvil */
+  .hdr-pill-right { display: none; }
+  .hdr-clock { font-size: 10px; }
+  .hdr-pill-left { padding: 4px 10px; font-size: 8px; }
 
   /* ── Módulos: scroll táctil natural ── */
   .module-panel {

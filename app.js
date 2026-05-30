@@ -1180,15 +1180,15 @@ function updateSidebarModes() {
 function updateStatusBadge(estado) {
   const el = document.getElementById('arex-status-badge');
   if (!el) return;
-  const estados = {
-    calmado:     { label: 'CALMADO',      cls: 'status-calmado'    },
-    procesando:  { label: 'PROCESANDO',   cls: 'status-procesando' },
-    hablando:    { label: 'HABLANDO',     cls: 'status-hablando'   },
-    escuchando:  { label: 'ESCUCHANDO',   cls: 'status-escuchando' },
-    sinconexion: { label: 'SIN CONEXIÓN', cls: 'status-sinconexion'},
+  const map = {
+    calmado:     { label: 'EN ESPERA',    cls: ''             },
+    procesando:  { label: 'PROCESANDO',   cls: 'procesando'   },
+    hablando:    { label: 'HABLANDO',     cls: 'hablando'     },
+    escuchando:  { label: 'ESCUCHANDO',   cls: 'escuchando'   },
+    sinconexion: { label: 'SIN CONEXIÓN', cls: 'procesando'   },
   };
-  const e = estados[estado] || estados.calmado;
-  el.className = `status-badge ${e.cls}`;
+  const e = map[estado] || map.calmado;
+  el.className = `hdr-mode ${e.cls}`;
   el.textContent = e.label;
 }
 window.updateStatusBadge = updateStatusBadge;
@@ -1210,8 +1210,14 @@ function updateSidebarAll() {
 function setOrb(state, label) {
   orb.classList.remove('speaking','listening','thinking','searching');
   if (state) orb.classList.add(state);
-  statusTxt.textContent = (!state && continuousMode) ? 'MODO AR — ESCUCHANDO' : (label ?? 'En espera de instrucciones');
-  // Sync status badge
+  // Update floating status pill above orb
+  const sf = document.getElementById('status');
+  if (sf) {
+    const stateLabels = { thinking:'PROCESANDO', searching:'BUSCANDO', speaking:'HABLANDO', listening:'ESCUCHANDO' };
+    sf.textContent = `AREX · ${stateLabels[state] || 'EN ESPERA'}`;
+  }
+  // Keep statusTxt alias for any other code
+  if (statusTxt) statusTxt.textContent = label ?? '';
   if (state === 'thinking' || state === 'searching') updateStatusBadge('procesando');
   else if (state === 'speaking') updateStatusBadge('hablando');
   else if (state === 'listening') updateStatusBadge('escuchando');
@@ -1233,7 +1239,7 @@ function addMsg(role, text, sources) {
     }</div>`;
   }
   const actionsHTML = role !== 'user'
-    ? `<div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button></div>`
+    ? `<div class="msg-actions"><button class="msg-copy" title="Copiar">⎘</button><button class="msg-star" title="Guardar en Evidencias">☆</button></div>`
     : '';
   wrap.innerHTML = `<span class="who">${role==='user'?'TÚ':'AREX'}</span><div class="bubble">${contentHTML}</div>${actionsHTML}${srcHTML}`;
   if (role !== 'user') {
@@ -1244,6 +1250,14 @@ function addMsg(role, text, sources) {
         btn.textContent = '✓';
         setTimeout(() => btn.textContent = '⎘', 1500);
       }).catch(() => {});
+    });
+    wrap.querySelector('.msg-star')?.addEventListener('click', function() {
+      const body = wrap.querySelector('.bubble').textContent.slice(0, 600);
+      if (typeof addEvidencia === 'function') {
+        addEvidencia('general', 'Respuesta guardada', body);
+        this.textContent = '★';
+        this.style.color = '#ff9900';
+      }
     });
   }
   chat.appendChild(wrap);
@@ -3762,4 +3776,78 @@ window.renderExchangeWidget = renderExchangeWidget;
   window.visualViewport?.addEventListener('resize', update);
   window.addEventListener('resize', update);
   update();
+})();
+
+/* ── Campo de estrellas (fondo negro con partículas) ── */
+(function initStarField() {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'star-canvas';
+  document.body.prepend(canvas);
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    buildStars();
+  }
+
+  function buildStars() {
+    stars = [];
+    const n = Math.floor((canvas.width * canvas.height) / 6000);
+    for (let i = 0; i < n; i++) {
+      stars.push({
+        x:  Math.random() * canvas.width,
+        y:  Math.random() * canvas.height,
+        r:  Math.random() * 1.1 + 0.15,
+        base: Math.random() * 0.55 + 0.08,
+        speed: Math.random() * 0.018 + 0.006,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    t += 0.016;
+    for (const s of stars) {
+      const a = s.base * (0.45 + 0.55 * Math.sin(t * s.speed * 60 + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,212,255,${a.toFixed(3)})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+  window.addEventListener('resize', resize);
+})();
+
+/* ── Boot animation: letras una por una ─────────────── */
+(function bootLetterAnim() {
+  const bar  = document.getElementById('boot-bar');
+  const logo = document.querySelector('.boot-logo');
+  if (!logo) return;
+  const lines = ['INICIANDO SISTEMAS...', 'CARGANDO MÓDULOS...', 'CONECTANDO IA...', 'SISTEMAS EN LÍNEA.'];
+  const linesEl = document.getElementById('boot-lines');
+  if (!linesEl) return;
+
+  let lineIdx = 0, charIdx = 0, lineEl = null;
+  const interval = setInterval(() => {
+    if (lineIdx >= lines.length) { clearInterval(interval); return; }
+    if (!lineEl || charIdx === 0) {
+      lineEl = document.createElement('div');
+      lineEl.style.cssText = 'font-size:9px;letter-spacing:2px;color:#00d4ff;opacity:0.7;height:14px;overflow:hidden;';
+      linesEl.appendChild(lineEl);
+    }
+    lineEl.textContent += lines[lineIdx][charIdx] || '';
+    charIdx++;
+    if (charIdx >= lines[lineIdx].length) {
+      charIdx = 0; lineIdx++;
+    }
+    if (bar) bar.style.width = `${(lineIdx / lines.length) * 100}%`;
+  }, 45);
 })();

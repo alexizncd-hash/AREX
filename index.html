@@ -462,35 +462,30 @@
 
 <!-- ── Header ── -->
 <header>
-  <div class="sys-info left">
+  <div class="hdr-left">
     <button id="btn-sidebar" class="btn-panel" title="Panel de control">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <div>
-      <span class="lbl">SISTEMA</span>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span class="val" id="sys-val">ACTIVO</span>
-        <span class="ctx-badge hidden" id="ctx-badge" title="Contexto personal activo">CTX</span>
-      </div>
+    <div class="hdr-pill-left">
+      <span class="hdr-dot"></span>
+      <span class="hdr-pill-name">AREX · MARK 35</span>
+      <span class="hdr-sep">|</span>
+      <span id="arex-status-badge" class="hdr-mode">CALMADO</span>
     </div>
-    <div id="arex-status-badge" class="status-badge status-calmado">CALMADO</div>
   </div>
-  <div class="logo-wrap">
-    <div class="logo-ring"><div class="logo-letter">A</div></div>
-    <h1>AREX</h1>
-  </div>
-  <div class="sys-info right" style="flex-direction:row;align-items:center;gap:8px;">
-    <button id="btn-pomo-toggle" class="btn-hdr-icon" onclick="togglePomodoroWidget()" title="Pomodoro (foco)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  <div class="hdr-right">
+    <span class="hdr-clock" id="clock">--:--:--</span>
+    <button id="btn-pomo-toggle" class="btn-hdr-icon" onclick="togglePomodoroWidget()" title="Pomodoro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     </button>
     <button id="btn-search-toggle" class="btn-hdr-icon" onclick="abrirBusqueda()" title="Búsqueda global (Ctrl+K)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </button>
-    <div>
-      <span class="lbl">HORA</span>
-      <span class="val" id="clock">--:--:--</span>
-    </div>
+    <button class="hdr-pill-right" onclick="AREXNav.cambiarModulo('control')" title="Mission Control">MISSION CONTROL ►</button>
   </div>
+  <!-- hidden sys-val para compatibilidad con JS -->
+  <span id="sys-val" style="display:none">ACTIVO</span>
+  <span class="ctx-badge hidden" id="ctx-badge" style="display:none">CTX</span>
 </header>
 
 <!-- ── Pomodoro Widget ── -->
@@ -540,10 +535,10 @@
 <!-- ── Main ── -->
 <main id="module-chat" class="module-panel active">
   <div class="reactor-wrap">
+    <p class="status-float" id="status">AREX · EN ESPERA</p>
     <div class="reactor-ring outer"></div>
     <div class="reactor-ring mid"></div>
     <div class="orb" id="orb"><div class="orb-core"></div></div>
-    <p class="status-txt" id="status">En espera de instrucciones</p>
     <button id="btn-enter-ar" onclick="enterAR()" title="Entrar en modo AR (Meta Quest 3S)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11"><rect x="2" y="7" width="20" height="10" rx="3"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M11 12h2"/></svg>
       ENTRAR AR
@@ -559,7 +554,14 @@
     <div class="welcome">
       <p>Sistemas en línea. Soy <strong>AREX</strong>.</p>
       <p>Tu sistema de inteligencia personal — listo para asistirte, Alexiz.</p>
-      <p style="margin-top:8px;font-size:11px">Escribe <code>/ayuda</code> para ver todos los comandos disponibles.</p>
+      <div class="quick-grid">
+        <button class="quick-btn" onclick="AREXNav.cambiarModulo('finanzas')">💳<span>FINANZAS</span></button>
+        <button class="quick-btn" onclick="AREXNav.cambiarModulo('tareas')">✓<span>TAREAS</span></button>
+        <button class="quick-btn" onclick="AREXNav.cambiarModulo('negocio')">🥑<span>NEGOCIO</span></button>
+        <button class="quick-btn" onclick="AREXNav.cambiarModulo('gastos')">💸<span>GASTOS</span></button>
+        <button class="quick-btn" onclick="AREXNav.cambiarModulo('metas')">🎯<span>METAS</span></button>
+        <button class="quick-btn" onclick="openVision()">👁<span>VER</span></button>
+      </div>
     </div>
   </div>
 
