@@ -1,0 +1,109 @@
+/* ═══════════════════════════════════════════════
+   AREX — Evidencias Board
+   ═══════════════════════════════════════════════ */
+
+.ev-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.ev-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ev-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1.8;
+  padding: 1rem 0;
+}
+
+.ev-card {
+  background: linear-gradient(135deg, rgba(0,10,22,0.94) 0%, rgba(0,5,14,0.98) 100%);
+  border: 1px solid rgba(0,212,255,0.12);
+  border-left: 3px solid var(--ev-color, var(--cyan));
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.ev-card:hover {
+  border-color: rgba(0,212,255,0.3);
+  transform: translateX(2px);
+}
+
+.ev-card-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.ev-ico {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.ev-titulo {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-main);
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.ev-ts {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.ev-body {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0.3rem 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.ev-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  justify-content: flex-end;
+}
+
+.ev-btn {
+  background: transparent;
+  border: 1px solid rgba(0,212,255,0.2);
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  font-family: var(--font);
+}
+
+.ev-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.ev-btn.danger:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+}

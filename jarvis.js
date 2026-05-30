@@ -38,7 +38,7 @@ const AREXNav = {
 
   actualizarEstadoSistema(modulo) {
     const statusEl = document.getElementById('sys-val');
-    const estados  = { inicio:'INICIO', chat:'ACTIVO', finanzas:'FINANZAS', tareas:'TAREAS', notas:'NOTAS', negocio:'NEGOCIO', gastos:'GASTOS', metas:'METAS', proyectos:'PROYECTOS' };
+    const estados  = { inicio:'INICIO', chat:'ACTIVO', finanzas:'FINANZAS', tareas:'TAREAS', notas:'NOTAS', negocio:'NEGOCIO', gastos:'GASTOS', metas:'METAS', proyectos:'PROYECTOS', control:'CONTROL' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
     if (modulo === 'inicio'    && typeof renderDashboard       === 'function') renderDashboard();
     if (modulo === 'notas'     && typeof renderNotas           === 'function') renderNotas();
@@ -46,6 +46,7 @@ const AREXNav = {
     if (modulo === 'gastos'    && typeof renderGastosModule    === 'function') renderGastosModule();
     if (modulo === 'metas'     && typeof renderMetasModule     === 'function') renderMetasModule();
     if (modulo === 'proyectos' && typeof renderProyectosModule === 'function') renderProyectosModule();
+    if (modulo === 'control'   && typeof renderControlModule   === 'function') renderControlModule();
   }
 };
 

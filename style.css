@@ -2517,3 +2517,16 @@ header {
   .dock-label { display: none; }
   #dock .nav-btn { min-height: 46px; padding: 10px 4px; }
 }
+
+/* ── Status Badge ── */
+.status-badge {
+  font-size: 9px; letter-spacing: 2px; padding: 3px 8px;
+  border-radius: 2px; font-family: var(--font); font-weight: 700;
+  border: 1px solid currentColor; transition: all 0.3s;
+}
+.status-calmado     { color: var(--text-muted); border-color: var(--text-muted); }
+.status-procesando  { color: var(--cyan);   border-color: var(--cyan);   animation: pulse 1s ease-in-out infinite; }
+.status-hablando    { color: var(--green);  border-color: var(--green);  animation: pulse 1s ease-in-out infinite; }
+.status-escuchando  { color: var(--green);  border-color: var(--green); }
+.status-sinconexion { color: var(--orange); border-color: var(--orange); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }

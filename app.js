@@ -38,6 +38,7 @@ function setupSaveHandler() {
       groqKey:   groq,
       tavilyKey: document.getElementById('cfg-tavily').value.trim() || '',
       owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
+      geminiKey: (document.getElementById('cfg-gemini')?.value || '').trim() || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
                            storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
     };
@@ -597,9 +598,11 @@ function sortPending(arr) {
 function addTarea(text, fecha = '', prioridad = 'media') {
   if (!text.trim()) return;
   const arr = getTareas();
-  arr.unshift({ id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad });
+  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad };
+  arr.unshift(t);
   saveTareasData(arr);
   renderTareas();
+  if (typeof logBitacora === 'function') logBitacora('chat', 'Tarea creada: ' + (t.text?.slice(0,40) || ''));
 }
 function toggleTarea(id) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -721,13 +724,16 @@ function renderTareas() {
 function getNotas() { return JSON.parse(localStorage.getItem('arex_notas') || '[]'); }
 function saveNotas(arr) { localStorage.setItem('arex_notas', JSON.stringify(arr)); }
 
-function addNota() {
+function addNota(titulo, contenido) {
   const arr = getNotas();
   const id  = String(Date.now());
-  arr.unshift({ id, titulo: '', cuerpo: '', pinned: false, color: '', createdAt: Date.now(), updatedAt: Date.now() });
+  const tituloVal  = typeof titulo === 'string' ? titulo : '';
+  const cuerpoVal  = typeof contenido === 'string' ? contenido : '';
+  arr.unshift({ id, titulo: tituloVal, cuerpo: cuerpoVal, pinned: false, color: '', createdAt: Date.now(), updatedAt: Date.now() });
   saveNotas(arr);
   renderNotas();
-  setTimeout(() => document.querySelector('#notas-list .nota-titulo')?.focus(), 60);
+  if (typeof logBitacora === 'function') logBitacora('chat', 'Nota creada: ' + (tituloVal?.slice(0,40) || '(sin título)'));
+  if (!tituloVal) setTimeout(() => document.querySelector('#notas-list .nota-titulo')?.focus(), 60);
 }
 
 function updateNota(id, changes) {
@@ -1067,6 +1073,22 @@ function renderDashboard() {
 
   renderWeatherWidget();
   renderNotasWidget();
+
+  // Tablero de Evidencias
+  const evSection = el.querySelector('#ev-section') || (() => {
+    const s = document.createElement('div');
+    s.id = 'ev-section';
+    s.style.cssText = 'padding:0 1rem 1rem;';
+    el.appendChild(s);
+    return s;
+  })();
+  evSection.innerHTML = `
+    <div class="ev-header" style="margin-bottom:0.5rem;">
+      <span style="font-size:10px;letter-spacing:4px;color:var(--cyan);font-weight:700;">EVIDENCIAS</span>
+      <span class="proj-count" id="ev-count">0</span>
+    </div>
+    <div class="ev-board" id="ev-board"></div>`;
+  if (typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
 }
 
 function renderSessionsList() {
@@ -1155,6 +1177,22 @@ function updateSidebarModes() {
   strip.classList.toggle('hidden', pills.length === 0);
   if (modeVal) modeVal.textContent = continuousMode ? 'MODO AR' : examMode ? 'EXAMEN' : searchOn ? 'BÚSQUEDA' : 'ESTÁNDAR';
 }
+function updateStatusBadge(estado) {
+  const el = document.getElementById('arex-status-badge');
+  if (!el) return;
+  const estados = {
+    calmado:     { label: 'CALMADO',      cls: 'status-calmado'    },
+    procesando:  { label: 'PROCESANDO',   cls: 'status-procesando' },
+    hablando:    { label: 'HABLANDO',     cls: 'status-hablando'   },
+    escuchando:  { label: 'ESCUCHANDO',   cls: 'status-escuchando' },
+    sinconexion: { label: 'SIN CONEXIÓN', cls: 'status-sinconexion'},
+  };
+  const e = estados[estado] || estados.calmado;
+  el.className = `status-badge ${e.cls}`;
+  el.textContent = e.label;
+}
+window.updateStatusBadge = updateStatusBadge;
+
 function updateSessionStats() {
   const sbMsgs = document.getElementById('sb-msgs');
   const sbMem  = document.getElementById('sb-mem');
@@ -1173,6 +1211,11 @@ function setOrb(state, label) {
   orb.classList.remove('speaking','listening','thinking','searching');
   if (state) orb.classList.add(state);
   statusTxt.textContent = (!state && continuousMode) ? 'MODO AR — ESCUCHANDO' : (label ?? 'En espera de instrucciones');
+  // Sync status badge
+  if (state === 'thinking' || state === 'searching') updateStatusBadge('procesando');
+  else if (state === 'speaking') updateStatusBadge('hablando');
+  else if (state === 'listening') updateStatusBadge('escuchando');
+  else updateStatusBadge('calmado');
 }
 
 /* ── Render mensajes ────────────────────────────────── */
@@ -1365,6 +1408,20 @@ async function streamArexReply(wrap, webCtx) {
   _msgRaw.set(wrap, clean);
   chat.scrollTop = chat.scrollHeight;
   await ejecutarAcciones(full, wrap);
+
+  if (typeof logBitacora === 'function') logBitacora('chat', `Respuesta generada (${full?.length || 0} chars)`);
+
+  // Detectar si crear tarjeta de evidencia
+  if (full && typeof addEvidencia === 'function') {
+    const msgLower = (history[history.length - 2]?.content || '').toLowerCase();
+    const isFinance = /analiza.*finanz|resumen.*finanz|estado.*finanz|deuda|tarjeta.*credito/.test(msgLower);
+    const isResearch = /investiga|busca informacion|que es|quien es|como funciona/.test(msgLower) && webCtx;
+    const isBriefing = /briefing|resumen del dia|como va el dia/.test(msgLower);
+    if (isFinance) addEvidencia('finanzas', 'Análisis Financiero', full.slice(0, 600));
+    else if (isResearch) addEvidencia('investigacion', msgLower.slice(0, 60), full.slice(0, 600));
+    else if (isBriefing) addEvidencia('general', 'Briefing del día', full.slice(0, 600));
+  }
+
   return clean;
 }
 
@@ -1989,6 +2046,10 @@ async function callGroqStream(webCtx, onChunk) {
 
 /* ── Llamada a Groq (visión) ────────────────────────── */
 async function analyzeImage(dataURL, question) {
+  // Use Gemini if key is available, fallback to Groq llama-4-scout
+  if (AREX_CONFIG?.geminiKey) {
+    return await _analyzeWithGemini(dataURL, question);
+  }
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:'POST',
     headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
@@ -2004,6 +2065,28 @@ async function analyzeImage(dataURL, question) {
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error('Respuesta inválida de API');
+  return content;
+}
+
+async function _analyzeWithGemini(dataURL, question) {
+  const key = AREX_CONFIG.geminiKey;
+  // Extract base64 data from dataURL
+  const [meta, b64] = dataURL.split(',');
+  const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [
+        { inline_data: { mime_type: mimeType, data: b64 } },
+        { text: question }
+      ]}]
+    })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`Gemini ${res.status} — ${e?.error?.message||'Error'}`); }
+  const data = await res.json();
+  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) throw new Error('Respuesta inválida de Gemini');
   return content;
 }
 
@@ -2438,6 +2521,7 @@ async function handleCommand(cmd) {
       const fb = AREX_CONFIG.firebase || {};
       document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
       document.getElementById('cfg2-tavily').value  = AREX_CONFIG.tavilyKey || '';
+      document.getElementById('cfg2-gemini').value  = AREX_CONFIG.geminiKey || '';
       document.getElementById('cfg2-owm').value     = AREX_CONFIG.owmKey    || '';
       document.getElementById('cfg2-fb-key').value     = fb.apiKey            || '';
       document.getElementById('cfg2-fb-domain').value  = fb.authDomain        || '';
@@ -2857,6 +2941,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
     groqKey:   groq,
     tavilyKey: document.getElementById('cfg2-tavily').value.trim() || '',
     owmKey:    document.getElementById('cfg2-owm').value.trim()    || '',
+    geminiKey: document.getElementById('cfg2-gemini').value.trim() || '',
     firebase:  fbKey ? {
       apiKey:            fbKey,
       authDomain:        document.getElementById('cfg2-fb-domain').value.trim(),

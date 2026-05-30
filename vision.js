@@ -137,25 +137,47 @@ async function _analyze(mode, extra = '') {
   const prompt = extra || PROMPTS[mode] || PROMPTS.describe;
 
   try {
-    const key = window.AREX_CONFIG?.groqKey;
-    if (!key) { _say('Groq API Key no configurada. Ve a /config.'); _busy = false; return; }
+    const geminiKey = window.AREX_CONFIG?.geminiKey;
+    const groqKey   = window.AREX_CONFIG?.groqKey;
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: [
-          { type: 'image_url', image_url: { url: frame } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || res.status); }
-    const data    = await res.json();
-    const reply   = data?.choices?.[0]?.message?.content || 'Sin respuesta.';
+    let reply;
+    if (geminiKey) {
+      // Use Gemini Vision
+      const [meta, b64] = frame.split(',');
+      const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [
+          { inline_data: { mime_type: mimeType, data: b64 } },
+          { text: prompt }
+        ]}]})
+      });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || res.status); }
+      const data = await res.json();
+      reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.';
+    } else if (groqKey) {
+      // Fallback to Groq llama-4-scout
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          max_tokens: 800,
+          messages: [{ role: 'user', content: [
+            { type: 'image_url', image_url: { url: frame } },
+            { type: 'text', text: prompt }
+          ]}]
+        })
+      });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || res.status); }
+      const data = await res.json();
+      reply = data?.choices?.[0]?.message?.content || 'Sin respuesta.';
+    } else {
+      _say('Configura Groq o Gemini API Key en /config.');
+      _busy = false;
+      return;
+    }
 
     // Mostrar en chat
     if (typeof window.addMsg === 'function') {
