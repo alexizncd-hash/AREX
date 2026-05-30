@@ -3089,24 +3089,29 @@ function _showUpdateBanner() {
 async function boot() {
   const bootScreen = document.getElementById('boot-screen');
 
-  // bootLetterAnim (IIFE below) handles all visual output — we just do the real init
-  await pullConfigFromFirestore();
-  await pullAllModuleData();
-  if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
-  await loadHistory();
-  await requestNotifPerm();
-  updateCtxBadge();
-  updateSidebarAll();
-  renderTareas();
-  restoreReminders();
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreReminders(); });
+  // Wrap all init work — any error must NOT block the boot screen from hiding
+  try {
+    await pullConfigFromFirestore();
+    await pullAllModuleData();
+    if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
+    await loadHistory();
+    await requestNotifPerm();
+    updateCtxBadge();
+    updateSidebarAll();
+    renderTareas();
+    restoreReminders();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreReminders(); });
+  } catch(e) {
+    console.warn('AREX boot error:', e);
+  }
 
+  // Always hide the boot screen regardless of what happened above
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
   bootScreen.style.opacity = '0';
   await new Promise(r => setTimeout(r, 600));
   bootScreen.style.display = 'none';
-  txt.focus();
+  txt?.focus();
   setTimeout(() => generarBriefing(), 800);
 }
 
