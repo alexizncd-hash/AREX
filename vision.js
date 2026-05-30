@@ -190,26 +190,25 @@ async function _analyze(mode, extra = '') {
 
   try {
     let reply;
-    let geminiErr = null;
 
-    // Try Gemini first, auto-fallback to Groq on failure
-    if (geminiKey) {
+    // Groq first — free and reliable for vision
+    if (groqKey) {
       try {
-        reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
+        _setStatus('ANALIZANDO · GROQ...');
+        reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 25000);
       } catch (e) {
-        geminiErr = e.message;
-        console.warn('Gemini failed, trying Groq:', e.message);
+        console.warn('Groq vision failed:', e.message);
       }
     }
 
-    if (!reply && groqKey) {
-      reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 25000);
+    // Gemini fallback — tries free-tier models first
+    if (!reply && geminiKey) {
+      _setStatus('ANALIZANDO · GEMINI...');
+      reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
     }
 
-    if (!reply) {
-      if (geminiErr) throw new Error(geminiErr);
-      throw new Error('Configura Groq o Gemini API Key en /config para usar Visión.');
-    }
+    if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
+
 
     // Show in chat
     const label = { describe:'👁 Visión', product:'🔍 Objeto', text:'📄 Texto', scene:'🌐 Escena' }[mode] || 'Visión';
