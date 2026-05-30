@@ -231,23 +231,30 @@ async function _analyze(mode, extra = '') {
 
 async function _callGemini(frame, prompt, key) {
   const [, b64] = frame.split(',');
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [
-        { inline_data: { mime_type: 'image/jpeg', data: b64 } },
-        { text: prompt }
-      ]}]})
+  // Try gemini-2.0-flash first, fall back to gemini-1.5-flash-latest
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash-latest'];
+  let lastErr;
+  for (const model of models) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [
+          { inline_data: { mime_type: 'image/jpeg', data: b64 } },
+          { text: prompt }
+        ]}]})
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta de Gemini.';
     }
-  );
-  if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(`Gemini ${res.status}: ${err?.error?.message || res.statusText}`);
+    lastErr = `Gemini ${res.status}: ${err?.error?.message || res.statusText}`;
+    if (res.status !== 404) break; // only retry 404 with different model
   }
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta de Gemini.';
+  throw new Error(lastErr);
 }
 
 async function _callGroq(frame, prompt, key) {
