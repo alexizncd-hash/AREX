@@ -10,7 +10,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
 function _safeJSON(str, fallback) {
-  try { return JSON.parse(str); } catch { return fallback; }
+  try { return JSON.parse(str) ?? fallback; } catch { return fallback; }
 }
 
 function loadConfig() {

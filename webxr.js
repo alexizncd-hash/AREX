@@ -25,10 +25,22 @@ let _ctrls    = [];
 
 /* ─── Public ──────────────────────────────────────────── */
 export async function enterAR() {
-  if (!navigator.xr) return _fb('WebXR no disponible en este dispositivo.');
+  if (!navigator.xr) {
+    // No WebXR — open Vision mode as best alternative on mobile
+    if (typeof window.openVision === 'function') {
+      window.openVision();
+    } else {
+      _fb('Modo AR requiere Meta Quest 3S con Meta Browser.\n\nEn iPhone/Android usa el botón 👁 para activar AREX Visión (cámara inteligente).');
+    }
+    return;
+  }
 
   const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
-  if (!ok) return _fb('AR inmersivo no soportado.\nAbre AREX en Meta Browser del Quest 3S.');
+  if (!ok) {
+    if (typeof window.openVision === 'function') window.openVision();
+    else _fb('AR inmersivo no soportado.\nAbre AREX en Meta Browser del Quest 3S.');
+    return;
+  }
 
   try {
     _session = await navigator.xr.requestSession('immersive-ar', {
