@@ -395,9 +395,10 @@ main {
 .orb {
   position:relative; width:80px; height:80px; border-radius:50%;
   border:2px solid var(--cyan);
-  background:radial-gradient(circle at 40% 35%, rgba(0,60,90,0.9), var(--bg-dark));
+  background:#000d1a;
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; transition:box-shadow 0.3s;
+  overflow:hidden;
   box-shadow:0 0 28px var(--cyan-pulse), 0 0 60px rgba(0,212,255,0.12), inset 0 0 26px rgba(0,212,255,0.12);
 }
 .orb-core {
