@@ -11,6 +11,7 @@ let _resultTimer  = null;
 let _contOn       = false;
 let _busy         = false;
 let _facingMode   = 'environment';
+let _voiceOn      = true;   // voz en Visión activada por defecto
 
 /* ─── Prompts ─────────────────────────────────────────── */
 const PROMPTS = {
@@ -98,6 +99,7 @@ function _buildPanel() {
         AREX · VISIÓN
       </div>
       <div class="vp-top-btns">
+        <button class="vp-icon-btn vp-voice-btn on" id="vis-voice" title="Voz">🔊</button>
         <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">⟳</button>
         <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
       </div>
@@ -153,6 +155,7 @@ function _buildPanel() {
   document.getElementById('vis-flip').addEventListener('click', _flipCamera);
   document.getElementById('vis-qr').addEventListener('click', _detectQR);
   document.getElementById('vis-result-close').addEventListener('click', _hideResult);
+  document.getElementById('vis-voice').addEventListener('click', _toggleVoice);
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
@@ -233,10 +236,7 @@ async function _analyze(mode, extra = '') {
     // Also add to chat for history
     _say(`**[${label}]**\n\n${reply}`);
 
-    // Speak brief version
-    if (typeof window.arexSpeak === 'function') {
-      window.arexSpeak(reply.replace(/\*\*/g, '').replace(/^[-•]\s/gm, '').slice(0, 280));
-    }
+    _visionSpeak(reply);
 
     // Product search
     if (mode === 'product' && window.AREX_CONFIG?.tavilyKey) {
@@ -472,6 +472,58 @@ function _setAnalyzing(on, mode) {
   document.querySelectorAll('#vision-panel [data-mode]').forEach(b => {
     b.classList.toggle('analyzing', on && b.dataset.mode === mode);
   });
+}
+
+/* ─── Voice synthesis ─────────────────────────────────── */
+function _visionSpeak(text) {
+  if (!_voiceOn) return;
+  if (!window.speechSynthesis) return;
+
+  // Clean markdown and HTML tags
+  const clean = text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^[-•]\s/gm, '')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  // Smart truncation at sentence boundary (max 600 chars)
+  const MAX = 600;
+  const truncated = clean.length > MAX
+    ? (clean.slice(0, MAX).match(/([\s\S]*[.!?])/)?.[1] || clean.slice(0, MAX))
+    : clean;
+
+  window.speechSynthesis.cancel();
+
+  const u = new SpeechSynthesisUtterance(truncated);
+  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
+
+  // Prefer Spanish voice, try to match same logic as arexSpeak
+  if (window.speechSynthesis.getVoices().length) {
+    _applyVoice(u);
+  } else {
+    window.speechSynthesis.addEventListener('voiceschanged', () => _applyVoice(u), { once: true });
+  }
+
+  window.speechSynthesis.speak(u);
+}
+
+function _applyVoice(u) {
+  const voices = window.speechSynthesis.getVoices();
+  const maleNames = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
+  const v = voices.find(v => v.lang.startsWith('es') && maleNames.some(n => v.name.toLowerCase().includes(n)))
+         || voices.find(v => v.lang.startsWith('es'));
+  if (v) u.voice = v;
+}
+
+function _toggleVoice() {
+  _voiceOn = !_voiceOn;
+  window.speechSynthesis?.cancel();
+  const btn = document.getElementById('vis-voice');
+  if (btn) {
+    btn.textContent = _voiceOn ? '🔊' : '🔇';
+    btn.classList.toggle('on', _voiceOn);
+    btn.title = _voiceOn ? 'Voz activada' : 'Voz desactivada';
+  }
 }
 
 function _say(msg) {

@@ -659,6 +659,13 @@ main {
 }
 .vp-result-body strong { color:var(--cyan); }
 
+/* Voice button active state */
+.vp-voice-btn.on {
+  border-color:var(--green); color:var(--green);
+  background:rgba(0,255,160,0.12);
+  box-shadow:0 0 8px rgba(0,255,160,0.2);
+}
+
 /* Analyzing button — pulsing highlight */
 .vp-action-btn.analyzing {
   background:rgba(0,212,255,0.22);
