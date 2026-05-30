@@ -135,6 +135,45 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /* ── Globe wireframe (behind particles) ───────────────── */
+  function drawGlobe(W, H, sphereR, cr, cg, cb) {
+    const SEG = 32;
+    const alpha = ((CFG[stateName] || CFG.default).alpha * 0.07).toFixed(3);
+    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+
+    // 4 latitude rings
+    for (let i = 1; i <= 4; i++) {
+      const lat = (Math.PI / 5) * i;
+      const r = Math.sin(lat), h = Math.cos(lat);
+      ctx.beginPath();
+      for (let s = 0; s <= SEG; s++) {
+        const lon = (2 * Math.PI * s) / SEG;
+        let p = { x: r*Math.cos(lon), y: h, z: r*Math.sin(lon) };
+        let q = rotY(p, angleY); q = rotX(q, angleX);
+        if (angleZ !== 0) q = rotZ(q, angleZ);
+        const { sx, sy } = project(q, W, H, sphereR);
+        s === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+
+    // 8 longitude meridians
+    for (let i = 0; i < 8; i++) {
+      const lonBase = (Math.PI * i) / 8;
+      ctx.beginPath();
+      for (let s = 0; s <= SEG; s++) {
+        const lat2 = (Math.PI * s) / SEG;
+        let p = { x: Math.sin(lat2)*Math.cos(lonBase), y: Math.cos(lat2), z: Math.sin(lat2)*Math.sin(lonBase) };
+        let q = rotY(p, angleY); q = rotX(q, angleX);
+        if (angleZ !== 0) q = rotZ(q, angleZ);
+        const { sx, sy } = project(q, W, H, sphereR);
+        s === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+  }
+
   /* ── Animation loop ────────────────────────────────────── */
   function loop() {
     requestAnimationFrame(loop);
@@ -169,6 +208,9 @@
     }
 
     ctx.clearRect(0, 0, W, H);
+
+    // Globe wireframe grid (behind particles)
+    drawGlobe(W, H, sphereR, cr, cg, cb);
 
     // Project all points after rotation
     const proj = points.map(p => {

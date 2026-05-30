@@ -534,16 +534,34 @@
 
 <!-- ── Main ── -->
 <main id="module-chat" class="module-panel active">
-  <div class="reactor-wrap">
-    <p class="status-float" id="status">AREX · EN ESPERA</p>
-    <div class="reactor-ring outer"></div>
-    <div class="reactor-ring mid"></div>
-    <div class="orb" id="orb"><div class="orb-core"></div></div>
-    <button id="btn-enter-ar" onclick="enterAR()" title="Entrar en modo AR (Meta Quest 3S)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11"><rect x="2" y="7" width="20" height="10" rx="3"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M11 12h2"/></svg>
-      ENTRAR AR
-    </button>
+
+  <!-- HUD Stage: orb central + paneles flotantes -->
+  <div class="hud-stage">
+    <div class="hud-panel" id="hp-tareas">
+      <div class="hud-ph"><span class="hud-dot"></span>TAREAS</div>
+      <div class="hud-pb" id="hp-tareas-body">—</div>
+    </div>
+    <div class="hud-panel hud-panel-r" id="hp-finanzas">
+      <div class="hud-ph"><span class="hud-dot"></span>FINANZAS</div>
+      <div class="hud-pb" id="hp-finanzas-body">—</div>
+    </div>
+
+    <div class="reactor-wrap">
+      <p class="status-float" id="status">AREX · EN ESPERA</p>
+      <div class="reactor-ring outer"></div>
+      <div class="reactor-ring mid"></div>
+      <div class="orb" id="orb"><div class="orb-core"></div></div>
+      <button id="btn-enter-ar" onclick="enterAR()" title="Entrar en modo AR (Meta Quest 3S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11"><rect x="2" y="7" width="20" height="10" rx="3"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M11 12h2"/></svg>
+        ENTRAR AR
+      </button>
+    </div>
+
+    <div id="city-badge" class="city-badge" style="display:none"></div>
   </div>
+
+  <!-- Stat chips compactos (móvil) -->
+  <div id="stat-chips" class="stat-chips"></div>
 
   <div id="exam-badge" class="exam-badge hidden">MODO EXAMEN ACTIVO</div>
 
@@ -964,6 +982,10 @@
   AREX · MODO AR
 </div>
 <!-- Config (gitignored) -->
+<!-- Matrix code rain — decoración ambiental -->
+<canvas id="matrix-l" class="matrix-cv" aria-hidden="true"></canvas>
+<canvas id="matrix-r" class="matrix-cv matrix-cv-r" aria-hidden="true"></canvas>
+
 <script src="config.js"></script>
 <!-- App principal -->
 <script type="module" src="app.js"></script>

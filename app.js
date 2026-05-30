@@ -1212,6 +1212,105 @@ function updateSidebarAll() {
   renderSessionsList();
 }
 
+/* ── HUD Dashboard Panels ───────────────────────────── */
+function renderHudPanels() {
+  const fmt = n => '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+
+  // TAREAS panel
+  const tareaBody = document.getElementById('hp-tareas-body');
+  if (tareaBody) {
+    const all  = typeof window.getTareas === 'function' ? window.getTareas() : [];
+    const pend = all.filter(t => !t.done);
+    if (!pend.length) {
+      tareaBody.innerHTML = '<span class="hp-ok">✓ Todo al día</span>';
+    } else {
+      const hoy = new Date().toISOString().slice(0, 10);
+      const urg = pend.filter(t => t.fecha && t.fecha <= hoy);
+      const first = (urg[0] || pend[0]).text.slice(0, 26);
+      tareaBody.innerHTML =
+        `<div class="hp-num">${pend.length}<span class="hp-unit"> pendientes</span></div>` +
+        (urg.length ? `<div class="hp-warn">⚠ ${urg.length} urgente${urg.length > 1 ? 's' : ''}</div>` : '') +
+        `<div class="hp-sub">${first}</div>`;
+    }
+  }
+
+  // FINANZAS panel
+  const finBody = document.getElementById('hp-finanzas-body');
+  if (finBody && typeof window.getFinanzasData === 'function') {
+    const d   = window.getFinanzasData();
+    const ing = d.config?.ingresoMensual || 0;
+    const mar = typeof window.calcularMargen === 'function' ? window.calcularMargen() : 0;
+    const deu = typeof window.calcularDeudaTotal === 'function' ? window.calcularDeudaTotal() : 0;
+    finBody.innerHTML =
+      `<div class="hp-row"><span class="hp-lbl">Ingreso</span><span class="hp-val">${fmt(ing)}</span></div>` +
+      (deu ? `<div class="hp-row"><span class="hp-lbl">Deuda</span><span class="hp-val hp-red">${fmt(deu)}</span></div>` : '') +
+      `<div class="hp-row"><span class="hp-lbl">Margen</span><span class="hp-val hp-green">${fmt(mar)}</span></div>`;
+  }
+
+  // Stat chips (móvil)
+  const chips = document.getElementById('stat-chips');
+  if (chips) {
+    const all    = typeof window.getTareas === 'function' ? window.getTareas() : [];
+    const pend   = all.filter(t => !t.done).length;
+    const metas  = typeof window.getMetas === 'function' ? window.getMetas().filter(m => !m.completada).length : 0;
+    const mar    = typeof window.calcularMargen === 'function' ? window.calcularMargen() : null;
+    const parts  = [];
+    if (pend)       parts.push(`<span class="stat-chip">${pend} tareas</span>`);
+    if (mar != null && mar !== 0) parts.push(`<span class="stat-chip">${fmt(mar)} margen</span>`);
+    if (metas)      parts.push(`<span class="stat-chip">${metas} metas</span>`);
+    chips.innerHTML = parts.join('');
+    chips.style.display = parts.length ? 'flex' : 'none';
+  }
+}
+window.renderHudPanels = renderHudPanels;
+
+/* ── Matrix code rain ───────────────────────────────── */
+function initMatrixRain() {
+  const FRAGS = ['def','if','else','return','const','let','class','=>','{}','[]','()',
+    'true','false','null','async','await','for','while','try','catch','new',
+    'import','export','fn','var','===','&&','||','0x','str','int','arr',
+    '.js','.py','++','--','obj','map','get','set','use','run'];
+
+  ['matrix-l','matrix-r'].forEach(id => {
+    const c = document.getElementById(id);
+    if (!c || window.innerWidth < 780) return;   // skip on narrow screens
+    const ctx2 = c.getContext('2d');
+    const W = 48, H = window.innerHeight;
+    c.width = W; c.height = H;
+    const COLS = 4;
+    const drops = Array.from({ length: COLS }, () => ({
+      y: -Math.random() * H, speed: 6 + Math.random() * 10,
+      frag: FRAGS[Math.floor(Math.random() * FRAGS.length)]
+    }));
+    function tick() {
+      if (document.hidden) return;
+      ctx2.fillStyle = 'rgba(0,0,0,0.04)';
+      ctx2.fillRect(0, 0, W, H);
+      drops.forEach((d, i) => {
+        ctx2.fillStyle = `rgba(0,212,255,${0.08 + Math.random() * 0.1})`;
+        ctx2.font = '8px "Courier New"';
+        ctx2.fillText(d.frag, i * 12, d.y);
+        d.y += d.speed;
+        if (d.y > H) {
+          d.y = -20 - Math.random() * 80;
+          d.frag = FRAGS[Math.floor(Math.random() * FRAGS.length)];
+        }
+      });
+    }
+    setInterval(tick, 90);
+  });
+}
+
+/* ── City / weather badge below orb ────────────────── */
+function updateCityBadge(city, temp, icon) {
+  const el = document.getElementById('city-badge');
+  if (!el) return;
+  if (!city) { el.style.display = 'none'; return; }
+  el.innerHTML = `<span class="cb-city">${city}</span>${temp ? `<span class="cb-temp">${Math.round(temp)}°</span>` : ''}${icon ? `<span class="cb-ico">${icon}</span>` : ''}`;
+  el.style.display = 'flex';
+}
+window.updateCityBadge = updateCityBadge;
+
 /* ── Estado del orb ─────────────────────────────────── */
 function setOrb(state, label) {
   orb.classList.remove('speaking','listening','thinking','searching');
@@ -3100,6 +3199,8 @@ async function boot() {
     updateSidebarAll();
     renderTareas();
     restoreReminders();
+    renderHudPanels();
+    initMatrixRain();
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreReminders(); });
   } catch(e) {
     console.warn('AREX boot error:', e);

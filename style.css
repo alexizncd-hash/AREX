@@ -617,6 +617,125 @@ main {
 /* Vision button active state in toolbar */
 #btn-vision.active { color:var(--green); }
 
+/* ══ HUD Stage + floating panels ═══════════════════════ */
+.hud-stage {
+  position:relative;
+  width:100%;
+  display:flex; flex-direction:column; align-items:center;
+  flex-shrink:0;
+}
+
+/* Floating panels — hidden on narrow mobile */
+.hud-panel {
+  display:none;
+  position:absolute; top:12px; left:6px;
+  background:rgba(0,5,16,0.88);
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:10px;
+  padding:9px 12px;
+  min-width:128px; max-width:155px;
+  backdrop-filter:blur(10px);
+  z-index:2;
+  animation:hud-fadein 0.6s ease both;
+}
+.hud-panel-r { left:auto; right:6px; }
+
+@keyframes hud-fadein {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Show panels on screens wide enough */
+@media (min-width:560px) {
+  .hud-panel { display:block; }
+}
+
+.hud-ph {
+  display:flex; align-items:center; gap:5px;
+  font-size:7px; letter-spacing:2.5px; color:var(--cyan);
+  font-family:var(--font); margin-bottom:7px;
+  text-transform:uppercase;
+}
+.hud-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 5px var(--green);
+  flex-shrink:0;
+}
+.hud-pb {
+  font-size:11px; color:var(--text-main); font-family:var(--font-body);
+  line-height:1.5;
+}
+.hp-num {
+  font-size:20px; font-weight:700; color:var(--cyan);
+  font-family:var(--font); line-height:1;
+}
+.hp-unit { font-size:9px; color:var(--text-muted); font-weight:400; }
+.hp-warn { font-size:9px; color:var(--orange); margin:2px 0; letter-spacing:0.5px; }
+.hp-sub  { font-size:9px; color:var(--text-muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
+.hp-ok   { font-size:9px; color:var(--green); letter-spacing:1px; }
+.hp-row  { display:flex; justify-content:space-between; gap:8px; margin:2px 0; }
+.hp-lbl  { font-size:9px; color:var(--text-muted); }
+.hp-val  { font-size:10px; font-weight:600; color:var(--text-main); font-family:var(--font); }
+.hp-green{ color:var(--green) !important; }
+.hp-red  { color:#ff6677 !important; }
+
+/* ── City badge below orb ─────────────────────────────── */
+.city-badge {
+  display:flex; align-items:center; gap:6px;
+  margin-top:4px;
+  background:rgba(0,5,14,0.7);
+  border:1px solid rgba(0,212,255,0.18);
+  border-radius:14px;
+  padding:3px 12px;
+  font-size:9px; letter-spacing:2px; color:var(--text-muted);
+  font-family:var(--font);
+  animation:hud-fadein 0.8s ease 0.4s both;
+}
+.cb-city { color:var(--cyan); }
+.cb-temp { color:var(--text-muted); }
+.cb-ico  { font-size:11px; }
+
+/* ── Stat chips (móvil — below orb) ──────────────────── */
+.stat-chips {
+  display:none;
+  flex-wrap:nowrap; gap:6px;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding:0 4px 4px;
+  flex-shrink:0;
+  width:100%; max-width:480px;
+}
+.stat-chips::-webkit-scrollbar { display:none; }
+
+/* Show chips only on narrow screens (where HUD panels are hidden) */
+@media (max-width:559px) {
+  .stat-chips { display:flex; }
+}
+
+.stat-chip {
+  flex-shrink:0;
+  background:rgba(0,212,255,0.06);
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:12px;
+  padding:3px 10px;
+  font-size:9px; letter-spacing:1.5px; color:var(--text-muted);
+  font-family:var(--font); white-space:nowrap;
+}
+
+/* ── Matrix code rain canvases ────────────────────────── */
+.matrix-cv {
+  position:fixed; top:0; left:68px;   /* after dock */
+  width:48px; height:100vh;
+  z-index:1; pointer-events:none;
+  opacity:0.6;
+}
+.matrix-cv-r { left:auto; right:0; }
+
+/* Hide matrix on narrow screens */
+@media (max-width:779px) {
+  .matrix-cv { display:none; }
+}
+
 /* ── Result panel (slides up from bottom) ─────────────── */
 .vp-result {
   position:absolute; bottom:0; left:0; right:0; z-index:5;
