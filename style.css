@@ -614,6 +614,17 @@ main {
 }
 .vp-cont-btn.on .vp-status-dot { background:var(--green); }
 
+/* Error detail below status badge */
+.vp-error-detail {
+  position:absolute; top:calc(50% + 28px); left:50%;
+  transform:translateX(-50%);
+  z-index:3; max-width:280px; text-align:center;
+  background:rgba(40,0,8,0.88); border:1px solid rgba(255,68,85,0.45);
+  border-radius:8px; padding:8px 14px;
+  font-size:10px; letter-spacing:1px; color:#ff8899;
+  line-height:1.5; pointer-events:none;
+}
+
 /* Vision button active state in toolbar */
 #btn-vision.active { color:var(--green); }
 

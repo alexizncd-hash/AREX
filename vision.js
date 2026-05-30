@@ -103,6 +103,9 @@ function _buildPanel() {
       <span id="vis-status-txt">LISTO</span>
     </div>
 
+    <!-- Error detail overlay (visible only on error) -->
+    <div class="vp-error-detail" id="vis-error-detail" style="display:none"></div>
+
     <!-- Bottom action bar -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" onclick="captureAndAnalyze('describe')">
@@ -135,25 +138,49 @@ function _buildPanel() {
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
-function _captureFrame() {
-  if (!_video || _video.readyState < 2) return null;
-  // Max 640px longest side — keeps API payload small and reliable
-  const MAX = 640;
-  const scale = Math.min(1, MAX / Math.max(_video.videoWidth || MAX, _video.videoHeight || MAX));
+async function _waitForVideo() {
+  // On iOS Safari videoWidth stays 0 for a moment even after readyState >= 2
+  for (let i = 0; i < 20; i++) {
+    if (_video && _video.videoWidth > 0) return true;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return false;
+}
+
+async function _captureFrame() {
+  if (!_video) return null;
+  const ready = await _waitForVideo();
+  if (!ready) return null;
+
+  // Max 480px longest side — safe for iOS + APIs
+  const MAX = 480;
+  const vw = _video.videoWidth, vh = _video.videoHeight;
+  const scale = Math.min(1, MAX / Math.max(vw, vh));
   const c = document.createElement('canvas');
-  c.width  = Math.round((_video.videoWidth  || MAX) * scale);
-  c.height = Math.round((_video.videoHeight || MAX) * scale);
+  c.width  = Math.round(vw * scale);
+  c.height = Math.round(vh * scale);
   c.getContext('2d').drawImage(_video, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.72);
+  const dataUrl = c.toDataURL('image/jpeg', 0.70);
+  // Sanity check — a blank frame is very short
+  if (dataUrl.length < 5000) return null;
+  return dataUrl;
 }
 
 /* ─── Analysis ────────────────────────────────────────── */
 async function _analyze(mode, extra = '') {
   if (_busy) return;
-  const frame = _captureFrame();
-  if (!frame) { _setStatus('SIN SEÑAL'); return; }
-
   _busy = true;
+  _setStatus('CAPTURANDO...');
+  _setError('');
+
+  const frame = await _captureFrame();
+  if (!frame) {
+    _setStatus('SIN SEÑAL');
+    _setError('No se pudo capturar el frame. Espera un momento y vuelve a intentarlo.');
+    _busy = false;
+    return;
+  }
+
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
 
@@ -189,10 +216,12 @@ async function _analyze(mode, extra = '') {
     }
 
     _setStatus('LISTO');
+    _setError('');
   } catch (e) {
     const msg = e.message || 'Error desconocido';
     _setStatus('ERROR');
-    _say(`**[Visión Error]** ${msg}\n\nVerifica tu API key en /config o revisa tu conexión.`);
+    _setError(msg);
+    _say(`**[Visión · Error]** ${msg}`);
     console.warn('AREX Vision error:', e);
   } finally {
     _busy = false;
@@ -324,6 +353,12 @@ function _setStatus(txt) {
 
 function _setScanActive(on) {
   document.getElementById('vis-scan')?.classList.toggle('active', on);
+}
+function _setError(msg) {
+  const el = document.getElementById('vis-error-detail');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else        { el.textContent = '';  el.style.display = 'none';  }
 }
 
 function _say(msg) {
