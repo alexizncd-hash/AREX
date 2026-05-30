@@ -1,14 +1,16 @@
-// AREX — Visión en vivo · MARK 37
-// Full-screen HUD overlay, Gemini 1.5 Flash o Groq Scout fallback
+// AREX — Visión en vivo · MARK 38
+// Full-screen HUD · Groq Scout first · Gemini fallback
+// Resultados mostrados EN el panel (no en el chat oculto)
 
 /* ─── State ───────────────────────────────────────────── */
-let _stream     = null;
-let _video      = null;
-let _panel      = null;
-let _contTimer  = null;
-let _contOn     = false;
-let _busy       = false;
-let _facingMode = 'environment';
+let _stream       = null;
+let _video        = null;
+let _panel        = null;
+let _contTimer    = null;
+let _resultTimer  = null;
+let _contOn       = false;
+let _busy         = false;
+let _facingMode   = 'environment';
 
 /* ─── Prompts ─────────────────────────────────────────── */
 const PROMPTS = {
@@ -27,6 +29,13 @@ Si no puedes identificar el objeto, descríbelo con el máximo detalle. Responde
   text: `Lee y transcribe exactamente todo el texto visible en esta imagen. Organiza con saltos de línea. Responde en español.`,
 
   scene: `Eres AREX. Analiza esta escena completa: objetos, personas, contexto, ambiente, cualquier información relevante. Si Alexiz está en la imagen, menciónalo. Análisis detallado en español.`,
+};
+
+const MODE_LABELS = {
+  describe: '👁 VER',
+  product:  '🔍 OBJETO',
+  text:     '📄 TEXTO',
+  scene:    '🌐 ESCENA',
 };
 
 /* ─── Public API ──────────────────────────────────────── */
@@ -49,6 +58,7 @@ export async function openVision() {
 
 export function closeVision() {
   _stopContinuous();
+  clearTimeout(_resultTimer);
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
   _panel?.remove(); _panel = null;
@@ -73,19 +83,15 @@ function _buildPanel() {
   const el = document.createElement('div');
   el.id = 'vision-panel';
   el.innerHTML = `
-    <!-- Video full-screen -->
     <video id="vis-video" autoplay playsinline muted></video>
 
-    <!-- Scan line overlay -->
     <div class="vp-scan-line" id="vis-scan"></div>
 
-    <!-- Corner HUD brackets -->
     <div class="vp-corner vp-tl"></div>
     <div class="vp-corner vp-tr"></div>
     <div class="vp-corner vp-bl"></div>
     <div class="vp-corner vp-br"></div>
 
-    <!-- Top HUD bar -->
     <div class="vp-hud-top">
       <div class="vp-title">
         <span class="vp-dot"></span>
@@ -97,28 +103,38 @@ function _buildPanel() {
       </div>
     </div>
 
-    <!-- Center status badge -->
     <div class="vp-status-badge" id="vis-status">
       <span class="vp-status-dot"></span>
       <span id="vis-status-txt">LISTO</span>
     </div>
 
-    <!-- Error detail overlay (visible only on error) -->
-    <div class="vp-error-detail" id="vis-error-detail" style="display:none"></div>
+    <!-- Result panel — slides up from bottom -->
+    <div class="vp-result" id="vis-result">
+      <div class="vp-result-hd">
+        <span class="vp-result-lbl" id="vis-result-lbl">ANÁLISIS</span>
+        <button class="vp-icon-btn vp-close-btn" id="vis-result-close" title="Cerrar resultado">✕</button>
+      </div>
+      <div class="vp-result-inner">
+        <img class="vp-result-thumb" id="vis-result-thumb" alt="frame"/>
+        <div class="vp-result-body" id="vis-result-body"></div>
+      </div>
+    </div>
 
-    <!-- Bottom action bar -->
     <div class="vp-hud-bottom">
-      <button class="vp-action-btn" onclick="captureAndAnalyze('describe')">
+      <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
         <span class="vp-btn-ico">👁</span><span class="vp-btn-lbl">VER</span>
       </button>
-      <button class="vp-action-btn" onclick="captureAndAnalyze('product')">
+      <button class="vp-action-btn" data-mode="product" onclick="captureAndAnalyze('product')">
         <span class="vp-btn-ico">🔍</span><span class="vp-btn-lbl">OBJETO</span>
       </button>
-      <button class="vp-action-btn" onclick="captureAndAnalyze('text')">
+      <button class="vp-action-btn" data-mode="text" onclick="captureAndAnalyze('text')">
         <span class="vp-btn-ico">📄</span><span class="vp-btn-lbl">TEXTO</span>
       </button>
-      <button class="vp-action-btn" onclick="captureAndAnalyze('scene')">
+      <button class="vp-action-btn" data-mode="scene" onclick="captureAndAnalyze('scene')">
         <span class="vp-btn-ico">🌐</span><span class="vp-btn-lbl">ESCENA</span>
+      </button>
+      <button class="vp-action-btn vp-qr-btn" id="vis-qr">
+        <span class="vp-btn-ico">🔲</span><span class="vp-btn-lbl">QR</span>
       </button>
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
         <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
@@ -135,11 +151,12 @@ function _buildPanel() {
 
   document.getElementById('vis-cont').addEventListener('click', _toggleContinuous);
   document.getElementById('vis-flip').addEventListener('click', _flipCamera);
+  document.getElementById('vis-qr').addEventListener('click', _detectQR);
+  document.getElementById('vis-result-close').addEventListener('click', _hideResult);
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
 async function _waitForVideo() {
-  // On iOS Safari videoWidth stays 0 for a moment even after readyState >= 2
   for (let i = 0; i < 20; i++) {
     if (_video && _video.videoWidth > 0) return true;
     await new Promise(r => setTimeout(r, 100));
@@ -152,7 +169,6 @@ async function _captureFrame() {
   const ready = await _waitForVideo();
   if (!ready) return null;
 
-  // Max 480px longest side — safe for iOS + APIs
   const MAX = 480;
   const vw = _video.videoWidth, vh = _video.videoHeight;
   const scale = Math.min(1, MAX / Math.max(vw, vh));
@@ -161,7 +177,6 @@ async function _captureFrame() {
   c.height = Math.round(vh * scale);
   c.getContext('2d').drawImage(_video, 0, 0, c.width, c.height);
   const dataUrl = c.toDataURL('image/jpeg', 0.70);
-  // Sanity check — a blank frame is very short
   if (dataUrl.length < 5000) return null;
   return dataUrl;
 }
@@ -171,20 +186,21 @@ async function _analyze(mode, extra = '') {
   if (_busy) return;
   _busy = true;
   _setStatus('CAPTURANDO...');
-  _setError('');
+  _setAnalyzing(true, mode);
 
   const frame = await _captureFrame();
   if (!frame) {
     _setStatus('SIN SEÑAL');
-    _setError('No se pudo capturar el frame. Espera un momento y vuelve a intentarlo.');
+    _showResult('SIN SEÑAL', 'No se pudo capturar el frame. Espera un momento y vuelve a intentarlo.', null);
     _busy = false;
+    _setAnalyzing(false, mode);
     return;
   }
 
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
 
-  const prompt = extra || PROMPTS[mode] || PROMPTS.describe;
+  const prompt    = extra || PROMPTS[mode] || PROMPTS.describe;
   const geminiKey = window.AREX_CONFIG?.geminiKey;
   const groqKey   = window.AREX_CONFIG?.groqKey;
 
@@ -201,7 +217,7 @@ async function _analyze(mode, extra = '') {
       }
     }
 
-    // Gemini fallback — tries free-tier models first
+    // Gemini fallback
     if (!reply && geminiKey) {
       _setStatus('ANALIZANDO · GEMINI...');
       reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
@@ -209,9 +225,12 @@ async function _analyze(mode, extra = '') {
 
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
 
+    const label = MODE_LABELS[mode] || 'ANÁLISIS';
 
-    // Show in chat
-    const label = { describe:'👁 Visión', product:'🔍 Objeto', text:'📄 Texto', scene:'🌐 Escena' }[mode] || 'Visión';
+    // ✅ Show result INSIDE the HUD panel (so user can see it)
+    _showResult(label, reply, frame);
+
+    // Also add to chat for history
     _say(`**[${label}]**\n\n${reply}`);
 
     // Speak brief version
@@ -226,22 +245,21 @@ async function _analyze(mode, extra = '') {
     }
 
     _setStatus('LISTO');
-    _setError('');
   } catch (e) {
     const msg = e.message || 'Error desconocido';
     _setStatus('ERROR');
-    _setError(msg);
+    _showResult('⚠ ERROR', msg, null);
     _say(`**[Visión · Error]** ${msg}`);
     console.warn('AREX Vision error:', e);
   } finally {
     _busy = false;
     _setScanActive(false);
+    _setAnalyzing(false, mode);
   }
 }
 
 async function _callGemini(frame, prompt, key) {
   const [, b64] = frame.split(',');
-  // Try gemini-2.0-flash first, fall back to gemini-1.5-flash-latest
   const models = ['gemini-2.0-flash', 'gemini-1.5-flash-latest'];
   let lastErr;
   for (const model of models) {
@@ -262,7 +280,7 @@ async function _callGemini(frame, prompt, key) {
     }
     const err = await res.json().catch(() => ({}));
     lastErr = `Gemini ${res.status}: ${err?.error?.message || res.statusText}`;
-    if (res.status !== 404) break; // only retry 404 with different model
+    if (res.status !== 404) break;
   }
   throw new Error(lastErr);
 }
@@ -293,6 +311,84 @@ function _withTimeout(promise, ms) {
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(`Tiempo de espera agotado (${ms/1000}s)`)), ms))
   ]);
+}
+
+/* ─── QR / Barcode Detection ──────────────────────────── */
+async function _detectQR() {
+  if (_busy) return;
+
+  // Try BarcodeDetector (Chrome/Android/desktop)
+  if (!('BarcodeDetector' in window)) {
+    _showResult('🔲 QR/CÓDIGO', 'BarcodeDetector no disponible en este navegador.\nUsa Chrome en Android o escritorio.', null);
+    return;
+  }
+
+  _busy = true;
+  _setStatus('ESCANEANDO QR...');
+  _setScanActive(true);
+
+  try {
+    const frame = await _captureFrame();
+    if (!frame) throw new Error('No se pudo capturar frame');
+
+    const img = new Image();
+    img.src = frame;
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+
+    const detector = new BarcodeDetector({
+      formats: ['qr_code','code_128','ean_13','ean_8','code_39','aztec','data_matrix','upc_a','upc_e']
+    });
+    const codes = await detector.detect(img);
+
+    if (!codes.length) {
+      _showResult('🔲 QR/CÓDIGO', 'No se detectó ningún código.\nAcerca la cámara e intenta de nuevo.', frame);
+    } else {
+      const txt = codes.map(c => `**${c.format.toUpperCase()}:** ${c.rawValue}`).join('\n\n');
+      _showResult('🔲 QR/CÓDIGO', txt, frame);
+      _say(`**[🔲 QR/Código]**\n\n${txt}`);
+    }
+  } catch (e) {
+    _showResult('⚠ QR ERROR', e.message, null);
+  } finally {
+    _busy = false;
+    _setScanActive(false);
+    _setStatus('LISTO');
+  }
+}
+
+/* ─── Result Panel ────────────────────────────────────── */
+function _showResult(label, text, thumb) {
+  const panel = document.getElementById('vis-result');
+  const lbl   = document.getElementById('vis-result-lbl');
+  const body  = document.getElementById('vis-result-body');
+  const img   = document.getElementById('vis-result-thumb');
+  if (!panel) return;
+
+  if (lbl) lbl.textContent = label;
+
+  if (img) {
+    if (thumb) { img.src = thumb; img.style.display = 'block'; }
+    else        { img.src = '';   img.style.display = 'none'; }
+  }
+
+  // Simple markdown → HTML
+  const html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+  if (body) body.innerHTML = html;
+
+  panel.classList.add('visible');
+
+  // Auto-dismiss after 18s (skip in auto mode)
+  clearTimeout(_resultTimer);
+  if (!_contOn) {
+    _resultTimer = setTimeout(_hideResult, 18000);
+  }
+}
+
+function _hideResult() {
+  document.getElementById('vis-result')?.classList.remove('visible');
 }
 
 /* ─── Product search ──────────────────────────────────── */
@@ -363,19 +459,19 @@ function _setStatus(txt) {
   if (el) el.textContent = txt;
   const badge = document.getElementById('vis-status');
   if (badge) {
-    badge.classList.toggle('error',  txt === 'ERROR');
-    badge.classList.toggle('active', txt === 'ANALIZANDO...' || txt === 'MODO CONTINUO');
+    badge.classList.toggle('error',  txt.startsWith('ERROR') || txt.startsWith('SIN SEÑAL'));
+    badge.classList.toggle('active', txt.includes('ANALIZANDO') || txt.includes('CONTINUO') || txt.includes('ESCANEANDO'));
   }
 }
 
 function _setScanActive(on) {
   document.getElementById('vis-scan')?.classList.toggle('active', on);
 }
-function _setError(msg) {
-  const el = document.getElementById('vis-error-detail');
-  if (!el) return;
-  if (msg) { el.textContent = msg; el.style.display = 'block'; }
-  else        { el.textContent = '';  el.style.display = 'none';  }
+
+function _setAnalyzing(on, mode) {
+  document.querySelectorAll('#vision-panel [data-mode]').forEach(b => {
+    b.classList.toggle('analyzing', on && b.dataset.mode === mode);
+  });
 }
 
 function _say(msg) {

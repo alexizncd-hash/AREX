@@ -614,19 +614,69 @@ main {
 }
 .vp-cont-btn.on .vp-status-dot { background:var(--green); }
 
-/* Error detail below status badge */
-.vp-error-detail {
-  position:absolute; top:calc(50% + 28px); left:50%;
-  transform:translateX(-50%);
-  z-index:3; max-width:280px; text-align:center;
-  background:rgba(40,0,8,0.88); border:1px solid rgba(255,68,85,0.45);
-  border-radius:8px; padding:8px 14px;
-  font-size:10px; letter-spacing:1px; color:#ff8899;
-  line-height:1.5; pointer-events:none;
-}
-
 /* Vision button active state in toolbar */
 #btn-vision.active { color:var(--green); }
+
+/* ── Result panel (slides up from bottom) ─────────────── */
+.vp-result {
+  position:absolute; bottom:0; left:0; right:0; z-index:5;
+  background:rgba(0,5,16,0.96);
+  border-top:1px solid rgba(0,212,255,0.45);
+  border-radius:16px 16px 0 0;
+  transform:translateY(100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  max-height:62vh;
+  display:flex; flex-direction:column;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  backdrop-filter:blur(8px);
+}
+.vp-result.visible { transform:translateY(0); }
+
+.vp-result-hd {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px 8px;
+  border-bottom:1px solid rgba(0,212,255,0.1);
+  flex-shrink:0;
+}
+.vp-result-lbl {
+  flex:1; font-size:9px; letter-spacing:2.5px; color:var(--cyan);
+  font-family:var(--font);
+}
+.vp-result-inner {
+  display:flex; gap:10px;
+  padding:10px 14px 12px;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  flex:1;
+}
+.vp-result-thumb {
+  width:76px; height:58px; object-fit:cover;
+  border-radius:6px; border:1px solid rgba(0,212,255,0.3);
+  flex-shrink:0; align-self:flex-start;
+}
+.vp-result-body {
+  flex:1; font-size:13px; line-height:1.65;
+  color:var(--text-main); font-family:var(--font-body);
+}
+.vp-result-body strong { color:var(--cyan); }
+
+/* Analyzing button — pulsing highlight */
+.vp-action-btn.analyzing {
+  background:rgba(0,212,255,0.22);
+  border-color:var(--cyan); color:var(--cyan);
+  animation:vp-btn-pulse 0.75s ease-in-out infinite;
+}
+@keyframes vp-btn-pulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:0.55; }
+}
+
+/* Bottom bar scrollable on narrow screens */
+.vp-hud-bottom {
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.vp-hud-bottom::-webkit-scrollbar { display:none; }
+.vp-action-btn { min-width:50px; }
 
 
 
