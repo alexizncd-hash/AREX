@@ -330,6 +330,7 @@ async function initFirebase() {
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
+    window._arexDb = db;   // expose to global scripts (control.js telemetría)
     fbInitialized = true;
   } catch(e) { console.warn('Firebase init:', e); }
 }
@@ -3023,6 +3024,14 @@ window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(
 
 // PWA
 if ('serviceWorker' in navigator) {
+  // Detect active cache version immediately (control.js telemetría)
+  if ('caches' in window) {
+    caches.keys().then(keys => {
+      const active = keys.find(k => k.startsWith('arex-'));
+      if (active) window.AREX_SW_VERSION = active.replace('arex-', '');
+    });
+  }
+
   navigator.serviceWorker.register('sw.js').then(reg => {
     // Detectar cuando el SW se actualiza en segundo plano
     reg.addEventListener('updatefound', () => {
@@ -3037,7 +3046,10 @@ if ('serviceWorker' in navigator) {
 
   // Mensaje del SW activo indicando nueva versión
   navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'SW_UPDATED') _showUpdateBanner();
+    if (e.data?.type === 'SW_UPDATED') {
+      if (e.data.version) window.AREX_SW_VERSION = e.data.version;
+      _showUpdateBanner();
+    }
   });
 }
 
@@ -3070,26 +3082,9 @@ function _showUpdateBanner() {
 
 /* ── Secuencia de arranque ──────────────────────────── */
 async function boot() {
-  const lines = [
-    'Iniciando AREX v4.0...',
-    'Cargando módulos — IA · Finanzas · Tareas · SOS...',
-    'Conectando Firebase...',
-    'Restaurando memoria de sesión...',
-    'Activando recordatorios y notificaciones...',
-    'Activando búsqueda web y sistema de clima...',
-    'Todos los sistemas en línea.'
-  ];
-  const bootLines = document.getElementById('boot-lines');
-  const bootBar   = document.getElementById('boot-bar');
   const bootScreen = document.getElementById('boot-screen');
 
-  for (let i = 0; i < lines.length; i++) {
-    await new Promise(r => setTimeout(r, 350));
-    const isLast = i === lines.length - 1;
-    bootLines.innerHTML += `<span style="color:${isLast?'#00d4ff':'#4a7a96'}">${lines[i]}</span><br>`;
-    bootBar.style.width = ((i+1)/lines.length*100) + '%';
-  }
-
+  // bootLetterAnim (IIFE below) handles all visual output — we just do the real init
   await pullConfigFromFirestore();
   await pullAllModuleData();
   if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
@@ -3831,7 +3826,7 @@ window.renderExchangeWidget = renderExchangeWidget;
   const bar  = document.getElementById('boot-bar');
   const logo = document.querySelector('.boot-logo');
   if (!logo) return;
-  const lines = ['INICIANDO SISTEMAS...', 'CARGANDO MÓDULOS...', 'CONECTANDO IA...', 'SISTEMAS EN LÍNEA.'];
+  const lines = ['AREX · MARK 35 · INICIANDO...', 'CARGANDO MÓDULOS...', 'CONECTANDO IA · GROQ · GEMINI...', 'TODOS LOS SISTEMAS EN LÍNEA.'];
   const linesEl = document.getElementById('boot-lines');
   if (!linesEl) return;
 
