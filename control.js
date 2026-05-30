@@ -35,7 +35,7 @@ function _getTelemetria() {
   const lsPct = Math.min(100, Math.round(lsBytes / (lsMax * 10.24)));
 
   // SW version
-  const swVer = typeof window.AREX_SW_VERSION !== 'undefined' ? window.AREX_SW_VERSION : 'v35';
+  const swVer = window.AREX_SW_VERSION || 'v37';
 
   // Uptime
   const uptimeSec = Math.floor((Date.now() - _ctrlBootTime) / 1000);
@@ -45,7 +45,7 @@ function _getTelemetria() {
   const uptime = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 
   // Firebase
-  const fbStatus = typeof db !== 'undefined' && db ? 'CONECTADO' : 'OFFLINE';
+  const fbStatus = window._arexDb ? 'CONECTADO' : 'OFFLINE';
 
   // Groq key present
   const groqOk = !!(window.AREX_CONFIG?.groqKey);
