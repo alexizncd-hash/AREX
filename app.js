@@ -9,10 +9,18 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
+function _safeJSON(str, fallback) {
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 function loadConfig() {
   if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
   const saved = localStorage.getItem('arex_config');
-  if (saved) { window.AREX_CONFIG = JSON.parse(saved); return true; }
+  if (saved) {
+    const parsed = _safeJSON(saved, null);
+    if (parsed) { window.AREX_CONFIG = parsed; return true; }
+    localStorage.removeItem('arex_config'); // corrupted — purge to unblock boot
+  }
   return false;
 }
 
@@ -56,8 +64,7 @@ function setupSaveHandler() {
 const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos'];
 
 function loadAtalos() {
-  const saved = localStorage.getItem('arex_atajos');
-  return saved ? JSON.parse(saved) : [];
+  return _safeJSON(localStorage.getItem('arex_atajos'), []);
 }
 function saveAtalos(arr) {
   localStorage.setItem('arex_atajos', JSON.stringify(arr));
@@ -94,8 +101,7 @@ function renderAtajosList() {
 
 /* ── Contexto personal ──────────────────────────────── */
 function loadPersonalContext() {
-  const saved = localStorage.getItem('arex_context');
-  return saved ? JSON.parse(saved) : {};
+  return _safeJSON(localStorage.getItem('arex_context'), {});
 }
 function savePersonalContext(ctx) {
   localStorage.setItem('arex_context', JSON.stringify(ctx));
@@ -118,8 +124,7 @@ function updateCtxBadge() {
 
 /* ── Memoria larga ──────────────────────────────────── */
 function loadMemoria() {
-  const saved = localStorage.getItem('arex_memoria');
-  return saved ? JSON.parse(saved) : [];
+  return _safeJSON(localStorage.getItem('arex_memoria'), []);
 }
 function saveMemoria(entries) {
   localStorage.setItem('arex_memoria', JSON.stringify(entries));
@@ -135,7 +140,7 @@ function buildMemoriaSection() {
 }
 
 /* ── Memoria de hechos ──────────────────────────────── */
-function getHechos() { return JSON.parse(localStorage.getItem('arex_hechos') || '[]'); }
+function getHechos() { return _safeJSON(localStorage.getItem('arex_hechos'), []); }
 function saveHechos(arr) { localStorage.setItem('arex_hechos', JSON.stringify(arr)); }
 
 function addHecho(texto, fuente = 'auto') {
@@ -482,7 +487,7 @@ tickClock();
 const MAX_SESSIONS = 10;
 
 function getSessions() {
-  return JSON.parse(localStorage.getItem('arex_sessions') || '[]');
+  return _safeJSON(localStorage.getItem('arex_sessions'), []);
 }
 function saveSessions(arr) {
   localStorage.setItem('arex_sessions', JSON.stringify(arr.slice(0, MAX_SESSIONS)));
@@ -567,7 +572,7 @@ function deleteSession(sid) {
 }
 
 /* ── Módulo Tareas ──────────────────────────────────── */
-function getTareas() { return JSON.parse(localStorage.getItem('arex_tareas') || '[]'); }
+function getTareas() { return _safeJSON(localStorage.getItem('arex_tareas'), []); }
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
 function urgenciaTarea(t) {
@@ -722,7 +727,7 @@ function renderTareas() {
 }
 
 // ── Módulo Notas ────────────────────────────────────────
-function getNotas() { return JSON.parse(localStorage.getItem('arex_notas') || '[]'); }
+function getNotas() { return _safeJSON(localStorage.getItem('arex_notas'), []); }
 function saveNotas(arr) { localStorage.setItem('arex_notas', JSON.stringify(arr)); }
 
 function addNota(titulo, contenido) {
@@ -2251,7 +2256,7 @@ async function requestNotifPerm() {
   _updateNotifStatus();
 }
 /* ── Recordatorios persistentes ─────────────────────── */
-function getRecordatorios() { return JSON.parse(localStorage.getItem('arex_recordatorios') || '[]'); }
+function getRecordatorios() { return _safeJSON(localStorage.getItem('arex_recordatorios'), []); }
 function saveRecordatorios(arr) { localStorage.setItem('arex_recordatorios', JSON.stringify(arr)); }
 
 function fmtCountdown(disparaEn) {
@@ -3713,11 +3718,8 @@ const FX_CACHE_KEY = 'arex_fx_cache';
 const FX_TTL       = 60 * 60 * 1000;
 
 async function fetchExchangeRate() {
-  const cached = localStorage.getItem(FX_CACHE_KEY);
-  if (cached) {
-    const { rate, ts } = JSON.parse(cached);
-    if (Date.now() - ts < FX_TTL) return rate;
-  }
+  const cached = _safeJSON(localStorage.getItem(FX_CACHE_KEY), null);
+  if (cached?.ts && Date.now() - cached.ts < FX_TTL) return cached.rate;
   const apis = [
     async () => {
       const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN');
@@ -3750,7 +3752,7 @@ async function renderExchangeWidget() {
   el.innerHTML = '<div style="font-size:0.62rem;color:var(--text-muted);letter-spacing:1px">Cargando...</div>';
   const rate = await fetchExchangeRate();
   if (!rate) { el.innerHTML = '<div style="font-size:0.62rem;color:var(--text-muted)">Sin datos · sin conexión</div>'; return; }
-  const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || '{}');
+  const cached = _safeJSON(localStorage.getItem(FX_CACHE_KEY), {});
   const upd = cached.ts ? new Date(cached.ts).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '';
   el.innerHTML = `
     <div class="fx-main">
@@ -3782,8 +3784,10 @@ window.renderExchangeWidget = renderExchangeWidget;
   let stars = [];
 
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const w = window.innerWidth, h = window.innerHeight;
+    if (canvas.width === w && canvas.height === h) return; // skip if unchanged
+    canvas.width  = w;
+    canvas.height = h;
     buildStars();
   }
 
@@ -3804,6 +3808,8 @@ window.renderExchangeWidget = renderExchangeWidget;
 
   let t = 0;
   function draw() {
+    requestAnimationFrame(draw);
+    if (document.hidden) return; // pause when tab not visible
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     t += 0.016;
     for (const s of stars) {
@@ -3813,7 +3819,6 @@ window.renderExchangeWidget = renderExchangeWidget;
       ctx.fillStyle = `rgba(0,212,255,${a.toFixed(3)})`;
       ctx.fill();
     }
-    requestAnimationFrame(draw);
   }
 
   resize();

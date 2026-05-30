@@ -138,6 +138,7 @@
   /* ── Animation loop ────────────────────────────────────── */
   function loop() {
     requestAnimationFrame(loop);
+    if (document.hidden) return; // pause when tab not visible
     t++;
 
     const cfg = CFG[stateName] || CFG.default;
