@@ -8,7 +8,9 @@ let _video        = null;
 let _panel        = null;
 let _resultTimer  = null;
 let _contOn       = false;
+let _contRunning  = false;  // guard: evita dos loops _runContinuous simultáneos
 let _busy         = false;
+let _busyTimer    = null;   // safety timeout: libera _busy si _analyze se cuelga
 let _facingMode   = 'environment';
 let _voiceOn      = true;
 let _iosKa        = null;   // iOS speech keep-alive interval
@@ -189,6 +191,18 @@ async function _captureFrame(maxPx = 480) {
 async function _analyze(mode, extra = '') {
   if (_busy) return;
   _busy = true;
+
+  // Safety: si _analyze se cuelga por cualquier razón, libera _busy a los 35s
+  // Evita que el botón quede permanentemente bloqueado hasta recargar la app
+  clearTimeout(_busyTimer);
+  _busyTimer = setTimeout(() => {
+    _busy = false;
+    _setScanActive(false);
+    _setAnalyzing(false, mode);
+    _setStatus('LISTO');
+    console.warn('AREX Vision: _busy forzado a false por timeout de seguridad');
+  }, 35000);
+
   _setStatus('CAPTURANDO...');
   _setAnalyzing(true, mode);
 
@@ -246,6 +260,7 @@ async function _analyze(mode, extra = '') {
     _say(`**[Visión · Error]** ${msg}`);
     console.warn('AREX Vision error:', e);
   } finally {
+    clearTimeout(_busyTimer);
     _busy = false;
     _setScanActive(false);
     _setAnalyzing(false, mode);
@@ -407,12 +422,18 @@ function _toggleContinuous() {
 }
 
 async function _runContinuous() {
-  while (_contOn) {
-    await _analyze('describe');
-    if (!_contOn) break;
-    await _waitForSpeech();       // esperar a que termine de hablar
-    if (!_contOn) break;
-    await new Promise(r => setTimeout(r, 2000));  // pausa entre ciclos
+  if (_contRunning) return;  // evita dos loops simultáneos
+  _contRunning = true;
+  try {
+    while (_contOn) {
+      await _analyze('describe');
+      if (!_contOn) break;
+      await _waitForSpeech();
+      if (!_contOn) break;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  } finally {
+    _contRunning = false;
   }
 }
 

@@ -18,10 +18,11 @@ const PANEL_DEFS = [
 
 /* ─── State ───────────────────────────────────────────── */
 let _renderer, _scene, _camera, _session;
-let _panels   = [];
-let _timer    = null;
-let _grabbed  = null;
-let _ctrls    = [];
+let _panels      = [];
+let _timer       = null;
+let _grabbed     = null;
+let _ctrls       = [];
+let _panelHashes = {};  // smart cache: solo redibuja si los datos cambian
 
 /* ─── Public ──────────────────────────────────────────── */
 export async function enterAR() {
@@ -164,7 +165,13 @@ function _onEnd() {
 
 /* ─── Data Refresh ────────────────────────────────────── */
 function _refreshAll() {
-  _panels.forEach(p => _drawPanel(p, _getData(p.def.id)));
+  _panels.forEach(p => {
+    const rows = _getData(p.def.id);
+    const hash = JSON.stringify(rows);
+    if (_panelHashes[p.def.id] === hash) return;  // sin cambios, no redibujar
+    _panelHashes[p.def.id] = hash;
+    _drawPanel(p, rows);
+  });
 }
 
 const _fmt = n => `$${Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
@@ -214,7 +221,7 @@ function _getData(id) {
         m.content.replace(/\*\*/g, '').slice(0, 34)
       ]);
     }
-  } catch (e) {}
+  } catch (e) { console.warn('AREX WebXR _getData:', e); }
   return [['Error', 'Sin datos']];
 }
 

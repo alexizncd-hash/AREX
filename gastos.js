@@ -23,7 +23,7 @@ let _gpAnio  = new Date().getFullYear();
 // ── Helpers ─────────────────────────────────────────
 const _$MXN    = n => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const _todayISO = () => new Date().toISOString().slice(0, 10);
-const _escAttr  = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const _escAttr  = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const _escHTML  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 const _MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -73,6 +73,10 @@ function switchGastosView(view) {
 
 // ── Navegación de mes ────────────────────────────────
 function gpMesPrev() {
+  const now   = new Date();
+  const minMs = (now.getFullYear() - 2) * 12 + now.getMonth();
+  const curMs = _gpAnio * 12 + _gpMes;
+  if (curMs <= minMs) return;  // límite: máximo 24 meses atrás
   if (_gpMes === 0) { _gpMes = 11; _gpAnio--; }
   else { _gpMes--; }
   switchGastosView(_gpView);

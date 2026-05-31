@@ -2922,6 +2922,7 @@ btnMic.addEventListener('click', () => { if(!btnMic.classList.contains('on')) st
 btnVoice.addEventListener('click', () => {
   voiceOn = !voiceOn;
   btnVoice.classList.toggle('active', voiceOn);
+  localStorage.setItem('arex_voiceOn', voiceOn ? '1' : '0');
   const msg = voiceOn ? 'Síntesis de voz activada.' : 'Síntesis de voz desactivada.';
   addMsg('arex', msg);
   if (voiceOn) arexSpeak(msg);
@@ -2935,6 +2936,7 @@ btnSearch.addEventListener('click', () => {
   }
   searchOn = !searchOn;
   btnSearch.classList.toggle('active', searchOn);
+  localStorage.setItem('arex_searchOn', searchOn ? '1' : '0');
   addMsg('arex', searchOn ? 'Búsqueda web activada. Consultaré fuentes en tiempo real.' : 'Búsqueda web desactivada.');
   updateSidebarModes();
 });
@@ -3201,6 +3203,28 @@ async function boot() {
     restoreReminders();
     renderHudPanels();
     initMatrixRain();
+
+    // Restaurar preferencias de sesión anterior
+    if (localStorage.getItem('arex_voiceOn') === '1') {
+      voiceOn = true;
+      btnVoice?.classList.add('active');
+    }
+    if (localStorage.getItem('arex_searchOn') === '1' && AREX_CONFIG.tavilyKey) {
+      searchOn = true;
+      btnSearch?.classList.add('active');
+    }
+    updateSidebarModes();
+
+    // Detección de múltiples pestañas (avisa si hay otra instancia abierta)
+    if (typeof BroadcastChannel !== 'undefined') {
+      const _tabCh = new BroadcastChannel('arex_tab');
+      _tabCh.postMessage({ type: 'NEW_TAB' });
+      _tabCh.addEventListener('message', e => {
+        if (e.data?.type === 'NEW_TAB') {
+          addMsg('arex', '⚠ **Aviso:** AREX está abierto en otra pestaña. Usar dos pestañas simultáneas puede causar conflictos en los datos guardados.');
+        }
+      });
+    }
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') restoreReminders(); });
   } catch(e) {
     console.warn('AREX boot error:', e);

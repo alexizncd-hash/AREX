@@ -46,7 +46,7 @@ const $KG   = n => `${Number(n).toFixed(1)} kg`;
 const $DATE = d => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const inicioMes = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const escHTML = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Navegación de vistas ────────────────────────────
