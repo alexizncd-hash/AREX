@@ -1,35 +1,38 @@
-// AREX — Visión en vivo · MARK 38
+// AREX — Visión en vivo · MARK 39
 // Full-screen HUD · Groq Scout first · Gemini fallback
-// Resultados mostrados EN el panel (no en el chat oculto)
+// Resultados EN el panel · Modo continuo secuencial · iOS TTS keep-alive
 
 /* ─── State ───────────────────────────────────────────── */
 let _stream       = null;
 let _video        = null;
 let _panel        = null;
-let _contTimer    = null;
 let _resultTimer  = null;
 let _contOn       = false;
 let _busy         = false;
 let _facingMode   = 'environment';
-let _voiceOn      = true;   // voz en Visión activada por defecto
+let _voiceOn      = true;
+let _iosKa        = null;   // iOS speech keep-alive interval
 
 /* ─── Prompts ─────────────────────────────────────────── */
 const PROMPTS = {
-  describe: `Eres AREX, asistente personal de Alexiz. Describe en 2-3 líneas lo que ves. Si hay una persona enfrente de la cámara descríbela. Si parece ser Alexiz (joven mexicano universitario), salúdalo directamente. Sé natural, conciso, en español.`,
+  describe: `Eres AREX, asistente IA de Alexiz. Describe con PRECISIÓN ESPECÍFICA lo que ves en esta imagen: qué objetos concretos hay, sus colores exactos, marcas visibles, textos legibles, posición de elementos. Menciona detalles relevantes. Si hay una persona descríbela físicamente. Si es Alexiz (joven mexicano universitario, delgado), salúdalo. NO seas genérico. 2-3 frases específicas. En español.`,
 
-  product: `Eres AREX analizando un objeto/producto para Alexiz. Responde EXACTAMENTE en este formato:
+  product: `Eres AREX identificando un objeto/producto para Alexiz. Analiza con el MÁXIMO DETALLE posible. Responde EXACTAMENTE así:
 
-**Objeto:** [nombre]
-**Marca:** [marca o "No identificada"]
-**Descripción:** [1-2 líneas]
+**Objeto:** [nombre específico]
+**Marca:** [marca exacta o "No visible"]
+**Modelo:** [modelo/serie si es visible]
+**Color:** [colores exactos]
+**Material:** [material principal]
+**Descripción:** [características específicas en 1-2 líneas]
 **Precio estimado MX:** [$X,XXX – $XX,XXX MXN aprox]
-**Dónde comprar:** Amazon.com.mx · MercadoLibre · [otras tiendas]
+**Dónde comprar:** Amazon.com.mx · MercadoLibre · [tiendas específicas]
 
-Si no puedes identificar el objeto, descríbelo con el máximo detalle. Responde en español.`,
+Si no identificas el objeto exacto, describe TODOS los detalles visuales. En español.`,
 
-  text: `Lee y transcribe exactamente todo el texto visible en esta imagen. Organiza con saltos de línea. Responde en español.`,
+  text: `Lee y transcribe EXACTAMENTE todo el texto visible en esta imagen, incluidos números, signos y símbolos. Mantén el orden original con saltos de línea. Si hay texto en inglés, transcríbelo igual. Responde en español solo el encabezado "Texto encontrado:" y luego el texto tal cual.`,
 
-  scene: `Eres AREX. Analiza esta escena completa: objetos, personas, contexto, ambiente, cualquier información relevante. Si Alexiz está en la imagen, menciónalo. Análisis detallado en español.`,
+  scene: `Eres AREX. Haz un análisis EXHAUSTIVO de esta escena: lista todos los objetos visibles, describe personas si las hay (ropa, postura, expresión), el ambiente (interior/exterior, iluminación, colores dominantes), posibles actividades, contexto general. Sé específico y detallado. Si ves a Alexiz, menciónalo. En español.`,
 };
 
 const MODE_LABELS = {
@@ -38,6 +41,10 @@ const MODE_LABELS = {
   text:     '📄 TEXTO',
   scene:    '🌐 ESCENA',
 };
+
+/* ─── Resolución por modo ─────────────────────────────── */
+// Modo continuo usa 480px (velocidad), modos de análisis 640px (detalle)
+const MODE_RES = { describe: 480, product: 640, text: 640, scene: 640 };
 
 /* ─── Public API ──────────────────────────────────────── */
 export async function openVision() {
@@ -58,7 +65,9 @@ export async function openVision() {
 }
 
 export function closeVision() {
-  _stopContinuous();
+  _contOn = false;
+  window.speechSynthesis?.cancel();
+  _stopIosKa();
   clearTimeout(_resultTimer);
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
@@ -85,19 +94,14 @@ function _buildPanel() {
   el.id = 'vision-panel';
   el.innerHTML = `
     <video id="vis-video" autoplay playsinline muted></video>
-
     <div class="vp-scan-line" id="vis-scan"></div>
-
     <div class="vp-corner vp-tl"></div>
     <div class="vp-corner vp-tr"></div>
     <div class="vp-corner vp-bl"></div>
     <div class="vp-corner vp-br"></div>
 
     <div class="vp-hud-top">
-      <div class="vp-title">
-        <span class="vp-dot"></span>
-        AREX · VISIÓN
-      </div>
+      <div class="vp-title"><span class="vp-dot"></span>AREX · VISIÓN</div>
       <div class="vp-top-btns">
         <button class="vp-icon-btn vp-voice-btn on" id="vis-voice" title="Voz">🔊</button>
         <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">⟳</button>
@@ -110,11 +114,10 @@ function _buildPanel() {
       <span id="vis-status-txt">LISTO</span>
     </div>
 
-    <!-- Result panel — slides up from bottom -->
     <div class="vp-result" id="vis-result">
       <div class="vp-result-hd">
         <span class="vp-result-lbl" id="vis-result-lbl">ANÁLISIS</span>
-        <button class="vp-icon-btn vp-close-btn" id="vis-result-close" title="Cerrar resultado">✕</button>
+        <button class="vp-icon-btn vp-close-btn" id="vis-result-close" title="Cerrar">✕</button>
       </div>
       <div class="vp-result-inner">
         <img class="vp-result-thumb" id="vis-result-thumb" alt="frame"/>
@@ -167,19 +170,17 @@ async function _waitForVideo() {
   return false;
 }
 
-async function _captureFrame() {
+async function _captureFrame(maxPx = 480) {
   if (!_video) return null;
   const ready = await _waitForVideo();
   if (!ready) return null;
-
-  const MAX = 480;
   const vw = _video.videoWidth, vh = _video.videoHeight;
-  const scale = Math.min(1, MAX / Math.max(vw, vh));
+  const scale = Math.min(1, maxPx / Math.max(vw, vh));
   const c = document.createElement('canvas');
   c.width  = Math.round(vw * scale);
   c.height = Math.round(vh * scale);
   c.getContext('2d').drawImage(_video, 0, 0, c.width, c.height);
-  const dataUrl = c.toDataURL('image/jpeg', 0.70);
+  const dataUrl = c.toDataURL('image/jpeg', 0.80);
   if (dataUrl.length < 5000) return null;
   return dataUrl;
 }
@@ -191,10 +192,11 @@ async function _analyze(mode, extra = '') {
   _setStatus('CAPTURANDO...');
   _setAnalyzing(true, mode);
 
-  const frame = await _captureFrame();
+  const res = MODE_RES[mode] || 480;
+  const frame = await _captureFrame(res);
   if (!frame) {
     _setStatus('SIN SEÑAL');
-    _showResult('SIN SEÑAL', 'No se pudo capturar el frame. Espera un momento y vuelve a intentarlo.', null);
+    _showResult('SIN SEÑAL', 'No se pudo capturar el frame. Espera y vuelve a intentarlo.', null);
     _busy = false;
     _setAnalyzing(false, mode);
     return;
@@ -210,7 +212,6 @@ async function _analyze(mode, extra = '') {
   try {
     let reply;
 
-    // Groq first — free and reliable for vision
     if (groqKey) {
       try {
         _setStatus('ANALIZANDO · GROQ...');
@@ -220,7 +221,6 @@ async function _analyze(mode, extra = '') {
       }
     }
 
-    // Gemini fallback
     if (!reply && geminiKey) {
       _setStatus('ANALIZANDO · GEMINI...');
       reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
@@ -229,22 +229,16 @@ async function _analyze(mode, extra = '') {
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
 
     const label = MODE_LABELS[mode] || 'ANÁLISIS';
-
-    // ✅ Show result INSIDE the HUD panel (so user can see it)
     _showResult(label, reply, frame);
-
-    // Also add to chat for history
     _say(`**[${label}]**\n\n${reply}`);
-
     _visionSpeak(reply);
 
-    // Product search
     if (mode === 'product' && window.AREX_CONFIG?.tavilyKey) {
       const m = reply.match(/\*\*Objeto:\*\*\s*(.+)/);
       if (m) _searchProduct(m[1].trim().slice(0, 60));
     }
 
-    _setStatus('LISTO');
+    _setStatus(_contOn ? 'MODO CONTINUO' : 'LISTO');
   } catch (e) {
     const msg = e.message || 'Error desconocido';
     _setStatus('ERROR');
@@ -291,7 +285,7 @@ async function _callGroq(frame, prompt, key) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      max_tokens: 700,
+      max_tokens: 800,
       messages: [{ role: 'user', content: [
         { type: 'image_url', image_url: { url: frame } },
         { type: 'text', text: prompt }
@@ -316,30 +310,23 @@ function _withTimeout(promise, ms) {
 /* ─── QR / Barcode Detection ──────────────────────────── */
 async function _detectQR() {
   if (_busy) return;
-
-  // Try BarcodeDetector (Chrome/Android/desktop)
   if (!('BarcodeDetector' in window)) {
-    _showResult('🔲 QR/CÓDIGO', 'BarcodeDetector no disponible en este navegador.\nUsa Chrome en Android o escritorio.', null);
+    _showResult('🔲 QR/CÓDIGO', 'BarcodeDetector no disponible.\nUsa Chrome en Android o escritorio.', null);
     return;
   }
-
   _busy = true;
   _setStatus('ESCANEANDO QR...');
   _setScanActive(true);
-
   try {
-    const frame = await _captureFrame();
+    const frame = await _captureFrame(640);
     if (!frame) throw new Error('No se pudo capturar frame');
-
     const img = new Image();
     img.src = frame;
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-
     const detector = new BarcodeDetector({
       formats: ['qr_code','code_128','ean_13','ean_8','code_39','aztec','data_matrix','upc_a','upc_e']
     });
     const codes = await detector.detect(img);
-
     if (!codes.length) {
       _showResult('🔲 QR/CÓDIGO', 'No se detectó ningún código.\nAcerca la cámara e intenta de nuevo.', frame);
     } else {
@@ -363,28 +350,19 @@ function _showResult(label, text, thumb) {
   const body  = document.getElementById('vis-result-body');
   const img   = document.getElementById('vis-result-thumb');
   if (!panel) return;
-
   if (lbl) lbl.textContent = label;
-
   if (img) {
     if (thumb) { img.src = thumb; img.style.display = 'block'; }
     else        { img.src = '';   img.style.display = 'none'; }
   }
-
-  // Simple markdown → HTML
   const html = text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
   if (body) body.innerHTML = html;
-
   panel.classList.add('visible');
-
-  // Auto-dismiss after 18s (skip in auto mode)
   clearTimeout(_resultTimer);
-  if (!_contOn) {
-    _resultTimer = setTimeout(_hideResult, 18000);
-  }
+  if (!_contOn) _resultTimer = setTimeout(_hideResult, 20000);
 }
 
 function _hideResult() {
@@ -411,7 +389,7 @@ async function _searchProduct(nombre) {
   } catch (_) {}
 }
 
-/* ─── Continuous mode ─────────────────────────────────── */
+/* ─── Continuous mode — secuencial, no setInterval ───── */
 function _toggleContinuous() {
   _contOn = !_contOn;
   const btn = document.getElementById('vis-cont');
@@ -419,24 +397,35 @@ function _toggleContinuous() {
   if (btn) btn.classList.toggle('on', _contOn);
   if (lbl) lbl.textContent = _contOn ? 'AUTO ON' : 'AUTO';
   if (_contOn) {
-    _analyze('describe');
-    _contTimer = setInterval(() => _analyze('describe'), 8000);
     _setStatus('MODO CONTINUO');
+    _runContinuous();
   } else {
-    _stopContinuous();
+    window.speechSynthesis?.cancel();
+    _stopIosKa();
     _setStatus('LISTO');
   }
 }
 
-function _stopContinuous() {
-  _contOn = false;
-  clearInterval(_contTimer); _contTimer = null;
-  const btn = document.getElementById('vis-cont');
-  if (btn) {
-    btn.classList.remove('on');
-    const lbl = btn.querySelector('.vp-btn-lbl');
-    if (lbl) lbl.textContent = 'AUTO';
+async function _runContinuous() {
+  while (_contOn) {
+    await _analyze('describe');
+    if (!_contOn) break;
+    await _waitForSpeech();       // esperar a que termine de hablar
+    if (!_contOn) break;
+    await new Promise(r => setTimeout(r, 2000));  // pausa entre ciclos
   }
+}
+
+function _waitForSpeech() {
+  return new Promise(resolve => {
+    if (!window.speechSynthesis?.speaking) { resolve(); return; }
+    const maxT = setTimeout(resolve, 16000);
+    function poll() {
+      if (!window.speechSynthesis?.speaking) { clearTimeout(maxT); resolve(); }
+      else setTimeout(poll, 300);
+    }
+    setTimeout(poll, 400);
+  });
 }
 
 /* ─── Camera flip ─────────────────────────────────────── */
@@ -463,54 +452,62 @@ function _setStatus(txt) {
     badge.classList.toggle('active', txt.includes('ANALIZANDO') || txt.includes('CONTINUO') || txt.includes('ESCANEANDO'));
   }
 }
-
 function _setScanActive(on) {
   document.getElementById('vis-scan')?.classList.toggle('active', on);
 }
-
 function _setAnalyzing(on, mode) {
   document.querySelectorAll('#vision-panel [data-mode]').forEach(b => {
     b.classList.toggle('analyzing', on && b.dataset.mode === mode);
   });
 }
 
-/* ─── Voice synthesis ─────────────────────────────────── */
+/* ─── Voice synthesis + iOS keep-alive ───────────────── */
 function _visionSpeak(text) {
-  if (!_voiceOn) return;
-  if (!window.speechSynthesis) return;
+  if (!_voiceOn || !window.speechSynthesis) return;
 
-  // Clean markdown and HTML tags
   const clean = text
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/^[-•]\s/gm, '')
     .replace(/<[^>]+>/g, '')
     .trim();
 
-  // Smart truncation at sentence boundary (max 600 chars)
   const MAX = 600;
   const truncated = clean.length > MAX
     ? (clean.slice(0, MAX).match(/([\s\S]*[.!?])/)?.[1] || clean.slice(0, MAX))
     : clean;
 
-  window.speechSynthesis.cancel();
+  // No cancelar si ya está hablando en modo continuo (se espera con _waitForSpeech)
+  if (!_contOn) window.speechSynthesis.cancel();
 
   const u = new SpeechSynthesisUtterance(truncated);
   u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
 
-  // Prefer Spanish voice, try to match same logic as arexSpeak
-  if (window.speechSynthesis.getVoices().length) {
-    _applyVoice(u);
-  } else {
-    window.speechSynthesis.addEventListener('voiceschanged', () => _applyVoice(u), { once: true });
-  }
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length) _applyVoice(u);
+  else window.speechSynthesis.addEventListener('voiceschanged', () => _applyVoice(u), { once: true });
+
+  // iOS keep-alive: Safari pausa speechSynthesis internamente cada ~15s
+  u.onstart = () => {
+    _stopIosKa();
+    _iosKa = setInterval(() => {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }, 5000);
+  };
+  u.onend   = () => _stopIosKa();
+  u.onerror = () => _stopIosKa();
 
   window.speechSynthesis.speak(u);
 }
 
+function _stopIosKa() {
+  clearInterval(_iosKa);
+  _iosKa = null;
+}
+
 function _applyVoice(u) {
   const voices = window.speechSynthesis.getVoices();
-  const maleNames = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
-  const v = voices.find(v => v.lang.startsWith('es') && maleNames.some(n => v.name.toLowerCase().includes(n)))
+  const names = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
+  const v = voices.find(v => v.lang.startsWith('es') && names.some(n => v.name.toLowerCase().includes(n)))
          || voices.find(v => v.lang.startsWith('es'));
   if (v) u.voice = v;
 }
@@ -518,6 +515,7 @@ function _applyVoice(u) {
 function _toggleVoice() {
   _voiceOn = !_voiceOn;
   window.speechSynthesis?.cancel();
+  _stopIosKa();
   const btn = document.getElementById('vis-voice');
   if (btn) {
     btn.textContent = _voiceOn ? '🔊' : '🔇';
