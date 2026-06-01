@@ -449,6 +449,38 @@ let _iosVoiceKa        = null;   // iOS keep-alive para speechSynthesis principa
 
 const _msgRaw = new WeakMap(); // wrap element → raw markdown text
 
+let _lastInteract = Date.now();
+let _idleTimer    = null;
+
+/* ── Sonidos del sistema (Web Audio API) ────────────── */
+function _playTone(type) {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    if (type === 'mic-on') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(660, now); osc.frequency.linearRampToValueAtTime(880, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.start(now); osc.stop(now + 0.22);
+    } else if (type === 'mic-off') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); osc.frequency.linearRampToValueAtTime(440, now + 0.14);
+      gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'wake') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(1047, now); osc.frequency.linearRampToValueAtTime(1319, now + 0.1);
+      gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now); osc.stop(now + 0.18);
+    } else if (type === 'msg') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(1047, now);
+      gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.start(now); osc.stop(now + 0.14);
+    }
+    setTimeout(() => ctx.close(), 500);
+  } catch(e) {}
+}
+
 const NOTE_CATEGORIES = ['General','Estudio','Ideas','Trabajo','Personal'];
 let noteFilter = 'all';
 
@@ -1333,6 +1365,42 @@ function setOrb(state, label) {
 }
 
 /* ── Render mensajes ────────────────────────────────── */
+/* ── Quick reply chips ───────────────────────────────── */
+const _QUICK_RULES = [
+  { re:/finanzas|deuda|pago|tarjeta|presupuesto|saldo/, chips:['Ver finanzas','¿Cuánto debo?','Resumen financiero'] },
+  { re:/tarea|pendiente|hacer|lista|completar/,         chips:['Ver tareas','Nueva tarea','¿Qué está pendiente?'] },
+  { re:/meta|objetivo|progreso|logro/,                  chips:['Ver metas','Actualizar progreso','¿Qué metas tengo?'] },
+  { re:/nota|apuntar|guardar|anotar/,                   chips:['Ver notas','Nueva nota'] },
+  { re:/proyecto|sprint|avance|entrega/,                chips:['Ver proyectos','Estado del proyecto'] },
+  { re:/negocio|venta|cliente|ingreso|aguacate/,        chips:['Ver negocio','Registrar venta'] },
+  { re:/clima|temperatura|lluvia|pronóstico/,           chips:['¿Cómo estará el clima mañana?','Pronóstico semanal'] },
+  { re:/recuerda|recordatorio|mañana a las/,            chips:['Ver recordatorios','/recordar 30min mensaje'] },
+];
+const _GENERIC_CHIPS = ['Continuar','Cuéntame más','OK, gracias'];
+
+function _showQuickReplies(replyText) {
+  const el = document.getElementById('quick-replies');
+  if (!el) return;
+  const lower = replyText.toLowerCase();
+  const matched = _QUICK_RULES.find(r => r.re.test(lower));
+  const chips = matched ? matched.chips : _GENERIC_CHIPS;
+  el.innerHTML = chips.map(c =>
+    `<button class="quick-chip">${c.replace(/</g,'&lt;')}</button>`
+  ).join('');
+  el.querySelectorAll('.quick-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      txt.value = btn.textContent;
+      el.innerHTML = '';
+      btnSend.click();
+    });
+  });
+}
+
+function _clearQuickReplies() {
+  const el = document.getElementById('quick-replies');
+  if (el) el.innerHTML = '';
+}
+
 function addMsg(role, text, sources) {
   document.querySelector('.welcome')?.remove();
   const wrap = document.createElement('div');
@@ -1677,6 +1745,7 @@ function stopListening() {
   clearTimeout(_listenTimer); _listenTimer = null;
   if (_listenRec) { try { _listenRec.abort(); } catch(e) {} _listenRec = null; }
   btnMic.classList.remove('on');
+  _playTone('mic-off');
   setOrb(null, 'En espera de instrucciones');
 }
 
@@ -1688,6 +1757,7 @@ function startListening() {
   _listenRec = rec;
   rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
   btnMic.classList.add('on');
+  _playTone('mic-on');
   setOrb('listening','Escuchando...');
 
   // Timeout de seguridad: si no detecta nada en 12s, libera el mic
@@ -1767,6 +1837,10 @@ function startContinuousMode() {
 
       const cmd = transcript.slice(wakeIdx + 4).replace(/^[,.:!¡¿\s]+/, '').trim();
       window.speechSynthesis.cancel();
+      _playTone('wake');
+      // Flash verde del orb al detectar la palabra clave
+      orb.classList.add('wake-flash');
+      setTimeout(() => orb.classList.remove('wake-flash'), 400);
 
       if (!cmd) {
         const ack = AR_ACKS[Math.floor(Math.random() * AR_ACKS.length)];
@@ -1876,6 +1950,27 @@ function arexAlert(modulo, mensaje, prioridad = 'info') {
   if (voiceOn || continuousMode) arexSpeak(mensaje);
 }
 window.arexAlert = arexAlert;
+
+/* ── Mensajes proactivos por inactividad ─────────────── */
+const _IDLE_MSGS = [
+  'Aquí estoy, Alexiz. ¿En qué te puedo ayudar?',
+  'Todo tranquilo. ¿Quieres revisar tus finanzas o metas del día?',
+  '¿Sigues ahí? Si necesitas algo, solo dímelo.',
+  'Recuerda que puedo ayudarte con tareas, finanzas, proyectos o cualquier pregunta.',
+];
+let _idleMsgIdx = 0;
+
+function _resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    if (isBusy || continuousMode || isSpeaking) { _resetIdleTimer(); return; }
+    const msg = _IDLE_MSGS[_idleMsgIdx % _IDLE_MSGS.length];
+    _idleMsgIdx++;
+    addMsg('arex', msg);
+    if (voiceOn) arexSpeak(msg);
+    _resetIdleTimer();
+  }, 4 * 60 * 1000); // 4 minutos
+}
 
 /* ── Auto-búsqueda por contexto ─────────────────────── */
 const AUTO_SEARCH_KW = [
@@ -2907,6 +3002,8 @@ async function handleSend() {
 
   isBusy = true;
   btnSend.disabled = true;
+  _lastInteract = Date.now();
+  _clearQuickReplies();
 
   addMsg('user', msg);
   history.push({ role:'user', content: msg });
@@ -2939,6 +3036,9 @@ async function handleSend() {
     updateMemMetric();
     updateCtxSuggestions();
     saveCurrentSession();
+    _playTone('msg');
+    _showQuickReplies(reply);
+    _resetIdleTimer();
     if (voiceOn) arexSpeak(reply); else setOrb(null,'En espera de instrucciones');
 
   } catch(err) {
@@ -2994,12 +3094,14 @@ document.getElementById('btn-tarea-man')?.addEventListener('click', () => {
   document.getElementById('tarea-input')?.focus();
 });
 btnSend.addEventListener('click', handleSend);
-txt.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
+txt.addEventListener('keydown', e => { _lastInteract = Date.now(); if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
 txt.addEventListener('input', () => {
   const s = document.getElementById('ctx-suggestions');
   if (s && txt.value.trim()) s.innerHTML = '';
 });
 btnMic.addEventListener('click', () => {
+  _lastInteract = Date.now();
+  _clearQuickReplies();
   if (btnMic.classList.contains('on')) stopListening();
   else startListening();
 });
@@ -3303,7 +3405,11 @@ async function boot() {
     // Sub-agentes: verificar alertas de pagos urgentes al arrancar
     setTimeout(() => {
       if (typeof window.checkFinanzasAlerts === 'function') window.checkFinanzasAlerts();
+      if (typeof window.checkMetasAlerts === 'function') window.checkMetasAlerts();
     }, 3500);
+
+    // Iniciar temporizador de mensajes proactivos por inactividad
+    _resetIdleTimer();
 
     // Detección de múltiples pestañas (avisa si hay otra instancia abierta)
     if (typeof BroadcastChannel !== 'undefined') {

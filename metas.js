@@ -30,6 +30,24 @@ function saveMetas(arr) {
   if (typeof arexSyncData === 'function') arexSyncData(METAS_KEY);
 }
 
+function checkMetasAlerts() {
+  if (typeof window.arexAlert !== 'function') return;
+  const hoy  = new Date(); hoy.setHours(0, 0, 0, 0);
+  const urgentes = getMetas().filter(m => {
+    if (m.completada || !m.fechaLimite) return false;
+    const fin = new Date(m.fechaLimite + 'T00:00:00');
+    const dias = Math.round((fin - hoy) / 86400000);
+    return dias >= 0 && dias <= 3;
+  });
+  urgentes.forEach(m => {
+    const fin  = new Date(m.fechaLimite + 'T00:00:00');
+    const dias = Math.round((fin - hoy) / 86400000);
+    const label = dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : `en ${dias} días`;
+    window.arexAlert('METAS', `Meta **"${m.titulo}"** vence ${label}.`, 'warn');
+  });
+}
+window.checkMetasAlerts = checkMetasAlerts;
+
 // ── Navegación ──────────────────────────────────────
 function switchMetasView(view) {
   document.querySelectorAll('#module-metas .neg-view').forEach(v =>

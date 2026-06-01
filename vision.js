@@ -199,6 +199,7 @@ function _buildPanel() {
       <div class="vp-personas-form">
         <input id="vp-p-nombre" placeholder="Nombre (ej: Margaret)" class="vp-personas-input"/>
         <textarea id="vp-p-desc" placeholder="Descripción física: cabello largo oscuro, piel morena, talla media, usa lentes..." rows="3" class="vp-personas-textarea"></textarea>
+        <div id="vp-msg" class="vp-personas-msg"></div>
         <button class="vp-personas-add-btn" id="vp-p-add">+ GUARDAR PERSONA</button>
       </div>
     </div>
@@ -644,9 +645,16 @@ function _say(msg) {
 }
 
 /* ─── Personas panel ──────────────────────────────────── */
+function _setPanelMsg(txt, isErr = false) {
+  const el = document.getElementById('vp-msg');
+  if (!el) return;
+  el.textContent = txt;
+  el.className = 'vp-personas-msg ' + (isErr ? 'err' : 'ok');
+}
+
 function _openPersonasPanel() {
-  // Cerrar panel de resultado si está abierto
   document.getElementById('vis-result')?.classList.remove('visible');
+  _setPanelMsg('');
   _renderPersonasList();
   document.getElementById('vis-personas-panel')?.classList.add('visible');
 }
@@ -678,25 +686,31 @@ function _renderPersonasList() {
 }
 
 function _addPersona() {
-  const nombre = document.getElementById('vp-p-nombre')?.value.trim();
-  const desc   = document.getElementById('vp-p-desc')?.value.trim();
-  if (!nombre || desc.length < 10) {
-    _setStatus('Nombre y descripción requeridos');
-    setTimeout(() => _setStatus('LISTO'), 2000);
+  const ni    = document.getElementById('vp-p-nombre');
+  const di    = document.getElementById('vp-p-desc');
+  const nombre = ni?.value.trim() || '';
+  const desc   = di?.value.trim() || '';
+  if (!nombre) {
+    _setPanelMsg('Escribe un nombre para la persona', true);
+    ni?.focus();
+    return;
+  }
+  if (desc.length < 3) {
+    _setPanelMsg('Agrega una descripción física (ej: cabello oscuro, piel clara)', true);
+    di?.focus();
     return;
   }
   const arr = _loadPersonas();
   const idx = arr.findIndex(p => p.nombre.toLowerCase() === nombre.toLowerCase());
-  if (idx >= 0) arr[idx].descripcion = desc;
+  const isUpdate = idx >= 0;
+  if (isUpdate) arr[idx].descripcion = desc;
   else arr.push({ nombre, descripcion: desc });
   _savePersonas(arr);
-  const ni = document.getElementById('vp-p-nombre');
-  const di = document.getElementById('vp-p-desc');
   if (ni) ni.value = '';
   if (di) di.value = '';
   _renderPersonasList();
-  _setStatus(`${nombre} guardado ✓`);
-  setTimeout(() => _setStatus(_contOn ? 'MODO CONTINUO' : 'LISTO'), 2000);
+  _setPanelMsg(isUpdate ? `${nombre} actualizado ✓` : `${nombre} guardado ✓`);
+  setTimeout(() => _setPanelMsg(''), 3000);
 }
 
 function _deletePersona(i) {
