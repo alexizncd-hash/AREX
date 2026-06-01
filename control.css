@@ -237,3 +237,172 @@
   margin-top: 0.3rem;
   line-height: 1.4;
 }
+
+/* ══ MISSION DIAGNOSTICS — 4-quadrant layout ═══════════ */
+.diag-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 7px;
+  letter-spacing: 3.5px;
+  color: var(--cyan);
+  font-family: var(--font);
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+.diag-title-text { white-space: nowrap; }
+.diag-title-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(to right, rgba(0,212,255,0.35), transparent);
+}
+.diag-title-line:first-child {
+  background: linear-gradient(to left, rgba(0,212,255,0.35), transparent);
+}
+
+.diag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+@media(max-width:560px) {
+  .diag-grid { grid-template-columns: 1fr; }
+}
+
+.diag-quad {
+  background: rgba(0,6,18,0.92);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 6px;
+  padding: 0.7rem;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+/* Corner brackets */
+.diag-quad::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 12px; height: 12px;
+  border-top: 1.5px solid var(--cyan);
+  border-left: 1.5px solid var(--cyan);
+  opacity: 0.55;
+}
+.diag-quad::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 12px; height: 12px;
+  border-bottom: 1.5px solid var(--cyan);
+  border-right: 1.5px solid var(--cyan);
+  opacity: 0.55;
+}
+
+.diag-quad-hdr {
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  font-family: var(--font);
+  border-bottom: 1px solid rgba(0,212,255,0.1);
+  padding-bottom: 5px;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.85;
+}
+.diag-ico { opacity: 0.8; }
+
+.diag-quad-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1px 0;
+}
+
+.diag-k {
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  font-family: var(--font);
+}
+
+.diag-v {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  font-family: 'Courier New', monospace;
+}
+.diag-v.ok    { color: var(--green); }
+.diag-v.err   { color: #ff4455; }
+.diag-v.warn  { color: var(--orange); }
+.diag-v.muted { color: var(--text-muted); }
+.diag-pct     { color: var(--text-muted); font-size: 7px; }
+
+.diag-storage-bar {
+  height: 2px;
+  background: rgba(0,212,255,0.1);
+  border-radius: 1px;
+  overflow: hidden;
+  margin: 3px 0 2px;
+}
+.diag-storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+  box-shadow: 0 0 4px var(--cyan);
+  border-radius: 1px;
+  transition: width 1.2s ease;
+}
+
+/* Recent log in Q4 */
+.diag-log { gap: 3px !important; }
+.diag-log-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Courier New', monospace;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(0,212,255,0.04);
+}
+.diag-log-ts {
+  color: #1a3044;
+  font-size: 8px;
+  flex-shrink: 0;
+}
+.diag-log-mod {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.diag-log-mod.chat     { background: rgba(0,212,255,0.12); color: var(--cyan); }
+.diag-log-mod.finanzas { background: rgba(0,255,170,0.12); color: var(--green); }
+.diag-log-mod.negocio  { background: rgba(255,153,0,0.12); color: var(--orange); }
+.diag-log-mod.sistema  { background: rgba(139,92,246,0.12); color: #8B5CF6; }
+.diag-log-mod.alerta   { background: rgba(255,68,68,0.12); color: #ff4444; }
+.diag-log-mod.metas    { background: rgba(0,212,255,0.07); color: var(--cyan-dim); }
+.diag-log-mod.gastos   { background: rgba(255,153,0,0.08); color: var(--orange); }
+.diag-log-mod.tareas   { background: rgba(0,255,170,0.07); color: var(--green); }
+
+.diag-log-txt {
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+}
+.diag-empty {
+  color: var(--text-muted);
+  font-size: 9px;
+  text-align: center;
+  padding: 0.8rem;
+  opacity: 0.5;
+  letter-spacing: 1px;
+}
