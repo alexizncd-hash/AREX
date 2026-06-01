@@ -35,7 +35,7 @@ function _getTelemetria() {
   const lsPct = Math.min(100, Math.round(lsBytes / (lsMax * 10.24)));
 
   // SW version
-  const swVer = window.AREX_SW_VERSION || 'v37';
+  const swVer = window.AREX_SW_VERSION || 'v49';
 
   // Uptime
   const uptimeSec = Math.floor((Date.now() - _ctrlBootTime) / 1000);
@@ -55,19 +55,105 @@ function _getTelemetria() {
 }
 
 function _renderTelemetria(el) {
-  const t = _getTelemetria();
+  const t   = _getTelemetria();
+  const log = _getBitacora();
+  const recent = log.slice(0, 6);
+  const _fmt = ms => new Date(ms).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const swVer = window.AREX_SW_VERSION || t.swVer;
+
   el.innerHTML = `
-    <div class="ctrl-section">
-      <div class="ctrl-section-label">CONECTIVIDAD</div>
-      <div class="ctrl-row"><span class="ctrl-key">GROQ IA</span><span class="ctrl-val" style="color:${t.groqOk?'var(--green)':'#ff4444'}">${t.groqOk?'ACTIVO':'SIN KEY'}</span></div>
-      <div class="ctrl-row"><span class="ctrl-key">GEMINI IA</span><span class="ctrl-val" style="color:${t.geminiOk?'var(--green)':'var(--text-muted)'}">${t.geminiOk?'ACTIVO':'NO CONFIGURADO'}</span></div>
-      <div class="ctrl-row"><span class="ctrl-key">FIREBASE</span><span class="ctrl-val" style="color:${t.fbStatus==='CONECTADO'?'var(--green)':'var(--orange)'}">${t.fbStatus}</span></div>
+    <div class="diag-title">
+      <span class="diag-title-line"></span>
+      <span class="diag-title-text">▸ MISSION DIAGNOSTICS</span>
+      <span class="diag-title-line"></span>
     </div>
-    <div class="ctrl-section">
-      <div class="ctrl-section-label">SISTEMA</div>
-      <div class="ctrl-row"><span class="ctrl-key">SERVICE WORKER</span><span class="ctrl-val">${t.swVer}</span></div>
-      <div class="ctrl-row"><span class="ctrl-key">UPTIME SESIÓN</span><span class="ctrl-val">${t.uptime}</span></div>
-      <div class="ctrl-row"><span class="ctrl-key">ALMACENAMIENTO LOCAL</span><span class="ctrl-val">${t.lsKB} KB (${t.lsPct}%)</span></div>
+    <div class="diag-grid">
+
+      <!-- Q1: AI CORE INTEGRATION -->
+      <div class="diag-quad">
+        <div class="diag-quad-hdr"><span class="diag-ico">◈</span> AI CORE</div>
+        <div class="diag-quad-body">
+          <div class="diag-row">
+            <span class="diag-k">GROQ LLAMA-4</span>
+            <span class="diag-v ${t.groqOk?'ok':'err'}">${t.groqOk?'⬤ ONLINE':'⬤ SIN KEY'}</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">GEMINI 2.5</span>
+            <span class="diag-v ${t.geminiOk?'ok':'muted'}">${t.geminiOk?'⬤ ACTIVO':'⬤ STANDBY'}</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">VISION MAVERICK</span>
+            <span class="diag-v ${t.groqOk?'ok':'muted'}">${t.groqOk?'⬤ LISTO':'⬤ SIN KEY'}</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">TAVILY SEARCH</span>
+            <span class="diag-v muted">⬤ CONFIGURADO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2: NETWORK & SYNC -->
+      <div class="diag-quad">
+        <div class="diag-quad-hdr"><span class="diag-ico">◉</span> NETWORK & SYNC</div>
+        <div class="diag-quad-body">
+          <div class="diag-row">
+            <span class="diag-k">FIREBASE DB</span>
+            <span class="diag-v ${t.fbStatus==='CONECTADO'?'ok':'warn'}">${t.fbStatus==='CONECTADO'?'⬤ ENLAZADO':'⬤ OFFLINE'}</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">SERVICE WORKER</span>
+            <span class="diag-v ok">${swVer} ⬤ ACTIVO</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">PWA MODE</span>
+            <span class="diag-v ok">⬤ INSTALADO</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">SINCRONIZACIÓN</span>
+            <span class="diag-v muted">⬤ TIEMPO REAL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3: SYSTEM STATE -->
+      <div class="diag-quad">
+        <div class="diag-quad-hdr"><span class="diag-ico">◫</span> SYSTEM STATE</div>
+        <div class="diag-quad-body">
+          <div class="diag-row">
+            <span class="diag-k">UPTIME SESIÓN</span>
+            <span class="diag-v ok">${t.uptime}</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">ALMACENAMIENTO</span>
+            <span class="diag-v ${t.lsPct>70?'warn':'ok'}">${t.lsKB} KB <span class="diag-pct">(${t.lsPct}%)</span></span>
+          </div>
+          <div class="diag-storage-bar">
+            <div class="diag-storage-fill" style="width:${t.lsPct}%"></div>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">ENTRADAS DE LOG</span>
+            <span class="diag-v muted">${log.length} registros</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-k">SESIÓN ACTUAL</span>
+            <span class="diag-v ok">⬤ ACTIVA</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q4: RECENT LOG -->
+      <div class="diag-quad">
+        <div class="diag-quad-hdr"><span class="diag-ico">◷</span> ACTIVIDAD RECIENTE</div>
+        <div class="diag-quad-body diag-log">
+          ${recent.length ? recent.map(e => `
+            <div class="diag-log-row">
+              <span class="diag-log-ts">${_fmt(e.ts)}</span>
+              <span class="diag-log-mod ${e.modulo}">${e.modulo.slice(0,5).toUpperCase()}</span>
+              <span class="diag-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,26)}</span>
+            </div>`).join('') : '<div class="diag-empty">Sin actividad reciente</div>'}
+        </div>
+      </div>
+
     </div>`;
 }
 

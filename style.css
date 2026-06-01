@@ -2982,4 +2982,436 @@ header {
 .status-hablando    { color: var(--green);  border-color: var(--green);  animation: pulse 1s ease-in-out infinite; }
 .status-escuchando  { color: var(--green);  border-color: var(--green); }
 .status-sinconexion { color: var(--orange); border-color: var(--orange); }
+
+/* ═══════════════════════════════════════════════════════
+   AREX — FUTURISTIC HUD DESIGN SYSTEM v49
+   Sistema visual unificado para todos los módulos
+═══════════════════════════════════════════════════════ */
+
+/* ── Variables adicionales ─────────────────────────────── */
+:root {
+  --glass-bg:        rgba(0,5,18,0.82);
+  --glass-bg-strong: rgba(0,3,12,0.92);
+  --glass-border:    rgba(0,212,255,0.14);
+  --glass-border-hi: rgba(0,212,255,0.32);
+  --glass-blur:      12px;
+  --neon-glow-sm:    0 0 8px rgba(0,212,255,0.25);
+  --neon-glow-md:    0 0 18px rgba(0,212,255,0.35);
+  --neon-glow-lg:    0 0 35px rgba(0,212,255,0.4);
+  --bracket-size:    14px;
+}
+
+/* ══ ORB STAGE — 3D orbital rings ═══════════════════════ */
+.orb-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 340px;
+  perspective-origin: 50% 50%;
+}
+
+/* Larger orb */
+.orb {
+  width:  110px !important;
+  height: 110px !important;
+  box-shadow:
+    0 0 40px rgba(0,212,255,0.45),
+    0 0 80px rgba(0,212,255,0.18),
+    0 0 120px rgba(0,212,255,0.07),
+    inset 0 0 40px rgba(0,212,255,0.14) !important;
+}
+
+/* 3D orbital rings — shared base */
+.orb-ring {
+  position: absolute;
+  border-radius: 50%;
+  left: 50%; top: 50%;
+  pointer-events: none;
+}
+
+/* Ring 1 — cyan, tilted 68°, spins CW */
+.orb-ring.r1 {
+  width: 152px; height: 152px;
+  margin-left: -76px; margin-top: -76px;
+  border: 1.5px solid rgba(0,212,255,0.5);
+  box-shadow: 0 0 10px rgba(0,212,255,0.18), inset 0 0 6px rgba(0,212,255,0.08);
+  animation: orb-orbit-r1 8s linear infinite;
+}
+
+/* Ring 2 — purple dashed, tilted 72°, spins CCW */
+.orb-ring.r2 {
+  width: 188px; height: 188px;
+  margin-left: -94px; margin-top: -94px;
+  border: 1px dashed rgba(139,92,246,0.45);
+  box-shadow: 0 0 8px rgba(139,92,246,0.15);
+  animation: orb-orbit-r2 13s linear infinite reverse;
+}
+
+/* Ring 3 — green, tilted 62°, spins CW fast */
+.orb-ring.r3 {
+  width: 122px; height: 122px;
+  margin-left: -61px; margin-top: -61px;
+  border: 1px solid rgba(0,255,170,0.38);
+  animation: orb-orbit-r3 5.5s linear infinite;
+}
+
+@keyframes orb-orbit-r1 {
+  from { transform: rotateX(68deg) rotateZ(0deg); }
+  to   { transform: rotateX(68deg) rotateZ(360deg); }
+}
+@keyframes orb-orbit-r2 {
+  from { transform: rotateX(72deg) rotateZ(40deg); }
+  to   { transform: rotateX(72deg) rotateZ(400deg); }
+}
+@keyframes orb-orbit-r3 {
+  from { transform: rotateX(62deg) rotateZ(-15deg); }
+  to   { transform: rotateX(62deg) rotateZ(345deg); }
+}
+
+/* Mobile: scale down */
+@media (max-width:400px) {
+  .orb { width: 90px !important; height: 90px !important; }
+  .orb-ring.r1 { width:126px; height:126px; margin-left:-63px; margin-top:-63px; }
+  .orb-ring.r2 { width:154px; height:154px; margin-left:-77px; margin-top:-77px; }
+  .orb-ring.r3 { width:102px; height:102px; margin-left:-51px; margin-top:-51px; }
+}
+
+/* ══ GLOBAL HUD CARD SYSTEM ════════════════════════════ */
+
+/* Corner bracket mixin — top-left + bottom-right accents */
+.hud-card {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+.hud-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px;
+  width: var(--bracket-size); height: var(--bracket-size);
+  border-top: 1.5px solid var(--cyan);
+  border-left: 1.5px solid var(--cyan);
+  border-radius: 3px 0 0 0;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.hud-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: var(--bracket-size); height: var(--bracket-size);
+  border-bottom: 1.5px solid var(--cyan);
+  border-right: 1.5px solid var(--cyan);
+  border-radius: 0 0 3px 0;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ══ FLOATING HUD PANELS (inicio) ═══════════════════════ */
+.hud-panel {
+  background: rgba(0,5,18,0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0,212,255,0.2) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.5), 0 0 1px rgba(0,212,255,0.12) !important;
+  position: relative;
+}
+.hud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 12px; height: 12px;
+  border-top: 1.5px solid var(--cyan);
+  border-left: 1.5px solid var(--cyan);
+  pointer-events: none;
+  opacity: 0.65;
+}
+.hud-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 12px; height: 12px;
+  border-bottom: 1.5px solid var(--cyan);
+  border-right: 1.5px solid var(--cyan);
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+/* ══ DASHBOARD WIDGETS — INICIO ═════════════════════════ */
+.dash-widget {
+  background: rgba(0,8,20,0.88) !important;
+  border: 1px solid rgba(0,212,255,0.14) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.05);
+  position: relative;
+}
+.dash-widget::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 12px; height: 12px;
+  border-top: 1.5px solid rgba(0,212,255,0.5);
+  border-left: 1.5px solid rgba(0,212,255,0.5);
+  pointer-events: none;
+}
+.dash-widget::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 12px; height: 12px;
+  border-bottom: 1.5px solid rgba(0,212,255,0.5);
+  border-right: 1.5px solid rgba(0,212,255,0.5);
+  pointer-events: none;
+}
+.dash-w-title {
+  font-size: 0.58rem !important;
+  letter-spacing: 3px !important;
+  color: var(--cyan) !important;
+  opacity: 0.75;
+}
+.dash-kpi {
+  background: rgba(0,212,255,0.04) !important;
+  border: 1px solid rgba(0,212,255,0.12) !important;
+  backdrop-filter: blur(6px);
+  position: relative;
+}
+.dash-topbar {
+  background: rgba(0,8,20,0.88) !important;
+  border: 1px solid rgba(0,212,255,0.14) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* ══ MODULE PANELS — global glassmorphism ═══════════════ */
+.module-panel {
+  background: rgba(0,5,16,0.78) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ══ CHAT AREA ═══════════════════════════════════════════ */
+.chat {
+  background: linear-gradient(180deg,
+    rgba(0,6,18,0.88) 0%,
+    rgba(0,3,12,0.92) 100%) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(0,212,255,0.11) !important;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,212,255,0.05) !important;
+}
+.msg.user .bubble {
+  background: rgba(0,212,255,0.07) !important;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0,212,255,0.22) !important;
+  border-right: 3px solid var(--cyan) !important;
+}
+.msg.arex .bubble {
+  background: rgba(0,10,24,0.82) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,212,255,0.12) !important;
+  border-left: 3px solid var(--cyan) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.04) !important;
+}
+
+/* ══ INPUT BAR ═══════════════════════════════════════════ */
+.input-bar {
+  background: rgba(0,6,18,0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0,212,255,0.18) !important;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.6), 0 0 1px rgba(0,212,255,0.1), inset 0 1px 0 rgba(0,212,255,0.06) !important;
+}
+.input-bar:focus-within {
+  border-color: rgba(0,212,255,0.42) !important;
+  box-shadow: 0 0 0 1px rgba(0,212,255,0.1), 0 4px 32px rgba(0,0,0,0.6), 0 0 24px rgba(0,212,255,0.1) !important;
+}
+
+/* ══ NAVIGATION DOCK ════════════════════════════════════ */
+#dock {
+  background: rgba(1,6,14,0.97) !important;
+  border-right: 1px solid rgba(0,212,255,0.12) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+#dock .nav-btn.active {
+  background: rgba(0,212,255,0.1) !important;
+  border-color: rgba(0,212,255,0.5) !important;
+  color: var(--cyan) !important;
+  box-shadow: 0 0 20px rgba(0,212,255,0.2), inset 0 0 10px rgba(0,212,255,0.06) !important;
+  border-left: 2px solid var(--cyan) !important;
+}
+
+/* ══ MISSION CONTROL — agent cards ══════════════════════ */
+.ctrl-agent-card {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0,8,20,0.88) !important;
+  border: 1px solid rgba(0,212,255,0.13) !important;
+  border-left: 3px solid var(--agent-color, var(--cyan)) !important;
+  position: relative;
+}
+.ctrl-agent-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 10px; height: 10px;
+  border-bottom: 1px solid var(--agent-color, var(--cyan));
+  border-right: 1px solid var(--agent-color, var(--cyan));
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ══ FINANZAS / GASTOS / METAS / NEGOCIO cards ══════════ */
+/* Generic card glassmorphism */
+.fin-card, .deuda-card, .cuenta-card,
+.meta-card,
+.gasto-group,
+.negocio-card, .negocio-stats-card,
+.proyecto-card,
+.control-card {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Section header bars — futuristic HUD style */
+.finanzas-header,
+.gastos-header,
+.negocio-header,
+.metas-header,
+.proyectos-header,
+.tareas-header-bar,
+.sos-topbar {
+  border-bottom: 1px solid rgba(0,212,255,0.14) !important;
+}
+
+/* ══ SIDEBAR PANEL ═══════════════════════════════════════ */
+.sidebar {
+  background: rgba(2,8,18,0.97) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(0,212,255,0.1) !important;
+}
+
+/* ══ MODALS ══════════════════════════════════════════════ */
+.modal-box {
+  background: linear-gradient(135deg, rgba(0,8,22,0.98) 0%, rgba(0,4,14,0.99) 100%) !important;
+  border: 1px solid rgba(0,212,255,0.22) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.75), 0 0 40px rgba(0,212,255,0.06) !important;
+  position: relative;
+}
+.modal-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 16px; height: 16px;
+  border-top: 1.5px solid var(--cyan);
+  border-left: 1.5px solid var(--cyan);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ══ QUICK GRID BUTTONS (welcome) ════════════════════════ */
+.quick-btn {
+  background: rgba(0,8,20,0.88) !important;
+  border: 1px solid rgba(0,212,255,0.18) !important;
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+.quick-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 8px; height: 8px;
+  border-top: 1px solid rgba(0,212,255,0.5);
+  border-left: 1px solid rgba(0,212,255,0.5);
+  pointer-events: none;
+}
+.quick-btn:hover {
+  background: rgba(0,212,255,0.08) !important;
+  border-color: rgba(0,212,255,0.5) !important;
+  box-shadow: 0 0 18px rgba(0,212,255,0.15) !important;
+}
+
+/* ══ STATUS FLOAT — enhanced ════════════════════════════ */
+.status-float {
+  background: rgba(0,8,20,0.88) !important;
+  border: 1px solid rgba(0,212,255,0.3) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 16px rgba(0,212,255,0.12), inset 0 0 8px rgba(0,212,255,0.04) !important;
+}
+
+/* ══ NOTES PANEL ════════════════════════════════════════ */
+.notes-panel {
+  background: rgba(2,10,22,0.97) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(0,212,255,0.12) !important;
+}
+.note-item {
+  background: rgba(0,8,20,0.85) !important;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0,212,255,0.1) !important;
+  border-left: 2px solid var(--cyan) !important;
+}
+
+/* ══ TAREA ITEMS ════════════════════════════════════════ */
+.tarea-item {
+  background: rgba(0,10,24,0.88) !important;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0,212,255,0.1) !important;
+  border-left-width: 3px !important;
+}
+
+/* ══ SOS CARDS ══════════════════════════════════════════ */
+.sos-card {
+  background: rgba(0,10,24,0.88) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,212,255,0.1) !important;
+}
+
+/* ══ BACKGROUND ENHANCEMENT ══════════════════════════════ */
+body::before {
+  background:
+    radial-gradient(ellipse 70% 35% at 50% 0%, rgba(0,212,255,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 20% 80%, rgba(139,92,246,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(0,255,170,0.03) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 50% 100%, rgba(0,5,14,0.8) 0%, transparent 100%) !important;
+}
+
+/* ══ HEADER ══════════════════════════════════════════════ */
+header {
+  background: rgba(0,4,12,0.88) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0,212,255,0.1) !important;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.4) !important;
+}
+
+/* ══ FOOTER ══════════════════════════════════════════════ */
+footer {
+  background: rgba(0,4,12,0.88) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(0,212,255,0.1) !important;
+}
+
+/* ══ BOOT SCREEN ═════════════════════════════════════════ */
+#boot-screen {
+  background: radial-gradient(ellipse at center, rgba(0,10,25,1) 0%, rgba(0,0,0,1) 70%) !important;
+}
+
+/* ══ MOBILE BOTTOM NAV (if present) ═════════════════════ */
+#bottom-nav, .bottom-nav {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(0,4,12,0.95) !important;
+  border-top: 1px solid rgba(0,212,255,0.12) !important;
+}
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
