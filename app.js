@@ -995,141 +995,302 @@ function renderDashboard() {
   const el = document.getElementById('dash-content');
   if (!el) return;
 
-  const fin       = getFinanzasData();
-  const tareas    = getTareas();
+  const fin        = getFinanzasData();
+  const tareas     = getTareas();
   const pendientes = sortPending(tareas.filter(t => !t.done));
-  const urgentes  = pendientes.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; });
-  const proximas  = pendientes.filter(t => { const u = urgenciaTarea(t); return u && !['urg-vencida','urg-hoy'].includes(u.cls); }).slice(0, 3);
-  const sinFecha  = pendientes.filter(t => !t.fecha).slice(0, 2);
-  const mostrar   = [...urgentes, ...proximas, ...sinFecha].slice(0, 6);
+  const urgentes   = pendientes.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; });
+  const mostrar    = pendientes.slice(0, 7);
 
-  const deuda    = calcularDeudaTotal();
-  const margen   = calcularMargen();
-  const ingreso  = fin.config.ingresoMensual;
-  const pagos    = obtenerProximosPagos(30);
+  const deuda      = calcularDeudaTotal();
+  const margen     = calcularMargen();
+  const ingreso    = fin.config.ingresoMensual;
+  const gastosMes  = ingreso - margen;
+  const pagos      = obtenerProximosPagos(30);
 
-  const hoy      = new Date();
-  const diasMes  = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
-  const pctMes   = Math.round((hoy.getDate() / diasMes) * 100);
-  const fechaStr = hoy.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-  const mesStr   = hoy.toLocaleDateString('es-MX', { month:'long', year:'numeric' }).toUpperCase();
+  const hoy       = new Date();
+  const diasMes   = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const pctMes    = Math.round((hoy.getDate() / diasMes) * 100);
+  const diasRest  = diasMes - hoy.getDate();
+  const semana    = hoy.toLocaleDateString('es-MX', { weekday:'long' }).toUpperCase();
+  const diaNum    = String(hoy.getDate()).padStart(2, '0');
+  const mesStr    = hoy.toLocaleDateString('es-MX', { month:'long' }).toUpperCase();
+  const anio      = hoy.getFullYear();
 
-  const mkTareaItem = t => {
-    const u    = urgenciaTarea(t);
-    const prio = t.prioridad || 'media';
-    const esUrgente = u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
-    return `<div class="dash-tarea-item${esUrgente ? ' urgent' : ''}">
-      <button class="dash-check" data-id="${t.id}"></button>
-      <span class="dash-tarea-txt">${t.text.replace(/</g,'&lt;')}</span>
-      ${u ? `<span class="dash-urg ${u.cls}">${u.icon} ${u.txt}</span>`
-           : `<span class="dash-prio-dot prio-${prio}"></span>`}
+  const metas     = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).slice(0,4) : [];
+  const bitacora  = (typeof _getBitacora === 'function') ? _getBitacora().slice(0,6) : [];
+
+  const groqOk  = !!(window.AREX_CONFIG?.groqKey);
+  const fbOk    = !!(window._arexDb);
+  const gemOk   = !!(window.AREX_CONFIG?.geminiKey);
+
+  // Month SVG ring
+  const R = 18, C = +(R * 2 * Math.PI).toFixed(1);
+  const OFF = +(C * (1 - pctMes / 100)).toFixed(1);
+  const monthRing = `<svg class="dhud-month-svg" viewBox="0 0 48 48" width="48" height="48">
+    <circle cx="24" cy="24" r="${R}" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="3"/>
+    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--cyan)" stroke-width="3"
+      stroke-dasharray="${C}" stroke-dashoffset="${OFF}" stroke-linecap="round"
+      transform="rotate(-90 24 24)" style="transition:stroke-dashoffset 1.2s ease"/>
+    <text x="24" y="28" text-anchor="middle" fill="var(--cyan)"
+      font-size="9" font-family="Courier New,monospace" font-weight="700">${pctMes}%</text>
+  </svg>`;
+
+  const MODS = [
+    { id:'chat',      lbl:'IA',       ico:'◈', col:'var(--cyan)'  },
+    { id:'finanzas',  lbl:'FIN',      ico:'◉', col:'#00ffaa'      },
+    { id:'tareas',    lbl:'TAREAS',   ico:'◫', col:'var(--cyan)'  },
+    { id:'notas',     lbl:'NOTAS',    ico:'◷', col:'#8B5CF6'      },
+    { id:'negocio',   lbl:'NEGOCIO',  ico:'◈', col:'#ff9900'      },
+    { id:'gastos',    lbl:'GASTOS',   ico:'◉', col:'#ff6644'      },
+    { id:'metas',     lbl:'METAS',    ico:'◎', col:'var(--cyan)'  },
+    { id:'proyectos', lbl:'PROYECT',  ico:'◫', col:'#8B5CF6'      },
+    { id:'control',   lbl:'CTRL',     ico:'◷', col:'var(--cyan)'  },
+  ];
+
+  const mkTarea = t => {
+    const u   = urgenciaTarea(t);
+    const urg = u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
+    return `<div class="dhud-tarea-row${urg ? ' dhud-urg' : ''}">
+      <button class="dhud-check" data-id="${t.id}"></button>
+      <span class="dhud-tarea-txt">${t.text.replace(/</g,'&lt;')}</span>
+      <span class="dhud-prio-dot dhud-prio-${t.prioridad||'media'}"></span>
+      ${u ? `<span class="dhud-flag dhud-flag-${u.cls}">${u.icon}</span>` : ''}
+    </div>`;
+  };
+
+  const mkKpi = (lbl, val, max, color, display) => {
+    const pct = Math.min(100, Math.round(Math.abs(val) / Math.max(1, Math.abs(max)) * 100));
+    return `<div class="dhud-kpi-row">
+      <div class="dhud-kpi-hdr">
+        <span class="dhud-kpi-lbl">${lbl}</span>
+        <span class="dhud-kpi-num" style="color:${color}">${display}</span>
+      </div>
+      <div class="dhud-kpi-track">
+        <div class="dhud-kpi-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
+  };
+
+  const mkGoal = m => {
+    const pct = m.porcentaje ?? 0;
+    const r2 = 12, c2 = +(r2 * 2 * Math.PI).toFixed(1);
+    const o2 = +(c2 * (1 - pct / 100)).toFixed(1);
+    const gc  = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--cyan)' : 'var(--orange)';
+    return `<div class="dhud-goal-row">
+      <svg class="dhud-goal-ring" viewBox="0 0 32 32" width="32" height="32">
+        <circle cx="16" cy="16" r="${r2}" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="2.5"/>
+        <circle cx="16" cy="16" r="${r2}" fill="none" stroke="${gc}" stroke-width="2.5"
+          stroke-dasharray="${c2}" stroke-dashoffset="${o2}" stroke-linecap="round" transform="rotate(-90 16 16)"/>
+      </svg>
+      <div class="dhud-goal-info">
+        <span class="dhud-goal-txt">${(m.titulo||m.nombre||'Meta').replace(/</g,'&lt;').slice(0,28)}</span>
+        <span class="dhud-goal-pct" style="color:${gc}">${pct}%</span>
+      </div>
+    </div>`;
+  };
+
+  const mkLog = e => {
+    const t = new Date(e.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="dhud-log-row">
+      <span class="dhud-log-ts">${t}</span>
+      <span class="dhud-log-mod dhud-lmod-${e.modulo}">${e.modulo.slice(0,4).toUpperCase()}</span>
+      <span class="dhud-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,32)}</span>
     </div>`;
   };
 
   el.innerHTML = `
-    <div class="dash-topbar">
-      <span class="dash-fecha-hoy">${fechaStr.toUpperCase()}</span>
-      <div class="dash-quick-stats">
-        ${urgentes.length
-          ? `<span class="dash-stat dash-stat-alert">${urgentes.length} URGENTE${urgentes.length!==1?'S':''}</span>`
-          : `<span class="dash-stat">${pendientes.length} PENDIENTE${pendientes.length!==1?'S':''}</span>`}
-        <span id="dash-sync-badge" class="dash-sync-badge"></span>
+    <!-- ── COMMAND HEADER ─────────────────────────────── -->
+    <div class="dhud-header">
+      <div class="dhud-date-block">
+        <div class="dhud-weekday">${semana}</div>
+        <div class="dhud-date-num">${diaNum} · ${mesStr} · ${anio}</div>
+        <div class="dhud-live-clock" id="dhud-clock">--:--:--</div>
       </div>
-    </div>
-
-    <div class="dash-grid">
-
-      <div class="dash-widget">
-        <div class="dash-w-header">
-          <span class="dash-w-title">TAREAS</span>
-          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('tareas')">VER TODAS →</button>
+      <div class="dhud-sys-status">
+        <div class="dhud-sys-row"><span class="dhud-sys-dot ${groqOk?'ok':'off'}"></span><span class="dhud-sys-name">GROQ AI</span><span class="dhud-sys-val ${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</span></div>
+        <div class="dhud-sys-row"><span class="dhud-sys-dot ${fbOk?'ok':'warn'}"></span><span class="dhud-sys-name">FIREBASE</span><span class="dhud-sys-val ${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</span></div>
+        <div class="dhud-sys-row"><span class="dhud-sys-dot ${gemOk?'ok':'muted'}"></span><span class="dhud-sys-name">GEMINI</span><span class="dhud-sys-val ${gemOk?'ok':'muted'}">${gemOk?'ACTIVO':'STANDBY'}</span></div>
+      </div>
+      <div class="dhud-month-block">
+        ${monthRing}
+        <div class="dhud-month-info">
+          <div class="dhud-month-lbl">MES · ${pctMes}%</div>
+          <div class="dhud-month-days">${diasRest} días rest.</div>
+          <div class="dhud-month-days">${diaNum} de ${diasMes}</div>
         </div>
-        ${mostrar.length
-          ? mostrar.map(mkTareaItem).join('')
-          : '<div class="dash-empty">Sin tareas pendientes</div>'}
       </div>
+    </div>
 
-      <div class="dash-widget">
-        <div class="dash-w-header">
-          <span class="dash-w-title">FINANZAS</span>
-          <button class="dash-w-link" onclick="AREXNav.cambiarModulo('finanzas')">VER TODO →</button>
+    <!-- ── MODULE LAUNCHERS ──────────────────────────── -->
+    <div class="dhud-launchers">
+      ${MODS.map(m=>`
+        <button class="dhud-launcher" onclick="AREXNav.cambiarModulo('${m.id}')" style="--lc:${m.col}">
+          <div class="dhud-lnch-ring"></div>
+          <span class="dhud-lnch-ico">${m.ico}</span>
+          <span class="dhud-lnch-lbl">${m.lbl}</span>
+        </button>`).join('')}
+    </div>
+
+    <!-- ── DIVIDER ────────────────────────────────────── -->
+    <div class="dhud-divider">
+      <span class="dhud-div-line"></span>
+      <span class="dhud-div-label">◈ INTEL OPERACIONAL</span>
+      <span class="dhud-div-line dhud-div-line-r"></span>
+    </div>
+
+    <!-- ── MAIN 2-COL ─────────────────────────────────── -->
+    <div class="dhud-main-grid">
+
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◉</span>
+          <span class="dhud-panel-title">TACTICAL</span>
+          <span class="dhud-badge${urgentes.length?' dhud-badge-alert':''}">${pendientes.length}</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('tareas')">VER TODAS →</button>
         </div>
-        <div class="dash-kpis">
-          <div class="dash-kpi">
-            <span class="dash-kpi-label">INGRESO</span>
-            <span class="dash-kpi-val kpi-green">${formatearMoneda(ingreso)}</span>
-          </div>
-          <div class="dash-kpi">
-            <span class="dash-kpi-label">DEUDA</span>
-            <span class="dash-kpi-val kpi-red">${formatearMoneda(deuda)}</span>
-          </div>
-          <div class="dash-kpi">
-            <span class="dash-kpi-label">MARGEN</span>
-            <span class="dash-kpi-val ${margen >= 0 ? 'kpi-green' : 'kpi-red'}">${formatearMoneda(margen)}</span>
-          </div>
+        <div class="dhud-tarea-list" id="dhud-tarea-list">
+          ${mostrar.length ? mostrar.map(mkTarea).join('') : '<div class="dhud-empty">◎ Sin misiones pendientes</div>'}
         </div>
-        <div class="dash-w-subtitle">PRÓXIMOS PAGOS</div>
-        ${pagos.length
-          ? pagos.map(p => `
-            <div class="dash-pago urg-pago-${p.urgencia}">
-              <span class="dash-pago-nom">${p.tarjeta}</span>
-              <span class="dash-pago-dias">${p.diasRestantes === 0 ? 'HOY' : p.diasRestantes + 'd'}</span>
-              <span class="dash-pago-monto">${formatearMoneda(p.pagoMinimo)}</span>
-            </div>`).join('')
-          : '<div class="dash-empty">Sin pagos en los próximos 30 días</div>'}
+        <div class="dhud-quick-add">
+          <input class="dhud-qa-input" id="dhud-qa-txt" placeholder="+ Nueva misión..." autocomplete="off"/>
+          <select class="dhud-qa-prio" id="dhud-qa-prio">
+            <option value="baja">BAJA</option>
+            <option value="media" selected>MED</option>
+            <option value="alta">ALTA</option>
+          </select>
+          <button class="dhud-qa-btn" id="dhud-qa-add">ADD</button>
+        </div>
       </div>
 
-    </div>
-
-    <div id="dash-weather" class="dash-widget dash-w-full"></div>
-
-    <div id="dash-notas-widget" class="dash-widget dash-w-full" style="display:none">
-      <div class="dash-w-header">
-        <span class="dash-w-title">📌 NOTAS FIJADAS</span>
-        <button class="dash-w-link" onclick="AREXNav.cambiarModulo('notas')">VER TODAS →</button>
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◈</span>
+          <span class="dhud-panel-title">INTEL FINANCIERO</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('finanzas')">VER →</button>
+        </div>
+        <div class="dhud-kpi-list">
+          ${mkKpi('INGRESO MENSUAL', ingreso,  ingreso, '#00ffaa', formatearMoneda(ingreso))}
+          ${mkKpi('DEUDA TOTAL',     deuda,    ingreso, '#ff4455', formatearMoneda(deuda))}
+          ${mkKpi('GASTOS',          gastosMes, ingreso, '#ff9900', formatearMoneda(gastosMes))}
+          ${mkKpi('MARGEN LIBRE',    Math.abs(margen), ingreso, margen>=0?'#00ffaa':'#ff4455', formatearMoneda(margen))}
+        </div>
+        ${pagos.length?`
+        <div class="dhud-pagos-hdr">◷ PRÓXIMOS PAGOS</div>
+        <div class="dhud-pagos-list">${pagos.slice(0,3).map(p=>`
+          <div class="dhud-pago-row dhud-pago-${p.urgencia}">
+            <span class="dhud-pago-nom">${p.tarjeta}</span>
+            <span class="dhud-pago-dias">${p.diasRestantes===0?'⚠ HOY':p.diasRestantes+'d'}</span>
+            <span class="dhud-pago-amt">${formatearMoneda(p.pagoMinimo)}</span>
+          </div>`).join('')}
+        </div>`:''}
       </div>
-      <div class="dash-notas-body"></div>
     </div>
 
-    <div class="dash-widget dash-w-full">
-      <div class="dash-w-header">
-        <span class="dash-w-title">RECORDATORIOS</span>
-        <button class="dash-w-link" onclick="document.getElementById('txt')?.focus()">+ NUEVO →</button>
+    <!-- ── BOTTOM 2-COL ───────────────────────────────── -->
+    <div class="dhud-bottom-grid">
+
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◎</span>
+          <span class="dhud-panel-title">MISIONES ACTIVAS</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('metas')">VER →</button>
+        </div>
+        ${metas.length ? metas.map(mkGoal).join('') : '<div class="dhud-empty">◎ Sin metas — crea en METAS</div>'}
       </div>
-      <div id="dash-rec-body">${_buildRecHtml()}</div>
+
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◷</span>
+          <span class="dhud-panel-title">INTEL LOG</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('control')">CTRL →</button>
+        </div>
+        ${bitacora.length ? bitacora.map(mkLog).join('') : '<div class="dhud-empty">Sin actividad registrada</div>'}
+      </div>
     </div>
 
-    <div class="dash-mes-wrap">
-      <span class="dash-mes-label">${mesStr} — DÍA ${hoy.getDate()} DE ${diasMes} (${pctMes}%)</span>
-      <div class="dash-mes-bar"><div class="dash-mes-fill" style="width:${pctMes}%"></div></div>
+    <!-- ── RECORDATORIOS ──────────────────────────────── -->
+    <div class="dhud-panel">
+      <div class="dhud-panel-hdr">
+        <span class="dhud-panel-ico">⏰</span>
+        <span class="dhud-panel-title">TRANSMISIONES</span>
+        <button class="dhud-panel-link" onclick="document.getElementById('txt')?.focus()">+ NUEVO →</button>
+      </div>
+      <div id="dash-rec-body" class="dhud-rec-body">${_buildRecHtml()}</div>
     </div>
+
+    <!-- ── WEATHER ────────────────────────────────────── -->
+    <div id="dash-weather" class="dhud-panel"></div>
+
+    <!-- ── NOTAS FIJADAS ──────────────────────────────── -->
+    <div id="dash-notas-widget" style="display:none">
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">📌</span>
+          <span class="dhud-panel-title">NOTAS FIJADAS</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('notas')">VER →</button>
+        </div>
+        <div class="dash-notas-body"></div>
+      </div>
+    </div>
+
+    <!-- ── EVIDENCIAS ─────────────────────────────────── -->
+    <div id="ev-section"></div>
+    <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
   `;
 
-  el.querySelectorAll('.dash-check').forEach(btn =>
+  // Task checkboxes
+  el.querySelectorAll('.dhud-check').forEach(btn =>
     btn.addEventListener('click', () => { toggleTarea(btn.dataset.id); renderDashboard(); })
   );
   el.querySelectorAll('.rec-dismiss').forEach(b =>
     b.addEventListener('click', () => dismissReminder(b.dataset.id))
   );
 
+  // Quick-add task
+  const qaAdd   = document.getElementById('dhud-qa-add');
+  const qaInput = document.getElementById('dhud-qa-txt');
+  const qaPrio  = document.getElementById('dhud-qa-prio');
+  if (qaAdd && qaInput) {
+    const doAdd = () => {
+      const txt = qaInput.value.trim();
+      if (!txt) { qaInput.classList.add('dhud-qa-shake'); setTimeout(()=>qaInput.classList.remove('dhud-qa-shake'),400); qaInput.focus(); return; }
+      addTarea(txt, '', qaPrio?.value || 'media');
+      qaInput.value = '';
+      renderDashboard();
+    };
+    qaAdd.addEventListener('click', doAdd);
+    qaInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+  }
+
+  // Live clock — ticks every second while inicio is active
+  clearInterval(window._dhudClockTimer);
+  const tickClock = () => {
+    const c = document.getElementById('dhud-clock');
+    if (c && document.getElementById('module-inicio')?.classList.contains('active')) {
+      c.textContent = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    } else {
+      clearInterval(window._dhudClockTimer);
+    }
+  };
+  tickClock();
+  window._dhudClockTimer = setInterval(tickClock, 1000);
+
   renderWeatherWidget();
   renderNotasWidget();
 
-  // Tablero de Evidencias
-  const evSection = el.querySelector('#ev-section') || (() => {
-    const s = document.createElement('div');
-    s.id = 'ev-section';
-    s.style.cssText = 'padding:0 1rem 1rem;';
-    el.appendChild(s);
-    return s;
-  })();
-  evSection.innerHTML = `
-    <div class="ev-header" style="margin-bottom:0.5rem;">
-      <span style="font-size:10px;letter-spacing:4px;color:var(--cyan);font-weight:700;">EVIDENCIAS</span>
-      <span class="proj-count" id="ev-count">0</span>
-    </div>
-    <div class="ev-board" id="ev-board"></div>`;
-  if (typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
+  // Evidencias
+  const evSection = document.getElementById('ev-section');
+  if (evSection) {
+    evSection.innerHTML = `<div class="dhud-panel">
+      <div class="dhud-panel-hdr">
+        <span class="dhud-panel-ico">◈</span>
+        <span class="dhud-panel-title">EVIDENCIAS</span>
+        <span class="proj-count" id="ev-count">0</span>
+      </div>
+      <div class="ev-board" id="ev-board"></div>
+    </div>`;
+    if (typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
+  }
 }
 
 function renderSessionsList() {
