@@ -3382,3 +3382,416 @@ footer {
 }
 
 @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.5;} }
+
+
+/* ═══════════════════════════════════════════════════════
+   AREX HOLO ENGINE — Tony Stark / JARVIS Interface Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Canvas layers ───────────────────────────────────── */
+#holo-hex-cv {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  opacity: 0.85;
+}
+#holo-particles-cv {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+}
+#holo-svg-streams {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1;
+}
+
+/* ── Remove square CSS grid (replaced by hex canvas) ── */
+#workspace {
+  background-image: none !important;
+  background-size: auto !important;
+}
+
+/* ── Floating panel state ────────────────────────────── */
+.holo-floating {
+  border: 1px solid rgba(0,212,255,.75) !important;
+  box-shadow:
+    0 0 50px rgba(0,212,255,.35),
+    0 0 100px rgba(0,212,255,.12),
+    0 24px 70px rgba(0,0,0,.85),
+    inset 0 0 40px rgba(0,212,255,.06) !important;
+  backdrop-filter: blur(28px) !important;
+  border-radius: 10px !important;
+  animation: holo-pop .3s cubic-bezier(.16,1,.3,1) !important;
+}
+@keyframes holo-pop {
+  from { transform: scale(.93) translateY(10px); opacity: .6; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+/* ── Float toggle button ─────────────────────────────── */
+.holo-float-btn {
+  background: transparent;
+  border: 1px solid rgba(0,212,255,.28);
+  color: rgba(0,212,255,.45);
+  font-size: 11px; line-height: 1;
+  padding: 1px 5px; cursor: pointer;
+  border-radius: 2px; margin-left: auto;
+  font-family: var(--font);
+  transition: all .2s;
+}
+.holo-float-btn:hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0,212,255,.3);
+  background: rgba(0,212,255,.06);
+}
+
+/* ── Orb click ripple ────────────────────────────────── */
+.holo-orb-ripple {
+  position: absolute;
+  width: 130px; height: 130px;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  border: 2px solid rgba(0,212,255,.85);
+  box-shadow: 0 0 20px rgba(0,212,255,.4);
+  pointer-events: none;
+  animation: holo-ripple .9s ease-out forwards;
+  z-index: 10;
+}
+@keyframes holo-ripple {
+  from { transform: translate(-50%,-50%) scale(1);   opacity: 1; }
+  to   { transform: translate(-50%,-50%) scale(2.8); opacity: 0; }
+}
+
+/* ── System status badge near orb ───────────────────── */
+#holo-sys-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 7px; letter-spacing: 2.5px;
+  color: rgba(0,212,255,.45); font-family: var(--font);
+  margin-top: 6px;
+}
+.hsb-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+.hsb-text { color: rgba(0,212,255,.55); }
+.hsb-ver  { color: rgba(0,212,255,.28); font-size: 6px; }
+
+/* ── Holo mode toggle button ─────────────────────────── */
+.holo-mode-btn {
+  color: rgba(0,212,255,.4) !important;
+  transition: all .2s;
+}
+.holo-mode-btn.active,
+.holo-mode-btn:hover {
+  color: var(--cyan) !important;
+  text-shadow: 0 0 8px rgba(0,212,255,.7);
+}
+.holo-mode-btn.active svg {
+  filter: drop-shadow(0 0 6px rgba(0,212,255,.8));
+}
+
+/* ── HOLO MODE — extreme 3D depth on everything ─────── */
+body.holo-mode #workspace {
+  perspective: 1800px;
+  perspective-origin: 50% 0%;
+}
+body.holo-mode .module-panel.active {
+  transform: perspective(1400px) rotateX(1.5deg) translateZ(0);
+  transform-origin: top center;
+}
+body.holo-mode .dash-widget,
+body.holo-mode .hud-panel {
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.75),
+    0 0 40px rgba(0,212,255,.18),
+    inset 0 0 30px rgba(0,212,255,.04) !important;
+}
+body.holo-mode .diag-quad,
+body.holo-mode .ctrl-agent-card,
+body.holo-mode .meta-card,
+body.holo-mode .metric-card {
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.7),
+    0 0 28px rgba(0,212,255,.15) !important;
+}
+
+/* ── Upgraded dock (more Stark) ───────────────────────── */
+#dock {
+  background: linear-gradient(
+    to right,
+    rgba(0,2,8,.99),
+    rgba(0,5,18,.97)
+  ) !important;
+  border-right: 1px solid rgba(0,212,255,.32) !important;
+  box-shadow:
+    4px 0 40px rgba(0,0,0,.7),
+    1px 0 0 rgba(0,212,255,.08) !important;
+}
+#dock .nav-btn.active {
+  border-left: 3px solid var(--cyan) !important;
+  background: rgba(0,212,255,.12) !important;
+  box-shadow:
+    0 0 28px rgba(0,212,255,.3),
+    inset 0 0 18px rgba(0,212,255,.07) !important;
+  text-shadow: 0 0 10px rgba(0,212,255,.7);
+}
+#dock .nav-btn:hover {
+  border-color: rgba(0,212,255,.45) !important;
+  background: rgba(0,212,255,.09) !important;
+}
+.dock-logo-ring {
+  border: 1.5px solid var(--cyan) !important;
+  box-shadow:
+    0 0 24px rgba(0,212,255,.65),
+    0 0 50px rgba(0,212,255,.2),
+    inset 0 0 20px rgba(0,212,255,.2) !important;
+}
+
+/* ── Upgraded header ─────────────────────────────────── */
+header {
+  background: rgba(0,2,10,.97) !important;
+  border-bottom: 1px solid rgba(0,212,255,.35) !important;
+  box-shadow:
+    0 2px 40px rgba(0,0,0,.7),
+    0 1px 0 rgba(0,212,255,.1) !important;
+  backdrop-filter: blur(28px) !important;
+}
+.hdr-pill-name {
+  color: var(--cyan) !important;
+  text-shadow: 0 0 10px rgba(0,212,255,.5);
+  letter-spacing: 3px !important;
+}
+.hdr-clock {
+  color: rgba(0,212,255,.65) !important;
+  text-shadow: 0 0 6px rgba(0,212,255,.3);
+}
+
+/* ── Upgraded hud panels ─────────────────────────────── */
+.hud-panel {
+  border: 1px solid rgba(0,212,255,.5) !important;
+  background: rgba(0,3,14,.96) !important;
+  box-shadow:
+    0 0 30px rgba(0,212,255,.18),
+    0 8px 40px rgba(0,0,0,.75),
+    inset 0 0 40px rgba(0,212,255,.05) !important;
+}
+.hud-ph {
+  text-shadow: 0 0 10px rgba(0,212,255,.6);
+  border-bottom: 1px solid rgba(0,212,255,.18) !important;
+  padding-bottom: 5px !important;
+}
+
+/* ── Upgraded metric cards (finanzas) ────────────────── */
+.metric-card {
+  position: relative;
+  border: 1px solid rgba(0,212,255,.35) !important;
+  background: rgba(0,4,18,.95) !important;
+  box-shadow:
+    0 0 20px rgba(0,212,255,.1),
+    0 6px 30px rgba(0,0,0,.6),
+    inset 0 0 28px rgba(0,212,255,.04) !important;
+}
+.metric-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 16px; height: 16px;
+  border-top: 2px solid rgba(0,212,255,.65);
+  border-left: 2px solid rgba(0,212,255,.65);
+  pointer-events: none;
+}
+.metric-card::after {
+  content: '';
+  position: absolute; bottom: 0; right: 0;
+  width: 16px; height: 16px;
+  border-bottom: 2px solid rgba(0,212,255,.65);
+  border-right: 2px solid rgba(0,212,255,.65);
+  pointer-events: none;
+}
+
+/* ── All cards — shared corner bracket system ─────────── */
+.meta-card, .negocio-card, .neg-stat-card,
+.gp-card, .resultado-card, .fin-card,
+.proy-card, .proyecto-card {
+  position: relative;
+}
+.meta-card::before, .neg-stat-card::before, .gp-card::before,
+.resultado-card::before, .proy-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 14px; height: 14px;
+  border-top: 1.5px solid rgba(0,212,255,.55);
+  border-left: 1.5px solid rgba(0,212,255,.55);
+  pointer-events: none; z-index: 1;
+}
+.meta-card::after, .neg-stat-card::after, .gp-card::after,
+.resultado-card::after, .proy-card::after {
+  content: '';
+  position: absolute; bottom: 0; right: 0;
+  width: 14px; height: 14px;
+  border-bottom: 1.5px solid rgba(0,212,255,.55);
+  border-right: 1.5px solid rgba(0,212,255,.55);
+  pointer-events: none; z-index: 1;
+}
+
+/* ── Welcome quick buttons — more Stark ──────────────── */
+.quick-btn {
+  background: rgba(0,4,16,.96) !important;
+  border: 1px solid rgba(0,212,255,.38) !important;
+  box-shadow: 0 0 18px rgba(0,212,255,.1), 0 4px 24px rgba(0,0,0,.6) !important;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease !important;
+}
+.quick-btn:hover {
+  border-color: rgba(0,212,255,.75) !important;
+  box-shadow:
+    0 0 30px rgba(0,212,255,.3),
+    0 6px 30px rgba(0,0,0,.7) !important;
+  background: rgba(0,212,255,.09) !important;
+}
+
+/* ── Tareas items — stark ────────────────────────────── */
+.tarea-item {
+  border: 1px solid rgba(0,212,255,.25) !important;
+  border-left: 3px solid var(--cyan) !important;
+  background: rgba(0,4,18,.92) !important;
+  transition: border-color .15s, box-shadow .15s, transform .15s !important;
+}
+.tarea-item:hover {
+  border-color: rgba(0,212,255,.55) !important;
+  border-left-color: var(--cyan) !important;
+  box-shadow: 0 0 18px rgba(0,212,255,.15) !important;
+}
+
+/* ── Note items ──────────────────────────────────────── */
+.note-item, .nota-card {
+  border: 1px solid rgba(0,212,255,.3) !important;
+  border-left: 3px solid var(--cyan) !important;
+  background: rgba(0,4,18,.93) !important;
+}
+.note-item:hover, .nota-card:hover {
+  border-color: rgba(0,212,255,.6) !important;
+  box-shadow: 0 0 20px rgba(0,212,255,.14) !important;
+}
+
+/* ── Footer — upgraded ───────────────────────────────── */
+footer {
+  background: rgba(0,2,10,.97) !important;
+  border-top: 1px solid rgba(0,212,255,.28) !important;
+  backdrop-filter: blur(20px) !important;
+}
+.bar-fill {
+  box-shadow: 0 0 8px rgba(0,212,255,.5) !important;
+}
+
+/* ── Subnav bars — very bright ───────────────────────── */
+.finanzas-subnav, .neg-subnav, [class*="subnav"],
+.neg-content > .neg-subnav {
+  background: rgba(0,2,10,.99) !important;
+  border-bottom: 1px solid rgba(0,212,255,.42) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.6) !important;
+}
+.neg-tab.active, .subnav-btn.active, [class*="-tab"].active {
+  color: var(--cyan) !important;
+  border-color: rgba(0,212,255,.65) !important;
+  text-shadow: 0 0 8px rgba(0,212,255,.5) !important;
+  box-shadow: 0 0 16px rgba(0,212,255,.2) !important;
+  background: rgba(0,212,255,.1) !important;
+}
+
+/* ── Reactor rings — more intense ────────────────────── */
+.reactor-ring {
+  border-color: rgba(0,212,255,.45) !important;
+  box-shadow: 0 0 10px rgba(0,212,255,.2) !important;
+}
+.reactor-ring.outer { border-color: rgba(0,212,255,.3) !important; }
+
+/* ── Chat area ───────────────────────────────────────── */
+.chat {
+  background: linear-gradient(180deg, rgba(0,3,12,.95) 0%, rgba(0,2,8,.98) 100%) !important;
+  border: 1px solid rgba(0,212,255,.28) !important;
+}
+
+/* ── Input bar ───────────────────────────────────────── */
+.input-bar {
+  border: 1px solid rgba(0,212,255,.4) !important;
+  box-shadow: 0 0 30px rgba(0,212,255,.1), 0 4px 40px rgba(0,0,0,.7) !important;
+}
+.input-bar:focus-within {
+  border-color: rgba(0,212,255,.72) !important;
+  box-shadow:
+    0 0 0 2px rgba(0,212,255,.14),
+    0 0 40px rgba(0,212,255,.2),
+    0 4px 40px rgba(0,0,0,.7) !important;
+}
+
+/* ── Modals — holographic ─────────────────────────────── */
+.modal-box {
+  border: 1px solid rgba(0,212,255,.52) !important;
+  box-shadow:
+    0 0 60px rgba(0,212,255,.12),
+    0 30px 90px rgba(0,0,0,.9) !important;
+  background: linear-gradient(135deg, rgba(0,4,18,1) 0%, rgba(0,2,12,1) 100%) !important;
+}
+.modal-header {
+  border-bottom: 1px solid rgba(0,212,255,.3) !important;
+  text-shadow: 0 0 8px rgba(0,212,255,.35);
+}
+
+/* ── Section titles — glow ───────────────────────────── */
+.section-title, .tareas-col-title, .diag-quad-hdr,
+[class*="-section-title"], [class*="-label"], .ctrl-section-label {
+  text-shadow: 0 0 8px rgba(0,212,255,.35) !important;
+}
+
+/* ── Orb — extreme intensity ─────────────────────────── */
+.orb {
+  border: 2px solid var(--cyan) !important;
+  box-shadow:
+    0 0 70px rgba(0,212,255,.7),
+    0 0 130px rgba(0,212,255,.3),
+    0 0 220px rgba(0,212,255,.12),
+    inset 0 0 70px rgba(0,212,255,.25) !important;
+}
+
+/* ── Orb rings — stronger ────────────────────────────── */
+.orb-ring.r1 {
+  border: 2px solid rgba(0,212,255,.72) !important;
+  box-shadow: 0 0 20px rgba(0,212,255,.5), inset 0 0 14px rgba(0,212,255,.25) !important;
+}
+.orb-ring.r2 {
+  border: 1.5px dashed rgba(139,92,246,.7) !important;
+  box-shadow: 0 0 18px rgba(139,92,246,.35) !important;
+}
+.orb-ring.r3 {
+  border: 2px solid rgba(0,255,170,.65) !important;
+  box-shadow: 0 0 16px rgba(0,255,170,.35) !important;
+}
+
+/* ── Status float pill ───────────────────────────────── */
+.status-float {
+  border: 1px solid rgba(0,212,255,.6) !important;
+  box-shadow: 0 0 28px rgba(0,212,255,.22), inset 0 0 14px rgba(0,212,255,.07) !important;
+  text-shadow: 0 0 8px rgba(0,212,255,.5);
+}
+
+/* ── Boot screen — extreme ───────────────────────────── */
+.boot-logo {
+  text-shadow: 0 0 40px rgba(0,212,255,.9), 0 0 80px rgba(0,212,255,.45) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar {
+  border-right: 1px solid rgba(0,212,255,.28) !important;
+}
+.ss-label {
+  color: rgba(0,212,255,.5) !important;
+  text-shadow: 0 0 6px rgba(0,212,255,.25);
+  letter-spacing: 3px !important;
+}
+
+/* ── Selection highlight ─────────────────────────────── */
+::selection {
+  background: rgba(0,212,255,.25);
+  color: #fff;
+}
