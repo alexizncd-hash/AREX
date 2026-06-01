@@ -3037,7 +3037,9 @@ if ('serviceWorker' in navigator) {
     });
   }
 
-  navigator.serviceWorker.register('sw.js').then(reg => {
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    // Forzar verificación inmediata de actualizaciones
+    reg.update();
     // Detectar cuando el SW se actualiza en segundo plano
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
@@ -3049,11 +3051,12 @@ if ('serviceWorker' in navigator) {
     });
   }).catch(e => console.warn('SW:', e));
 
-  // Mensaje del SW activo indicando nueva versión
+  // Mensaje del SW activo indicando nueva versión — auto-recarga
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'SW_UPDATED') {
       if (e.data.version) window.AREX_SW_VERSION = e.data.version;
-      _showUpdateBanner();
+      // Auto-reload para aplicar nuevos archivos inmediatamente
+      setTimeout(() => window.location.reload(), 800);
     }
   });
 }
