@@ -360,7 +360,7 @@ async function _analyze(mode, extra = '') {
 
 async function _callGemini(frame, prompt, key) {
   const [, b64] = frame.split(',');
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash-latest'];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastErr;
   for (const model of models) {
     const res = await fetch(
@@ -390,7 +390,7 @@ async function _callGroq(frame, prompt, key) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       max_tokens: 800,
       messages: [{ role: 'user', content: [
         { type: 'image_url', image_url: { url: frame } },

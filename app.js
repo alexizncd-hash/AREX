@@ -1877,6 +1877,14 @@ function startContinuousMode() {
         if (/silencio|cállate|para de hablar|detente/.test(cmdL)) {
           window.speechSynthesis?.cancel(); continue;
         }
+        if (/analiza|analizar/.test(cmdL)) {
+          const modMatch = /finanzas|gastos|metas|tareas|negocio|proyectos/.exec(cmdL);
+          const modTarget = modMatch?.[0] || AREXNav?.moduloActual;
+          if (modTarget && modTarget !== 'chat' && modTarget !== 'inicio') {
+            arexSpeak(`Analizando ${modTarget}.`);
+            _analizarConArex(modTarget); continue;
+          }
+        }
         setOrb('listening', 'Procesando comando de voz...');
         txt.value = cmd;
         await updateStats('voice');
@@ -1951,25 +1959,179 @@ function arexAlert(modulo, mensaje, prioridad = 'info') {
 }
 window.arexAlert = arexAlert;
 
-/* ── Mensajes proactivos por inactividad ─────────────── */
-const _IDLE_MSGS = [
-  'Aquí estoy, Alexiz. ¿En qué te puedo ayudar?',
-  'Todo tranquilo. ¿Quieres revisar tus finanzas o metas del día?',
-  '¿Sigues ahí? Si necesitas algo, solo dímelo.',
-  'Recuerda que puedo ayudarte con tareas, finanzas, proyectos o cualquier pregunta.',
-];
-let _idleMsgIdx = 0;
+/* ── Análisis IA de módulos (sub-agentes interactivos) ── */
+function _buildModuloContext(mod) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const todayStr = hoy.toISOString().slice(0, 10);
+  const mesActual = todayStr.slice(0, 7);
+  try {
+    if (mod === 'finanzas' && typeof getFinanzasData === 'function') {
+      const fd = getFinanzasData();
+      const deuda   = fd.tarjetas.reduce((s, t) => s + (t.saldo || 0), 0);
+      const gastosFijos = fd.gastos.reduce((s, g) => s + (g.monto || 0), 0);
+      const margen  = (fd.config.ingresoMensual || 0) - gastosFijos;
+      const pagos   = typeof obtenerProximosPagos === 'function' ? obtenerProximosPagos(10) : [];
+      return `FINANZAS:\nIngreso mensual: $${(fd.config.ingresoMensual||0).toLocaleString('es-MX')}\nDeuda total: $${deuda.toLocaleString('es-MX')}\nGastos fijos/mes: $${gastosFijos.toLocaleString('es-MX')}\nMargen libre: $${margen.toLocaleString('es-MX')}\nTarjetas: ${fd.tarjetas.map(t=>`${t.nombre}: $${t.saldo} (límite ${t.fechaLimite})`).join(' | ')}\nPróximos pagos: ${pagos.slice(0,3).map(p=>`${p.nombre} $${p.monto} en ${p.diasRestantes}d`).join(', ')||'ninguno urgente'}`;
+    }
+    if (mod === 'gastos' && typeof getGastosData === 'function') {
+      const gd = getGastosData();
+      const delMes = (gd.gastos||[]).filter(g => g.fecha?.startsWith(mesActual));
+      const porCat = {};
+      delMes.forEach(g => { porCat[g.categoria] = (porCat[g.categoria]||0) + g.monto; });
+      const totalMes = delMes.reduce((s,g) => s + g.monto, 0);
+      return `GASTOS DEL MES (${mesActual}):\nTotal: $${totalMes.toLocaleString('es-MX')}\nPor categoría: ${Object.entries(porCat).map(([k,v])=>`${k}: $${v.toLocaleString('es-MX')}`).join(' | ')}\nPresupuestos: ${Object.entries(gd.presupuesto||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}: $${v}`).join(' | ')||'sin definir'}`;
+    }
+    if (mod === 'metas' && typeof getMetas === 'function') {
+      const activas = getMetas().filter(m => !m.completada);
+      return `METAS ACTIVAS (${activas.length}):\n${activas.map(m => {
+        const pct = m.valorObjetivo > 0 ? Math.round(m.valorActual/m.valorObjetivo*100) : 0;
+        const fin = m.fechaLimite ? new Date(m.fechaLimite+'T00:00:00') : null;
+        const dias = fin ? Math.round((fin-hoy)/86400000) : null;
+        return `"${m.titulo}": ${pct}%${dias!==null?` · vence en ${dias}d`:''}${m.descripcion?` — ${m.descripcion.slice(0,40)}`:''}`;
+      }).join('\n')}`;
+    }
+    if (mod === 'tareas') {
+      const pendientes = getTareas().filter(t => !t.done);
+      const urgentes   = pendientes.filter(t => t.fecha && t.fecha <= todayStr);
+      return `TAREAS PENDIENTES (${pendientes.length} total, ${urgentes.length} para hoy):\n${pendientes.slice(0,12).map(t=>`[${t.prioridad||'media'}] "${t.texto}"${t.fecha?` · ${t.fecha}`:''}`).join('\n')}`;
+    }
+    if (mod === 'negocio' && typeof getNegocioData === 'function') {
+      const nd = getNegocioData();
+      const ventasMes = (nd.ventas||[]).filter(v => v.fecha?.startsWith(mesActual));
+      const ingresosMes = ventasMes.reduce((s,v) => s+(v.total||0), 0);
+      const gastosMes   = (nd.gastos||[]).filter(g => g.fecha?.startsWith(mesActual)).reduce((s,g) => s+g.monto, 0);
+      return `NEGOCIO (${nd.config.variedad}):\nStock: ${nd.inventario.stockKg}kg\nVentas del mes: ${ventasMes.length} · $${ingresosMes.toLocaleString('es-MX')}\nGastos del mes: $${gastosMes.toLocaleString('es-MX')}\nGanancia neta: $${(ingresosMes-gastosMes).toLocaleString('es-MX')}\nSucursales: ${(nd.sucursales||[]).map(s=>s.nombre).join(', ')||'ninguna'}`;
+    }
+    if (mod === 'proyectos' && typeof getProyectos === 'function') {
+      const todos   = getProyectos();
+      const activos = todos.filter(p => p.estado === 'activo');
+      return `PROYECTOS (${activos.length} activos de ${todos.length} total):\n${activos.map(p=>`"${p.nombre}"${p.descripcion?` — ${p.descripcion.slice(0,60)}`:''}`).join('\n')}`;
+    }
+  } catch(e) { console.warn('_buildModuloContext:', e); }
+  return '';
+}
+
+async function _analizarConArex(mod) {
+  if (!AREX_CONFIG?.groqKey) {
+    addMsg('arex','Configura tu Groq API Key para usar el análisis con IA.');
+    return;
+  }
+  if (isBusy) return;
+  const ctx = _buildModuloContext(mod);
+  if (!ctx) { addMsg('arex','No hay datos suficientes en este módulo para analizar.'); return; }
+
+  const instrucciones = {
+    finanzas:  'Analiza la situación financiera de Alexiz. Menciona el margen libre, deudas urgentes y un consejo concreto. Habla natural, sin listas, 2-3 oraciones.',
+    gastos:    'Analiza los gastos del mes. Di en qué categoría se va más, si hay exceso vs presupuesto y qué ajustar. 2-3 oraciones directas.',
+    metas:     'Revisa las metas activas. ¿Cuáles van en buen ritmo? ¿Cuáles están en riesgo de no cumplirse? Usa los porcentajes y días reales.',
+    tareas:    'Prioriza las tareas pendientes. Di qué hacer primero según urgencia y fecha. Sé concreto.',
+    negocio:   'Analiza las métricas del negocio de frijol. ¿Está siendo rentable? ¿Qué mejorar? Usa los números reales.',
+    proyectos: 'Revisa el estado de los proyectos activos. ¿Alguno está en riesgo o necesita atención ahora?',
+  };
+  const instruccion = instrucciones[mod] || 'Analiza estos datos y da un resumen útil en 2-3 oraciones concretas.';
+
+  AREXNav.cambiarModulo('chat');
+  isBusy = true; btnSend.disabled = true;
+  setOrb('thinking', `Analizando ${mod}...`);
+  showThinking();
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 350,
+        messages: [
+          { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
+          { role: 'user', content: ctx }
+        ]
+      })
+    });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content || '';
+    hideThinking();
+    const wrap = makeArexWrap();
+    await renderArexReply(wrap, reply);
+    _playTone('msg');
+    _showQuickReplies(reply);
+    if (voiceOn || continuousMode) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
+  } catch(e) {
+    hideThinking();
+    addMsg('arex', 'Error al analizar el módulo. Verifica tu conexión.');
+    setOrb(null, 'En espera de instrucciones');
+    console.error('_analizarConArex:', e);
+  } finally { isBusy = false; btnSend.disabled = false; }
+}
+window._analizarConArex = _analizarConArex;
+
+/* ── Mensajes proactivos por inactividad (datos reales) ─ */
+function _buildIdleMsg() {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const todayStr = hoy.toISOString().slice(0, 10);
+  const mesActual = todayStr.slice(0, 7);
+  const msgs = [];
+
+  try {
+    const pendientes = getTareas().filter(t => !t.done);
+    const deHoy = pendientes.filter(t => t.fecha && t.fecha <= todayStr);
+    if (deHoy.length === 1) msgs.push(`Tienes una tarea para hoy: "${deHoy[0].texto}".`);
+    else if (deHoy.length > 1) msgs.push(`Tienes ${deHoy.length} tareas pendientes para hoy. La primera: "${deHoy[0].texto}".`);
+    else if (pendientes.length > 0) msgs.push(`Llevas ${pendientes.length} tarea${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''} sin completar.`);
+  } catch(e) {}
+
+  try {
+    const metas = typeof getMetas === 'function' ? getMetas().filter(m => !m.completada && m.fechaLimite) : [];
+    if (metas.length) {
+      const proxima = metas.sort((a, b) => a.fechaLimite.localeCompare(b.fechaLimite))[0];
+      const fin  = new Date(proxima.fechaLimite + 'T00:00:00');
+      const dias = Math.round((fin - hoy) / 86400000);
+      if (dias >= 0 && dias <= 7) {
+        const pct = proxima.valorObjetivo > 0 ? Math.round(proxima.valorActual / proxima.valorObjetivo * 100) : 0;
+        const label = dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : `en ${dias} días`;
+        msgs.push(`Tu meta "${proxima.titulo}" vence ${label} y va al ${pct}%.`);
+      }
+    }
+  } catch(e) {}
+
+  try {
+    if (typeof obtenerProximosPagos === 'function') {
+      const pagos = obtenerProximosPagos(3);
+      if (pagos.length > 0) {
+        const p = pagos[0];
+        const label = p.diasRestantes === 0 ? 'hoy' : p.diasRestantes === 1 ? 'mañana' : `en ${p.diasRestantes} días`;
+        const monto = p.monto ? ` ($${p.monto.toLocaleString('es-MX')})` : '';
+        msgs.push(`Tienes un pago de ${p.nombre}${monto} ${label}.`);
+      }
+    }
+  } catch(e) {}
+
+  try {
+    if (typeof getGastosData === 'function') {
+      const gd = getGastosData();
+      const delMes = (gd.gastos || []).filter(g => g.fecha?.startsWith(mesActual));
+      const total = delMes.reduce((s, g) => s + (g.monto || 0), 0);
+      if (total > 0) msgs.push(`Este mes llevas $${total.toLocaleString('es-MX')} en gastos registrados.`);
+    }
+  } catch(e) {}
+
+  if (!msgs.length) {
+    const fb = ['¿Qué necesitas?', 'Listo cuando quieras.', '¿En qué te ayudo?'];
+    return fb[Math.floor(Math.random() * fb.length)];
+  }
+  return msgs[Math.floor(Math.random() * msgs.length)];
+}
 
 function _resetIdleTimer() {
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
     if (isBusy || continuousMode || isSpeaking) { _resetIdleTimer(); return; }
-    const msg = _IDLE_MSGS[_idleMsgIdx % _IDLE_MSGS.length];
-    _idleMsgIdx++;
+    const msg = _buildIdleMsg();
     addMsg('arex', msg);
     if (voiceOn) arexSpeak(msg);
     _resetIdleTimer();
-  }, 4 * 60 * 1000); // 4 minutos
+  }, 4 * 60 * 1000);
 }
 
 /* ── Auto-búsqueda por contexto ─────────────────────── */
@@ -2369,7 +2531,7 @@ async function _analyzeWithGemini(dataURL, question) {
   // Extract base64 data from dataURL
   const [meta, b64] = dataURL.split(',');
   const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -3858,6 +4020,16 @@ if (loadConfig()) {
 } else {
   showSetup();
 }
+
+// Extender AREXNav.cambiarModulo para mostrar/ocultar FAB de análisis
+(function() {
+  const _orig = AREXNav.cambiarModulo.bind(AREXNav);
+  AREXNav.cambiarModulo = function(mod) {
+    _orig(mod);
+    const fab = document.getElementById('fab-analizar');
+    if (fab) fab.style.display = (mod !== 'chat' && mod !== 'inicio') ? 'flex' : 'none';
+  };
+})();
 
 // ── BRIEFING DIARIO ───────────────────────────────────────────────────────────
 async function generarBriefing() {
