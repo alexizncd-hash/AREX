@@ -15,6 +15,7 @@ function getNegocioData() {
       rendimiento:  1.8,  // medio litros por kg
       costoEmpaque: 0.5,  // costo del vaso/envase
       metaMensual:  0,    // meta de ventas por mes
+      stockMinimo:  5,    // kg mínimos antes de alerta
     },
     inventario: { stockKg: 0, historial: [] },
     sucursales: [],
@@ -150,9 +151,16 @@ function renderNegDashboard() {
   const meta    = data.config.metaMensual || 0;
   const metaPct = meta > 0 ? Math.min(100, (totalVentas / meta) * 100).toFixed(0) : 0;
 
+  const stockMin = data.config.stockMinimo || 5;
+  const stockBajo = data.inventario.stockKg < stockMin;
+  if (stockBajo && typeof logBitacora === 'function') {
+    logBitacora('negocio', `⚠ Stock bajo: ${$KG(data.inventario.stockKg)} (mín: ${$KG(stockMin)})`);
+  }
+
   document.getElementById('neg-dash-content').innerHTML = `
+    ${stockBajo ? `<div class="neg-stock-alert" style="margin-bottom:0.5rem;padding:8px 10px;background:rgba(255,153,0,0.06);border:1px solid rgba(255,153,0,0.3);border-left:3px solid #ff9900;border-radius:4px;font-size:10px;letter-spacing:1px;">⚠ STOCK BAJO — ${$KG(data.inventario.stockKg)} disponibles (mínimo: ${$KG(stockMin)})</div>` : ''}
     <div class="neg-kpi-grid">
-      <div class="neg-kpi ${data.inventario.stockKg < 5 ? 'neg-kpi-warn' : ''}">
+      <div class="neg-kpi ${stockBajo ? 'neg-kpi-warn' : ''}">
         <div class="neg-kpi-lbl">STOCK</div>
         <div class="neg-kpi-val">${$KG(data.inventario.stockKg)}</div>
         <div class="neg-kpi-sub">≈ ${mlDisp} medio litros</div>
@@ -735,6 +743,10 @@ function renderNegConfig() {
         <label>Meta de ventas mensual ($) — 0 = sin meta</label>
         <input type="number" id="neg-c-meta" class="neg-input" value="${cfg.metaMensual || 0}" step="100" min="0"/>
       </div>
+      <div class="neg-cfg-fila">
+        <label>Stock mínimo (kg) — alerta cuando baje de este valor</label>
+        <input type="number" id="neg-c-stockmin" class="neg-input" value="${cfg.stockMinimo || 5}" step="0.5" min="0"/>
+      </div>
       <button class="neg-btn-primary" onclick="negGuardarConfig()">GUARDAR CONFIGURACIÓN</button>
     </div>
 
@@ -751,11 +763,12 @@ function renderNegConfig() {
 function negGuardarConfig() {
   const data = getNegocioData();
   const get  = id => parseFloat(document.getElementById(id).value);
-  data.config.precioVenta  = get('neg-c-pventa')  || data.config.precioVenta;
-  data.config.costoKg      = get('neg-c-costokg') || data.config.costoKg;
-  data.config.rendimiento  = get('neg-c-rend')    || data.config.rendimiento;
-  data.config.costoEmpaque = get('neg-c-empaque') ?? 0;
-  data.config.metaMensual  = get('neg-c-meta')    || 0;
+  data.config.precioVenta  = get('neg-c-pventa')   || data.config.precioVenta;
+  data.config.costoKg      = get('neg-c-costokg')  || data.config.costoKg;
+  data.config.rendimiento  = get('neg-c-rend')     || data.config.rendimiento;
+  data.config.costoEmpaque = get('neg-c-empaque')  ?? 0;
+  data.config.metaMensual  = get('neg-c-meta')     || 0;
+  data.config.stockMinimo  = get('neg-c-stockmin') ?? 5;
   saveNegocioData(data);
   renderNegConfig();
 }

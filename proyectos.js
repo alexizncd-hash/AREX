@@ -8,13 +8,23 @@ function saveProyectos(arr) {
 }
 
 /* ─── CRUD ────────────────────────────────────────────── */
-function proyectoCrear(nombre, descripcion = '') {
+const PROJ_ESTADOS = ['activo', 'planeando', 'en-progreso', 'revision', 'completado'];
+const PROJ_ESTADO_LABELS = {
+  'activo':      'ACTIVO',
+  'planeando':   'PLANEANDO',
+  'en-progreso': 'EN PROGRESO',
+  'revision':    'REVISIÓN',
+  'completado':  'COMPLETADO'
+};
+
+function proyectoCrear(nombre, descripcion = '', fechaLimite = '') {
   if (!nombre.trim()) return null;
   const p = {
     id:          String(Date.now()),
     nombre:      nombre.trim(),
     descripcion: descripcion.trim(),
     estado:      'activo',
+    fechaLimite: fechaLimite,
     creadoEn:    Date.now(),
     color:       _nextColor(),
   };
@@ -29,9 +39,12 @@ function proyectoEliminar(id) {
 }
 
 function proyectoToggleEstado(id) {
-  const arr = getProyectos().map(p =>
-    p.id === id ? { ...p, estado: p.estado === 'activo' ? 'completado' : 'activo' } : p
-  );
+  const arr = getProyectos().map(p => {
+    if (p.id !== id) return p;
+    const idx = PROJ_ESTADOS.indexOf(p.estado);
+    const next = PROJ_ESTADOS[(idx + 1) % PROJ_ESTADOS.length];
+    return { ...p, estado: next };
+  });
   saveProyectos(arr);
   renderProyectosModule();
 }
@@ -58,34 +71,35 @@ function renderProyectosModule() {
   if (!panel) return;
 
   const proyectos = getProyectos();
-  const activos    = proyectos.filter(p => p.estado === 'activo');
+  const enCurso    = proyectos.filter(p => p.estado !== 'completado');
   const completados = proyectos.filter(p => p.estado === 'completado');
 
   panel.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">
         <h2 class="proj-title">PROYECTOS</h2>
-        <span class="proj-count">${activos.length} activo${activos.length !== 1 ? 's' : ''}</span>
+        <span class="proj-count">${enCurso.length} en curso</span>
       </div>
 
       <div class="proj-nuevo">
         <input id="proj-nombre-in" class="proj-input" placeholder="Nombre del proyecto..." autocomplete="off"/>
         <input id="proj-desc-in"   class="proj-input" placeholder="Descripción (opcional)..." autocomplete="off"/>
-        <button class="proj-add-btn" onclick="proyectoCrear(document.getElementById('proj-nombre-in').value, document.getElementById('proj-desc-in').value); document.getElementById('proj-nombre-in').value=''; document.getElementById('proj-desc-in').value='';">
+        <input id="proj-fecha-in"  class="proj-input" type="date" title="Fecha límite (opcional)"/>
+        <button class="proj-add-btn" onclick="proyectoCrear(document.getElementById('proj-nombre-in').value, document.getElementById('proj-desc-in').value, document.getElementById('proj-fecha-in').value); document.getElementById('proj-nombre-in').value=''; document.getElementById('proj-desc-in').value=''; document.getElementById('proj-fecha-in').value='';">
           + NUEVO PROYECTO
         </button>
       </div>
 
-      ${activos.length === 0 && completados.length === 0 ? `
+      ${enCurso.length === 0 && completados.length === 0 ? `
         <div class="proj-empty">
           <p>Sin proyectos. Crea uno arriba o dile a AREX:<br>
           <em>"AREX, crea un proyecto para mi tesis"</em></p>
         </div>` : ''}
 
-      ${activos.length ? `
-        <div class="proj-section-label">ACTIVOS</div>
+      ${enCurso.length ? `
+        <div class="proj-section-label">EN CURSO</div>
         <div class="proj-list">
-          ${activos.map(p => _renderCard(p)).join('')}
+          ${enCurso.map(p => _renderCard(p)).join('')}
         </div>` : ''}
 
       ${completados.length ? `
@@ -106,23 +120,50 @@ function _renderCard(p) {
   const notas  = _getNotasProyecto(p.nombre);
   const done   = p.estado === 'completado';
 
+  // Task-based progress
+  const doneTareas = tareas.filter(t => t.done).length;
+  const pct = tareas.length > 0 ? Math.round((doneTareas / tareas.length) * 100) : 0;
+
+  // Deadline badge
+  let deadlineHTML = '';
+  if (p.fechaLimite && !done) {
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const fin = new Date(p.fechaLimite + 'T00:00:00');
+    const dias = Math.round((fin - hoy) / 86400000);
+    const cls = dias < 0 ? 'late' : dias <= 3 ? 'soon' : '';
+    const txt = dias < 0 ? `Venció hace ${-dias}d` : dias === 0 ? 'Hoy' : `${dias}d`;
+    deadlineHTML = `<span class="proj-deadline${cls ? ' ' + cls : ''}">📅 ${txt}</span>`;
+  }
+
+  const estadoLabel = PROJ_ESTADO_LABELS[p.estado] || p.estado.toUpperCase();
+  const nextEstado = PROJ_ESTADOS[(PROJ_ESTADOS.indexOf(p.estado) + 1) % PROJ_ESTADOS.length];
+
   return `
     <div class="proj-card ${done ? 'proj-done' : ''}" id="proj-${p.id}" style="--proj-color:${p.color}">
       <div class="proj-card-top">
         <div class="proj-color-dot" style="background:${p.color}"></div>
-        <span class="proj-nombre" style="${done ? 'text-decoration:line-through;opacity:0.5' : ''}">${_safe(p.nombre)}</span>
+        <span class="proj-nombre${done ? ' proj-done-label' : ''}">${_safe(p.nombre)}</span>
+        <span class="proj-estado-badge ${p.estado}">${estadoLabel}</span>
         <div class="proj-card-actions">
           <button title="Editar" onclick="proyectoEditar('${p.id}')">✏</button>
-          <button title="${done ? 'Reactivar' : 'Completar'}" onclick="proyectoToggleEstado('${p.id}')">${done ? '↩' : '✓'}</button>
+          <button title="→ ${PROJ_ESTADO_LABELS[nextEstado]}" onclick="proyectoToggleEstado('${p.id}')">→</button>
           <button title="Eliminar" onclick="if(confirm('¿Eliminar proyecto?'))proyectoEliminar('${p.id}')">✕</button>
         </div>
       </div>
       ${p.descripcion ? `<p class="proj-desc">${_safe(p.descripcion)}</p>` : ''}
+      ${tareas.length > 0 ? `
+        <div class="proj-progress-row">
+          <div class="proj-progress-track">
+            <div class="proj-progress-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="proj-progress-pct">${pct}%</span>
+        </div>` : ''}
       <div class="proj-stats">
-        ${tareas.length  ? `<span class="proj-stat">📋 ${tareas.length} tarea${tareas.length>1?'s':''}</span>` : ''}
+        ${deadlineHTML}
+        ${tareas.length  ? `<span class="proj-stat">📋 ${doneTareas}/${tareas.length} tareas</span>` : ''}
         ${metas.length   ? `<span class="proj-stat">🎯 ${metas.length} meta${metas.length>1?'s':''}</span>` : ''}
         ${notas.length   ? `<span class="proj-stat">📝 ${notas.length} nota${notas.length>1?'s':''}</span>` : ''}
-        ${!tareas.length && !metas.length && !notas.length ? `<span class="proj-stat" style="opacity:0.4">Sin elementos relacionados</span>` : ''}
+        ${!tareas.length && !metas.length && !notas.length && !deadlineHTML ? `<span class="proj-stat" style="opacity:0.4">Sin elementos relacionados</span>` : ''}
       </div>
     </div>
   `;
@@ -166,3 +207,5 @@ window.proyectoEliminar      = proyectoEliminar;
 window.proyectoToggleEstado  = proyectoToggleEstado;
 window.proyectoEditar        = proyectoEditar;
 window.getProyectos          = getProyectos;
+window.PROJ_ESTADOS          = PROJ_ESTADOS;
+window.PROJ_ESTADO_LABELS    = PROJ_ESTADO_LABELS;

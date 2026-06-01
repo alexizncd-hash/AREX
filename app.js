@@ -666,7 +666,8 @@ function renderTareas() {
     const urg  = urgenciaTarea(t);
     const prio = t.prioridad || 'media';
     const div  = document.createElement('div');
-    div.className = `tarea-item${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}`;
+    const isAltaUrgente = !t.done && (t.prioridad === 'alta') && (urg?.cls === 'urg-vencida' || urg?.cls === 'urg-hoy');
+    div.className = `tarea-item${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}${isAltaUrgente ? ' prio-alta-item' : ''}`;
     div.innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
       <div class="tarea-content">
@@ -822,6 +823,7 @@ function renderNotas() {
           ).join('')}
         </div>
         <span class="nota-wc">${n.cuerpo.trim() ? n.cuerpo.trim().split(/\s+/).length + ' pal' : ''}</span>
+        <button class="nota-export-btn" title="Exportar como .txt" data-id="${n.id}">⬇</button>
         <span class="nota-ts">${new Date(n.updatedAt).toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>
       </div>`;
 
@@ -852,6 +854,16 @@ function renderNotas() {
     card.querySelectorAll('.ncolor').forEach(dot =>
       dot.addEventListener('click', () => { updateNota(n.id, { color: dot.dataset.c }); renderNotas(); })
     );
+
+    card.querySelector('.nota-export-btn')?.addEventListener('click', () => {
+      const blob = new Blob([`${n.titulo}\n${'─'.repeat(40)}\n${n.cuerpo}`], { type: 'text/plain;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = (n.titulo || 'nota') + '.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
 
     el.appendChild(card);
   });

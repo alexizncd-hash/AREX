@@ -65,9 +65,9 @@
 
 /* ── Barra de progreso (fondo) ── */
 .gp-cat-track {
-  height: 4px;
+  height: 8px;
   background: rgba(0,212,255,0.08);
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -99,6 +99,21 @@
   color: var(--text-muted);
 }
 
+/* ── Botones de navegación de mes ── */
+.gp-mes-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 2px 10px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: color 0.15s;
+  border-radius: 3px;
+}
+.gp-mes-nav-btn:hover { color: var(--cyan); }
+.gp-mes-nav-btn:disabled { opacity: 0.2; cursor: default; }
+
 /* ── Banner de alerta de presupuesto excedido ── */
 .gp-alert-banner {
   display: flex;
@@ -107,7 +122,7 @@
   padding: 8px 10px;
   background: rgba(255,100,68,0.07);
   border: 1px solid rgba(255,100,68,0.3);
-  border-left: 3px solid #ff6644;
+  border-left: 3px solid var(--orange);
   border-radius: 4px;
 }
 .gp-alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }

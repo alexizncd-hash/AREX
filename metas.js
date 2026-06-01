@@ -229,7 +229,9 @@ function renderMetasCompletadas() {
     return;
   }
 
-  metas.sort((a, b) => b.creada - a.creada);
+  metas.sort((a, b) => (b.fechaCompletada || b.creada) - (a.fechaCompletada || a.creada));
+
+  const _fmtFecha = ms => ms ? new Date(ms).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   el.innerHTML = metas.map(m => {
     const cat = METAS_CATS[m.categoria] || METAS_CATS.personal;
@@ -243,6 +245,8 @@ function renderMetasCompletadas() {
           <button class="neg-del" onclick="metaEliminar('${_escA(m.id)}')">&#x2715;</button>
         </div>
         <div class="meta-lograda-lbl">META LOGRADA &#10003;</div>
+        ${m.fechaCompletada ? `<div class="meta-fecha-completada">Completada: ${_fmtFecha(m.fechaCompletada)}</div>` : ''}
+        <button class="meta-reactivar-btn" onclick="metaReactivar('${_escA(m.id)}')">↩ REACTIVAR</button>
       </div>`;
   }).join('');
 }
@@ -317,10 +321,21 @@ function metaCompletar(id) {
   const metas = getMetas();
   const meta  = metas.find(m => m.id === id);
   if (!meta) return;
-  meta.completada  = true;
-  meta.valorActual = meta.valorObjetivo;
+  meta.completada     = true;
+  meta.valorActual    = meta.valorObjetivo;
+  meta.fechaCompletada = Date.now();
   saveMetas(metas);
   renderMetasActivas();
+}
+
+function metaReactivar(id) {
+  const metas = getMetas();
+  const meta  = metas.find(m => m.id === id);
+  if (!meta) return;
+  meta.completada      = false;
+  meta.fechaCompletada = null;
+  saveMetas(metas);
+  renderMetasCompletadas();
 }
 
 function metaEliminar(id) {
@@ -406,6 +421,7 @@ window.switchMetasView      = switchMetasView;
 window.metaCrear            = metaCrear;
 window.metaActualizar       = metaActualizar;
 window.metaCompletar        = metaCompletar;
+window.metaReactivar        = metaReactivar;
 window.metaEliminar         = metaEliminar;
 window.metaEditar           = metaEditar;
 window.metaGuardarEdit      = metaGuardarEdit;

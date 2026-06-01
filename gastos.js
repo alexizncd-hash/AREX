@@ -115,12 +115,11 @@ function _gpMesNavHTML() {
     (_gpAnio === now.getFullYear() && _gpMes >= now.getMonth());
   return `
     <div class="gp-mes-nav">
-      <button class="neg-edit" onclick="gpMesPrev()" style="font-size:16px;padding:2px 10px;">‹</button>
+      <button class="gp-mes-nav-btn" onclick="gpMesPrev()">‹</button>
       <span style="font-size:12px;letter-spacing:3px;color:var(--cyan);">
         ${_MESES[_gpMes].toUpperCase()} ${_gpAnio}
       </span>
-      <button class="neg-edit" onclick="gpMesNext()"
-        style="font-size:16px;padding:2px 10px;${esFuturo ? 'opacity:0.2;cursor:default;' : ''}">›</button>
+      <button class="gp-mes-nav-btn" onclick="gpMesNext()"${esFuturo ? ' disabled' : ''}>›</button>
     </div>`;
 }
 
@@ -132,14 +131,29 @@ function _gastosDelMes(gastos) {
 }
 
 // ── Vista: Resumen ───────────────────────────────────
+function _gastosDelMesAnterior(gastos) {
+  let m = _gpMes - 1, y = _gpAnio;
+  if (m < 0) { m = 11; y--; }
+  return gastos.filter(g => {
+    const d = new Date(g.fecha + 'T12:00:00');
+    return d.getMonth() === m && d.getFullYear() === y;
+  });
+}
+
 function renderGpResumen() {
   const el = document.getElementById('gp-resumen-content');
   if (!el) return;
   const data        = getGastosData();
   const mesGastos   = _gastosDelMes(data.gastos);
+  const antGastos   = _gastosDelMesAnterior(data.gastos);
   const totalGastado = mesGastos.reduce((a, g) => a + g.monto, 0);
+  const totalAnt     = antGastos.reduce((a, g) => a + g.monto, 0);
   const totalPres    = Object.values(data.presupuesto).reduce((a, v) => a + v, 0);
   const disponible   = totalPres - totalGastado;
+  const diffPct      = totalAnt > 0 ? ((totalGastado - totalAnt) / totalAnt * 100).toFixed(0) : null;
+  const diffLabel    = diffPct !== null
+    ? `<span style="color:${Number(diffPct) <= 0 ? '#00ffaa' : '#ff6644'};font-size:8px;margin-left:4px;">${Number(diffPct) > 0 ? '+' : ''}${diffPct}% vs mes ant.</span>`
+    : totalAnt > 0 ? '' : '';
 
   // Gasto por categoría en el mes
   const porCat = {};
@@ -201,9 +215,9 @@ function renderGpResumen() {
 
     <div class="neg-kpi-grid">
       <div class="neg-kpi">
-        <div class="neg-kpi-lbl">GASTADO</div>
+        <div class="neg-kpi-lbl">GASTADO ${diffLabel}</div>
         <div class="neg-kpi-val ${totalPres > 0 && totalGastado > totalPres ? 'neg-loss' : ''}">${_$MXN(totalGastado)}</div>
-        <div class="neg-kpi-sub">de ${_$MXN(totalPres)} presupuesto</div>
+        <div class="neg-kpi-sub">de ${_$MXN(totalPres)} presupuesto${totalAnt > 0 ? ` · ant: ${_$MXN(totalAnt)}` : ''}</div>
       </div>
       <div class="neg-kpi ${disponible < 0 ? 'neg-kpi-warn' : ''}">
         <div class="neg-kpi-lbl">DISPONIBLE</div>

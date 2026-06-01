@@ -57,7 +57,7 @@ function _getTelemetria() {
 function _renderTelemetria(el) {
   const t   = _getTelemetria();
   const log = _getBitacora();
-  const recent = log.slice(0, 6);
+  const recent = log.slice(0, 10);
   const _fmt = ms => new Date(ms).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   const swVer = window.AREX_SW_VERSION || t.swVer;
 
@@ -173,6 +173,8 @@ function _renderLog(el) {
 }
 
 /* ── Agentes ─────────────────────────────────────────── */
+const AGENT_ACTIVE_MS = 300000; // 5 min — ventana de actividad reciente
+
 const AGENTES = [
   {
     id: 'hermes', nombre: 'HERMES', color: '#00ffaa',
@@ -208,7 +210,7 @@ function _getAgentStatus(area) {
   const log = _getBitacora();
   const last = log.find(e => e.modulo === area);
   if (!last) return 'standby';
-  return (Date.now() - last.ts) < 300000 ? 'online' : 'standby';
+  return (Date.now() - last.ts) < AGENT_ACTIVE_MS ? 'online' : 'standby';
 }
 
 function _renderAgentes(el) {

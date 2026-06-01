@@ -1584,6 +1584,12 @@ footer {
 .tarea-item.done { opacity:0.4; }
 .tarea-item.urg-vencida { border-left-color:#ef4444; background:rgba(239,68,68,0.04); }
 .tarea-item.urg-hoy     { border-left-color:#ef4444; background:rgba(239,68,68,0.04); }
+.tarea-item.urg-vencida.prio-alta-item,
+.tarea-item.urg-hoy.prio-alta-item {
+  border-left-color:#ef4444;
+  background:rgba(239,68,68,0.09);
+  box-shadow:inset 3px 0 0 #ef4444, 0 0 12px rgba(239,68,68,0.15);
+}
 .tarea-item.urg-pronto  { border-left-color:#f97316; }
 .tarea-item.urg-semana  { border-left-color:#f59e0b; }
 .tarea-toggle {
@@ -2198,6 +2204,12 @@ footer {
 .ncolor:hover, .ncolor.active { border-color:var(--cyan); transform:scale(1.25); }
 .nota-wc { font-size:0.58rem; color:var(--text-muted); letter-spacing:0.5px; opacity:0.7; }
 .nota-ts { font-size:0.62rem; color:var(--text-muted); letter-spacing:1px; }
+.nota-export-btn {
+  background: transparent; border: none; color: var(--text-muted);
+  font-size: 11px; cursor: pointer; padding: 1px 4px;
+  opacity: 0.5; transition: opacity 0.15s, color 0.15s;
+}
+.nota-export-btn:hover { opacity: 1; color: var(--cyan); }
 
 /* Dashboard notes widget */
 .dash-notas-body { display:flex; flex-direction:column; gap:0.5rem; }

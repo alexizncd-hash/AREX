@@ -59,7 +59,8 @@
   box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 14px rgba(0,212,255,0.05);
   transform: translateX(3px);
 }
-.proj-card.proj-done { opacity:0.55; }
+.proj-card.proj-done { opacity:0.75; }
+.proj-done-label { text-decoration: line-through; opacity: 0.6; }
 
 .proj-card-top {
   display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem;
@@ -98,6 +99,55 @@
   border:1px solid rgba(0,212,255,0.12);
   padding:2px 8px; border-radius:10px;
 }
+
+.proj-estado-badge {
+  font-size: 7px;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.proj-estado-badge.activo      { border-color: rgba(0,212,255,0.3); color: var(--cyan); }
+.proj-estado-badge.planeando   { border-color: rgba(255,153,0,0.3); color: var(--orange); }
+.proj-estado-badge.en-progreso { border-color: rgba(0,255,170,0.3); color: var(--green); }
+.proj-estado-badge.revision    { border-color: rgba(139,92,246,0.3); color: #8B5CF6; }
+.proj-estado-badge.completado  { border-color: rgba(0,255,170,0.25); color: var(--green); opacity: 0.75; }
+
+.proj-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.2rem;
+}
+.proj-progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(0,212,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.proj-progress-fill {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.proj-progress-pct {
+  font-size: 9px;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
+.proj-deadline {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.proj-deadline.soon { color: var(--orange); }
+.proj-deadline.late { color: #ff4444; }
 
 .proj-empty {
   text-align:center; color:var(--text-muted);

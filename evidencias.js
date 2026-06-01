@@ -40,15 +40,27 @@ function saveEvidenciaAsNota(id) {
   }
 }
 
+let _evSearchQ = '';
+
 function renderEvidenciasWidget() {
   const el = document.getElementById('ev-board');
   if (!el) return;
-  const arr = getEvidencias();
+  const allArr = getEvidencias();
   const cnt = document.getElementById('ev-count');
-  if (cnt) cnt.textContent = arr.length;
+  if (cnt) cnt.textContent = allArr.length;
+
+  // Search filter
+  const q = _evSearchQ.toLowerCase().trim();
+  const arr = q ? allArr.filter(ev =>
+    (ev.titulo || '').toLowerCase().includes(q) ||
+    (ev.contenido || '').toLowerCase().includes(q)
+  ) : allArr;
+
+  // Search bar
+  const searchHTML = `<input class="ev-search" id="ev-search-input" placeholder="Buscar evidencias..." value="${_evSearchQ.replace(/"/g,'&quot;')}" oninput="_evSearchQ=this.value;renderEvidenciasWidget()" />`;
 
   if (!arr.length) {
-    el.innerHTML = '<div class="ev-empty">Sin evidencias aún.<br><em>Las respuestas importantes de AREX aparecerán aquí.</em></div>';
+    el.innerHTML = searchHTML + '<div class="ev-empty">Sin evidencias' + (q ? ` para "${q}"` : ' aún.<br><em>Las respuestas importantes de AREX aparecerán aquí.</em>') + '</div>';
     return;
   }
 
@@ -58,17 +70,19 @@ function renderEvidenciasWidget() {
            d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
   };
 
-  el.innerHTML = arr.slice(0, 10).map(ev => {
+  el.innerHTML = searchHTML + arr.slice(0, 20).map(ev => {
     const t = EV_TIPOS[ev.tipo] || EV_TIPOS.general;
     const safeT = ev.titulo?.replace(/&/g,'&amp;').replace(/</g,'&lt;') || 'Sin título';
     const safeB = ev.contenido?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*/g,'') || '';
-    return `<div class="ev-card" style="--ev-color:${t.color}">
+    const isLong = (ev.contenido || '').length > 180;
+    return `<div class="ev-card" style="--ev-color:${t.color}" data-ev-id="${ev.id}">
       <div class="ev-card-head">
         <span class="ev-ico">${t.ico}</span>
         <span class="ev-titulo">${safeT}</span>
         <span class="ev-ts">${_ts(ev.ts)}</span>
       </div>
-      <div class="ev-body">${safeB}</div>
+      <div class="ev-body" id="ev-body-${ev.id}">${safeB}</div>
+      ${isLong ? `<button class="ev-btn" style="margin-top:2px;align-self:flex-start;" onclick="evToggleExpand('${ev.id}')">VER MÁS</button>` : ''}
       <div class="ev-actions">
         <button class="ev-btn" onclick="saveEvidenciaAsNota('${ev.id}')">GUARDAR NOTA</button>
         <button class="ev-btn danger" onclick="deleteEvidencia('${ev.id}')">ELIMINAR</button>
@@ -77,7 +91,18 @@ function renderEvidenciasWidget() {
   }).join('');
 }
 
-window.addEvidencia       = addEvidencia;
-window.deleteEvidencia    = deleteEvidencia;
-window.saveEvidenciaAsNota = saveEvidenciaAsNota;
+function evToggleExpand(id) {
+  const body = document.getElementById(`ev-body-${id}`);
+  if (!body) return;
+  const expanded = body.classList.toggle('expanded');
+  const btn = body.nextElementSibling;
+  if (btn && btn.tagName === 'BUTTON') {
+    btn.textContent = expanded ? 'VER MENOS' : 'VER MÁS';
+  }
+}
+
+window.addEvidencia           = addEvidencia;
+window.deleteEvidencia        = deleteEvidencia;
+window.saveEvidenciaAsNota    = saveEvidenciaAsNota;
 window.renderEvidenciasWidget = renderEvidenciasWidget;
+window.evToggleExpand         = evToggleExpand;

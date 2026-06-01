@@ -310,7 +310,9 @@ const FinanzasModule = {
   },
 
   actualizarCalculadora() {
-    const simulacion = simularLiquidacion(this.pagoExtraActual, this.estrategiaActual);
+    const simulacion  = simularLiquidacion(this.pagoExtraActual, this.estrategiaActual);
+    const simAlt      = simularLiquidacion(this.pagoExtraActual,
+      this.estrategiaActual === 'avalancha' ? 'bola_de_nieve' : 'avalancha');
 
     document.getElementById('resultado-meses').textContent = `${simulacion.meses} meses`;
 
@@ -321,6 +323,28 @@ const FinanzasModule = {
 
     const pagoTotal = getFinanzasData().tarjetas.reduce((s, t) => s + t.pagoMinimo + t.pagoMSI, 0) + this.pagoExtraActual;
     document.getElementById('resultado-pago').textContent = formatearMoneda(pagoTotal);
+
+    // Estrategia alternativa
+    const altLabel = this.estrategiaActual === 'avalancha' ? 'Bola de nieve' : 'Avalancha';
+    const altDiff  = simAlt.meses - simulacion.meses;
+    const altEl    = document.getElementById('resultado-alt-estrategia');
+    if (altEl) {
+      altEl.innerHTML = altDiff !== 0
+        ? `${altLabel}: <strong>${simAlt.meses} meses</strong> <span style="color:${altDiff > 0 ? '#ff6644' : '#00ffaa'};font-size:10px;">(${altDiff > 0 ? '+' : ''}${altDiff} meses)</span>`
+        : `${altLabel}: misma duración`;
+    }
+
+    // Alerta de margen bajo
+    const margen = calcularMargen();
+    const margenAlertEl = document.getElementById('calc-margen-alert');
+    if (margenAlertEl) {
+      if (margen < 1000) {
+        margenAlertEl.style.display = '';
+        margenAlertEl.textContent = `⚠ Margen disponible bajo: ${formatearMoneda(margen)} — considera reducir gastos.`;
+      } else {
+        margenAlertEl.style.display = 'none';
+      }
+    }
 
     this.renderOrdenLiquidacion(simulacion.tarjetas);
     this.renderGraficaProyeccion(simulacion.proyeccion);
@@ -551,6 +575,14 @@ const FinanzasModule = {
   // ── ANALIZAR CON IA ────────────────────────────────────
 
   analizarConIA() {
+    const btn = document.getElementById('btn-analizar-ia');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '⟳ ENVIANDO ANÁLISIS...';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+    }
+
     const d = getFinanzasData();
     const deuda = calcularDeudaTotal();
     const gastos = calcularGastosTotal();
