@@ -29,7 +29,7 @@ function _getTelemetria() {
     for (const k of Object.keys(localStorage)) {
       lsBytes += (localStorage.getItem(k) || '').length * 2;
     }
-  } catch {}
+  } catch (e) { console.warn('AREX control: localStorage enumeration failed', e); }
   const lsKB = (lsBytes / 1024).toFixed(1);
   const lsMax = 5120; // 5MB estimate
   const lsPct = Math.min(100, Math.round(lsBytes / (lsMax * 10.24)));

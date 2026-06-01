@@ -27,19 +27,13 @@ let _panelHashes = {};  // smart cache: solo redibuja si los datos cambian
 /* ─── Public ──────────────────────────────────────────── */
 export async function enterAR() {
   if (!navigator.xr) {
-    // No WebXR — open Vision mode as best alternative on mobile
-    if (typeof window.openVision === 'function') {
-      window.openVision();
-    } else {
-      _fb('Modo AR requiere Meta Quest 3S con Meta Browser.\n\nEn iPhone/Android usa el botón 👁 para activar AREX Visión (cámara inteligente).');
-    }
+    _activateArexCAM();
     return;
   }
 
   const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!ok) {
-    if (typeof window.openVision === 'function') window.openVision();
-    else _fb('AR inmersivo no soportado.\nAbre AREX en Meta Browser del Quest 3S.');
+    _activateArexCAM();
     return;
   }
 
@@ -159,7 +153,7 @@ function _onEnd() {
   _renderer.dispose();
   document.getElementById('ar-canvas-wrap')?.remove();
   _session = null; _renderer = null; _scene = null;
-  _panels = []; _ctrls = []; _grabbed = null;
+  _panels = []; _ctrls = []; _grabbed = null; _panelHashes = {};
   document.getElementById('btn-enter-ar')?.removeAttribute('data-active');
 }
 
@@ -328,6 +322,22 @@ function _rr(ctx, x, y, w, h, r, topOnly = false) {
   }
   ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
   ctx.closePath();
+}
+
+/* ─── AREX Modo CAM AR (fallback para dispositivos no-Quest) ── */
+async function _activateArexCAM() {
+  if (typeof window.openVision === 'function') await window.openVision();
+
+  setTimeout(() => {
+    // Activar voz continua con wake word "AREX"
+    if (typeof window.toggleContinuousMode === 'function' && !window._arexContModeActive) {
+      window.toggleContinuousMode();
+    }
+    // Notificar al panel de visión que está en modo AR
+    if (typeof window._setVisionArMode === 'function') window._setVisionArMode(true);
+
+    _fb('**AREX Modo AR activado.**\n\n🎙 Voz activa — di **"AREX"** seguido de tu comando:\n\n**Cámara:**\n- *"AREX, qué ves"* — describe la escena\n- *"AREX, identifica esto"* — analiza objeto\n- *"AREX, lee esto"* — transcribe texto\n- *"AREX, analiza la escena"*\n- *"AREX, cierra la cámara"*\n\n**Sistema:**\n- *"AREX, mis tareas"* / *"mis finanzas"* / *"mis metas"*\n- *"AREX, silencio"* — detener voz\n\nCualquier otra frase se envía al chat como consulta.');
+  }, 900);
 }
 
 /* ─── Fallback ────────────────────────────────────────── */

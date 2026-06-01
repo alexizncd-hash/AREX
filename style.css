@@ -870,6 +870,20 @@ main {
 }
 .vp-personas-add-btn:hover { background:rgba(0,212,255,0.26); }
 
+/* ── Vision AR mode badge ─────────────────────────────── */
+.vp-ar-badge {
+  position:absolute; top:58px; left:50%; transform:translateX(-50%);
+  background:rgba(0,255,160,0.12); border:1px solid rgba(0,255,160,0.5);
+  border-radius:20px; padding:4px 16px;
+  color:#00ffaa; font-size:9px; letter-spacing:2px;
+  font-family:var(--font); white-space:nowrap; z-index:4;
+  animation:vp-ar-pulse 2s ease-in-out infinite;
+}
+@keyframes vp-ar-pulse {
+  0%,100% { opacity:0.8; box-shadow:0 0 6px rgba(0,255,160,0.2); }
+  50%      { opacity:1;   box-shadow:0 0 14px rgba(0,255,160,0.4); }
+}
+
 /* Status float — ABOVE the orb, like Danny's JARVIS */
 .status-float {
   font-size:9px; letter-spacing:2.5px; text-transform:uppercase;

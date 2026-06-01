@@ -54,6 +54,23 @@ function getGastosData() {
 function saveGastosData(data) {
   localStorage.setItem(GP_KEY, JSON.stringify(data));
   if (typeof arexSyncData === 'function') arexSyncData(GP_KEY);
+  _checkGastosAlerts(data);
+}
+
+function _checkGastosAlerts(data) {
+  if (typeof window.arexAlert !== 'function') return;
+  const now  = new Date();
+  const mes  = _gastosDelMes(data.gastos);
+  for (const [k, cat] of Object.entries(GP_CATS)) {
+    const pres  = data.presupuesto[k] || 0;
+    if (!pres) continue;
+    const gasto = mes.filter(g => g.categoria === k).reduce((a, g) => a + g.monto, 0);
+    if (gasto > pres) {
+      window.arexAlert('GASTOS',
+        `${cat.e} ${cat.l} excedida: gastaste ${_$MXN(gasto)} de ${_$MXN(pres)} (+${_$MXN(gasto - pres)})`,
+        'warn');
+    }
+  }
 }
 
 // ── Navegación de vistas ─────────────────────────────

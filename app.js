@@ -442,7 +442,10 @@ let continuousMode = false;
 let isSpeaking = false;
 let isBusy     = false;
 let _continuousRec     = null;
-let _continuousRestart = true;
+let _continuousRestart = false;  // false al inicio — solo se pone true cuando el modo está activo
+let _listenRec         = null;   // referencia al reconocimiento one-shot
+let _listenTimer       = null;   // timeout de seguridad del mic (12s)
+let _iosVoiceKa        = null;   // iOS keep-alive para speechSynthesis principal
 
 const _msgRaw = new WeakMap(); // wrap element → raw markdown text
 
@@ -1565,12 +1568,17 @@ function getMaleVoice() {
 function arexSpeak(text) {
   if (!voiceOn && !continuousMode) return;
   window.speechSynthesis.cancel();
+  clearInterval(_iosVoiceKa);
   isSpeaking = true;
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
   const v = getMaleVoice(); if (v) u.voice = v;
   u.onstart = () => {
     setOrb('speaking','Transmitiendo respuesta');
+    // iOS Safari pausa speechSynthesis internamente cada ~15s — keep-alive
+    _iosVoiceKa = setInterval(() => {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }, 5000);
     if (continuousMode && _continuousRec) {
       _continuousRestart = false;
       try { _continuousRec.stop(); } catch(e) {}
@@ -1578,6 +1586,7 @@ function arexSpeak(text) {
   };
   u.onend = () => {
     isSpeaking = false;
+    clearInterval(_iosVoiceKa);
     setOrb(null);
     if (continuousMode) {
       _continuousRestart = true;
@@ -1590,6 +1599,7 @@ function arexSpeak(text) {
   };
   u.onerror = () => {
     isSpeaking = false;
+    clearInterval(_iosVoiceKa);
     setOrb(null);
     if (continuousMode) { _continuousRestart = true; }
   };
@@ -1649,32 +1659,65 @@ const VOICE_CMDS = [
   { phrases:['ver comandos','mostrar ayuda','ayuda'],               cmd:'/ayuda'    },
   { phrases:['activar búsqueda','búsqueda web','buscar en internet'], cmd:'__search__' },
   { phrases:['resumir conversación','resume la conversación'],      cmd:'/resumir'  },
-  { phrases:['qué ves','qué estás viendo','describe lo que ves','enciende la cámara'], cmd:'__vision_describe__' },
-  { phrases:['identifica esto','qué es esto','identifica el producto','escanea esto'], cmd:'__vision_product__' },
-  { phrases:['lee esto','lee el texto','escanea el texto'],         cmd:'__vision_text__'    },
+  { phrases:['qué ves','qué estás viendo','describe lo que ves','enciende la cámara','activa la cámara'], cmd:'__vision_describe__' },
+  { phrases:['identifica esto','qué es esto','identifica el producto','escanea esto','analiza esto'], cmd:'__vision_product__' },
+  { phrases:['lee esto','lee el texto','escanea el texto','transcribe esto'],  cmd:'__vision_text__' },
+  { phrases:['analiza la escena','describe la escena','qué hay aquí'],         cmd:'__vision_scene__' },
+  { phrases:['modo ar','activa ar','encender ar','iniciar ar'],                cmd:'__ar_mode__'     },
+  { phrases:['apagar cámara','cerrar cámara','cerrar visión'],                 cmd:'__close_vision__'},
+  { phrases:['mis finanzas','ver finanzas','estado de finanzas'],              cmd:'__finanzas__'    },
+  { phrases:['mis tareas','ver tareas','tareas pendientes'],                   cmd:'__tareas__'      },
+  { phrases:['mis metas','ver metas','estado de metas'],                       cmd:'__metas__'       },
+  { phrases:['mi negocio','ver negocio','estado del negocio'],                 cmd:'__negocio__'     },
+  { phrases:['silencio','cállate','para de hablar','detente'],                 cmd:'__stop_voice__'  },
 ];
 
 /* ── Reconocimiento de voz ──────────────────────────── */
+function stopListening() {
+  clearTimeout(_listenTimer); _listenTimer = null;
+  if (_listenRec) { try { _listenRec.abort(); } catch(e) {} _listenRec = null; }
+  btnMic.classList.remove('on');
+  setOrb(null, 'En espera de instrucciones');
+}
+
 function startListening() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible. Usa Chrome o Edge — Firefox y algunos navegadores móviles no lo soportan.'); return; }
+  if (!SR) { addMsg('arex','Reconocimiento de voz no disponible en este navegador. Usa Chrome, Edge o Safari.'); return; }
+
   const rec = new SR();
+  _listenRec = rec;
   rec.lang = 'es-MX'; rec.interimResults = false; rec.maxAlternatives = 1;
   btnMic.classList.add('on');
   setOrb('listening','Escuchando...');
+
+  // Timeout de seguridad: si no detecta nada en 12s, libera el mic
+  _listenTimer = setTimeout(() => {
+    stopListening();
+    addMsg('arex', 'No escuché nada. Intenta de nuevo.');
+  }, 12000);
+
   rec.onresult = async e => {
+    clearTimeout(_listenTimer); _listenTimer = null;
     btnMic.classList.remove('on');
     const transcript = e.results?.[0]?.[0]?.transcript;
-    if (!transcript) return;
+    if (!transcript) { stopListening(); return; }
     const lower = transcript.toLowerCase().trim();
 
     // Detectar comandos de voz
     for (const vc of VOICE_CMDS) {
       if (vc.phrases.some(p => lower.includes(p))) {
-        if (vc.cmd === '__search__')          { btnSearch.click(); }
+        if (vc.cmd === '__search__')             { btnSearch.click(); }
         else if (vc.cmd === '__vision_describe__') { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('describe'); }
         else if (vc.cmd === '__vision_product__')  { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('product');  }
         else if (vc.cmd === '__vision_text__')     { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('text');     }
+        else if (vc.cmd === '__vision_scene__')    { if (typeof window.captureAndAnalyze === 'function') window.captureAndAnalyze('scene');    }
+        else if (vc.cmd === '__close_vision__')    { if (typeof window.closeVision === 'function') window.closeVision(); }
+        else if (vc.cmd === '__ar_mode__')         { if (typeof window.enterAR === 'function') window.enterAR(); }
+        else if (vc.cmd === '__finanzas__')        { AREXNav?.cambiarModulo('finanzas'); }
+        else if (vc.cmd === '__tareas__')          { AREXNav?.cambiarModulo('tareas'); }
+        else if (vc.cmd === '__metas__')           { AREXNav?.cambiarModulo('metas'); }
+        else if (vc.cmd === '__negocio__')         { AREXNav?.cambiarModulo('negocio'); }
+        else if (vc.cmd === '__stop_voice__')      { window.speechSynthesis?.cancel(); setOrb(null); }
         else { txt.value = vc.cmd; await handleSend(); }
         return;
       }
@@ -1685,9 +1728,13 @@ function startListening() {
     await updateStats('voice');
     handleSend();
   };
-  rec.onerror = () => { btnMic.classList.remove('on'); setOrb(null,'En espera de instrucciones'); };
-  rec.onend   = () => btnMic.classList.remove('on');
-  rec.start();
+  rec.onerror = () => stopListening();
+  rec.onend   = () => stopListening();
+
+  try { rec.start(); } catch(e) {
+    stopListening();
+    addMsg('arex', 'No se pudo iniciar el micrófono. Verifica los permisos del navegador.');
+  }
 }
 
 /* ── Modo AR — Voz Continua con Wake Word ───────────── */
@@ -1726,16 +1773,35 @@ function startContinuousMode() {
         addMsg('arex', ack);
         arexSpeak(ack);
       } else {
-        // Comandos especiales de visión desde modo AR
+        // Comandos directos por voz desde modo AR (sin enviar al chat)
         const cmdL = cmd.toLowerCase();
-        if (/qué ves|qué estás viendo|describe/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+        if (/qué ves|estás viendo|describe|activa.{0,10}cámara/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
           arexSpeak('Analizando.'); window.captureAndAnalyze('describe'); continue;
         }
-        if (/identifica|qué es esto|escanea/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+        if (/identifica|qué es esto|escanea|analiza esto/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
           arexSpeak('Identificando.'); window.captureAndAnalyze('product'); continue;
         }
-        if (/lee esto|lee el texto/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+        if (/lee esto|lee el texto|transcribe/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
           arexSpeak('Leyendo.'); window.captureAndAnalyze('text'); continue;
+        }
+        if (/analiza la escena|qué hay aquí/.test(cmdL) && typeof window.captureAndAnalyze === 'function') {
+          arexSpeak('Analizando escena.'); window.captureAndAnalyze('scene'); continue;
+        }
+        if (/cierra.{0,10}cámara|apaga.{0,10}cámara|cierra.{0,10}visión/.test(cmdL)) {
+          if (typeof window.closeVision === 'function') window.closeVision();
+          arexSpeak('Cámara cerrada.'); continue;
+        }
+        if (/mis finanzas|estado.{0,10}finanzas/.test(cmdL)) {
+          AREXNav?.cambiarModulo('finanzas'); arexSpeak('Abriendo finanzas.'); continue;
+        }
+        if (/mis tareas|tareas pendientes/.test(cmdL)) {
+          AREXNav?.cambiarModulo('tareas'); arexSpeak('Abriendo tareas.'); continue;
+        }
+        if (/mis metas|estado.{0,10}metas/.test(cmdL)) {
+          AREXNav?.cambiarModulo('metas'); arexSpeak('Abriendo metas.'); continue;
+        }
+        if (/silencio|cállate|para de hablar|detente/.test(cmdL)) {
+          window.speechSynthesis?.cancel(); continue;
         }
         setOrb('listening', 'Procesando comando de voz...');
         txt.value = cmd;
@@ -1746,13 +1812,16 @@ function startContinuousMode() {
   };
 
   rec.onerror = e => {
-    if (e.error === 'no-speech' || e.error === 'audio-capture') return;
+    if (e.error === 'no-speech' || e.error === 'audio-capture') return; // errores benignos
     if (e.error === 'not-allowed') {
-      addMsg('arex', 'Permiso de micrófono denegado. Actívalo en la configuración del navegador.');
-      continuousMode = false;
-      _continuousRestart = false;
-      updateSidebarModes();
+      addMsg('arex', 'Permiso de micrófono denegado. Actívalo en Ajustes del navegador.');
+      continuousMode = false; _continuousRestart = false; updateSidebarModes();
+      return;
     }
+    // Para otros errores (network, service-not-allowed, etc.): pausar restart 2s en vez de loop infinito
+    console.warn('AREX voice recognition error:', e.error);
+    _continuousRestart = false;
+    setTimeout(() => { if (continuousMode) _continuousRestart = true; }, 2000);
   };
 
   rec.onend = () => {
@@ -1793,7 +1862,20 @@ function toggleContinuousMode() {
   }
   updateSidebarModes();
 }
-window.toggleContinuousMode = toggleContinuousMode;
+window.toggleContinuousMode  = toggleContinuousMode;
+window.stopContinuousMode    = stopContinuousMode;
+Object.defineProperty(window, '_arexContModeActive', { get: () => continuousMode });
+
+/* ── Sistema de alertas de sub-agentes ───────────────── */
+// Cualquier módulo puede llamar window.arexAlert() para notificar al sistema principal.
+// Respeta la jerarquía: AREX es el agente principal, los módulos son sub-agentes que reportan.
+function arexAlert(modulo, mensaje, prioridad = 'info') {
+  const iconos = { warn:'⚠', info:'ℹ', error:'❌', success:'✓' };
+  const icono  = iconos[prioridad] || 'ℹ';
+  addMsg('arex', `**[${modulo.toUpperCase()}]** ${icono} ${mensaje}`);
+  if (voiceOn || continuousMode) arexSpeak(mensaje);
+}
+window.arexAlert = arexAlert;
 
 /* ── Auto-búsqueda por contexto ─────────────────────── */
 const AUTO_SEARCH_KW = [
@@ -2917,7 +2999,10 @@ txt.addEventListener('input', () => {
   const s = document.getElementById('ctx-suggestions');
   if (s && txt.value.trim()) s.innerHTML = '';
 });
-btnMic.addEventListener('click', () => { if(!btnMic.classList.contains('on')) startListening(); });
+btnMic.addEventListener('click', () => {
+  if (btnMic.classList.contains('on')) stopListening();
+  else startListening();
+});
 
 btnVoice.addEventListener('click', () => {
   voiceOn = !voiceOn;
@@ -3214,6 +3299,11 @@ async function boot() {
       btnSearch?.classList.add('active');
     }
     updateSidebarModes();
+
+    // Sub-agentes: verificar alertas de pagos urgentes al arrancar
+    setTimeout(() => {
+      if (typeof window.checkFinanzasAlerts === 'function') window.checkFinanzasAlerts();
+    }, 3500);
 
     // Detección de múltiples pestañas (avisa si hay otra instancia abierta)
     if (typeof BroadcastChannel !== 'undefined') {

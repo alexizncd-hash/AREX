@@ -460,3 +460,19 @@ function formatearFecha(fecha) {
     day: 'numeric'
   }).format(fecha);
 }
+
+// Sub-agente Finanzas → reporta a AREX si hay pagos urgentes al iniciar
+function checkFinanzasAlerts() {
+  if (typeof window.arexAlert !== 'function') return;
+  try {
+    const pagos = obtenerProximosPagos(3);
+    pagos.forEach(p => {
+      const dia = p.diasRestantes;
+      const etiqueta = dia === 0 ? '¡HOY!' : dia === 1 ? 'mañana' : `en ${dia} días`;
+      window.arexAlert('FINANZAS',
+        `Pago de ${p.tarjeta} vence ${etiqueta}: ${formatearMoneda(p.pagoMinimo)} mínimo`,
+        dia <= 1 ? 'warn' : 'info');
+    });
+  } catch(e) { console.warn('AREX Finanzas alerts:', e); }
+}
+window.checkFinanzasAlerts = checkFinanzasAlerts;

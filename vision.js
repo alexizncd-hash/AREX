@@ -11,6 +11,7 @@ let _contOn       = false;
 let _contRunning  = false;  // guard: evita dos loops simultáneos
 let _contCycle    = 0;      // contador de ciclo en modo continuo
 let _busy         = false;
+let _arMode       = false;  // true si fue abierto desde "ENTRAR AR"
 let _busyTimer    = null;   // safety timeout: libera _busy si _analyze se cuelga
 let _facingMode   = 'environment';
 let _voiceOn      = true;
@@ -112,7 +113,14 @@ export async function openVision() {
 }
 
 export function closeVision() {
-  _contOn = false;
+  _contOn      = false;
+  _contRunning = false;
+  _contCycle   = 0;
+  // Si fue abierto en modo AR, apagar también la voz continua
+  if (_arMode && typeof window.stopContinuousMode === 'function') {
+    window.stopContinuousMode();
+  }
+  _arMode = false;
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
@@ -121,6 +129,26 @@ export function closeVision() {
   _panel?.remove(); _panel = null;
   document.getElementById('btn-vision')?.classList.remove('active');
 }
+
+// Llamado desde webxr.js cuando se activa el modo CAM AR
+export function setVisionArMode(active) {
+  _arMode = active;
+  if (active && _panel) {
+    // Mostrar badge AR en el panel de visión
+    if (!_panel.querySelector('.vp-ar-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'vp-ar-badge';
+      badge.id = 'vp-ar-badge';
+      badge.textContent = '🎙 MODO AR · DI "AREX" + COMANDO';
+      _panel.appendChild(badge);
+    }
+  } else {
+    document.getElementById('vp-ar-badge')?.remove();
+  }
+}
+
+window.setVisionArMode   = setVisionArMode;
+window._setVisionArMode  = setVisionArMode;
 
 export async function captureAndAnalyze(mode = 'describe', extra = '') {
   if (!_stream) {
