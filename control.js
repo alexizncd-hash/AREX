@@ -35,7 +35,7 @@ function _getTelemetria() {
   const lsPct = Math.min(100, Math.round(lsBytes / (lsMax * 10.24)));
 
   // SW version
-  const swVer = window.AREX_SW_VERSION || 'v49';
+  const swVer = window.AREX_SW_VERSION || 'v50';
 
   // Uptime
   const uptimeSec = Math.floor((Date.now() - _ctrlBootTime) / 1000);
