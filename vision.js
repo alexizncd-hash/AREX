@@ -1,6 +1,6 @@
-// AREX — Visión en vivo · MARK 39
+// AREX — Visión en vivo · MARK 40
 // Full-screen HUD · Groq Scout first · Gemini fallback
-// Resultados EN el panel · Modo continuo secuencial · iOS TTS keep-alive
+// Personas conocidas · Prompts dinámicos · Modo continuo reactivo
 
 /* ─── State ───────────────────────────────────────────── */
 let _stream       = null;
@@ -8,17 +8,66 @@ let _video        = null;
 let _panel        = null;
 let _resultTimer  = null;
 let _contOn       = false;
-let _contRunning  = false;  // guard: evita dos loops _runContinuous simultáneos
+let _contRunning  = false;  // guard: evita dos loops simultáneos
+let _contCycle    = 0;      // contador de ciclo en modo continuo
 let _busy         = false;
 let _busyTimer    = null;   // safety timeout: libera _busy si _analyze se cuelga
 let _facingMode   = 'environment';
 let _voiceOn      = true;
 let _iosKa        = null;   // iOS speech keep-alive interval
 
-/* ─── Prompts ─────────────────────────────────────────── */
-const PROMPTS = {
-  describe: `Eres AREX, asistente IA de Alexiz. Describe con PRECISIÓN ESPECÍFICA lo que ves en esta imagen: qué objetos concretos hay, sus colores exactos, marcas visibles, textos legibles, posición de elementos. Menciona detalles relevantes. Si hay una persona descríbela físicamente. Si es Alexiz (joven mexicano universitario, delgado), salúdalo. NO seas genérico. 2-3 frases específicas. En español.`,
+/* ─── Personas conocidas ──────────────────────────────── */
+function _loadPersonas() {
+  try { return JSON.parse(localStorage.getItem('arex_personas') || '[]'); } catch { return []; }
+}
+function _savePersonas(arr) { localStorage.setItem('arex_personas', JSON.stringify(arr)); }
 
+function _personasCtxStr() {
+  const arr = _loadPersonas();
+  if (!arr.length) return '';
+  return '\n\nPersonas conocidas (si la persona visible coincide con alguna descripción, salúdala por su nombre con energía JARVIS):\n' +
+    arr.map(p => `- ${p.nombre}: ${p.descripcion}`).join('\n');
+}
+
+/* ─── Prompts dinámicos ───────────────────────────────── */
+// Los modelos AI rechazan "identificar" personas, pero SÍ describen características físicas.
+// La estrategia: describir apariencia visual → usuario guardó descripciones → el modelo hace matching.
+function _buildVisionPrompt(mode) {
+  const pc = _personasCtxStr();
+
+  if (mode === 'describe') {
+    // En modo continuo, ciclos posteriores usan prompt reactivo (más corto y conversacional)
+    if (_contOn && _contCycle > 1) {
+      return `Eres AREX en modo observación en vivo, ciclo ${_contCycle}.${pc}
+
+Haz UNA observación breve y directa sobre lo que ves ahora — una acción, cambio, detalle nuevo, o comentario ingenioso sobre la escena. Si hay una persona y coincide con alguna de las conocidas, dirígete a ella. 1-2 frases máximo. Tono JARVIS: observador, inteligente, con personalidad. En español.`;
+    }
+    return `Eres AREX, sistema IA de Alexiz (Hermosillo, México). Observación en vivo.${pc}
+
+Describe EXACTAMENTE lo que observas visualmente:
+• PERSONAS: color y largo de cabello, complexión, ropa (colores, tipo de prenda), expresión facial, postura. Si coincide con alguna persona conocida arriba, salúdala por nombre. NUNCA respondas "no puedo describir personas" — siempre describe lo que VES físicamente.
+• OBJETOS: nombre específico, marca visible, color, material, texto legible.
+• ENTORNO: tipo de lugar, iluminación, colores dominantes, contexto.
+
+Responde en 2-3 frases directas. Tono JARVIS: preciso, observador, con personalidad. En español.`;
+  }
+
+  if (mode === 'scene') {
+    return `Eres AREX. Análisis exhaustivo de escena para Alexiz.${pc}
+
+Lista TODOS los elementos visibles:
+• Personas: apariencia física (cabello, ropa, complexión, expresión, postura). Si coincide con alguna persona conocida, nómbrala.
+• Objetos: nombre, marca, colores, materiales.
+• Ambiente: interior/exterior, iluminación, colores dominantes, posibles actividades.
+Detallado y específico. En español.`;
+  }
+
+  // product y text usan prompts estáticos (no aplica el problema de personas)
+  return PROMPTS_STATIC[mode] || PROMPTS_STATIC.product;
+}
+
+/* ─── Prompts estáticos (producto y texto) ────────────── */
+const PROMPTS_STATIC = {
   product: `Eres AREX identificando un objeto/producto para Alexiz. Analiza con el MÁXIMO DETALLE posible. Responde EXACTAMENTE así:
 
 **Objeto:** [nombre específico]
@@ -33,8 +82,6 @@ const PROMPTS = {
 Si no identificas el objeto exacto, describe TODOS los detalles visuales. En español.`,
 
   text: `Lee y transcribe EXACTAMENTE todo el texto visible en esta imagen, incluidos números, signos y símbolos. Mantén el orden original con saltos de línea. Si hay texto en inglés, transcríbelo igual. Responde en español solo el encabezado "Texto encontrado:" y luego el texto tal cual.`,
-
-  scene: `Eres AREX. Haz un análisis EXHAUSTIVO de esta escena: lista todos los objetos visibles, describe personas si las hay (ropa, postura, expresión), el ambiente (interior/exterior, iluminación, colores dominantes), posibles actividades, contexto general. Sé específico y detallado. Si ves a Alexiz, menciónalo. En español.`,
 };
 
 const MODE_LABELS = {
@@ -44,8 +91,6 @@ const MODE_LABELS = {
   scene:    '🌐 ESCENA',
 };
 
-/* ─── Resolución por modo ─────────────────────────────── */
-// Modo continuo usa 480px (velocidad), modos de análisis 640px (detalle)
 const MODE_RES = { describe: 480, product: 640, text: 640, scene: 640 };
 
 /* ─── Public API ──────────────────────────────────────── */
@@ -106,6 +151,7 @@ function _buildPanel() {
       <div class="vp-title"><span class="vp-dot"></span>AREX · VISIÓN</div>
       <div class="vp-top-btns">
         <button class="vp-icon-btn vp-voice-btn on" id="vis-voice" title="Voz">🔊</button>
+        <button class="vp-icon-btn" id="vis-personas" title="Personas conocidas">👤</button>
         <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">⟳</button>
         <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
       </div>
@@ -114,6 +160,19 @@ function _buildPanel() {
     <div class="vp-status-badge" id="vis-status">
       <span class="vp-status-dot"></span>
       <span id="vis-status-txt">LISTO</span>
+    </div>
+
+    <div class="vp-personas-panel" id="vis-personas-panel">
+      <div class="vp-result-hd">
+        <span class="vp-result-lbl">👤 PERSONAS CONOCIDAS</span>
+        <button class="vp-icon-btn vp-close-btn" id="vis-personas-close">✕</button>
+      </div>
+      <div id="vis-personas-list" class="vp-personas-list"></div>
+      <div class="vp-personas-form">
+        <input id="vp-p-nombre" placeholder="Nombre (ej: Margaret)" class="vp-personas-input"/>
+        <textarea id="vp-p-desc" placeholder="Descripción física: cabello largo oscuro, piel morena, talla media, usa lentes..." rows="3" class="vp-personas-textarea"></textarea>
+        <button class="vp-personas-add-btn" id="vp-p-add">+ GUARDAR PERSONA</button>
+      </div>
     </div>
 
     <div class="vp-result" id="vis-result">
@@ -161,6 +220,9 @@ function _buildPanel() {
   document.getElementById('vis-qr').addEventListener('click', _detectQR);
   document.getElementById('vis-result-close').addEventListener('click', _hideResult);
   document.getElementById('vis-voice').addEventListener('click', _toggleVoice);
+  document.getElementById('vis-personas').addEventListener('click', _openPersonasPanel);
+  document.getElementById('vis-personas-close').addEventListener('click', _closePersonasPanel);
+  document.getElementById('vp-p-add').addEventListener('click', _addPersona);
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
@@ -219,7 +281,7 @@ async function _analyze(mode, extra = '') {
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
 
-  const prompt    = extra || PROMPTS[mode] || PROMPTS.describe;
+  const prompt    = extra || _buildVisionPrompt(mode);
   const geminiKey = window.AREX_CONFIG?.geminiKey;
   const groqKey   = window.AREX_CONFIG?.groqKey;
 
@@ -422,18 +484,22 @@ function _toggleContinuous() {
 }
 
 async function _runContinuous() {
-  if (_contRunning) return;  // evita dos loops simultáneos
+  if (_contRunning) return;
   _contRunning = true;
+  _contCycle   = 0;
   try {
     while (_contOn) {
+      _contCycle++;
       await _analyze('describe');
       if (!_contOn) break;
       await _waitForSpeech();
       if (!_contOn) break;
-      await new Promise(r => setTimeout(r, 2000));
+      // Primer ciclo: pausa más corta para que se sienta responsivo
+      await new Promise(r => setTimeout(r, _contCycle === 1 ? 800 : 2200));
     }
   } finally {
     _contRunning = false;
+    _contCycle   = 0;
   }
 }
 
@@ -547,4 +613,67 @@ function _toggleVoice() {
 
 function _say(msg) {
   if (typeof window.addMsg === 'function') window.addMsg('arex', msg);
+}
+
+/* ─── Personas panel ──────────────────────────────────── */
+function _openPersonasPanel() {
+  // Cerrar panel de resultado si está abierto
+  document.getElementById('vis-result')?.classList.remove('visible');
+  _renderPersonasList();
+  document.getElementById('vis-personas-panel')?.classList.add('visible');
+}
+
+function _closePersonasPanel() {
+  document.getElementById('vis-personas-panel')?.classList.remove('visible');
+}
+
+function _renderPersonasList() {
+  const el = document.getElementById('vis-personas-list');
+  if (!el) return;
+  const arr = _loadPersonas();
+  if (!arr.length) {
+    el.innerHTML = '<div class="vp-personas-empty">Sin personas guardadas.<br>Agrega a Alexiz y Margaret con su descripción física para que AREX las reconozca en cámara.</div>';
+    return;
+  }
+  el.innerHTML = arr.map((p, i) => `
+    <div class="vp-persona-item">
+      <div class="vp-persona-data">
+        <strong>${p.nombre}</strong>
+        <span>${p.descripcion.slice(0, 80)}${p.descripcion.length > 80 ? '…' : ''}</span>
+      </div>
+      <button class="vp-icon-btn vp-close-btn vp-persona-del" data-idx="${i}" title="Eliminar">✕</button>
+    </div>`).join('');
+
+  el.querySelectorAll('.vp-persona-del').forEach(btn =>
+    btn.addEventListener('click', () => _deletePersona(Number(btn.dataset.idx)))
+  );
+}
+
+function _addPersona() {
+  const nombre = document.getElementById('vp-p-nombre')?.value.trim();
+  const desc   = document.getElementById('vp-p-desc')?.value.trim();
+  if (!nombre || desc.length < 10) {
+    _setStatus('Nombre y descripción requeridos');
+    setTimeout(() => _setStatus('LISTO'), 2000);
+    return;
+  }
+  const arr = _loadPersonas();
+  const idx = arr.findIndex(p => p.nombre.toLowerCase() === nombre.toLowerCase());
+  if (idx >= 0) arr[idx].descripcion = desc;
+  else arr.push({ nombre, descripcion: desc });
+  _savePersonas(arr);
+  const ni = document.getElementById('vp-p-nombre');
+  const di = document.getElementById('vp-p-desc');
+  if (ni) ni.value = '';
+  if (di) di.value = '';
+  _renderPersonasList();
+  _setStatus(`${nombre} guardado ✓`);
+  setTimeout(() => _setStatus(_contOn ? 'MODO CONTINUO' : 'LISTO'), 2000);
+}
+
+function _deletePersona(i) {
+  const arr = _loadPersonas();
+  arr.splice(i, 1);
+  _savePersonas(arr);
+  _renderPersonasList();
 }
