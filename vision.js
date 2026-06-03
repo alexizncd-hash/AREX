@@ -1,6 +1,7 @@
 // AREX — Visión en vivo · MARK 40
 // Full-screen HUD · Groq Scout first · Gemini fallback
 // Personas conocidas · Prompts dinámicos · Modo continuo reactivo
+// Gesture Engine · Voice Commands · JARVIS HUD
 
 /* ─── State ───────────────────────────────────────────── */
 let _stream       = null;
@@ -8,14 +9,24 @@ let _video        = null;
 let _panel        = null;
 let _resultTimer  = null;
 let _contOn       = false;
-let _contRunning  = false;  // guard: evita dos loops simultáneos
-let _contCycle    = 0;      // contador de ciclo en modo continuo
+let _contRunning  = false;
+let _contCycle    = 0;
 let _busy         = false;
-let _arMode       = false;  // true si fue abierto desde "ENTRAR AR"
-let _busyTimer    = null;   // safety timeout: libera _busy si _analyze se cuelga
+let _arMode       = false;
+let _busyTimer    = null;
 let _facingMode   = 'environment';
 let _voiceOn      = true;
-let _iosKa        = null;   // iOS speech keep-alive interval
+let _iosKa        = null;
+
+// Gesture + voice command state
+let _gestureOn      = false;
+let _voiceCmdOn     = false;
+let _vsr            = null;    // SpeechRecognition instance
+let _vsrRunning     = false;
+let _moduleGridVis  = false;
+let _telTimer       = null;
+let _cmdFeedbackT   = null;
+let _lastInterim    = '';
 
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
@@ -116,7 +127,6 @@ export function closeVision() {
   _contOn      = false;
   _contRunning = false;
   _contCycle   = 0;
-  // Si fue abierto en modo AR, apagar también la voz continua
   if (_arMode && typeof window.stopContinuousMode === 'function') {
     window.stopContinuousMode();
   }
@@ -124,6 +134,12 @@ export function closeVision() {
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
+  clearInterval(_telTimer);
+  _telTimer = null;
+  // Stop gesture engine
+  if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
+  // Stop voice commands
+  _stopVoiceCmd();
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
   _panel?.remove(); _panel = null;
@@ -164,32 +180,95 @@ window.closeVision       = closeVision;
 window.captureAndAnalyze = captureAndAnalyze;
 
 /* ─── Panel UI ────────────────────────────────────────── */
+const _MODS_GRID = [
+  { id:'inicio',     icon:'◈', label:'INICIO' },
+  { id:'finanzas',   icon:'💳', label:'FINANZAS' },
+  { id:'metas',      icon:'🎯', label:'METAS' },
+  { id:'tareas',     icon:'✓',  label:'TAREAS' },
+  { id:'notas',      icon:'📝', label:'NOTAS' },
+  { id:'negocio',    icon:'📦', label:'NEGOCIO' },
+  { id:'gastos',     icon:'💸', label:'GASTOS' },
+  { id:'proyectos',  icon:'⚡', label:'PROYECTOS' },
+  { id:'evidencias', icon:'🔍', label:'EVIDENCIAS' },
+  { id:'control',    icon:'⚙',  label:'CONTROL' },
+  { id:'chat',       icon:'▸',  label:'CHAT' },
+];
+
 function _buildPanel() {
   const el = document.createElement('div');
   el.id = 'vision-panel';
   el.innerHTML = `
     <video id="vis-video" autoplay playsinline muted></video>
+    <canvas id="vis-gesture-canvas" class="vp-gesture-canvas"></canvas>
     <div class="vp-scan-line" id="vis-scan"></div>
     <div class="vp-corner vp-tl"></div>
     <div class="vp-corner vp-tr"></div>
     <div class="vp-corner vp-bl"></div>
     <div class="vp-corner vp-br"></div>
 
+    <!-- TOP BAR -->
     <div class="vp-hud-top">
       <div class="vp-title"><span class="vp-dot"></span>AREX · VISIÓN</div>
       <div class="vp-top-btns">
-        <button class="vp-icon-btn vp-voice-btn on" id="vis-voice" title="Voz">🔊</button>
+        <button class="vp-icon-btn vp-gesture-btn" id="vis-gesture" title="Gestos">✋</button>
+        <button class="vp-icon-btn vp-vcmd-btn"    id="vis-vcmd"    title="Comandos de voz">🎙</button>
+        <button class="vp-icon-btn vp-voice-btn on" id="vis-voice"  title="Síntesis de voz">🔊</button>
         <button class="vp-icon-btn" id="vis-personas" title="Personas conocidas">👤</button>
         <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">⟳</button>
         <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
       </div>
     </div>
 
+    <!-- LEFT TELEMETRY -->
+    <div class="vp-telemetry" id="vis-telemetry">
+      <div class="vp-tel-hdr"><span class="vp-tel-dot"></span>TELEMETRÍA</div>
+      <div class="vp-tel-row"><span>CAM</span><span id="vis-tel-cam">—</span></div>
+      <div class="vp-tel-row"><span>AI</span><span id="vis-tel-ai">${window.AREX_CONFIG?.groqKey ? 'GROQ ⬤' : 'GEMINI ⬤'}</span></div>
+      <div class="vp-tel-row"><span>MODO</span><span id="vis-tel-mode">VISUAL</span></div>
+      <div class="vp-tel-row"><span>SEÑA</span><span id="vis-tel-gest">—</span></div>
+      <div class="vp-tel-row"><span>VOZ</span><span id="vis-tel-voice">—</span></div>
+    </div>
+
+    <!-- RIGHT GESTURE GUIDE -->
+    <div class="vp-gest-guide" id="vis-gest-guide">
+      <div class="vp-tel-hdr"><span class="vp-tel-dot"></span>GESTOS</div>
+      <div class="vp-gg-row"><span>✋</span><span>ANALIZAR</span></div>
+      <div class="vp-gg-row"><span>✊</span><span>DETENER</span></div>
+      <div class="vp-gg-row"><span>☝</span><span>MÓDULOS</span></div>
+      <div class="vp-gg-row"><span>✌</span><span>AUTO</span></div>
+      <div class="vp-gg-row"><span>👍</span><span>VOZ</span></div>
+    </div>
+
+    <!-- STATUS BADGE -->
     <div class="vp-status-badge" id="vis-status">
       <span class="vp-status-dot"></span>
       <span id="vis-status-txt">LISTO</span>
     </div>
 
+    <!-- VOICE COMMAND BAR -->
+    <div class="vp-voice-bar" id="vis-voice-bar">
+      <div class="vp-wave" id="vis-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span id="vis-cmd-text">DI "AREX" + COMANDO</span>
+    </div>
+
+    <!-- MODULE NAVIGATION GRID -->
+    <div class="vp-module-grid" id="vis-module-grid">
+      <div class="vp-mg-title">◈ NAVEGAR</div>
+      <div class="vp-mg-items">
+        ${_MODS_GRID.map(m => `
+          <button class="vp-mg-btn" onclick="visNavigate('${m.id}')">
+            <span class="vp-mg-ico">${m.icon}</span>
+            <span class="vp-mg-lbl">${m.label}</span>
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <!-- GESTURE FLASH (brief fullscreen overlay) -->
+    <div class="vp-gesture-flash" id="vis-gest-flash"></div>
+
+    <!-- PERSONAS PANEL -->
     <div class="vp-personas-panel" id="vis-personas-panel">
       <div class="vp-result-hd">
         <span class="vp-result-lbl">👤 PERSONAS CONOCIDAS</span>
@@ -204,6 +283,7 @@ function _buildPanel() {
       </div>
     </div>
 
+    <!-- RESULT PANEL -->
     <div class="vp-result" id="vis-result">
       <div class="vp-result-hd">
         <span class="vp-result-lbl" id="vis-result-lbl">ANÁLISIS</span>
@@ -215,6 +295,7 @@ function _buildPanel() {
       </div>
     </div>
 
+    <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
         <span class="vp-btn-ico">👁</span><span class="vp-btn-lbl">VER</span>
@@ -244,6 +325,12 @@ function _buildPanel() {
   _video.srcObject = _stream;
   _video.play().catch(() => {});
 
+  // Camera info on metadata load
+  _video.addEventListener('loadedmetadata', () => {
+    const telCam = document.getElementById('vis-tel-cam');
+    if (telCam) telCam.textContent = `${_video.videoWidth}×${_video.videoHeight}`;
+  });
+
   document.getElementById('vis-cont').addEventListener('click', _toggleContinuous);
   document.getElementById('vis-flip').addEventListener('click', _flipCamera);
   document.getElementById('vis-qr').addEventListener('click', _detectQR);
@@ -252,6 +339,17 @@ function _buildPanel() {
   document.getElementById('vis-personas').addEventListener('click', _openPersonasPanel);
   document.getElementById('vis-personas-close').addEventListener('click', _closePersonasPanel);
   document.getElementById('vp-p-add').addEventListener('click', _addPersona);
+  document.getElementById('vis-gesture').addEventListener('click', _toggleGesture);
+  document.getElementById('vis-vcmd').addEventListener('click', _toggleVoiceCmd);
+
+  // Close module grid on outside tap
+  document.getElementById('vis-module-grid').addEventListener('click', e => {
+    if (e.target === document.getElementById('vis-module-grid')) _hideModuleGrid();
+  });
+
+  // Start telemetry ticker
+  _telTimer = setInterval(_updateTelemetry, 3000);
+  _updateTelemetry();
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
@@ -718,4 +816,276 @@ function _deletePersona(i) {
   arr.splice(i, 1);
   _savePersonas(arr);
   _renderPersonasList();
+}
+
+/* ─── Gesture Engine Toggle ───────────────────────────── */
+function _toggleGesture() {
+  _gestureOn = !_gestureOn;
+  const btn = document.getElementById('vis-gesture');
+  if (btn) btn.classList.toggle('on', _gestureOn);
+
+  const canvas = document.getElementById('vis-gesture-canvas');
+  if (_gestureOn && _video && canvas) {
+    canvas.width  = _video.clientWidth  || 320;
+    canvas.height = _video.clientHeight || 480;
+    if (typeof initGestureEngine === 'function') {
+      initGestureEngine(_video, canvas, _handleGesture)
+        .then(ok => {
+          if (!ok) {
+            _gestureOn = false;
+            if (btn) btn.classList.remove('on');
+            _say('**[Gestos]** No se pudo iniciar MediaPipe. Verifica tu conexión.');
+          } else {
+            _setStatus('GESTOS ON');
+            document.getElementById('vis-gest-guide')?.classList.add('visible');
+          }
+        });
+    }
+  } else {
+    if (typeof stopGestureEngine === 'function') stopGestureEngine();
+    document.getElementById('vis-gest-guide')?.classList.remove('visible');
+    const telGest = document.getElementById('vis-tel-gest');
+    if (telGest) telGest.textContent = '—';
+    _setStatus('LISTO');
+  }
+}
+
+/* ─── Voice Command Toggle ────────────────────────────── */
+function _toggleVoiceCmd() {
+  _voiceCmdOn = !_voiceCmdOn;
+  const btn = document.getElementById('vis-vcmd');
+  if (btn) btn.classList.toggle('on', _voiceCmdOn);
+  if (_voiceCmdOn) {
+    _initVoiceCmd();
+  } else {
+    _stopVoiceCmd();
+    document.getElementById('vis-voice-bar')?.classList.remove('active');
+    const telVoice = document.getElementById('vis-tel-voice');
+    if (telVoice) telVoice.textContent = '—';
+  }
+}
+
+function _initVoiceCmd() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    _say('**[Voz]** SpeechRecognition no disponible en este navegador.');
+    _voiceCmdOn = false;
+    document.getElementById('vis-vcmd')?.classList.remove('on');
+    return;
+  }
+  _stopVoiceCmd();
+
+  _vsr = new SR();
+  _vsr.lang = 'es-MX';
+  _vsr.continuous = true;
+  _vsr.interimResults = true;
+  _vsr.maxAlternatives = 1;
+
+  _vsr.onstart = () => {
+    _vsrRunning = true;
+    document.getElementById('vis-voice-bar')?.classList.add('active');
+    const telVoice = document.getElementById('vis-tel-voice');
+    if (telVoice) telVoice.textContent = 'ON ⬤';
+  };
+
+  _vsr.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    const display = final || interim;
+    const cmdEl = document.getElementById('vis-cmd-text');
+    if (cmdEl && display) cmdEl.textContent = display.toUpperCase();
+    if (final) _processVoiceCmd(final.trim().toLowerCase());
+  };
+
+  _vsr.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    console.warn('VSR error:', e.error);
+    const telVoice = document.getElementById('vis-tel-voice');
+    if (telVoice) telVoice.textContent = 'ERR';
+  };
+
+  _vsr.onend = () => {
+    _vsrRunning = false;
+    if (_voiceCmdOn && _panel) {
+      setTimeout(() => { if (_voiceCmdOn && _panel) { try { _vsr?.start(); } catch (_) {} } }, 500);
+    }
+  };
+
+  try { _vsr.start(); } catch (e) { console.warn('VSR start:', e); }
+}
+
+function _stopVoiceCmd() {
+  if (_vsr) {
+    try { _vsr.abort(); } catch (_) {}
+    _vsr = null;
+  }
+  _vsrRunning = false;
+}
+
+/* ─── Voice Command Parser ────────────────────────────── */
+function _processVoiceCmd(text) {
+  if (!text.includes('arex')) return;
+
+  const t = text.replace(/arex\s*/i, '').trim();
+  const cmdEl = document.getElementById('vis-cmd-text');
+
+  const feedback = (lbl) => {
+    if (cmdEl) cmdEl.textContent = `⬤ ${lbl}`;
+    clearTimeout(_cmdFeedbackT);
+    _cmdFeedbackT = setTimeout(() => {
+      if (cmdEl) cmdEl.textContent = 'DI "AREX" + COMANDO';
+    }, 3000);
+  };
+
+  if (/\b(analiz|ver|mira|describe|scene|escena|producto|objeto|texto)\b/.test(t)) {
+    const mode = /\b(escena|scene)\b/.test(t) ? 'scene'
+               : /\b(producto|objeto)\b/.test(t) ? 'product'
+               : /\b(texto|lee)\b/.test(t) ? 'text' : 'describe';
+    feedback(`ANALIZAR · ${mode.toUpperCase()}`);
+    _say(`**[Voz]** Analizando... *${t}*`);
+    _analyze(mode);
+    return;
+  }
+
+  if (/\b(detener|para|stop|cerrar|salir|cierra)\b/.test(t)) {
+    feedback('DETENER');
+    if (/\b(cerrar|salir|cierra)\b/.test(t)) { closeVision(); return; }
+    _contOn = false;
+    window.speechSynthesis?.cancel();
+    _setStatus('LISTO');
+    _say('**[Voz]** Detenido.');
+    return;
+  }
+
+  if (/\b(auto|continuo|automático)\b/.test(t)) {
+    feedback('MODO AUTO');
+    _toggleContinuous();
+    return;
+  }
+
+  if (/\b(silencio|mute|mudo|callate)\b/.test(t)) {
+    feedback('SILENCIO');
+    if (_voiceOn) _toggleVoice();
+    return;
+  }
+
+  if (/\b(voz on|habla|hablar)\b/.test(t)) {
+    feedback('VOZ ON');
+    if (!_voiceOn) _toggleVoice();
+    return;
+  }
+
+  if (/\b(módulos|modulos|navegar|navega)\b/.test(t)) {
+    feedback('MÓDULOS');
+    _toggleModuleGrid();
+    return;
+  }
+
+  const modMap = {
+    inicio:     ['inicio', 'home'],
+    finanzas:   ['finanzas', 'dinero'],
+    metas:      ['metas', 'meta', 'objetivos'],
+    tareas:     ['tareas', 'tarea', 'pendientes'],
+    notas:      ['notas', 'nota', 'apuntes'],
+    negocio:    ['negocio', 'tienda', 'inventario'],
+    gastos:     ['gastos', 'gasto'],
+    proyectos:  ['proyectos', 'proyecto'],
+    evidencias: ['evidencias', 'evidencia'],
+    control:    ['control', 'configuración', 'ajustes'],
+    chat:       ['chat', 'chatear'],
+  };
+  for (const [id, keywords] of Object.entries(modMap)) {
+    if (keywords.some(k => t.includes(k))) {
+      feedback(`IR A ${id.toUpperCase()}`);
+      _say(`**[Voz]** Navegando a ${id}...`);
+      setTimeout(() => _navigateModule(id), 800);
+      return;
+    }
+  }
+}
+
+/* ─── Module Navigation ───────────────────────────────── */
+function _navigateModule(id) {
+  closeVision();
+  setTimeout(() => {
+    if (typeof window.AREXNav?.cambiarModulo === 'function') {
+      window.AREXNav.cambiarModulo(id);
+    } else if (typeof window.cambiarModulo === 'function') {
+      window.cambiarModulo(id);
+    }
+  }, 300);
+}
+
+window.visNavigate = (id) => _navigateModule(id);
+
+/* ─── Gesture Handler ─────────────────────────────────── */
+function _handleGesture(type) {
+  const g = window.GESTURES?.[type];
+  if (!g) return;
+
+  const telGest = document.getElementById('vis-tel-gest');
+  if (telGest) telGest.textContent = `${g.icon} ${type}`;
+
+  const flash = document.getElementById('vis-gest-flash');
+  if (flash) {
+    flash.textContent = `${g.icon} ${g.label}`;
+    flash.style.color = g.color;
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 900);
+  }
+
+  switch (g.action) {
+    case 'analyze':
+      _say('**[Gesto ✋]** Analizando...');
+      _analyze('describe');
+      break;
+    case 'stop':
+      _contOn = false;
+      window.speechSynthesis?.cancel();
+      _setStatus('LISTO');
+      _say('**[Gesto ✊]** Detenido.');
+      break;
+    case 'modules':
+      _toggleModuleGrid();
+      break;
+    case 'toggle_auto':
+      _toggleContinuous();
+      break;
+    case 'voice':
+      _toggleVoiceCmd();
+      break;
+  }
+}
+
+/* ─── Module Grid ─────────────────────────────────────── */
+function _toggleModuleGrid() {
+  _moduleGridVis = !_moduleGridVis;
+  document.getElementById('vis-module-grid')?.classList.toggle('visible', _moduleGridVis);
+}
+
+function _hideModuleGrid() {
+  _moduleGridVis = false;
+  document.getElementById('vis-module-grid')?.classList.remove('visible');
+}
+
+/* ─── Telemetry Updater ───────────────────────────────── */
+function _updateTelemetry() {
+  if (!_panel) return;
+  const telCam = document.getElementById('vis-tel-cam');
+  if (telCam && _video?.videoWidth) {
+    telCam.textContent = `${_video.videoWidth}×${_video.videoHeight}`;
+  }
+  const telMode = document.getElementById('vis-tel-mode');
+  if (telMode) {
+    telMode.textContent = _contOn ? 'AUTO' : _gestureOn ? 'GESTOS' : 'VISUAL';
+  }
+  if (!_voiceCmdOn) {
+    const telVoice = document.getElementById('vis-tel-voice');
+    if (telVoice) telVoice.textContent = '—';
+  }
 }

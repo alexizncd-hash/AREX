@@ -898,6 +898,134 @@ main {
   50%      { opacity:1;   box-shadow:0 0 14px rgba(0,255,160,0.4); }
 }
 
+/* ─── Gesture Canvas Overlay ──────────────────────────── */
+.vp-gesture-canvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:4;
+}
+
+/* ─── Telemetry Panel (left HUD) ──────────────────────── */
+.vp-telemetry {
+  position:absolute; top:70px; left:12px;
+  background:rgba(0,5,16,0.62); backdrop-filter:blur(8px);
+  border:1px solid rgba(0,212,255,0.18); border-radius:8px;
+  padding:8px 10px; min-width:130px; z-index:10;
+  pointer-events:none;
+}
+.vp-tel-hdr {
+  display:flex; align-items:center; gap:5px;
+  font-size:7px; letter-spacing:2px; color:var(--cyan);
+  margin-bottom:6px; font-weight:700;
+}
+.vp-tel-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 6px var(--cyan);
+  animation:tel-blink 1.8s ease-in-out infinite;
+}
+@keyframes tel-blink {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+.vp-tel-row {
+  display:flex; justify-content:space-between; gap:8px;
+  font-size:8px; color:rgba(0,212,255,0.7);
+  padding:2px 0; border-bottom:1px solid rgba(0,212,255,0.07);
+  letter-spacing:0.5px;
+}
+.vp-tel-row:last-child { border-bottom:none; }
+.vp-tel-row span:last-child { color:rgba(0,255,170,0.9); font-weight:600; }
+
+/* ─── Gesture Guide (right HUD) ───────────────────────── */
+.vp-gest-guide {
+  position:absolute; top:70px; right:12px;
+  background:rgba(0,5,16,0.62); backdrop-filter:blur(8px);
+  border:1px solid rgba(0,212,255,0.18); border-radius:8px;
+  padding:8px 10px; min-width:110px; z-index:10;
+  pointer-events:none; opacity:0; transition:opacity 0.3s;
+}
+.vp-gest-guide.visible { opacity:1; }
+.vp-gg-row {
+  display:flex; align-items:center; gap:6px;
+  font-size:8px; color:rgba(0,212,255,0.75);
+  padding:3px 0; letter-spacing:0.5px;
+}
+.vp-gg-row span:first-child { font-size:14px; line-height:1; }
+
+/* ─── Voice Command Bar ───────────────────────────────── */
+.vp-voice-bar {
+  position:absolute; bottom:70px; left:50%; transform:translateX(-50%);
+  background:rgba(0,5,16,0.70); backdrop-filter:blur(10px);
+  border:1px solid rgba(0,212,255,0.22); border-radius:24px;
+  padding:8px 18px; display:flex; align-items:center; gap:10px;
+  font-size:9px; letter-spacing:1.5px; color:rgba(0,212,255,0.5);
+  z-index:10; pointer-events:none; white-space:nowrap;
+  opacity:0; transition:all 0.3s;
+}
+.vp-voice-bar.active {
+  opacity:1; color:var(--cyan);
+  border-color:rgba(0,212,255,0.5);
+  box-shadow:0 0 16px rgba(0,212,255,0.15);
+}
+.vp-wave { display:flex; align-items:center; gap:2px; height:14px; }
+.vp-wave span {
+  display:block; width:2px; background:var(--cyan);
+  border-radius:2px; height:3px;
+}
+.vp-voice-bar.active .vp-wave span:nth-child(1) { animation:wave-bar 0.9s 0.00s ease-in-out infinite; }
+.vp-voice-bar.active .vp-wave span:nth-child(2) { animation:wave-bar 0.9s 0.15s ease-in-out infinite; }
+.vp-voice-bar.active .vp-wave span:nth-child(3) { animation:wave-bar 0.9s 0.30s ease-in-out infinite; }
+.vp-voice-bar.active .vp-wave span:nth-child(4) { animation:wave-bar 0.9s 0.45s ease-in-out infinite; }
+.vp-voice-bar.active .vp-wave span:nth-child(5) { animation:wave-bar 0.9s 0.60s ease-in-out infinite; }
+@keyframes wave-bar {
+  0%,100% { height:3px; } 50% { height:14px; }
+}
+
+/* ─── Module Navigation Grid ──────────────────────────── */
+.vp-module-grid {
+  position:absolute; inset:0;
+  background:rgba(0,5,16,0.84); backdrop-filter:blur(14px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:20; opacity:0; pointer-events:none; transition:opacity 0.25s;
+}
+.vp-module-grid.visible { opacity:1; pointer-events:auto; }
+.vp-mg-title {
+  font-size:11px; letter-spacing:3px; color:var(--cyan);
+  margin-bottom:20px; font-weight:700;
+}
+.vp-mg-items {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:10px; max-width:340px; width:100%; padding:0 16px;
+}
+.vp-mg-btn {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:rgba(0,212,255,0.07); border:1px solid rgba(0,212,255,0.2);
+  border-radius:10px; padding:10px 6px;
+  cursor:pointer; color:rgba(0,212,255,0.8); transition:all 0.2s;
+}
+.vp-mg-btn:hover, .vp-mg-btn:active {
+  background:rgba(0,212,255,0.16); border-color:rgba(0,212,255,0.5);
+  box-shadow:0 0 12px rgba(0,212,255,0.2);
+}
+.vp-mg-ico { font-size:18px; line-height:1; }
+.vp-mg-lbl { font-size:6.5px; letter-spacing:1px; color:rgba(0,212,255,0.65); }
+
+/* ─── Gesture Flash ───────────────────────────────────── */
+.vp-gesture-flash {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:52px; z-index:15; pointer-events:none;
+  opacity:0; transition:opacity 0.15s;
+  text-shadow:0 0 30px currentColor;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.vp-gesture-flash.active { opacity:1; transition:opacity 0.05s; }
+
+/* ─── HUD button active states ────────────────────────── */
+.vp-gesture-btn.on, .vp-vcmd-btn.on {
+  background:rgba(0,212,255,0.18);
+  border-color:rgba(0,212,255,0.6);
+  box-shadow:0 0 10px rgba(0,212,255,0.3);
+  color:var(--cyan);
+}
+
 /* Status float — ABOVE the orb, like Danny's JARVIS */
 .status-float {
   font-size:9px; letter-spacing:2.5px; text-transform:uppercase;
