@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK 41
+# AREX — Sistema de Inteligencia Personal · MARK III
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -21,7 +21,7 @@ arex/
 ├── style.css           → Diseño futurista / estética Stark Industries / JARVIS
 ├── app.js              → Motor principal: IA, voz, comandos, tareas, recordatorios, dashboard, canvas
 ├── jarvis.js           → Navegación entre módulos del dock
-├── orb.js              → Orbe de partículas 3D (canvas) estilo JARVIS: esfera Fibonacci, estados reactivos
+├── orb.js              → Orbe 3D WebGL Mark III: GLSL shaders (Fresnel rim, wave displacement, energy bands); fallback 2D canvas
 ├── finanzas.js         → Lógica del módulo financiero
 ├── finanzas-data.js    → Datos financieros + funciones de cálculo
 ├── finanzas.css        → Estilos del módulo financiero
@@ -42,7 +42,7 @@ arex/
 ├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
 ├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v56 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v57 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -84,8 +84,10 @@ arex/
 | Tavily Search API | Búsqueda web en tiempo real |
 | Web Speech API | Reconocimiento de voz (input), modo continuo, comandos en Visión |
 | SpeechSynthesis API | Síntesis de voz — AREX habla y saluda proactivamente |
-| Canvas 2D API | Orbe de partículas 3D, campo de estrellas, esqueleto de mano, partículas |
-| PWA + Service Worker v56 | Instalable, network-first para shell, cache offline |
+| WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
+| Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
+| Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
+| PWA + Service Worker v57 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -140,23 +142,22 @@ arex/
 
 ---
 
-## Orbe de partículas JARVIS
+## Orbe 3D Mark III — WebGL + GLSL
 
-El orbe central de AREX es un sistema de partículas 3D en canvas que reacciona dinámicamente al estado del sistema, inspirado en el JARVIS de *Age of Ultron*:
+El orbe central de AREX usa un renderer WebGL con shaders GLSL personalizados, sin dependencias externas. Si WebGL no está disponible, cae automáticamente al modo 2D Canvas (esfera de partículas Fibonacci).
 
-- **80 partículas** distribuidas en la superficie de una esfera usando distribución de Fibonacci (cobertura uniforme orgánica)
-- **Conexiones K-nearest** (K=5) entre partículas cercanas, renderizadas con depth-sorting real
-- **Perspectiva 3D real** usando matrices rotateY/X/Z + proyección de perspectiva
-- **Profundidad física**: partículas al frente son más grandes y brillantes; las de atrás, tenues y pequeñas
-- **Núcleo central** con gradiente radial que pulsa según el estado
+### Shaders (WebGL path)
+- **Vertex shader**: esfera de 40×40 subdivisiones con desplazamiento de vértices en tiempo real (función seno multi-frecuencia animada). Cada estado del sistema tiene amplitud/frecuencia propia.
+- **Fragment shader**: efecto Fresnel (brillo en los bordes de la esfera, como un holograma), bandas de energía en latitud (co-rotan con la esfera), espirales en longitud, y núcleo de iluminación frontal. Todo ajustado con uniforms por estado.
+- **Blending aditivo**: `SRC_ALPHA + ONE` para apariencia de holograma translúcido sobre cualquier fondo.
 
 | Estado | Color | Comportamiento |
 |--------|-------|----------------|
-| En espera | Cyan | Rotación lenta y constante |
-| Hablando | Blanco brillante | Rotación rápida + esfera pulsa hacia afuera (18Hz) |
-| Pensando | Azul profundo | Velocidad media + giro en eje Z + oscilación del tilt |
-| Escuchando | Verde | Rotación lenta + respiración suave |
-| Buscando | Naranja | Rotación rápida + pulso prominente |
+| En espera | Cyan | Rotación lenta, sin desplazamiento |
+| Hablando | Blanco azulado | Rotación rápida, desplazamiento fuerte (amp=0.12), bandas intensas |
+| Pensando | Azul profundo | Velocidad media, desplazamiento sutil, frecuencia baja |
+| Escuchando | Verde | Rotación lenta, desplazamiento mínimo |
+| Buscando | Naranja | Rotación rápida, desplazamiento fuerte, bandas veloz |
 
 ---
 
@@ -351,6 +352,7 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | **MARK 39** | Visión JARVIS Mark 1: Gesture Engine con MediaPipe Hands (5 señas), comandos de voz siempre activos ("AREX" + comando), HUD holográfico translúcido (telemetría, guía de gestos, barra de voz, grid de módulos, flash de gesto) |
 | **MARK 40** | Gesture Engine Mark 2: swipe (navegar módulos), pinch-to-click, partículas + háptica + audio, estela y cursor; saludos proactivos por módulo, badges de urgencia, indicador de habla animado, contexto cross-módulo en prompts de visión |
 | **MARK 41** | Escaneo de recibos → gasto automático (extracción IA), swipe en tarjetas de tareas (completar/borrar), Parallax Engine (profundidad holográfica por giroscopio/puntero), README al corriente |
+| **MARK III** | Rediseño visual completo del sistema: orbe 3D WebGL con GLSL shaders (Fresnel rim, wave displacement, plasma energy bands), tipografía Exo 2 + JetBrains Mono, corner brackets holográficos en paneles, glassmorphism mejorado, escanlines en HUD, chat bubbles holográficos, grilla de fondo en módulos, glow en dock activo, acento animado, colores de acento por módulo, SW v57 |
 
 ---
 

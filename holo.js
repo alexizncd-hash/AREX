@@ -330,9 +330,42 @@
     badge.id = 'holo-sys-badge';
     badge.innerHTML = `
       <span class="hsb-dot"></span>
-      <span class="hsb-text">AREX · MARK 35</span>
-      <span class="hsb-ver">v51</span>`;
+      <span class="hsb-text">AREX · MARK III</span>
+      <span class="hsb-ver">v57</span>`;
     rw.appendChild(badge);
+  }
+
+  /* ── 11. CORNER BRACKET DECORATORS ──────────────────────── */
+  const BRACKET_SEL = [
+    '.hud-panel', '.dash-widget', '.diag-quad', '.holo-floating',
+  ];
+  function injectCorners(root) {
+    const target = root || document;
+    BRACKET_SEL.forEach(sel => {
+      target.querySelectorAll(sel).forEach(el => {
+        if (el.dataset.hbc) return;
+        el.dataset.hbc = '1';
+        const pos = getComputedStyle(el).position;
+        if (pos === 'static') el.style.position = 'relative';
+        ['tl','tr','bl','br'].forEach(p => {
+          const s = document.createElement('span');
+          s.className = `holo-corner holo-corner-${p}`;
+          el.appendChild(s);
+        });
+        /* Top accent glow line */
+        if (!el.querySelector('.holo-top-line')) {
+          const line = document.createElement('div');
+          line.className = 'holo-top-line';
+          el.insertBefore(line, el.firstChild);
+        }
+        /* Scan-line overlay */
+        if (!el.querySelector('.scan-overlay')) {
+          const ov = document.createElement('div');
+          ov.className = 'scan-overlay';
+          el.appendChild(ov);
+        }
+      });
+    });
   }
 
   /* ── 10. HOLO MODE TOGGLE BUTTON ────────────────────────── */
@@ -366,6 +399,12 @@
     setTimeout(initTransitions, 700);
     setTimeout(initStreams, 1000);
     setTimeout(initOrbClick, 500);
+    setTimeout(injectCorners, 600);
+    /* Re-inject brackets when new panels are added (module switches) */
+    new MutationObserver(() => injectCorners()).observe(
+      document.getElementById('dock') || document.body,
+      { childList: true, subtree: true }
+    );
   }
 
   document.readyState === 'loading'
