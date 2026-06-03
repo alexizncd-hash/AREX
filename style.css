@@ -4732,3 +4732,225 @@ textarea:focus {
   0%,100% { transform:scale(1);    box-shadow:0 0 6px rgba(255,60,80,0.5); }
   50%     { transform:scale(1.22); box-shadow:0 0 16px rgba(255,60,80,0.85); }
 }
+
+/* ═══════════════════════════════════════════════════════
+   AREX VISION · MARK IV  — Module HUD + Gesture Config
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Module HUD overlay ─────────────────────────────── */
+.vp-module-hud {
+  position: absolute;
+  bottom: 80px; left: 0; right: 0;
+  margin: 0 12px;
+  background: rgba(0,4,12,0.92);
+  border: 1px solid rgba(0,212,255,0.30);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 30px rgba(0,212,255,0.12), 0 8px 40px rgba(0,0,0,0.6);
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease;
+  z-index: 120;
+  overflow: hidden;
+}
+.vp-module-hud.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── HUD header ──────────────────────────────────────── */
+.vp-mhud-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+  background: linear-gradient(90deg, rgba(0,212,255,0.06) 0%, transparent 60%);
+}
+.vp-mhud-icon {
+  font-size: 16px;
+  color: #00d4ff;
+  flex-shrink: 0;
+}
+.vp-mhud-title {
+  font-family: var(--font-display, 'Exo 2', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #00d4ff;
+  flex: 1;
+}
+.vp-mhud-act-btn {
+  background: rgba(0,212,255,0.12);
+  border: 1px solid rgba(0,212,255,0.35);
+  color: #00d4ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+.vp-mhud-act-btn:hover { background: rgba(0,212,255,0.22); border-color: rgba(0,212,255,0.6); }
+.vp-mhud-act-btn.vp-mhud-act-add {
+  background: rgba(0,255,170,0.10);
+  border-color: rgba(0,255,170,0.35);
+  color: #00ffaa;
+}
+.vp-mhud-act-btn.vp-mhud-act-add:hover { background: rgba(0,255,170,0.20); }
+
+/* ── HUD body ────────────────────────────────────────── */
+.vp-mhud-body {
+  padding: 8px 12px 4px;
+  min-height: 40px;
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,212,255,0.2) transparent;
+}
+.vp-mhud-stat {
+  font-size: 11px;
+  color: rgba(0,212,255,0.7);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.vp-mhud-item {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(0,212,255,0.06);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vp-mhud-item.vp-mhud-hi { color: #ff4460; }
+.vp-mhud-item.vp-mhud-meta { display: flex; justify-content: space-between; white-space: normal; }
+.vp-mhud-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: #00d4ff;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+.vp-mhud-empty {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+  padding: 4px 0;
+}
+.vp-mhud-urg { color: #ff4460; font-weight: 700; }
+
+/* ── HUD actions row ─────────────────────────────────── */
+.vp-mhud-actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px 10px;
+}
+
+/* ── Gesture Config Panel ────────────────────────────── */
+.vp-gesture-config {
+  position: absolute;
+  top: 60px; right: 12px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  background: rgba(0,4,12,0.95);
+  border: 1px solid rgba(0,212,255,0.28);
+  border-radius: 10px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 20px rgba(0,212,255,0.08);
+  transform: translateX(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), opacity 0.2s ease;
+  z-index: 125;
+  overflow: hidden;
+}
+.vp-gesture-config.visible {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Gesture config rows ─────────────────────────────── */
+.vp-gest-cfg-list {
+  padding: 6px 10px 10px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,212,255,0.2) transparent;
+}
+.vp-gest-cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,212,255,0.07);
+}
+.vp-gest-cfg-ico {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+.vp-gest-cfg-lbl {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  flex: 1;
+  min-width: 0;
+}
+.vp-gest-cfg-sel {
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.25);
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  max-width: 130px;
+  cursor: pointer;
+}
+.vp-gest-cfg-sel option { background: #000c1a; }
+.vp-gest-cfg-note {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 8px;
+  text-align: center;
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+/* ── Gesture guide config button ─────────────────────── */
+.vp-gg-cfg-btn {
+  background: none;
+  border: none;
+  color: rgba(0,212,255,0.55);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+  line-height: 1;
+  transition: color 0.15s;
+  vertical-align: middle;
+}
+.vp-gg-cfg-btn:hover { color: #00d4ff; }
+
+/* ── Pinch ripple effect ─────────────────────────────── */
+.pinch-ripple {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  margin-top: -22px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,255,170,0.8);
+  animation: pinch-expand 0.42s ease-out forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+@keyframes pinch-expand {
+  0%   { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}

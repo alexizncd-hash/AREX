@@ -1,4 +1,4 @@
-// AREX — Visión en vivo · MARK 40
+// AREX — Visión en vivo · MARK IV
 // Full-screen HUD · Groq Scout first · Gemini fallback
 // Personas conocidas · Prompts dinámicos · Modo continuo reactivo
 // Gesture Engine · Voice Commands · JARVIS HUD
@@ -27,6 +27,11 @@ let _moduleGridVis  = false;
 let _telTimer       = null;
 let _cmdFeedbackT   = null;
 let _lastInterim    = '';
+
+// New Mark IV state
+let _hudModuleId    = null;   // module currently shown in HUD overlay
+let _gestureMapCache= null;   // custom gesture→action remapping
+let _contWasPaused  = false;  // did we pause app.js continuous mode?
 
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
@@ -132,7 +137,7 @@ const MODE_LABELS = {
   recibo:   '🧾 RECIBO',
 };
 
-const MODE_RES = { describe: 480, product: 640, text: 640, scene: 640, recibo: 720 };
+const MODE_RES = { describe: 420, product: 600, text: 640, scene: 600, recibo: 720 };
 
 /* ─── Public API ──────────────────────────────────────── */
 export async function openVision() {
@@ -160,6 +165,7 @@ export function closeVision() {
     window.stopContinuousMode();
   }
   _arMode = false;
+  _hudModuleId = null;
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
@@ -169,6 +175,11 @@ export function closeVision() {
   if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
   // Stop voice commands
   _stopVoiceCmd();
+  // Restore JARVIS AR mode if we paused it when vision voice started
+  if (_contWasPaused) {
+    _contWasPaused = false;
+    setTimeout(() => { if (!window._arexContModeActive) window.toggleContinuousMode?.(); }, 700);
+  }
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
   _panel?._cleanupResize?.();
@@ -261,7 +272,7 @@ function _buildPanel() {
 
     <!-- RIGHT GESTURE GUIDE -->
     <div class="vp-gest-guide" id="vis-gest-guide">
-      <div class="vp-tel-hdr"><span class="vp-tel-dot"></span>GESTOS</div>
+      <div class="vp-tel-hdr"><span class="vp-tel-dot"></span>GESTOS<button class="vp-gg-cfg-btn" id="vis-gest-cfg-btn" title="Configurar gestos">⚙</button></div>
       <div class="vp-gg-row"><span>✋</span><span>ANALIZAR</span></div>
       <div class="vp-gg-row"><span>✊</span><span>DETENER</span></div>
       <div class="vp-gg-row"><span>☝</span><span>MÓDULOS</span></div>
@@ -328,6 +339,27 @@ function _buildPanel() {
     <!-- SWIPE HINT -->
     <div class="vp-swipe-hint">◀ DESLIZA ▶ · PELLIZCA PARA SELECCIONAR</div>
 
+    <!-- MODULE HUD (permanece en visión al navegar módulos) -->
+    <div class="vp-module-hud" id="vis-module-hud">
+      <div class="vp-mhud-header">
+        <span class="vp-mhud-icon" id="vis-mhud-icon">◈</span>
+        <span class="vp-mhud-title" id="vis-mhud-title">MÓDULO</span>
+        <button class="vp-mhud-act-btn" id="vis-mhud-open" data-vaction="open">ABRIR →</button>
+        <button class="vp-icon-btn vp-close-btn" id="vis-mhud-close">✕</button>
+      </div>
+      <div class="vp-mhud-body" id="vis-mhud-body"></div>
+      <div class="vp-mhud-actions" id="vis-mhud-actions"></div>
+    </div>
+
+    <!-- GESTURE CONFIG PANEL -->
+    <div class="vp-gesture-config" id="vis-gesture-config">
+      <div class="vp-result-hd">
+        <span class="vp-result-lbl">⚙ CONFIGURAR GESTOS</span>
+        <button class="vp-icon-btn vp-close-btn" id="vis-gest-config-close">✕</button>
+      </div>
+      <div class="vp-gest-cfg-list" id="vis-gest-cfg-list"></div>
+    </div>
+
     <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
@@ -378,6 +410,17 @@ function _buildPanel() {
   document.getElementById('vis-gesture').addEventListener('click', _toggleGesture);
   document.getElementById('vis-vcmd').addEventListener('click', _toggleVoiceCmd);
 
+  // Module HUD
+  document.getElementById('vis-mhud-close').addEventListener('click', _hideModuleHud);
+  document.getElementById('vis-mhud-open').addEventListener('click', () => {
+    if (_hudModuleId) _navigateAndClose(_hudModuleId);
+  });
+  // Gesture config
+  document.getElementById('vis-gest-cfg-btn')?.addEventListener('click', _toggleGestureConfig);
+  document.getElementById('vis-gest-config-close').addEventListener('click', () => {
+    document.getElementById('vis-gesture-config')?.classList.remove('visible');
+  });
+
   // Close module grid on outside tap
   document.getElementById('vis-module-grid').addEventListener('click', e => {
     if (e.target === document.getElementById('vis-module-grid')) _hideModuleGrid();
@@ -418,7 +461,7 @@ async function _captureFrame(maxPx = 480) {
   c.width  = Math.round(vw * scale);
   c.height = Math.round(vh * scale);
   c.getContext('2d').drawImage(_video, 0, 0, c.width, c.height);
-  const dataUrl = c.toDataURL('image/jpeg', 0.80);
+  const dataUrl = c.toDataURL('image/jpeg', 0.72);
   if (dataUrl.length < 5000) return null;
   return dataUrl;
 }
@@ -970,6 +1013,11 @@ function _initVoiceCmd() {
     document.getElementById('vis-vcmd')?.classList.remove('on');
     return;
   }
+  // Pause JARVIS AR mode to prevent dual SpeechRecognition conflict
+  if (!_contWasPaused && window._arexContModeActive) {
+    _contWasPaused = true;
+    window.toggleContinuousMode?.();
+  }
   _stopVoiceCmd();
 
   _vsr = new SR();
@@ -1090,14 +1138,45 @@ function _processVoiceCmd(text) {
     return;
   }
 
+  // "AREX nueva tarea X [prioridad alta/baja]"
+  const tareaMatch = t.match(/\b(?:nueva\s+tarea|agregar\s+tarea|add\s+tarea|tarea\s+nueva)\s+(.+)/);
+  if (tareaMatch) {
+    const raw      = tareaMatch[1];
+    const priority = /\balta\b/.test(raw) ? 'alta' : /\bbaja\b/.test(raw) ? 'baja' : 'media';
+    const texto    = raw.replace(/\b(?:prioridad\s+)?(?:alta|baja|media)\b/g, '').trim();
+    if (texto) {
+      _voiceAddTarea(texto, priority);
+      feedback('TAREA AGREGADA ✓');
+      _visionSpeak(`Tarea agregada: ${texto}.`);
+      _say(`**[Voz]** Tarea: *${texto}* (${priority})`);
+      return;
+    }
+  }
+
+  // "AREX gasto 150 comida"
+  const gastoMatch = t.match(/\bgasto\s+(\d+(?:[.,]\d+)?)\s*(\w+)?/);
+  if (gastoMatch) {
+    const monto = parseFloat(gastoMatch[1].replace(',', '.'));
+    const cat   = gastoMatch[2] || 'otro';
+    if (monto > 0) {
+      window.gpAddGastoAuto?.(monto, cat, 'AREX Voz');
+      feedback(`GASTO $${monto} ✓`);
+      _visionSpeak(`Gasto de ${monto} pesos en ${cat} registrado.`);
+      _say(`**[Voz]** Gasto: $${monto} · ${cat}`);
+      return;
+    }
+  }
+
+  // Module navigation: "abrir X" → close vision + navigate; just "X" → show HUD
+  const openMode = /\b(?:abrir|abre|abré|ir\s+a|navegar\s+a|ve\s+a|vé\s+a)\b/.test(t);
   const modMap = {
     inicio:     ['inicio', 'home'],
     finanzas:   ['finanzas', 'dinero'],
     metas:      ['metas', 'meta', 'objetivos'],
-    tareas:     ['tareas', 'tarea', 'pendientes'],
+    tareas:     ['tareas', 'pendientes'],
     notas:      ['notas', 'nota', 'apuntes'],
     negocio:    ['negocio', 'tienda', 'inventario'],
-    gastos:     ['gastos', 'gasto'],
+    gastos:     ['gastos'],
     proyectos:  ['proyectos', 'proyecto'],
     evidencias: ['evidencias', 'evidencia'],
     control:    ['control', 'configuración', 'ajustes'],
@@ -1105,34 +1184,266 @@ function _processVoiceCmd(text) {
   };
   for (const [id, keywords] of Object.entries(modMap)) {
     if (keywords.some(k => t.includes(k))) {
-      feedback(`IR A ${id.toUpperCase()}`);
-      _say(`**[Voz]** Navegando a ${id}...`);
-      setTimeout(() => _navigateModule(id), 800);
+      if (openMode) {
+        feedback(`ABRIR ${id.toUpperCase()}`);
+        _say(`**[Voz]** Abriendo ${id}...`);
+        setTimeout(() => _navigateAndClose(id), 800);
+      } else {
+        feedback(`◈ ${id.toUpperCase()}`);
+        _showModuleHud(id);
+      }
       return;
     }
   }
 }
 
-/* ─── Module Navigation ───────────────────────────────── */
-function _navigateModule(id) {
-  closeVision();
-  setTimeout(() => {
-    if (typeof window.AREXNav?.cambiarModulo === 'function') {
-      window.AREXNav.cambiarModulo(id);
-    } else if (typeof window.cambiarModulo === 'function') {
-      window.cambiarModulo(id);
-    }
-  }, 300);
+/* ─── Module HUD Overlay (navegar sin salir de visión) ─── */
+function _escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-window.visNavigate = (id) => _navigateModule(id);
+function _getModuleHudContent(id) {
+  try {
+    const now = new Date();
+    switch (id) {
+      case 'tareas': {
+        const ts   = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+        const pend = ts.filter(t => !t.done);
+        const venc = pend.filter(t => t.fecha && new Date(t.fecha) < now);
+        if (!pend.length) return '<div class="vp-mhud-empty">Sin tareas pendientes ✓</div>';
+        const items = pend.slice(0,5).map(t => {
+          const hi = t.prioridad === 'alta' ? ' vp-mhud-hi' : '';
+          const pre = t.prioridad==='alta' ? '⚡' : t.prioridad==='baja' ? '·' : '▹';
+          return `<div class="vp-mhud-item${hi}">${pre} ${_escHtml(t.texto)}</div>`;
+        }).join('');
+        return `<div class="vp-mhud-stat">${pend.length} pendiente${pend.length>1?'s':''} · <span class="${venc.length?'vp-mhud-urg':''}">${venc.length} vencida${venc.length!==1?'s':''}</span></div>${items}`;
+      }
+      case 'gastos': {
+        const gs  = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+        const mes = gs.filter(g => { const d=new Date(g.fecha||g.creadoEn||now); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
+        const tot = mes.reduce((s,g)=>s+(g.monto||0),0);
+        const cats = {};
+        mes.forEach(g => { cats[g.categoria] = (cats[g.categoria]||0)+(g.monto||0); });
+        const top = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        const catHtml = top.map(([k,v])=>`<div class="vp-mhud-item">${window.GP_CATS?.[k]?.e||'📦'} ${k}: $${v.toLocaleString('es-MX',{maximumFractionDigits:0})}</div>`).join('');
+        return `<div class="vp-mhud-stat">$${tot.toLocaleString('es-MX',{maximumFractionDigits:0})} MXN este mes</div>${catHtml||'<div class="vp-mhud-empty">Sin gastos registrados</div>'}`;
+      }
+      case 'metas': {
+        const ms  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
+        const act = ms.filter(m => !m.completada);
+        if (!act.length) return '<div class="vp-mhud-empty">Sin metas activas</div>';
+        const items = act.slice(0,4).map(m => {
+          const pct = m.meta>0 ? Math.min(100,Math.round(((m.actual||0)/m.meta)*100)) : 0;
+          return `<div class="vp-mhud-item vp-mhud-meta"><span>${_escHtml(m.nombre)}</span><span class="vp-mhud-pct">${pct}%</span></div>`;
+        }).join('');
+        return `<div class="vp-mhud-stat">${act.length} meta${act.length>1?'s':''} activa${act.length>1?'s':''}</div>${items}`;
+      }
+      case 'finanzas': {
+        const data  = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || '{}');
+        const cards = data.tarjetas || [];
+        if (!cards.length) return '<div class="vp-mhud-empty">Sin tarjetas registradas</div>';
+        const debt = cards.reduce((s,c)=>s+(c.saldoActual||0),0);
+        const html = cards.slice(0,3).map(c=>`<div class="vp-mhud-item">💳 ${_escHtml(c.nombre||c.banco||'Tarjeta')}: $${(c.saldoActual||0).toLocaleString('es-MX',{maximumFractionDigits:0})}</div>`).join('');
+        return `<div class="vp-mhud-stat">${cards.length} tarjeta${cards.length>1?'s':''} · Deuda: $${debt.toLocaleString('es-MX',{maximumFractionDigits:0})}</div>${html}`;
+      }
+      case 'negocio': {
+        const neg = JSON.parse(localStorage.getItem('arex_negocio') || '{}');
+        const ventas = neg.ventas || [];
+        const hoy = ventas.filter(v => new Date(v.fecha||now).toDateString()===now.toDateString());
+        const ingresoHoy = hoy.reduce((s,v)=>s+(v.precio||0)*(v.cantidad||0),0);
+        const stock = neg.inventario?.stockActual || 0;
+        const html = hoy.slice(0,3).map(v=>`<div class="vp-mhud-item">📦 ${v.cantidad||0} uds · $${((v.precio||0)*(v.cantidad||0)).toLocaleString('es-MX',{maximumFractionDigits:0})}</div>`).join('');
+        return `<div class="vp-mhud-stat">Hoy: $${ingresoHoy.toLocaleString('es-MX',{maximumFractionDigits:0})} · Stock: ${stock}kg</div>${html||'<div class="vp-mhud-empty">Sin ventas hoy</div>'}`;
+      }
+      case 'proyectos': {
+        const ps  = JSON.parse(localStorage.getItem('arex_proyectos') || '[]');
+        const act = ps.filter(p => p.estado!=='completado'&&p.estado!=='cancelado');
+        if (!act.length) return '<div class="vp-mhud-empty">Sin proyectos activos</div>';
+        const items = act.slice(0,4).map(p=>`<div class="vp-mhud-item">⚡ ${_escHtml(p.nombre)}</div>`).join('');
+        return `<div class="vp-mhud-stat">${act.length} proyecto${act.length>1?'s':''} activo${act.length>1?'s':''}</div>${items}`;
+      }
+      default: {
+        const ctx = _getCrossCtx();
+        return `<div class="vp-mhud-stat">Di "AREX + acción" para interactuar</div>`;
+      }
+    }
+  } catch(e) { return '<div class="vp-mhud-empty">Error cargando datos</div>'; }
+}
+
+function _showModuleHud(id) {
+  const hud = document.getElementById('vis-module-hud');
+  if (!hud) return;
+  _hudModuleId = id;
+  const mod = _MODS_GRID.find(m => m.id === id) || { icon:'◈', label: id.toUpperCase() };
+  const icon = document.getElementById('vis-mhud-icon');
+  const title = document.getElementById('vis-mhud-title');
+  if (icon)  icon.textContent  = mod.icon;
+  if (title) title.textContent = mod.label;
+  const body = document.getElementById('vis-mhud-body');
+  if (body)  body.innerHTML    = _getModuleHudContent(id);
+
+  // Extra action buttons per module
+  const actionsEl = document.getElementById('vis-mhud-actions');
+  if (actionsEl) {
+    const extras = { tareas: '+ TAREA', gastos: '+ GASTO' };
+    const extraHtml = extras[id] ? `<button class="vp-mhud-act-btn vp-mhud-act-add" data-vaction="${id==='tareas'?'add_tarea':'add_gasto'}">${extras[id]}</button>` : '';
+    actionsEl.innerHTML = extraHtml;
+    actionsEl.querySelectorAll('[data-vaction]').forEach(btn => {
+      btn.addEventListener('click', () => _handleHudAction(btn.dataset.vaction, id));
+    });
+  }
+
+  hud.classList.add('visible');
+  _visionSpeak(`${mod.label} — ${_getModuleHudSpeech(id)}`);
+}
+
+function _getModuleHudSpeech(id) {
+  try {
+    const now = new Date();
+    switch (id) {
+      case 'tareas': {
+        const ts = JSON.parse(localStorage.getItem('arex_tareas')||'[]');
+        const p = ts.filter(t=>!t.done).length;
+        const v = ts.filter(t=>!t.done&&t.fecha&&new Date(t.fecha)<now).length;
+        return v>0 ? `${p} pendientes, ${v} vencidas.` : `${p} pendientes.`;
+      }
+      case 'gastos': {
+        const gs = JSON.parse(localStorage.getItem('arex_gastos_pers')||'[]');
+        const tot = gs.filter(g=>{ const d=new Date(g.fecha||now); return d.getMonth()===now.getMonth(); }).reduce((s,g)=>s+(g.monto||0),0);
+        return `$${tot.toLocaleString('es-MX',{maximumFractionDigits:0})} pesos este mes.`;
+      }
+      case 'metas': {
+        const ms = JSON.parse(localStorage.getItem('arex_metas')||'[]');
+        return `${ms.filter(m=>!m.completada).length} metas activas.`;
+      }
+      default: return 'datos cargados.';
+    }
+  } catch { return ''; }
+}
+
+function _hideModuleHud() {
+  document.getElementById('vis-module-hud')?.classList.remove('visible');
+  _hudModuleId = null;
+}
+
+function _handleHudAction(action, moduleId) {
+  if (action === 'add_tarea') {
+    const txt = window.prompt('Nueva tarea:');
+    if (txt?.trim()) {
+      _voiceAddTarea(txt.trim());
+      _showModuleHud(moduleId);
+      _visionSpeak('Tarea agregada.');
+    }
+  } else if (action === 'add_gasto') {
+    const txt = window.prompt('Gasto (ej: 150 comida):');
+    if (txt?.trim()) {
+      const parts = txt.trim().split(/\s+/);
+      const monto = parseFloat(parts[0]);
+      const cat   = parts[1] || 'otro';
+      if (monto > 0) {
+        window.gpAddGastoAuto?.(monto, cat, 'HUD AREX');
+        _showModuleHud(moduleId);
+        _visionSpeak(`Gasto de $${monto} registrado en ${cat}.`);
+      }
+    }
+  }
+}
+
+/* ─── Gesture Customization ───────────────────────────── */
+function _loadGestureMap() {
+  if (_gestureMapCache) return _gestureMapCache;
+  try { _gestureMapCache = JSON.parse(localStorage.getItem('arex_gesture_map') || '{}'); }
+  catch { _gestureMapCache = {}; }
+  return _gestureMapCache;
+}
+function _saveGestureMap(map) {
+  _gestureMapCache = map;
+  localStorage.setItem('arex_gesture_map', JSON.stringify(map));
+}
+
+const _GESTURE_ACTIONS_LABELS = {
+  analyze:     '👁 ANALIZAR escena',
+  stop:        '✋ DETENER / Silenciar',
+  modules:     '◈ MOSTRAR módulos',
+  toggle_auto: '⬤ MODO AUTO',
+  voice:       '🎙 TOGGLE micrófono',
+  scene:       '🌐 ANALIZAR escena',
+  product:     '🔍 ANALIZAR objeto',
+  text_scan:   '📄 LEER texto',
+  flip:        '⟳ CAMBIAR cámara',
+  recibo:      '🧾 ESCANEAR recibo',
+};
+
+function _toggleGestureConfig() {
+  const panel = document.getElementById('vis-gesture-config');
+  if (!panel) return;
+  if (panel.classList.contains('visible')) { panel.classList.remove('visible'); return; }
+
+  const list = document.getElementById('vis-gest-cfg-list');
+  if (!list) return;
+  const map = _loadGestureMap();
+  const gestures = [
+    { key:'open_hand', icon:'✋', label:'Mano abierta', def:'analyze' },
+    { key:'fist',      icon:'✊', label:'Puño cerrado', def:'stop' },
+    { key:'index_up',  icon:'☝', label:'Índice arriba', def:'modules' },
+    { key:'peace',     icon:'✌', label:'Victoria / V', def:'toggle_auto' },
+    { key:'thumb_up',  icon:'👍', label:'Pulgar arriba', def:'voice' },
+  ];
+  list.innerHTML = gestures.map(g => {
+    const cur = map[g.key] || g.def;
+    const opts = Object.entries(_GESTURE_ACTIONS_LABELS)
+      .map(([k,v]) => `<option value="${k}" ${cur===k?'selected':''}>${v}</option>`)
+      .join('');
+    return `<div class="vp-gest-cfg-row">
+      <span class="vp-gest-cfg-ico">${g.icon}</span>
+      <span class="vp-gest-cfg-lbl">${g.label}</span>
+      <select class="vp-gest-cfg-sel" data-gest="${g.key}">${opts}</select>
+    </div>`;
+  }).join('') + `<div class="vp-gest-cfg-note">Los cambios se guardan automáticamente.</div>`;
+
+  list.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const m = _loadGestureMap();
+      m[sel.dataset.gest] = sel.value;
+      _saveGestureMap(m);
+    });
+  });
+  panel.classList.add('visible');
+}
+
+/* ─── Voice-add task/gasto (sin salir de visión) ──────── */
+function _voiceAddTarea(text, priority = 'media') {
+  try {
+    const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    const t  = { id:String(Date.now()), texto:text, prioridad:priority, done:false,
+                  fecha:null, creadaEn:new Date().toISOString() };
+    ts.push(t);
+    localStorage.setItem('arex_tareas', JSON.stringify(ts));
+    window.renderTareas?.();
+    window._updateUrgencyBadges?.();
+    return t;
+  } catch { return null; }
+}
+
+/* ─── Navigate and close vision ──────────────────────── */
+function _navigateAndClose(id) {
+  closeVision();
+  setTimeout(() => window.AREXNav?.cambiarModulo?.(id), 300);
+}
+
+/* ─── Module Navigation ───────────────────────────────── */
+function _navigateModule(id) {
+  _navigateAndClose(id);
+}
+
+window.visNavigate = (id) => _navigateAndClose(id);
 
 /* ─── Gesture + Swipe + Pinch Handler ────────────────── */
 function _handleGesture(type, data) {
   // Swipe events — navigate modules
   if (type === 'swipe_left')  { _navigatePrevModule(); return; }
   if (type === 'swipe_right') { _navigateNextModule(); return; }
-  if (type === 'swipe_up')    { closeVision(); return; }
+  if (type === 'swipe_up')    { _hudModuleId ? _hideModuleHud() : closeVision(); return; }
   if (type === 'swipe_down')  { _toggleModuleGrid(); return; }
 
   // Pinch — click element at cursor position
@@ -1141,21 +1452,41 @@ function _handleGesture(type, data) {
   const g = window.GESTURES?.[type];
   if (!g) return;
 
+  const customMap = _loadGestureMap();
+  const action = customMap[type] || g.action;
+  const actionLabel = (_GESTURE_ACTIONS_LABELS[action] || g.label).replace(/^[^\s]+\s/, '');
+
   const telGest = document.getElementById('vis-tel-gest');
   if (telGest) telGest.textContent = `${g.icon} ${type}`;
 
   const flash = document.getElementById('vis-gest-flash');
   if (flash) {
-    flash.textContent = `${g.icon} ${g.label}`;
+    flash.textContent = `${g.icon} ${actionLabel}`;
     flash.style.color = g.color;
     flash.classList.add('active');
     setTimeout(() => flash.classList.remove('active'), 900);
   }
 
-  switch (g.action) {
+  switch (action) {
     case 'analyze':
       _say('**[Gesto ✋]** Analizando...');
       _analyze('describe');
+      break;
+    case 'scene':
+      _say('**[Gesto]** Analizando escena...');
+      _analyze('scene');
+      break;
+    case 'product':
+      _say('**[Gesto]** Identificando objeto...');
+      _analyze('product');
+      break;
+    case 'text_scan':
+      _say('**[Gesto]** Leyendo texto...');
+      _analyze('text');
+      break;
+    case 'recibo':
+      _say('**[Gesto]** Escaneando recibo...');
+      _analyze('recibo');
       break;
     case 'stop':
       _contOn = false;
@@ -1172,6 +1503,9 @@ function _handleGesture(type, data) {
     case 'voice':
       _toggleVoiceCmd();
       break;
+    case 'flip':
+      _flipCamera();
+      break;
   }
 }
 
@@ -1182,21 +1516,19 @@ const _MOD_ORDER = [
 ];
 
 function _navigatePrevModule() {
-  const cur = window.AREXNav?.moduloActual || 'chat';
+  const cur = _hudModuleId || window.AREXNav?.moduloActual || 'chat';
   const idx = _MOD_ORDER.indexOf(cur);
   const prev = _MOD_ORDER[idx > 0 ? idx - 1 : _MOD_ORDER.length - 1];
   _gestureFlash('◀ ' + prev.toUpperCase(), '#00d4ff');
-  _say(`**[Gesto ◀]** → ${prev}`);
-  setTimeout(() => _navigateModule(prev), 500);
+  _showModuleHud(prev);
 }
 
 function _navigateNextModule() {
-  const cur = window.AREXNav?.moduloActual || 'chat';
+  const cur = _hudModuleId || window.AREXNav?.moduloActual || 'chat';
   const idx = _MOD_ORDER.indexOf(cur);
   const next = _MOD_ORDER[(idx + 1) % _MOD_ORDER.length];
   _gestureFlash('▶ ' + next.toUpperCase(), '#00d4ff');
-  _say(`**[Gesto ▶]** → ${next}`);
-  setTimeout(() => _navigateModule(next), 500);
+  _showModuleHud(next);
 }
 
 function _gestureFlash(text, color) {

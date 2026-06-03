@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK III
+# AREX — Sistema de Inteligencia Personal · MARK IV
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -37,12 +37,12 @@ arex/
 ├── evidencias.css      → Estilos del módulo evidencias
 ├── control.js          → Mission Control: telemetría del sistema, bitácora, agentes multi-IA
 ├── control.css         → Estilos de Mission Control
-├── vision.js           → Visión JARVIS: análisis con IA, gestos, comandos de voz, HUD, recibos
+├── vision.js           → Visión MARK IV: análisis IA, gestos personalizables, voz, HUD módulos (sin salir de cámara), tarea/gasto por voz
 ├── gesture.js          → Gesture Engine (MediaPipe Hands): señas, swipe, pinch, cursor, partículas
 ├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
 ├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v57 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v58 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -87,7 +87,7 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v57 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v58 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -161,32 +161,65 @@ El orbe central de AREX usa un renderer WebGL con shaders GLSL personalizados, s
 
 ---
 
-## Visión JARVIS interactiva (cámara)
+## Visión MARK IV (cámara)
 
-El módulo de Visión convierte la cámara en una interfaz estilo Tony Stark: pantalla completa translúcida, HUD holográfico y control por señas y voz — todo simultáneo.
+El módulo de Visión convierte la cámara en una interfaz estilo Tony Stark: pantalla completa translúcida, HUD holográfico y control por señas y voz — todo simultáneo, **sin salir jamás de la cámara**.
 
 ### Gesture Engine (`gesture.js`)
 MediaPipe Hands rastrea la mano a ~15 fps y dibuja un esqueleto cian con cursor, estela del dedo y partículas. Cada evento dispara vibración háptica + beep Web Audio.
 
-| Seña / movimiento | Acción |
-|---|---|
-| ✋ Mano abierta | Analizar la escena con IA |
-| ✊ Puño | Detener modo continuo / voz |
-| ☝ Índice arriba | Abrir grid de módulos |
-| ✌ Victoria | Alternar modo AUTO |
-| 👍 Pulgar arriba | Activar/desactivar comandos de voz |
-| ◀ ▶ Swipe horizontal | Módulo anterior / siguiente |
-| ▲ Swipe arriba | Cerrar la cámara |
-| ▼ Swipe abajo | Abrir grid de módulos |
-| 🤏 Pinch (pulgar+índice) | Clic en el elemento donde apunta el dedo |
+| Seña / movimiento | Acción por defecto | Personalizable |
+|---|---|---|
+| ✋ Mano abierta | Analizar la escena con IA | ✓ |
+| ✊ Puño | Detener modo continuo / voz | ✓ |
+| ☝ Índice arriba | Abrir grid de módulos | ✓ |
+| ✌ Victoria | Alternar modo AUTO | ✓ |
+| 👍 Pulgar arriba | Activar/desactivar comandos de voz | ✓ |
+| ◀ ▶ Swipe horizontal | Ver HUD del módulo anterior / siguiente | — |
+| ▲ Swipe arriba | Cerrar HUD de módulo (o cerrar cámara) | — |
+| ▼ Swipe abajo | Abrir grid de módulos | — |
+| 🤏 Pinch (pulgar+índice) | Clic en el elemento donde apunta el dedo | — |
 
-### Comandos de voz (siempre escuchando)
-Di **"AREX" + comando**: `analizar`, `escena`, `objeto`, `texto`, `recibo`, `módulos`, `finanzas`/`metas`/etc., `auto`, `silencio`, `cerrar`.
+**Cada seña se puede reasignar** desde el panel ⚙ de la guía de gestos (almacenado en `arex_gesture_map`). Acciones asignables: analizar, escena, objeto, texto, recibo, detener, módulos, auto, micrófono, cambiar cámara.
+
+### Module HUD — interactuar sin salir de la cámara
+Al deslizar (swipe) o decir el nombre de un módulo por voz, aparece un **panel HUD flotante** sobre la cámara con el resumen del módulo en tiempo real:
+
+| Módulo | Datos mostrados |
+|---|---|
+| Tareas | N pendientes, N vencidas, top 5 tareas |
+| Gastos | Total del mes, top 3 categorías |
+| Metas | N activas, barra de progreso % |
+| Finanzas | N tarjetas, deuda total |
+| Negocio | Ingresos del día, stock |
+| Proyectos | N proyectos activos |
+
+Desde el HUD: botón **ABRIR →** para navegar al módulo, botón **+ TAREA** o **+ GASTO** para agregar sin tocar el teclado.
+
+### Comandos de voz (siempre escuchando · sin conflicto con modo AR)
+Di **"AREX" + comando**:
+
+| Comando de voz | Acción |
+|---|---|
+| `analizar` / `escena` / `objeto` / `texto` | Análisis de imagen |
+| `recibo` / `ticket` | Escaneo de recibo → gasto automático |
+| `finanzas` / `metas` / `gastos` / `tareas` / etc. | Muestra HUD del módulo (sin cerrar cámara) |
+| `abrir finanzas` / `ir a tareas` | Cierra cámara y navega al módulo |
+| `nueva tarea X` / `agregar tarea X` | Crea tarea (con "alta" / "baja" para prioridad) |
+| `gasto 150 comida` | Registra gasto directo sin salir de cámara |
+| `auto` / `continuo` | Alternar modo análisis continuo |
+| `silencio` / `voz on` | Toggle síntesis de voz |
+| `módulos` / `navegar` | Abrir grid de módulos |
+| `cerrar` / `salir` | Cerrar cámara |
+
+> Cuando el modo de voz de Visión está activo, el modo AR de JARVIS se pausa automáticamente para evitar conflicto de SpeechRecognition. Al cerrar Visión, se restaura.
 
 ### HUD holográfico
 - **Telemetría** (izquierda): resolución, motor IA, modo, última seña, estado de voz
-- **Guía de gestos** (derecha) y **barra de onda de voz** (abajo) con animación
-- **Grid de módulos** translúcido y **flash de gesto** central
+- **Guía de gestos** (derecha) con botón ⚙ para configurar asignaciones
+- **Barra de onda de voz** (abajo) con animación de onda activa
+- **Grid de módulos** translúcido para navegación táctil
+- **Flash de gesto** central para retroalimentación visual
 - Profundidad 3D real con parallax por giroscopio (`parallax.js`)
 
 ### 🧾 Escaneo de recibos → gasto automático
@@ -353,6 +386,7 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | **MARK 40** | Gesture Engine Mark 2: swipe (navegar módulos), pinch-to-click, partículas + háptica + audio, estela y cursor; saludos proactivos por módulo, badges de urgencia, indicador de habla animado, contexto cross-módulo en prompts de visión |
 | **MARK 41** | Escaneo de recibos → gasto automático (extracción IA), swipe en tarjetas de tareas (completar/borrar), Parallax Engine (profundidad holográfica por giroscopio/puntero), README al corriente |
 | **MARK III** | Rediseño visual completo del sistema: orbe 3D WebGL con GLSL shaders (Fresnel rim, wave displacement, plasma energy bands), tipografía Exo 2 + JetBrains Mono, corner brackets holográficos en paneles, glassmorphism mejorado, escanlines en HUD, chat bubbles holográficos, grilla de fondo en módulos, glow en dock activo, acento animado, colores de acento por módulo, SW v57 |
+| **MARK IV** | Visión optimizada: Module HUD overlay (ver datos de cualquier módulo sin salir de la cámara), gestos 100% personalizables por seña, "AREX nueva tarea X" y "AREX gasto X Y" por voz sin cerrar cámara, "abrir [módulo]" vs solo "[módulo]" (HUD vs navegar), swipe muestra HUD en lugar de cerrar, swipe arriba cierra HUD primero, pausa automática del modo AR de JARVIS al activar voz en Visión con restauración al cerrar, 10 acciones asignables a gestos, pinch ripple visual, SW v58 |
 
 ---
 
