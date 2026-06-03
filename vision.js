@@ -41,20 +41,38 @@ function _personasCtxStr() {
     arr.map(p => `- ${p.nombre}: ${p.descripcion}`).join('\n');
 }
 
+/* ─── Cross-module context ────────────────────────────── */
+function _getCrossCtx() {
+  try {
+    const tasks  = JSON.parse(localStorage.getItem('arex_tareas')      || '[]');
+    const metas  = JSON.parse(localStorage.getItem('arex_metas')       || '[]');
+    const gastos = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+    const now    = new Date();
+    const venc   = tasks.filter(t => !t.done && t.fecha && new Date(t.fecha) < now).length;
+    const pend   = tasks.filter(t => !t.done).length;
+    const mact   = metas.filter(m => !m.completada).length;
+    const gMes   = gastos.filter(g => {
+      const d = new Date(g.fecha);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).reduce((s, g) => s + (g.monto || 0), 0);
+    return `\n\n[Estado actual de Alexiz]\n• Tareas: ${pend} pendientes (${venc} vencidas)\n• Metas activas: ${mact}\n• Gasto este mes: $${gMes.toLocaleString('es-MX')} MXN`;
+  } catch { return ''; }
+}
+
 /* ─── Prompts dinámicos ───────────────────────────────── */
 // Los modelos AI rechazan "identificar" personas, pero SÍ describen características físicas.
 // La estrategia: describir apariencia visual → usuario guardó descripciones → el modelo hace matching.
 function _buildVisionPrompt(mode) {
   const pc = _personasCtxStr();
 
+  const ctx = _getCrossCtx();
   if (mode === 'describe') {
-    // En modo continuo, ciclos posteriores usan prompt reactivo (más corto y conversacional)
     if (_contOn && _contCycle > 1) {
-      return `Eres AREX en modo observación en vivo, ciclo ${_contCycle}.${pc}
+      return `Eres AREX en modo observación en vivo, ciclo ${_contCycle}.${pc}${ctx}
 
 Haz UNA observación breve y directa sobre lo que ves ahora — una acción, cambio, detalle nuevo, o comentario ingenioso sobre la escena. Si hay una persona y coincide con alguna de las conocidas, dirígete a ella. 1-2 frases máximo. Tono JARVIS: observador, inteligente, con personalidad. En español.`;
     }
-    return `Eres AREX, sistema IA de Alexiz (Hermosillo, México). Observación en vivo.${pc}
+    return `Eres AREX, sistema IA de Alexiz (Hermosillo, México). Observación en vivo.${pc}${ctx}
 
 Describe EXACTAMENTE lo que observas visualmente:
 • PERSONAS: color y largo de cabello, complexión, ropa (colores, tipo de prenda), expresión facial, postura. Si coincide con alguna persona conocida arriba, salúdala por nombre. NUNCA respondas "no puedo describir personas" — siempre describe lo que VES físicamente.
@@ -65,7 +83,7 @@ Responde en 2-3 frases directas. Tono JARVIS: preciso, observador, con personali
   }
 
   if (mode === 'scene') {
-    return `Eres AREX. Análisis exhaustivo de escena para Alexiz.${pc}
+    return `Eres AREX. Análisis exhaustivo de escena para Alexiz.${pc}${ctx}
 
 Lista TODOS los elementos visibles:
 • Personas: apariencia física (cabello, ropa, complexión, expresión, postura). Si coincide con alguna persona conocida, nómbrala.
@@ -142,6 +160,7 @@ export function closeVision() {
   _stopVoiceCmd();
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
+  _panel?._cleanupResize?.();
   _panel?.remove(); _panel = null;
   document.getElementById('btn-vision')?.classList.remove('active');
 }
@@ -295,6 +314,9 @@ function _buildPanel() {
       </div>
     </div>
 
+    <!-- SWIPE HINT -->
+    <div class="vp-swipe-hint">◀ DESLIZA ▶ · PELLIZCA PARA SELECCIONAR</div>
+
     <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
@@ -346,6 +368,17 @@ function _buildPanel() {
   document.getElementById('vis-module-grid').addEventListener('click', e => {
     if (e.target === document.getElementById('vis-module-grid')) _hideModuleGrid();
   });
+
+  // Resize canvas when window rotates / resizes
+  const _resizeCanvas = () => {
+    const canvas = document.getElementById('vis-gesture-canvas');
+    if (canvas && _video) {
+      canvas.width  = _video.clientWidth  || 320;
+      canvas.height = _video.clientHeight || 480;
+    }
+  };
+  window.addEventListener('resize', _resizeCanvas);
+  _panel._cleanupResize = () => window.removeEventListener('resize', _resizeCanvas);
 
   // Start telemetry ticker
   _telTimer = setInterval(_updateTelemetry, 3000);
@@ -1023,8 +1056,17 @@ function _navigateModule(id) {
 
 window.visNavigate = (id) => _navigateModule(id);
 
-/* ─── Gesture Handler ─────────────────────────────────── */
-function _handleGesture(type) {
+/* ─── Gesture + Swipe + Pinch Handler ────────────────── */
+function _handleGesture(type, data) {
+  // Swipe events — navigate modules
+  if (type === 'swipe_left')  { _navigatePrevModule(); return; }
+  if (type === 'swipe_right') { _navigateNextModule(); return; }
+  if (type === 'swipe_up')    { closeVision(); return; }
+  if (type === 'swipe_down')  { _toggleModuleGrid(); return; }
+
+  // Pinch — click element at cursor position
+  if (type === 'pinch' && data) { _doPinchClick(data); return; }
+
   const g = window.GESTURES?.[type];
   if (!g) return;
 
@@ -1059,6 +1101,62 @@ function _handleGesture(type) {
     case 'voice':
       _toggleVoiceCmd();
       break;
+  }
+}
+
+/* ─── Swipe Module Navigation ─────────────────────────── */
+const _MOD_ORDER = [
+  'inicio','finanzas','metas','tareas','notas',
+  'negocio','gastos','proyectos','evidencias','control','chat',
+];
+
+function _navigatePrevModule() {
+  const cur = window.AREXNav?.moduloActual || 'chat';
+  const idx = _MOD_ORDER.indexOf(cur);
+  const prev = _MOD_ORDER[idx > 0 ? idx - 1 : _MOD_ORDER.length - 1];
+  _gestureFlash('◀ ' + prev.toUpperCase(), '#00d4ff');
+  _say(`**[Gesto ◀]** → ${prev}`);
+  setTimeout(() => _navigateModule(prev), 500);
+}
+
+function _navigateNextModule() {
+  const cur = window.AREXNav?.moduloActual || 'chat';
+  const idx = _MOD_ORDER.indexOf(cur);
+  const next = _MOD_ORDER[(idx + 1) % _MOD_ORDER.length];
+  _gestureFlash('▶ ' + next.toUpperCase(), '#00d4ff');
+  _say(`**[Gesto ▶]** → ${next}`);
+  setTimeout(() => _navigateModule(next), 500);
+}
+
+function _gestureFlash(text, color) {
+  const flash = document.getElementById('vis-gest-flash');
+  if (!flash) return;
+  flash.textContent = text;
+  flash.style.color = color || '#00d4ff';
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 900);
+}
+
+/* ─── Pinch-to-Click ──────────────────────────────────── */
+function _doPinchClick(data) {
+  const canvas = document.getElementById('vis-gesture-canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = rect.left + data.x * rect.width;
+  const sy = rect.top  + data.y * rect.height;
+  // Temporarily disable canvas pointer events so elementFromPoint works
+  canvas.style.pointerEvents = 'auto';
+  const el = document.elementFromPoint(sx, sy);
+  canvas.style.pointerEvents = 'none';
+  if (el && el.tagName !== 'CANVAS' && el.tagName !== 'VIDEO' && el !== _panel) {
+    el.click();
+    _gestureFlash('🤏 TAP', '#00ffaa');
+    // Ripple effect at pinch location
+    const ripple = document.createElement('div');
+    ripple.className = 'pinch-ripple';
+    ripple.style.cssText = `left:${sx}px;top:${sy}px;`;
+    document.body.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 420);
   }
 }
 

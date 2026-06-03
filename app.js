@@ -760,6 +760,7 @@ function renderTareas() {
     badge.classList.toggle('urgente', urgentes > 0);
   }
   scheduleTaskNotifications();
+  window._updateUrgencyBadges?.();
 }
 
 // ── Módulo Notas ────────────────────────────────────────
@@ -1816,6 +1817,14 @@ function arexSpeak(text) {
   const v = getMaleVoice(); if (v) u.voice = v;
   u.onstart = () => {
     setOrb('speaking','Transmitiendo respuesta');
+    // Show speaking dots on last AREX message
+    const lastArex = [...document.querySelectorAll('.msg.arex .bubble')].at(-1);
+    if (lastArex && !lastArex.querySelector('.arex-speaking-dot')) {
+      const dot = document.createElement('span');
+      dot.className = 'arex-speaking-dot';
+      dot.innerHTML = '<span></span><span></span><span></span>';
+      lastArex.appendChild(dot);
+    }
     // iOS Safari pausa speechSynthesis internamente cada ~15s — keep-alive
     _iosVoiceKa = setInterval(() => {
       if (window.speechSynthesis.paused) window.speechSynthesis.resume();
@@ -1828,6 +1837,7 @@ function arexSpeak(text) {
   u.onend = () => {
     isSpeaking = false;
     clearInterval(_iosVoiceKa);
+    document.querySelectorAll('.arex-speaking-dot').forEach(d => d.remove());
     setOrb(null);
     if (continuousMode) {
       _continuousRestart = true;
@@ -4248,6 +4258,80 @@ async function generarBriefing() {
   } catch(e) { console.warn('Briefing:', e); }
 }
 window.generarBriefing = generarBriefing;
+
+// ── SALUDOS PROACTIVOS POR MÓDULO ─────────────────────────────────────────────
+function _proactiveModuleGreeting(mod) {
+  if (!voiceOn) return;
+  try {
+    const now = new Date();
+    const greetings = {
+      tareas() {
+        const ts = getTareas ? getTareas() : [];
+        const venc = ts.filter(t => !t.done && t.fecha && new Date(t.fecha) < now).length;
+        const pend = ts.filter(t => !t.done).length;
+        if (venc > 0) return `Tienes ${venc} tarea${venc > 1 ? 's' : ''} vencida${venc > 1 ? 's' : ''}. ${pend} pendientes en total.`;
+        if (pend > 0) return `${pend} tarea${pend > 1 ? 's' : ''} pendiente${pend > 1 ? 's' : ''}.`;
+        return 'Sin tareas pendientes. Bien hecho.';
+      },
+      metas() {
+        const ms = typeof getMetas === 'function' ? getMetas() : [];
+        const act = ms.filter(m => !m.completada);
+        if (!act.length) return null;
+        const top = act.reduce((a, b) => (b.progreso || 0) > (a.progreso || 0) ? b : a, act[0]);
+        return `Meta principal: ${top.titulo}. Al ${Math.round(top.progreso || 0)} por ciento.`;
+      },
+      finanzas() {
+        const gastos = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+        const gMes = gastos.filter(g => {
+          const d = new Date(g.fecha);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }).reduce((s, g) => s + (g.monto || 0), 0);
+        return gMes > 0 ? `Gasto este mes: ${gMes.toLocaleString('es-MX')} pesos.` : null;
+      },
+      negocio() {
+        try {
+          const d = typeof getNegocioData === 'function' ? getNegocioData() : null;
+          if (!d) return null;
+          const stockBajo = (d.inventario || []).filter(i => i.stockKg < (d.config?.stockMinimo || 5));
+          if (stockBajo.length) return `Alerta: ${stockBajo.length} producto${stockBajo.length > 1 ? 's' : ''} con stock bajo.`;
+        } catch (_) {}
+        return null;
+      },
+      proyectos() {
+        const ps = JSON.parse(localStorage.getItem('arex_proyectos') || '[]');
+        const act = ps.filter(p => p.estado !== 'completado');
+        return act.length ? `${act.length} proyecto${act.length > 1 ? 's' : ''} activo${act.length > 1 ? 's' : ''}.` : null;
+      },
+      chat() { return null; },
+    };
+    const fn = greetings[mod];
+    if (!fn) return;
+    const msg = fn();
+    if (msg) arexSpeak(msg);
+  } catch (_) {}
+}
+window._arexModuleGreeting = _proactiveModuleGreeting;
+
+// ── URGENCY BADGES ────────────────────────────────────────────────────────────
+function _updateUrgencyBadges() {
+  try {
+    const tasks = typeof getTareas === 'function' ? getTareas() : [];
+    const now = new Date();
+    const venc = tasks.filter(t => !t.done && t.fecha && new Date(t.fecha) < now).length;
+    // Badge on tareas nav button
+    const navTareas = document.querySelector('.nav-btn[data-module="tareas"]');
+    if (navTareas) {
+      let badge = navTareas.querySelector('.nav-urg-badge');
+      if (venc > 0) {
+        if (!badge) { badge = document.createElement('span'); badge.className = 'nav-urg-badge'; navTareas.appendChild(badge); }
+        badge.textContent = venc;
+      } else {
+        badge?.remove();
+      }
+    }
+  } catch (_) {}
+}
+window._updateUrgencyBadges = _updateUrgencyBadges;
 
 // ── BÚSQUEDA GLOBAL ───────────────────────────────────────────────────────────
 function buscarGlobal(q) {

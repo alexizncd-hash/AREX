@@ -4320,3 +4320,113 @@ footer {
 /* ── Weather wrapper ─────────────────────────────────── */
 #dash-weather.dhud-panel { min-height: 0; }
 #dash-weather.dhud-panel:empty { display: none; }
+
+/* ════════════════════════════════════════════════════════
+   INTERACTIVITY MARK 2 — Dynamic HUD · Urgency · Proactive
+   ════════════════════════════════════════════════════════ */
+
+/* ── Urgency badge on nav buttons ────────────────────── */
+.nav-urg-badge {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 14px; height: 14px; border-radius: 7px;
+  background: #ff4455; color: #fff;
+  font-size: 7px; font-family: var(--font); font-weight: 700;
+  line-height: 14px; text-align: center; padding: 0 3px;
+  box-shadow: 0 0 8px rgba(255,68,85,0.7);
+  animation: badge-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes badge-pulse {
+  0%,100% { box-shadow: 0 0 8px rgba(255,68,85,0.7); }
+  50%      { box-shadow: 0 0 14px rgba(255,68,85,0.9); }
+}
+
+/* ── Module entrance animation (enhanced) ────────────── */
+@keyframes module-slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+#workspace > .module-panel.active {
+  animation: module-slide-in 0.22s cubic-bezier(0.3, 0, 0.1, 1);
+}
+
+/* ── Module color accent system ──────────────────────── */
+#module-finanzas.module-panel.active   { --mod-accent: #00ffaa; }
+#module-metas.module-panel.active      { --mod-accent: #FFD700; }
+#module-tareas.module-panel.active     { --mod-accent: #00d4ff; }
+#module-notas.module-panel.active      { --mod-accent: #c4b5fd; }
+#module-negocio.module-panel.active    { --mod-accent: #ff9900; }
+#module-gastos.module-panel.active     { --mod-accent: #ff6644; }
+#module-proyectos.module-panel.active  { --mod-accent: #8B5CF6; }
+#module-evidencias.module-panel.active { --mod-accent: #00d4ff; }
+#module-control.module-panel.active    { --mod-accent: #4a9eff; }
+
+/* ── AREX speaking indicator in chat ─────────────────── */
+.arex-speaking-dot {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 6px; vertical-align: middle;
+}
+.arex-speaking-dot span {
+  display: block; width: 3px; height: 3px;
+  border-radius: 50%; background: var(--cyan);
+}
+.arex-speaking-dot span:nth-child(1) { animation: speak-dot 0.9s 0.0s ease-in-out infinite; }
+.arex-speaking-dot span:nth-child(2) { animation: speak-dot 0.9s 0.2s ease-in-out infinite; }
+.arex-speaking-dot span:nth-child(3) { animation: speak-dot 0.9s 0.4s ease-in-out infinite; }
+@keyframes speak-dot {
+  0%,100% { opacity: 0.25; transform: scaleY(1); }
+  50%      { opacity: 1;    transform: scaleY(2.2); }
+}
+
+/* ── Gesture guide — gg-row improved ─────────────────── */
+.vp-gg-row { justify-content: flex-start; }
+.vp-gg-row + .vp-gg-row { border-top: 1px solid rgba(0,212,255,0.07); }
+
+/* ── Voice bar always-present (subtle idle state) ──── */
+.vp-voice-bar { opacity: 0.28; }
+.vp-voice-bar.active { opacity: 1; }
+
+/* ── Swipe hint (HUD bottom bar) ─────────────────────── */
+.vp-swipe-hint {
+  position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
+  font-size: 7.5px; letter-spacing: 2px; color: rgba(0,212,255,0.3);
+  pointer-events: none; white-space: nowrap;
+}
+
+/* ── Module active color glow on bottom bar ──────────── */
+.vp-hud-bottom .vp-action-btn.on {
+  border-color: rgba(0,255,170,0.5);
+  background: rgba(0,255,170,0.1);
+  box-shadow: 0 0 12px rgba(0,255,170,0.18);
+}
+
+/* ── Pinch click ripple ───────────────────────────────── */
+@keyframes pinch-ripple {
+  from { opacity: 0.8; transform: translate(-50%,-50%) scale(0.2); }
+  to   { opacity: 0;   transform: translate(-50%,-50%) scale(2); }
+}
+.pinch-ripple {
+  position: fixed; width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid #00ffaa; pointer-events: none; z-index: 9999;
+  animation: pinch-ripple 0.4s ease-out forwards;
+}
+
+/* ── Module nav pulse glow on active ─────────────────── */
+#dock .nav-btn.active {
+  position: relative;
+}
+#dock .nav-btn.active::before {
+  content: ''; position: absolute; inset: -2px; border-radius: 10px;
+  background: radial-gradient(ellipse, rgba(0,212,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── AREX status bar micro-update animation ──────────── */
+@keyframes status-ping {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+.status-float.updating {
+  animation: status-ping 0.4s ease-in-out;
+}

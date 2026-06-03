@@ -38,7 +38,7 @@ const AREXNav = {
 
   actualizarEstadoSistema(modulo) {
     const statusEl = document.getElementById('sys-val');
-    const estados  = { inicio:'INICIO', chat:'ACTIVO', finanzas:'FINANZAS', tareas:'TAREAS', notas:'NOTAS', negocio:'NEGOCIO', gastos:'GASTOS', metas:'METAS', proyectos:'PROYECTOS', control:'CONTROL' };
+    const estados  = { inicio:'INICIO', chat:'ACTIVO', finanzas:'FINANZAS', tareas:'TAREAS', notas:'NOTAS', negocio:'NEGOCIO', gastos:'GASTOS', metas:'METAS', proyectos:'PROYECTOS', control:'CONTROL', evidencias:'EVIDENCIAS' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
     if (modulo === 'inicio'    && typeof renderDashboard       === 'function') renderDashboard();
     if (modulo === 'notas'     && typeof renderNotas           === 'function') renderNotas();
@@ -47,6 +47,10 @@ const AREXNav = {
     if (modulo === 'metas'     && typeof renderMetasModule     === 'function') renderMetasModule();
     if (modulo === 'proyectos' && typeof renderProyectosModule === 'function') renderProyectosModule();
     if (modulo === 'control'   && typeof renderControlModule   === 'function') renderControlModule();
+    // Update urgency badge counts
+    if (typeof window._updateUrgencyBadges === 'function') window._updateUrgencyBadges();
+    // Fire proactive greeting hook (registered by app.js)
+    setTimeout(() => window._arexModuleGreeting?.(modulo), 650);
   }
 };
 
