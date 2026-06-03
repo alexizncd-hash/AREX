@@ -29,9 +29,13 @@ let _cmdFeedbackT   = null;
 let _lastInterim    = '';
 
 // New Mark IV state
-let _hudModuleId    = null;   // module currently shown in HUD overlay
-let _gestureMapCache= null;   // custom gesture→action remapping
-let _contWasPaused  = false;  // did we pause app.js continuous mode?
+let _hudModuleId    = null;
+let _gestureMapCache= null;
+let _contWasPaused  = false;
+let _busyCont       = false;  // lock for background continuous (doesn't block manual)
+let _lastPixels     = null;   // 64×48 ImageData for motion diff
+let _noMotionCnt    = 0;
+let _lastContTxt    = '';     // last continuous result for dedup
 
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
@@ -397,6 +401,7 @@ function _buildPanel() {
   _video.addEventListener('loadedmetadata', () => {
     const telCam = document.getElementById('vis-tel-cam');
     if (telCam) telCam.textContent = `${_video.videoWidth}×${_video.videoHeight}`;
+    _applyMirror();
   });
 
   document.getElementById('vis-cont').addEventListener('click', _toggleContinuous);
@@ -739,13 +744,16 @@ function _toggleContinuous() {
   const btn = document.getElementById('vis-cont');
   const lbl = btn?.querySelector('.vp-btn-lbl');
   if (btn) btn.classList.toggle('on', _contOn);
-  if (lbl) lbl.textContent = _contOn ? 'AUTO ON' : 'AUTO';
+  if (lbl) lbl.textContent = _contOn ? 'SMART ⬤' : 'AUTO';
   if (_contOn) {
-    _setStatus('MODO CONTINUO');
+    _setStatus('SMART · EN ESPERA');
     _runContinuous();
   } else {
     window.speechSynthesis?.cancel();
     _stopIosKa();
+    _lastPixels  = null;
+    _noMotionCnt = 0;
+    _lastContTxt = '';
     _setStatus('LISTO');
   }
 }
@@ -754,19 +762,29 @@ async function _runContinuous() {
   if (_contRunning) return;
   _contRunning = true;
   _contCycle   = 0;
+  _noMotionCnt = 0;
+  _lastPixels  = null;
   try {
     while (_contOn) {
+      await new Promise(r => setTimeout(r, 1800));
+      if (!_contOn) break;
+      const motion = _checkMotion();
+      if (motion) {
+        _noMotionCnt = 0;
+      } else {
+        _noMotionCnt++;
+        // Sin movimiento ~18s: análisis ambient de todas formas
+        if (_noMotionCnt < 10) { _setStatus('SMART · EN ESPERA'); continue; }
+        _noMotionCnt = 0;
+      }
+      if (_busyCont) continue;
       _contCycle++;
-      await _analyze('describe');
-      if (!_contOn) break;
-      await _waitForSpeech();
-      if (!_contOn) break;
-      // Primer ciclo: pausa más corta para que se sienta responsivo
-      await new Promise(r => setTimeout(r, _contCycle === 1 ? 800 : 2200));
+      await _analyzeCont();
     }
   } finally {
     _contRunning = false;
     _contCycle   = 0;
+    _lastPixels  = null;
   }
 }
 
@@ -782,6 +800,81 @@ function _waitForSpeech() {
   });
 }
 
+/* ─── Motion detection (64×48 pixel diff) ────────────── */
+function _checkMotion() {
+  if (!_video || _video.videoWidth === 0) return true;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 48;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(_video, 0, 0, 64, 48);
+    const pixels = ctx.getImageData(0, 0, 64, 48);
+    if (!_lastPixels) { _lastPixels = pixels; return true; }
+    let diff = 0;
+    const n = pixels.data.length;
+    for (let i = 0; i < n; i += 4) {
+      if (Math.abs(pixels.data[i]   - _lastPixels.data[i])
+        + Math.abs(pixels.data[i+1] - _lastPixels.data[i+1])
+        + Math.abs(pixels.data[i+2] - _lastPixels.data[i+2]) > 50) diff++;
+    }
+    _lastPixels = pixels;
+    return (diff / (n / 4)) > 0.04;
+  } catch { return true; }
+}
+
+/* ─── Background continuous analysis (non-blocking) ─────── */
+async function _analyzeCont() {
+  if (_busyCont) return;
+  _busyCont = true;
+  const timer = setTimeout(() => { _busyCont = false; }, 20000);
+  _setStatus('SMART · ANALIZANDO');
+  try {
+    const frame = await _captureFrame(MODE_RES.describe);
+    if (!frame) return;
+    const prompt  = _buildVisionPrompt('describe');
+    const groqKey = window.AREX_CONFIG?.groqKey;
+    const gemKey  = window.AREX_CONFIG?.geminiKey;
+    let reply;
+    if (groqKey) {
+      try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 18000); } catch { /**/ }
+    }
+    if (!reply && gemKey) {
+      try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 18000); } catch { /**/ }
+    }
+    if (!reply) return;
+    const isSame = _lastContTxt && _textSimilarity(reply, _lastContTxt) > 0.70;
+    _lastContTxt = reply;
+    if (!isSame) {
+      _showResult(MODE_LABELS.describe, reply, frame);
+      if (!window.speechSynthesis?.speaking) _visionSpeak(reply);
+      _say(`**[Smart Auto]** ${reply}`);
+    }
+    _setStatus('SMART · EN ESPERA');
+  } catch (e) {
+    console.warn('analyzeCont:', e);
+    _setStatus('SMART · EN ESPERA');
+  } finally {
+    clearTimeout(timer);
+    _busyCont = false;
+  }
+}
+
+function _textSimilarity(a, b) {
+  const words = s => new Set(s.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+  const wa = words(a), wb = words(b);
+  const inter = [...wa].filter(w => wb.has(w)).length;
+  const union = new Set([...wa, ...wb]).size;
+  return union > 0 ? inter / union : 0;
+}
+
+/* ─── Camera mirror ───────────────────────────────────── */
+function _applyMirror() {
+  const m = _facingMode === 'user' ? 'scaleX(-1)' : 'none';
+  if (_video) _video.style.transform = m;
+  const gc = document.getElementById('vis-gesture-canvas');
+  if (gc) gc.style.transform = m;
+}
+
 /* ─── Camera flip ─────────────────────────────────────── */
 async function _flipCamera() {
   if (!_stream) return;
@@ -792,7 +885,11 @@ async function _flipCamera() {
       video: { facingMode: _facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
     });
-    if (_video) { _video.srcObject = _stream; _video.play().catch(() => {}); }
+    if (_video) {
+      _video.srcObject = _stream;
+      _video.play().catch(() => {});
+      _video.addEventListener('loadedmetadata', _applyMirror, { once: true });
+    }
   } catch (e) { _say('No se pudo cambiar de cámara.'); }
 }
 
@@ -1441,6 +1538,11 @@ window.visNavigate = (id) => _navigateAndClose(id);
 
 /* ─── Gesture + Swipe + Pinch Handler ────────────────── */
 function _handleGesture(type, data) {
+  // Mirror compensation: front camera swipe directions are inverted
+  if (_facingMode === 'user') {
+    if (type === 'swipe_left')  type = 'swipe_right';
+    else if (type === 'swipe_right') type = 'swipe_left';
+  }
   // Swipe events — navigate modules
   if (type === 'swipe_left')  { _navigatePrevModule(); return; }
   if (type === 'swipe_right') { _navigateNextModule(); return; }
