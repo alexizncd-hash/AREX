@@ -956,6 +956,7 @@ function switchTareasView(v) {
   if (v === 'cal') renderCalendario();
 }
 window.switchTareasView = switchTareasView;
+window.renderTareas     = renderTareas;
 
 function renderCalendario() {
   const tareas   = getTareas();

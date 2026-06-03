@@ -1087,7 +1087,7 @@ function _processVoiceCmd(text) {
     }, 3000);
   };
 
-  if (/\b(recibo|ticket|gasto|factura)\b/.test(t)) {
+  if (/\b(?:recibo|ticket|gasto(?!s)|factura)\b/.test(t)) {
     feedback('ESCANEAR RECIBO');
     _say('**[Voz]** Escaneando recibo...');
     _analyze('recibo');
@@ -1405,6 +1405,7 @@ function _toggleGestureConfig() {
     sel.addEventListener('change', () => {
       const m = _loadGestureMap();
       m[sel.dataset.gest] = sel.value;
+      _gestureMapCache = null;
       _saveGestureMap(m);
     });
   });
