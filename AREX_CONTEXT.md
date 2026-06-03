@@ -1,7 +1,7 @@
 # AREX — Contexto completo del proyecto
 
 ## ¿Qué es AREX?
-AREX es un sistema operativo de inteligencia personal estilo J.A.R.V.I.S (Iron Man), desplegado como PWA en GitHub Pages. El usuario principal es Alexiz, estudiante universitario con un negocio de aguacates. Lo usa desde **Meta Quest 3S en modo AR/passthrough** y desde móvil Android.
+AREX es un sistema operativo de inteligencia personal estilo J.A.R.V.I.S (Iron Man), desplegado como PWA en GitHub Pages. El usuario principal es Alexiz, estudiante universitario con un negocio de frijol mayocoba servido en medio litro, listo para su disposición y reparto. Lo usa desde **Meta Quest 3S en modo AR/passthrough** y desde móvil Android.
 
 **Repo:** `alexizncd-hash/AREX` (GitHub Pages, rama `main` para producción)  
 **Rama de desarrollo activa:** `claude/repo-assistance-7Vpbm`  
@@ -41,7 +41,7 @@ Todas las API keys se guardan en `localStorage` bajo la clave `arex_config`:
 |--------|---------|-------------|
 | Chat IA | `app.js` | `arex_sessions`, `arex_history_*` |
 | Finanzas | `finanzas.js` + `finanzas-data.js` | `arex_finanzas` |
-| Negocio (aguacates) | `negocio.js` | `arex_negocio` |
+| Negocio (frijol mayocoba) | `negocio.js` | `arex_negocio` |
 | Gastos personales | `gastos.js` | `arex_gastos_personal` |
 | Metas | `metas.js` | `arex_metas` |
 | Tareas | dentro de `app.js` | `arex_tareas` |
@@ -65,7 +65,7 @@ AREX/
 ├── finanzas.js         # Módulo finanzas
 ├── finanzas.css
 ├── finanzas-data.js    # Funciones de datos financieros
-├── negocio.js          # Módulo negocio (aguacates)
+├── negocio.js          # Módulo negocio (frijol mayocoba en medio litro)
 ├── negocio.css
 ├── gastos.js           # Módulo gastos personales
 ├── gastos.css
@@ -220,7 +220,7 @@ Cámara del Quest → frames → Groq Vision API → AREX describe el mundo real
 
 ## Contexto personal de Alexiz (para que AREX lo conozca)
 - Estudiante universitario en México
-- Tiene un negocio familiar de venta de aguacates
+- Tiene un negocio de frijol mayocoba servido en medio litro, listo para su disposición y con reparto
 - Usa Meta Quest 3S (128GB) como dispositivo principal para AREX
 - Novia: Margaret (importante en su vida)
 - Quiere crecer: personal, espiritual, físico, económico y en relaciones

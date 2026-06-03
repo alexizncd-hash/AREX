@@ -1603,7 +1603,7 @@ const _QUICK_RULES = [
   { re:/meta|objetivo|progreso|logro/,                  chips:['Ver metas','Actualizar progreso','¿Qué metas tengo?'] },
   { re:/nota|apuntar|guardar|anotar/,                   chips:['Ver notas','Nueva nota'] },
   { re:/proyecto|sprint|avance|entrega/,                chips:['Ver proyectos','Estado del proyecto'] },
-  { re:/negocio|venta|cliente|ingreso|aguacate/,        chips:['Ver negocio','Registrar venta'] },
+  { re:/negocio|venta|cliente|ingreso|frijol|mayocoba|reparto/,        chips:['Ver negocio','Registrar venta'] },
   { re:/clima|temperatura|lluvia|pronóstico/,           chips:['¿Cómo estará el clima mañana?','Pronóstico semanal'] },
   { re:/recuerda|recordatorio|mañana a las/,            chips:['Ver recordatorios','/recordar 30min mensaje'] },
 ];

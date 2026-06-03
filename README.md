@@ -61,7 +61,7 @@ arex/
 | **FINANZAS** | $ | Tarjetas de crédito, saldos, gráficas de gastos, calculadora de deuda, recordatorios de pago |
 | **TAREAS** | ✓ | Gestión de tareas con prioridad, fecha límite y ordenamiento automático por urgencia |
 | **NOTAS** | ✎ | Notas por categoría (General, Estudio, Ideas, Trabajo, Personal) con búsqueda y sync Firebase |
-| **NEGOCIO** | 🥑 | Gestión del negocio de frijol: inventario, ventas, sucursales, gastos, meta mensual, gráfica 7 días |
+| **NEGOCIO** | 🫘 | Gestión del negocio de frijol mayocoba: inventario, ventas por medio litro, sucursales, reparto, gastos, meta mensual, gráfica 7 días |
 | **GASTOS** | 💸 | Gastos personales diarios por categoría con presupuesto mensual y comparativa visual |
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |

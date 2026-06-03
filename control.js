@@ -183,7 +183,7 @@ const AGENTES = [
   },
   {
     id: 'atlas', nombre: 'ATLAS', color: '#ff9900',
-    desc: 'Negocio · Rastrea ventas y stock de aguacates',
+    desc: 'Negocio · Rastrea ventas y stock de frijol mayocoba',
     area: 'negocio'
   },
   {
