@@ -112,6 +112,16 @@ const PROMPTS_STATIC = {
 Si no identificas el objeto exacto, describe TODOS los detalles visuales. En español.`,
 
   text: `Lee y transcribe EXACTAMENTE todo el texto visible en esta imagen, incluidos números, signos y símbolos. Mantén el orden original con saltos de línea. Si hay texto en inglés, transcríbelo igual. Responde en español solo el encabezado "Texto encontrado:" y luego el texto tal cual.`,
+
+  recibo: `Eres AREX procesando un TICKET/RECIBO de compra para registrar el gasto de Alexiz. Lee el recibo y extrae los datos. Responde EXACTAMENTE en este formato, sin texto adicional:
+
+**Total:** [solo el número del total final pagado, ej: 247.50]
+**Comercio:** [nombre del establecimiento o "Desconocido"]
+**Fecha:** [fecha del ticket en formato YYYY-MM-DD, o "hoy" si no es legible]
+**Categoria:** [UNA de estas exactamente: comida, transporte, entretenimiento, salud, ropa, hogar, educacion, otro]
+**Resumen:** [productos principales en máximo 8 palabras]
+
+Si no logras leer el total claramente, pon "Total: 0". En español.`,
 };
 
 const MODE_LABELS = {
@@ -119,9 +129,10 @@ const MODE_LABELS = {
   product:  '🔍 OBJETO',
   text:     '📄 TEXTO',
   scene:    '🌐 ESCENA',
+  recibo:   '🧾 RECIBO',
 };
 
-const MODE_RES = { describe: 480, product: 640, text: 640, scene: 640 };
+const MODE_RES = { describe: 480, product: 640, text: 640, scene: 640, recibo: 720 };
 
 /* ─── Public API ──────────────────────────────────────── */
 export async function openVision() {
@@ -328,6 +339,9 @@ function _buildPanel() {
       <button class="vp-action-btn" data-mode="text" onclick="captureAndAnalyze('text')">
         <span class="vp-btn-ico">📄</span><span class="vp-btn-lbl">TEXTO</span>
       </button>
+      <button class="vp-action-btn" data-mode="recibo" onclick="captureAndAnalyze('recibo')">
+        <span class="vp-btn-ico">🧾</span><span class="vp-btn-lbl">RECIBO</span>
+      </button>
       <button class="vp-action-btn" data-mode="scene" onclick="captureAndAnalyze('scene')">
         <span class="vp-btn-ico">🌐</span><span class="vp-btn-lbl">ESCENA</span>
       </button>
@@ -465,9 +479,14 @@ async function _analyze(mode, extra = '') {
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
 
     const label = MODE_LABELS[mode] || 'ANÁLISIS';
-    _showResult(label, reply, frame);
-    _say(`**[${label}]**\n\n${reply}`);
-    _visionSpeak(reply);
+
+    if (mode === 'recibo') {
+      _handleReceipt(reply, frame, label);
+    } else {
+      _showResult(label, reply, frame);
+      _say(`**[${label}]**\n\n${reply}`);
+      _visionSpeak(reply);
+    }
 
     if (mode === 'product' && window.AREX_CONFIG?.tavilyKey) {
       const m = reply.match(/\*\*Objeto:\*\*\s*(.+)/);
@@ -604,6 +623,51 @@ function _showResult(label, text, thumb) {
 
 function _hideResult() {
   document.getElementById('vis-result')?.classList.remove('visible');
+}
+
+/* ─── Receipt → Gasto automático ──────────────────────── */
+function _handleReceipt(reply, frame, label) {
+  const get = (re) => (reply.match(re)?.[1] || '').trim();
+  const totalRaw = get(/\*\*Total:\*\*\s*\$?\s*([\d.,]+)/i);
+  const total    = parseFloat(totalRaw.replace(/,/g, ''));
+  const comercio = get(/\*\*Comercio:\*\*\s*(.+)/i) || 'Recibo';
+  let   fecha    = get(/\*\*Fecha:\*\*\s*(.+)/i);
+  const catRaw   = get(/\*\*Categor[ií]a:\*\*\s*(.+)/i).toLowerCase();
+  const resumen  = get(/\*\*Resumen:\*\*\s*(.+)/i);
+
+  // Normalizar fecha a YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    fecha = new Date().toISOString().slice(0, 10);
+  }
+  // Mapear categoría al set válido de GP_CATS
+  const validCats = window.GP_CATS ? Object.keys(window.GP_CATS) : [];
+  const categoria = validCats.includes(catRaw) ? catRaw : 'otro';
+
+  if (!total || total <= 0) {
+    _showResult('🧾 RECIBO', `No pude leer el total del recibo.\n\n${reply}`, frame);
+    _say(`**[🧾 Recibo]** No logré leer el total. Acerca el ticket e intenta de nuevo.`);
+    _visionSpeak('No pude leer el total del recibo. Intenta de nuevo.');
+    return;
+  }
+
+  const desc = [comercio, resumen].filter(Boolean).join(' · ').slice(0, 120);
+
+  if (typeof window.gpAddGastoAuto === 'function') {
+    const gasto = window.gpAddGastoAuto(total, categoria, desc, fecha);
+    const catLabel = window.GP_CATS?.[categoria]?.l || categoria;
+    const catEmoji = window.GP_CATS?.[categoria]?.e || '📦';
+    const montoStr = `$${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+    const summary = `**Gasto registrado ✓**\n\n💰 ${montoStr} MXN\n${catEmoji} ${catLabel}\n🏪 ${comercio}\n📅 ${fecha}${resumen ? `\n📝 ${resumen}` : ''}`;
+    _showResult('🧾 RECIBO → GASTO', summary, frame);
+    _say(`**[🧾 Recibo registrado]**\n\n${summary}`);
+    _visionSpeak(`Gasto registrado. ${montoStr} pesos en ${catLabel}.`);
+    if (gasto && window.AREXNav?.moduloActual === 'gastos' && typeof window.renderGpResumen === 'function') {
+      window.renderGpResumen();
+    }
+  } else {
+    _showResult('🧾 RECIBO', reply, frame);
+    _say(`**[🧾 Recibo]**\n\n${reply}`);
+  }
 }
 
 /* ─── Product search ──────────────────────────────────── */
@@ -974,6 +1038,13 @@ function _processVoiceCmd(text) {
       if (cmdEl) cmdEl.textContent = 'DI "AREX" + COMANDO';
     }, 3000);
   };
+
+  if (/\b(recibo|ticket|gasto|factura)\b/.test(t)) {
+    feedback('ESCANEAR RECIBO');
+    _say('**[Voz]** Escaneando recibo...');
+    _analyze('recibo');
+    return;
+  }
 
   if (/\b(analiz|ver|mira|describe|scene|escena|producto|objeto|texto)\b/.test(t)) {
     const mode = /\b(escena|scene)\b/.test(t) ? 'scene'

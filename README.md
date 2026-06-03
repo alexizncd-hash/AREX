@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK 37
+# AREX — Sistema de Inteligencia Personal · MARK 41
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -37,9 +37,12 @@ arex/
 ├── evidencias.css      → Estilos del módulo evidencias
 ├── control.js          → Mission Control: telemetría del sistema, bitácora, agentes multi-IA
 ├── control.css         → Estilos de Mission Control
-├── vision.js           → Módulo de visión en vivo: análisis de imágenes con Gemini o Groq
+├── vision.js           → Visión JARVIS: análisis con IA, gestos, comandos de voz, HUD, recibos
+├── gesture.js          → Gesture Engine (MediaPipe Hands): señas, swipe, pinch, cursor, partículas
+├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
+├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v37 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v56 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -72,14 +75,17 @@ arex/
 |---|---|
 | HTML / CSS / JS puro | Interfaz completa sin frameworks ni bundlers |
 | Groq API — llama-3.3-70b-versatile | Motor de IA principal: chat, razonamiento, briefing |
-| Groq Vision — llama-4-scout-17b | Análisis de imágenes (fallback si no hay Gemini) |
-| Gemini 1.5 Flash (Google AI) | Análisis de imágenes con visión mejorada (preferido sobre Groq vision) |
+| Groq Vision — llama-4-maverick / scout | Análisis de imágenes (Visión y chat; fallback si no hay Gemini) |
+| Gemini 2.5 / 2.0 Flash (Google AI) | Análisis de imágenes con visión mejorada (preferido sobre Groq vision) |
+| MediaPipe Hands (CDN) | Detección de manos en tiempo real para gestos, swipe y pinch |
+| DeviceOrientation / Pointer | Parallax holográfico con profundidad (giroscopio en móvil) |
+| Web Audio + Vibration API | Feedback sonoro y háptico en gestos de la cámara |
 | Firebase Firestore | Historial de chat y notas en la nube con sync multi-dispositivo |
 | Tavily Search API | Búsqueda web en tiempo real |
-| Web Speech API | Reconocimiento de voz (input), modo continuo |
-| SpeechSynthesis API | Síntesis de voz — AREX habla |
-| Canvas 2D API | Orbe de partículas 3D + campo de estrellas animado en background |
-| PWA + Service Worker v37 | Instalable, network-first para shell, cache offline |
+| Web Speech API | Reconocimiento de voz (input), modo continuo, comandos en Visión |
+| SpeechSynthesis API | Síntesis de voz — AREX habla y saluda proactivamente |
+| Canvas 2D API | Orbe de partículas 3D, campo de estrellas, esqueleto de mano, partículas |
+| PWA + Service Worker v56 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -154,6 +160,52 @@ El orbe central de AREX es un sistema de partículas 3D en canvas que reacciona 
 
 ---
 
+## Visión JARVIS interactiva (cámara)
+
+El módulo de Visión convierte la cámara en una interfaz estilo Tony Stark: pantalla completa translúcida, HUD holográfico y control por señas y voz — todo simultáneo.
+
+### Gesture Engine (`gesture.js`)
+MediaPipe Hands rastrea la mano a ~15 fps y dibuja un esqueleto cian con cursor, estela del dedo y partículas. Cada evento dispara vibración háptica + beep Web Audio.
+
+| Seña / movimiento | Acción |
+|---|---|
+| ✋ Mano abierta | Analizar la escena con IA |
+| ✊ Puño | Detener modo continuo / voz |
+| ☝ Índice arriba | Abrir grid de módulos |
+| ✌ Victoria | Alternar modo AUTO |
+| 👍 Pulgar arriba | Activar/desactivar comandos de voz |
+| ◀ ▶ Swipe horizontal | Módulo anterior / siguiente |
+| ▲ Swipe arriba | Cerrar la cámara |
+| ▼ Swipe abajo | Abrir grid de módulos |
+| 🤏 Pinch (pulgar+índice) | Clic en el elemento donde apunta el dedo |
+
+### Comandos de voz (siempre escuchando)
+Di **"AREX" + comando**: `analizar`, `escena`, `objeto`, `texto`, `recibo`, `módulos`, `finanzas`/`metas`/etc., `auto`, `silencio`, `cerrar`.
+
+### HUD holográfico
+- **Telemetría** (izquierda): resolución, motor IA, modo, última seña, estado de voz
+- **Guía de gestos** (derecha) y **barra de onda de voz** (abajo) con animación
+- **Grid de módulos** translúcido y **flash de gesto** central
+- Profundidad 3D real con parallax por giroscopio (`parallax.js`)
+
+### 🧾 Escaneo de recibos → gasto automático
+Apunta a un ticket y pulsa **RECIBO** (o di "AREX recibo"). AREX extrae total, comercio, fecha y categoría, y **registra el gasto automáticamente** en el módulo Gastos.
+
+### Personas conocidas
+Guarda descripciones físicas de personas; AREX las reconoce y saluda por su nombre en cámara (`arex_personas`).
+
+---
+
+## Interacciones dinámicas
+
+- **Swipe en tareas**: desliza una tarjeta → completar/reabrir (derecha) o borrar (izquierda), con háptica
+- **Saludos proactivos**: al abrir un módulo, AREX dice lo relevante por voz (tareas vencidas, % de meta, gasto del mes, stock bajo)
+- **Badges de urgencia**: contador rojo pulsante de tareas vencidas en el dock
+- **Indicador de habla**: puntos animados en el mensaje mientras AREX habla
+- **Parallax global**: orbe, reactor y paneles HUD flotan con la inclinación del dispositivo
+
+---
+
 ## Mission Control (`/ctrl`)
 
 Panel de administración del sistema con tres vistas:
@@ -214,6 +266,7 @@ Gestión completa del negocio personal de venta de frijol en medios litros:
 | Metas/objetivos | localStorage | `arex_metas` |
 | Proyectos | localStorage | `arex_proyectos` |
 | Evidencias | localStorage | `arex_evidencias` |
+| Personas conocidas (Visión) | localStorage | `arex_personas` |
 | Bitácora Mission Control | localStorage | `arex_bitacora` |
 | Tipo de cambio (caché) | localStorage | `arex_fx_cache` |
 | Briefing del día | localStorage | `arex_briefing_date` |
@@ -241,9 +294,12 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 
 ### Lo que ya funciona
 - IA conversacional con memoria, contexto y hechos aprendidos
-- Voz bidireccional (input + output) con síntesis en español
+- Voz bidireccional (input + output) con síntesis en español y saludos proactivos
 - Módulos de vida completos: finanzas, tareas, notas, negocio, metas, proyectos
-- Visión con cámara: análisis de imágenes en tiempo real (Gemini o Groq)
+- **Visión JARVIS**: control por señas (MediaPipe), swipe, pinch-to-click y comandos de voz
+- **Escaneo de recibos** con extracción IA → gasto registrado automáticamente
+- HUD holográfico translúcido con parallax 3D por giroscopio
+- Swipe en tareas, badges de urgencia, indicador de habla animado
 - Orbe de partículas 3D reactivo al estado del sistema
 - Mission Control: telemetría, bitácora y panel multi-agente
 - PWA instalable, funciona parcialmente sin internet
@@ -291,6 +347,10 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | **MARK 35** | Tablero de Evidencias, Mission Control, Gemini Vision, sistema multi-agente (HERMES/ATLAS/SENTINEL/SCRIBE), bitácora de eventos, badge de estado |
 | **MARK 36** | Rediseño visual JARVIS completo: header pills, campo de estrellas canvas, status-float sobre el orbe, grid de acceso rápido, animación de boot letra por letra, UX móvil (44px touch targets, 16px inputs) |
 | **MARK 37** | Orbe de partículas 3D (Fibonacci sphere, 80 partículas, K-nearest edges, perspectiva real, 5 estados reactivos); corrección de 4 bugs: Firebase OFFLINE en telemetría, "v4" en boot, versión SW, doble animación conflictiva; protección completa de JSON.parse contra datos corruptos en localStorage; canvas pausa cuando el tab está oculto; star field no se reconstruye en cada resize |
+| **MARK 38** | Auditoría completa de los 10 módulos: estados múltiples en proyectos, reactivar metas, alerta de stock mínimo en negocio, comparativa mes anterior en gastos, doble estrategia en finanzas, búsqueda y "ver más" en evidencias, export de notas, glow reforzado en tareas urgentes/vencidas |
+| **MARK 39** | Visión JARVIS Mark 1: Gesture Engine con MediaPipe Hands (5 señas), comandos de voz siempre activos ("AREX" + comando), HUD holográfico translúcido (telemetría, guía de gestos, barra de voz, grid de módulos, flash de gesto) |
+| **MARK 40** | Gesture Engine Mark 2: swipe (navegar módulos), pinch-to-click, partículas + háptica + audio, estela y cursor; saludos proactivos por módulo, badges de urgencia, indicador de habla animado, contexto cross-módulo en prompts de visión |
+| **MARK 41** | Escaneo de recibos → gasto automático (extracción IA), swipe en tarjetas de tareas (completar/borrar), Parallax Engine (profundidad holográfica por giroscopio/puntero), README al corriente |
 
 ---
 

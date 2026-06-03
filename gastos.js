@@ -423,6 +423,26 @@ function gpGuardarPresupuesto() {
   }
 }
 
+// ── Alta programática (recibos escaneados por Visión / voz) ──
+// Devuelve el gasto creado. categoria se valida contra GP_CATS; si no existe usa 'otro'.
+function gpAddGastoAuto(monto, categoria = 'otro', descripcion = '', fecha = null) {
+  const m = parseFloat(monto);
+  if (!m || m <= 0) return null;
+  const cat = GP_CATS[categoria] ? categoria : 'otro';
+  const data = getGastosData();
+  const gasto = {
+    id:          String(Date.now()),
+    fecha:       fecha || _todayISO(),
+    categoria:   cat,
+    monto:       m,
+    descripcion: String(descripcion || '').slice(0, 120),
+  };
+  data.gastos.push(gasto);
+  saveGastosData(data);
+  if (typeof logBitacora === 'function') logBitacora('gastos', `Gasto auto: ${_$MXN(m)} · ${GP_CATS[cat].l}`);
+  return gasto;
+}
+
 // ── Init ─────────────────────────────────────────────
 function initGastosModule() {
   document.querySelectorAll('#module-gastos .neg-tab').forEach(tab =>
@@ -443,6 +463,8 @@ window.gpGuardarPresupuesto = gpGuardarPresupuesto;
 window.renderGpResumen     = renderGpResumen;
 window.renderGpHistorial   = renderGpHistorial;
 window.renderGpPresupuesto = renderGpPresupuesto;
+window.gpAddGastoAuto      = gpAddGastoAuto;
+window.GP_CATS             = GP_CATS;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initGastosModule);

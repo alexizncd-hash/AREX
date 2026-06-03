@@ -657,6 +657,56 @@ function updateTarea(id, changes) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
   renderTareas();
 }
+// Swipe gestures en tarjetas de tareas: → completar/reabrir · ← borrar
+function _attachTareaSwipe(div, t) {
+  const inner = div.querySelector('.tarea-swipe-inner');
+  if (!inner) return;
+  const THRESH = 84;
+  let startX = 0, startY = 0, dx = 0, dragging = false, decided = false, horizontal = false;
+
+  inner.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    dx = 0; dragging = true; decided = false; horizontal = false;
+    inner.style.transition = 'none';
+  }, { passive: true });
+
+  inner.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const ddx = e.touches[0].clientX - startX;
+    const ddy = e.touches[0].clientY - startY;
+    if (!decided && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) {
+      decided = true; horizontal = Math.abs(ddx) > Math.abs(ddy);
+    }
+    if (!horizontal) return;
+    e.preventDefault();
+    dx = ddx;
+    inner.style.transform = `translateX(${dx}px)`;
+    div.classList.toggle('swipe-pos', dx > 12);
+    div.classList.toggle('swipe-neg', dx < -12);
+  }, { passive: false });
+
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    inner.style.transition = 'transform 0.25s cubic-bezier(0.2,0,0.2,1)';
+    if (dx > THRESH) {
+      try { navigator.vibrate?.(40); } catch (_) {}
+      inner.style.transform = 'translateX(110%)';
+      setTimeout(() => toggleTarea(t.id), 170);
+    } else if (dx < -THRESH) {
+      try { navigator.vibrate?.(40); } catch (_) {}
+      inner.style.transform = 'translateX(-110%)';
+      setTimeout(() => deleteTarea(t.id), 170);
+    } else {
+      inner.style.transform = 'translateX(0)';
+      div.classList.remove('swipe-pos', 'swipe-neg');
+    }
+  };
+  inner.addEventListener('touchend', end);
+  inner.addEventListener('touchcancel', end);
+}
+
 function renderTareas() {
   const all     = getTareas();
   const pending = sortPending(all.filter(t => !t.done));
@@ -667,8 +717,8 @@ function renderTareas() {
     const prio = t.prioridad || 'media';
     const div  = document.createElement('div');
     const isAltaUrgente = !t.done && (t.prioridad === 'alta') && (urg?.cls === 'urg-vencida' || urg?.cls === 'urg-hoy');
-    div.className = `tarea-item${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}${isAltaUrgente ? ' prio-alta-item' : ''}`;
-    div.innerHTML = `
+    div.className = `tarea-item swipeable${t.done ? ' done' : ''}${urg ? ' ' + urg.cls : ''}${isAltaUrgente ? ' prio-alta-item' : ''}`;
+    const _innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
       <div class="tarea-content">
         <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
@@ -682,11 +732,17 @@ function renderTareas() {
         ${!t.done ? '<button class="tarea-edit" title="Editar">✎</button>' : ''}
         <button class="tarea-del" title="Eliminar">✕</button>
       </div>`;
+    div.innerHTML = `
+      <div class="tarea-swipe-bg left">${t.done ? '↺ REABRIR' : '✓ HECHO'}</div>
+      <div class="tarea-swipe-bg right">✕ BORRAR</div>
+      <div class="tarea-swipe-inner">${_innerHTML}</div>`;
+    _attachTareaSwipe(div, t);
 
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
 
     div.querySelector('.tarea-edit')?.addEventListener('click', () => {
       let _ep = t.prioridad || 'media';
+      div.classList.remove('swipeable');
       div.innerHTML = `
         <div class="tarea-edit-form">
           <input class="tarea-edit-text" type="text" value="${t.text.replace(/"/g,'&quot;')}" placeholder="Descripción..."/>

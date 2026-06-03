@@ -4430,3 +4430,69 @@ footer {
 .status-float.updating {
   animation: status-ping 0.4s ease-in-out;
 }
+
+/* ── Swipe-to-action en tarjetas de tareas ───────────── */
+.tarea-item.swipeable {
+  position: relative; overflow: hidden;
+  padding: 0; display: block;
+}
+.tarea-item.swipeable .tarea-swipe-inner {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px;
+  background: rgba(2,12,22,0.94);
+  position: relative; z-index: 2;
+  transition: transform 0.25s cubic-bezier(0.2,0,0.2,1);
+  will-change: transform;
+}
+.tarea-swipe-bg {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; align-items: center;
+  font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.tarea-swipe-bg.left  { justify-content: flex-start; padding-left: 18px;  color: #00ffaa; background: linear-gradient(90deg, rgba(0,255,170,0.20), transparent 65%); }
+.tarea-swipe-bg.right { justify-content: flex-end;   padding-right: 18px; color: #ff4455; background: linear-gradient(270deg, rgba(255,68,85,0.20), transparent 65%); }
+.tarea-item.swipe-pos .tarea-swipe-bg.left  { opacity: 1; }
+.tarea-item.swipe-neg .tarea-swipe-bg.right { opacity: 1; }
+.tarea-item.swipeable.done .tarea-swipe-inner { background: rgba(2,12,22,0.7); }
+
+/* ════════════════════════════════════════════════════════
+   PARALLAX — profundidad holográfica (gyro / pointer)
+   Variables --ax / --ay (-1..1) las setea parallax.js
+   ════════════════════════════════════════════════════════ */
+:root { --ax: 0; --ay: 0; }
+
+/* Orbe + anillos del reactor — flotan en profundidad */
+.orb-stage {
+  transform: translate3d(calc(var(--ax) * 9px), calc(var(--ay) * 9px), 0);
+  transition: transform 0.18s ease-out;
+}
+.reactor-ring.outer {
+  transform: translate3d(calc(var(--ax) * 16px), calc(var(--ay) * 16px), 0);
+  transition: transform 0.22s ease-out;
+}
+.reactor-ring.mid {
+  transform: translate3d(calc(var(--ax) * 11px), calc(var(--ay) * 11px), 0);
+  transition: transform 0.2s ease-out;
+}
+.status-float {
+  transform: translate3d(calc(var(--ax) * 5px), calc(var(--ay) * 5px), 0);
+}
+
+/* Vision HUD — paneles flotantes con tilt 3D */
+.vp-telemetry {
+  transform: perspective(700px)
+             rotateY(calc(var(--ax) * 7deg))
+             rotateX(calc(var(--ay) * -7deg))
+             translate3d(calc(var(--ax) * 6px), calc(var(--ay) * 6px), 0);
+  transition: transform 0.16s ease-out;
+}
+.vp-gest-guide {
+  transform: perspective(700px)
+             rotateY(calc(var(--ax) * 7deg))
+             rotateX(calc(var(--ay) * -7deg))
+             translate3d(calc(var(--ax) * 6px), calc(var(--ay) * 6px), 0);
+  transition: opacity 0.3s, transform 0.16s ease-out;
+}
+/* gest-guide oculto: solo opacidad, sin desplazar */
+.vp-gest-guide:not(.visible) { transform: none; }
