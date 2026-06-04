@@ -2744,9 +2744,9 @@ async function callGroqStream(webCtx, onChunk) {
 
 /* ── Llamada a Groq (visión) ────────────────────────── */
 async function analyzeImage(dataURL, question) {
-  // Use Gemini if key is available, fallback to Groq llama-4-scout
+  // Try Gemini first if key available; fall back to Groq on any error
   if (AREX_CONFIG?.geminiKey) {
-    return await _analyzeWithGemini(dataURL, question);
+    try { return await _analyzeWithGemini(dataURL, question); } catch { /* fall through */ }
   }
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:'POST',

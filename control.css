@@ -2,9 +2,15 @@
    AREX — Mission Control
    ═══════════════════════════════════════════════ */
 
-#module-control {
+#module-control.module-panel.active {
+  display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
 }
 
 .ctrl-wrap {

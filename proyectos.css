@@ -1,5 +1,14 @@
 /* ── AREX Proyectos ──────────────────────────────────── */
-#module-proyectos { flex-direction:column; overflow:hidden; }
+#module-proyectos.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
 
 .proj-wrap {
   display:flex; flex-direction:column; gap:1rem;
