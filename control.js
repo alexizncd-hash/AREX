@@ -215,54 +215,41 @@ function _getAgentStatus(area) {
 
 function _renderAgentes(el) {
   el.innerHTML = AGENTES.map(a => {
-    const status = _getAgentStatus(a.area);
-    const last   = _getAgentLastAction(a.area);
-    // Derive glow color from agent color
-    const hex = a.color.replace('#','');
-    const r = parseInt(hex.slice(0,2),16);
-    const g = parseInt(hex.slice(2,4),16);
-    const b = parseInt(hex.slice(4,6),16);
-    const glow = `rgba(${r},${g},${b},0.38)`;
+    const status  = _getAgentStatus(a.area);
+    const last    = _getAgentLastAction(a.area);
+    const orbState = status === 'online' ? 'active' : 'idle';
     return `
-      <div class="agent-orb-wrap" data-state="${status}"
-           style="--aoc:${a.color};--aog:${glow}"
-           onclick="window._runAgent('${a.id}','${a.area}')"
-           title="${a.nombre} — ${a.desc}">
-        <div class="agent-orb-stage">
-          <div class="agent-orb-ring r2"></div>
-          <div class="agent-orb-ring r1"></div>
-          <div class="agent-orb-sphere">
-            <div class="agent-orb-shine"></div>
-            <div class="agent-orb-rim"></div>
-          </div>
-        </div>
-        <div class="agent-orb-name">${a.nombre}</div>
+      <div class="agent-orb-wrap" data-agent="${a.id}" data-area="${a.area}"
+           onclick="window._runAgent('${a.id}','${a.area}')">
+        <canvas class="neural-orb-canvas"
+                data-neural-orb="${a.id}"
+                data-color="${a.color}"
+                data-state="${orbState}"
+                width="180" height="180"></canvas>
+        <div class="agent-orb-name" style="color:${a.color};text-shadow:0 0 12px ${a.color}88">${a.nombre}</div>
         <div class="agent-orb-desc">${a.desc}</div>
         <div class="agent-orb-status ${status}">
           ${status === 'online' ? '● ACTIVO' : '○ EN ESPERA'}
         </div>
-        <div style="font-size:8px;color:var(--text-muted);text-align:center;max-width:120px;margin-top:2px;letter-spacing:0.3px">${last}</div>
-        <button class="agent-run-btn">EJECUTAR</button>
+        <div class="agent-orb-last">${last}</div>
+        <button class="agent-run-btn" style="border-color:${a.color}88;color:${a.color}">EJECUTAR</button>
       </div>`;
   }).join('');
+
+  // Init canvas orbs after DOM is painted
+  setTimeout(() => window.initNeuralOrbs?.(), 60);
 }
 
-window._runAgent = function(agentId, area) {
-  // Set orb to thinking state temporarily
-  const wrap = document.querySelector(`.agent-orb-wrap[data-state]`);
-  const all  = document.querySelectorAll('.agent-orb-wrap');
-  all.forEach(w => {
-    if (w.querySelector('.agent-orb-name')?.textContent === agentId.toUpperCase()) {
-      w.dataset.state = 'thinking';
-      setTimeout(() => { w.dataset.state = _getAgentStatus(area); }, 3000);
-    }
-  });
-  logBitacora(area, `Agente ${agentId.toUpperCase()} ejecutado manualmente`);
-  // Route to relevant module
+window._runAgent = function (agentId, area) {
+  window.setNeuralOrbState?.(agentId, 'thinking');
+  logBitacora(area, `Agente ${agentId.toUpperCase()} ejecutado`);
+  setTimeout(() => {
+    const s = _getAgentStatus(area);
+    window.setNeuralOrbState?.(agentId, s === 'online' ? 'active' : 'idle');
+  }, 3500);
   if (typeof window.AREXNav?.cambiarModulo === 'function') {
     const modMap = { finanzas:'finanzas', negocio:'negocio', sistema:'control', chat:'chat' };
-    const mod = modMap[area] || area;
-    window.AREXNav.cambiarModulo(mod);
+    setTimeout(() => window.AREXNav.cambiarModulo(modMap[area] || area), 800);
   }
 };
 

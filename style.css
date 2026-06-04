@@ -5783,3 +5783,94 @@ header {
 .dao-sentinel { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #8B5CF6 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(139,92,246,0.8) !important; }
 .dao-scribe   { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #00d4ff 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(0,212,255,0.8) !important; }
 .dao-orb { width: 10px !important; height: 10px !important; animation: dao-pulse 2.5s ease-in-out infinite !important; }
+
+/* ═══════════════════════════════════════════════════════
+   AREX — Neural Orb Canvas styles v64
+═══════════════════════════════════════════════════════ */
+
+/* Canvas-based neural orbs */
+.ctrl-agents {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 28px 16px !important;
+  padding: 24px 12px !important;
+  place-items: center !important;
+}
+.agent-orb-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 7px !important;
+  cursor: pointer !important;
+  transition: transform 0.22s ease !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.agent-orb-wrap:hover { transform: translateY(-5px) scale(1.03) !important; }
+.agent-orb-stage { display:none !important; } /* hide old CSS orb stage */
+
+.neural-orb-canvas {
+  width: 180px;
+  height: 180px;
+  display: block;
+  border-radius: 50%;
+  cursor: pointer;
+  filter: drop-shadow(0 0 18px currentColor);
+}
+.agent-orb-name {
+  font-family: var(--font) !important;
+  font-size: 11px !important;
+  letter-spacing: 3.5px !important;
+  margin-top: 2px !important;
+}
+.agent-orb-desc {
+  font-size: 9px !important;
+  color: var(--text-muted) !important;
+  text-align: center !important;
+  letter-spacing: 0.5px !important;
+  max-width: 150px !important;
+  line-height: 1.45 !important;
+}
+.agent-orb-status {
+  font-size: 8px !important;
+  letter-spacing: 2px !important;
+  padding: 3px 10px !important;
+  border-radius: 2px !important;
+  font-family: var(--font) !important;
+}
+.agent-orb-status.online {
+  color: var(--green) !important;
+  border: 1px solid rgba(0,255,170,0.32) !important;
+  background: rgba(0,255,170,0.07) !important;
+}
+.agent-orb-status.standby {
+  color: var(--text-muted) !important;
+  border: 1px solid rgba(74,122,150,0.25) !important;
+}
+.agent-orb-last {
+  font-size: 8px;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 140px;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+.agent-run-btn {
+  background: rgba(0,0,0,0.35) !important;
+  font-family: var(--font) !important;
+  font-size: 8px !important;
+  letter-spacing: 2px !important;
+  padding: 5px 16px !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  transition: all 0.2s !important;
+  opacity: 0.65 !important;
+}
+.agent-run-btn:hover {
+  opacity: 1 !important;
+  box-shadow: 0 0 18px currentColor !important;
+  background: rgba(0,0,0,0.5) !important;
+}
+.agent-run-btn:active { transform: scale(0.92) !important; }
