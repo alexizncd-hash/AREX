@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v70)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v71)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -42,7 +42,9 @@ arex/
 ├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
 ├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v70 (PWA / modo offline / cache network-first)
+├── search.js           → Búsqueda global Cmd+K: indexa 8 fuentes de datos, overlay con navegación por teclado
+├── search.css          → Estilos del overlay de búsqueda global (frosted glass, z-index 9000)
+├── sw.js               → Service Worker v71 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -65,7 +67,7 @@ arex/
 | **GASTOS** | 💸 | Gastos personales diarios por categoría con presupuesto mensual y comparativa visual |
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
-| **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA |
+| **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA, exportar/importar datos |
 | **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
 
 ---
@@ -327,6 +329,43 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v71 — Búsqueda global Cmd+K + Export/Import + Firebase sync completo + Vision mejorado
+
+**Búsqueda global (`search.js` + `search.css`)**
+- Overlay `Cmd+K` / `Ctrl+K` con glass morphism (z-index 9000)
+- Indexa 8 fuentes: tareas, notas, metas, proyectos, gastos, evidencias, hechos, bitácora
+- Resultados agrupados por módulo con contadores, highlights `<mark>` y navegación por teclado (↑↓ Enter Esc)
+- Click navega directamente al módulo via `AREXNav.cambiarModulo()`
+
+**Export / Import (`control.js` — pestaña DATOS)**
+- **JSON full backup** con timestamp → descarga `arex-backup-YYYY-MM-DD.json`
+- **CSV gastos** con BOM (compatible Excel) → descarga `arex-gastos-YYYY-MM-DD.csv`
+- **CSV tareas** → descarga `arex-tareas-YYYY-MM-DD.csv`
+- **Import JSON**: restaura todos los `arex_*` keys, re-sincroniza Firebase, re-renderiza módulos
+- Barra de uso de almacenamiento por módulo + estadísticas de sync
+
+**Firebase sync completo (`app.js`)**
+- `pullAllModuleData()` ahora sincroniza 18 keys (antes 9 — faltaban proyectos, evidencias, notas, finanzas, reparto, personas)
+- Resolución de conflictos por `_updatedAt`: el más reciente gana
+- `arexSyncData()` incluye `_updatedAt: Date.now()` en cada push
+
+**Visión MARK IV — vidrio real + interactividad (`vision.js` + `style.css`)**
+- Panel resultado con `background: rgba(0,4,12,0.50)` + `backdrop-filter: blur(28px)` (antes casi opaco)
+- HUD con gradientes reducidos para más transparencia sobre la cámara
+- **Acciones contextuales**: después de cada análisis aparecen botones según el modo
+  - Modo describe/escena → `+ TAREA`, `+ NOTA`, `COPIAR`
+  - Modo objeto/producto → `BUSCAR PRECIO`, `+ NOTA`, `COPIAR`
+  - Modo texto/QR → `COPIAR`, `ABRIR ENLACE` (si detecta URL)
+
+**Visión AUTO — sin congelarse (`vision.js`)**
+- Ciclo continuo: 1800ms → 3500ms (menos competencia con la cámara)
+- Modelo rápido `llama-4-scout-17b-16e-instruct` en AUTO (era maverick)
+- Canvas cacheado — `_captureCanvas` reutilizado para reducir GC
+- Video keep-alive: si `_video.paused`, se reanuda automáticamente
+- Timeouts reducidos: 12s (AUTO) / 16s (manual), con `AbortController` en la API call
+
+- **SW v71**
 
 ### v66 — Color verde neón + módulo Rutas de Reparto con mapa 3D
 - **Paleta verde**: `#00ff88` neón + `#00e5cc` teal reemplazan el naranja en todo el sistema

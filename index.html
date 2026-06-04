@@ -20,8 +20,21 @@
 <link rel="stylesheet" href="evidencias.css"/>
 <link rel="stylesheet" href="control.css"/>
 <link rel="stylesheet" href="reparto.css"/>
+<link rel="stylesheet" href="search.css"/>
 </head>
 <body>
+
+<!-- ── Búsqueda global (Cmd+K) ── -->
+<div id="srch-overlay">
+  <div class="srch-box">
+    <div class="srch-top">
+      <span class="srch-icon">⌕</span>
+      <input id="srch-input" placeholder="Buscar en todos los módulos..." autocomplete="off" spellcheck="false"/>
+      <button class="srch-esc" id="srch-close-btn">ESC</button>
+    </div>
+    <div id="srch-results"></div>
+  </div>
+</div>
 
 <!-- ── Setup screen (primera vez sin config.js) ── -->
 <div id="setup-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;background:#020c14;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1rem;display:flex;">
@@ -999,6 +1012,7 @@
 <script src="evidencias.js"></script>
 <script src="control.js"></script>
 <script src="reparto.js"></script>
+<script src="search.js"></script>
 <script src="jarvis.js"></script>
 <script src="orb.js"></script>
 

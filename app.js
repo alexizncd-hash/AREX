@@ -380,23 +380,65 @@ async function arexSyncData(lsKey) {
 // Pull all synced module data back from Firestore on boot
 async function pullAllModuleData() {
   if (!db) return;
-  const keys = ['arex_negocio','arex_gastos_pers','arex_metas',
-                 'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
-                 'arex_context','arex_atajos'];
+  const keys = [
+    'arex_negocio','arex_gastos_pers','arex_metas',
+    'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
+    'arex_context','arex_atajos',
+    // Módulos previamente fuera de sync:
+    'arex_proyectos','arex_evidencias','arex_notas',
+    'arex_finanzas','arex_finanzas_overrides',
+    'arex_reparto_routes','arex_personas','arex_gesture_map',
+  ];
+  let synced = 0;
   for (const key of keys) {
     try {
       const snap = await getDoc(doc(db, 'arex_data', key));
       if (!snap.exists()) continue;
       const data = snap.data();
-      // Unwrap arrays
-      const toStore = data._arr !== undefined ? data._arr : data;
-      // Only overwrite if remote is newer (by checking if local exists)
+      const remoteTs = data._updatedAt || 0;
+      const { _updatedAt, _arr, ...rest } = data;
+      const toStore = _arr !== undefined ? _arr : rest;
+
       const local = localStorage.getItem(key);
       if (!local) {
         localStorage.setItem(key, JSON.stringify(toStore));
+        synced++;
+      } else {
+        // Resolución de conflictos: gana el timestamp más reciente
+        try {
+          const localTs = JSON.parse(local)?._updatedAt || 0;
+          if (remoteTs > localTs) { localStorage.setItem(key, JSON.stringify(toStore)); synced++; }
+        } catch {
+          localStorage.setItem(key, JSON.stringify(toStore)); synced++;
+        }
       }
     } catch(e) { console.warn('pullModuleData:', key, e); }
   }
+  if (synced > 0) {
+    window.renderTareas?.();
+    window.renderMetas?.();
+    window.renderProyectosModule?.();
+    window.renderGpResumen?.();
+    if (typeof renderNegocioModule === 'function') renderNegocioModule();
+  }
+  return synced;
+}
+
+// arexSyncData con _updatedAt para resolución de conflictos cross-device
+async function arexSyncData(lsKey) {
+  if (!db) return;
+  try {
+    const raw = localStorage.getItem(lsKey);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    const ts = Date.now();
+    const toStore = Array.isArray(payload)
+      ? { _arr: payload, _updatedAt: ts }
+      : { ...payload, _updatedAt: ts };
+    await setDoc(doc(db, 'arex_data', lsKey), toStore);
+    window._arexLastSync = Date.now();
+    _renderSyncBadge();
+  } catch(e) { console.warn('arexSyncData:', lsKey, e); }
 }
 
 window.arexSyncData = arexSyncData;
@@ -3795,6 +3837,7 @@ async function boot() {
     restoreReminders();
     renderHudPanels();
     initMatrixRain();
+    if (typeof initSearch === 'function') initSearch();
 
     // Restaurar preferencias de sesión anterior
     if (localStorage.getItem('arex_voiceOn') === '1') {
@@ -4453,6 +4496,9 @@ function renderBusquedaGlobal(q) {
 }
 
 function abrirBusqueda() {
+  // Usar el nuevo overlay de búsqueda global si está disponible
+  if (typeof openSearch === 'function') { openSearch(); return; }
+  // Fallback al overlay original
   const overlay = document.getElementById('busqueda-overlay');
   const input   = document.getElementById('busqueda-input');
   if (!overlay || !input) return;
@@ -4461,7 +4507,10 @@ function abrirBusqueda() {
   renderBusquedaGlobal('');
   setTimeout(() => input.focus(), 50);
 }
-function cerrarBusqueda() { document.getElementById('busqueda-overlay')?.classList.add('hidden'); }
+function cerrarBusqueda() {
+  if (typeof closeSearch === 'function') closeSearch();
+  document.getElementById('busqueda-overlay')?.classList.add('hidden');
+}
 window.abrirBusqueda  = abrirBusqueda;
 window.cerrarBusqueda = cerrarBusqueda;
 

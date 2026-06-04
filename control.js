@@ -253,6 +253,177 @@ window._runAgent = function (agentId, area) {
   }
 };
 
+/* ── Export / Import / Backup ────────────────────────── */
+const BACKUP_KEYS = [
+  'arex_negocio','arex_gastos_pers','arex_metas','arex_tareas',
+  'arex_recordatorios','arex_memoria','arex_hechos','arex_context',
+  'arex_atajos','arex_proyectos','arex_evidencias','arex_notas',
+  'arex_finanzas','arex_finanzas_overrides','arex_reparto_routes',
+  'arex_personas','arex_gesture_map','arex_bitacora',
+];
+
+function _exportBackupJSON() {
+  const backup = { _exportedAt: new Date().toISOString(), _version: window.AREX_SW_VERSION || 'arex' };
+  for (const k of BACKUP_KEYS) {
+    try { const v = localStorage.getItem(k); if (v) backup[k] = JSON.parse(v); } catch {}
+  }
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `arex-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  logBitacora('sistema', 'Backup JSON exportado');
+}
+
+function _exportGastosCSV() {
+  try {
+    const gs = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+    if (!gs.length) { alert('Sin gastos para exportar.'); return; }
+    const rows = [['Fecha','Concepto','Categoría','Monto']];
+    for (const g of gs) rows.push([g.fecha||'',g.concepto||'',g.categoria||'',(g.monto||0).toFixed(2)]);
+    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `arex-gastos-${new Date().toISOString().slice(0,7)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logBitacora('sistema', `CSV gastos exportado (${gs.length} registros)`);
+  } catch(e) { alert('Error exportando gastos: ' + e.message); }
+}
+
+function _exportTareasCSV() {
+  try {
+    const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    if (!ts.length) { alert('Sin tareas para exportar.'); return; }
+    const rows = [['Texto','Prioridad','Fecha','Estado']];
+    for (const t of ts) rows.push([t.texto||t.text||'',t.prioridad||'media',t.fecha||'',t.done?'Completada':'Pendiente']);
+    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `arex-tareas-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logBitacora('sistema', `CSV tareas exportado (${ts.length} registros)`);
+  } catch(e) { alert('Error exportando tareas: ' + e.message); }
+}
+
+function _importBackupJSON(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      let imported = 0;
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith('arex_')) continue;
+        localStorage.setItem(k, JSON.stringify(v));
+        if (typeof arexSyncData === 'function') arexSyncData(k);
+        imported++;
+      }
+      logBitacora('sistema', `Backup importado: ${imported} módulos restaurados`);
+      // Re-render all modules
+      window.renderTareas?.();
+      window.renderMetas?.();
+      window.renderProyectosModule?.();
+      window.renderGpResumen?.();
+      if (typeof renderNegocioModule === 'function') renderNegocioModule();
+      renderControlModule();
+      const msg = `✓ ${imported} módulos restaurados desde backup (${data._exportedAt?.slice(0,10) || 'sin fecha'}).`;
+      alert(msg);
+    } catch(e) { alert('Error leyendo backup: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function _getStorageByModule() {
+  const rows = [];
+  for (const k of BACKUP_KEYS) {
+    try {
+      const v = localStorage.getItem(k);
+      if (!v) continue;
+      const kb = (v.length * 2 / 1024).toFixed(1);
+      rows.push({ key: k.replace('arex_',''), kb: parseFloat(kb) });
+    } catch {}
+  }
+  return rows.sort((a,b) => b.kb - a.kb);
+}
+
+function _renderDatos(el) {
+  const rows  = _getStorageByModule();
+  const total = rows.reduce((s,r) => s+r.kb, 0);
+  const max   = 5120;
+  const pct   = Math.min(100, Math.round((total / max) * 100));
+  const fbOk  = !!(window._arexDb);
+  const lastSync = window._arexLastSync ? new Date(window._arexLastSync).toLocaleTimeString('es-MX') : 'Nunca';
+
+  el.innerHTML = `
+    <!-- Sync status -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">◉ SINCRONIZACIÓN FIREBASE</div>
+      <div class="datos-row">
+        <span class="datos-k">Estado</span>
+        <span class="datos-v ${fbOk?'ok':'warn'}">${fbOk?'⬤ CONECTADO':'⬤ SIN FIREBASE'}</span>
+      </div>
+      <div class="datos-row">
+        <span class="datos-k">Última sync</span>
+        <span class="datos-v">${lastSync}</span>
+      </div>
+      ${fbOk ? `<button class="datos-btn" onclick="window._forceSyncAll?.()">↑ SINCRONIZAR AHORA</button>` : ''}
+    </div>
+
+    <!-- Storage usage -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">◫ ALMACENAMIENTO LOCAL</div>
+      <div class="datos-row">
+        <span class="datos-k">Usado</span>
+        <span class="datos-v ${pct>70?'warn':'ok'}">${total.toFixed(1)} KB <span style="opacity:.5;font-size:9px">(${pct}%)</span></span>
+      </div>
+      <div class="datos-bar-track"><div class="datos-bar-fill" style="width:${pct}%"></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+        ${rows.map(r => `
+          <div class="datos-row" style="padding:2px 0">
+            <span class="datos-k" style="font-size:8px">${r.key}</span>
+            <span class="datos-v" style="font-size:8px">${r.kb} KB</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">↓ EXPORTAR</div>
+      <button class="datos-btn accent" onclick="window._exportBackupJSON?.()">⬇ BACKUP COMPLETO (.json)</button>
+      <button class="datos-btn" onclick="window._exportGastosCSV?.()">⬇ GASTOS (.csv)</button>
+      <button class="datos-btn" onclick="window._exportTareasCSV?.()">⬇ TAREAS (.csv)</button>
+    </div>
+
+    <!-- Import -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">↑ IMPORTAR / RESTAURAR</div>
+      <div class="datos-warn">⚠ Restaurar un backup sobreescribe los datos actuales.</div>
+      <label class="datos-btn" style="cursor:pointer;text-align:center">
+        ⬆ RESTAURAR BACKUP (.json)
+        <input type="file" accept=".json" style="display:none" onchange="window._importBackupJSON?.(this.files[0])"/>
+      </label>
+    </div>`;
+}
+
+window._exportBackupJSON  = _exportBackupJSON;
+window._exportGastosCSV   = _exportGastosCSV;
+window._exportTareasCSV   = _exportTareasCSV;
+window._importBackupJSON  = _importBackupJSON;
+window._forceSyncAll      = async function() {
+  for (const k of BACKUP_KEYS) {
+    if (localStorage.getItem(k) && typeof arexSyncData === 'function') await arexSyncData(k);
+  }
+  logBitacora('sistema', 'Sync manual completado');
+  renderControlModule();
+};
+
 /* ── Render principal del módulo ────────────────────── */
 function renderControlModule() {
   const wrap = document.getElementById('ctrl-wrap');
@@ -266,6 +437,7 @@ function renderControlModule() {
       <button class="ctrl-tab ${_ctrlView==='telemetria'?'active':''}" onclick="switchCtrlView('telemetria')">TELEMETRÍA</button>
       <button class="ctrl-tab ${_ctrlView==='bitacora'?'active':''}" onclick="switchCtrlView('bitacora')">BITÁCORA</button>
       <button class="ctrl-tab ${_ctrlView==='agentes'?'active':''}" onclick="switchCtrlView('agentes')">AGENTES</button>
+      <button class="ctrl-tab ${_ctrlView==='datos'?'active':''}" onclick="switchCtrlView('datos')">DATOS</button>
     </div>
 
     <div class="ctrl-view ${_ctrlView==='telemetria'?'active':''}" id="ctrl-tel-view">
@@ -285,13 +457,15 @@ function renderControlModule() {
 
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
+    </div>
+
+    <div class="ctrl-view ${_ctrlView==='datos'?'active':''}" id="ctrl-datos-view">
+      <div id="ctrl-datos-body"></div>
     </div>`;
 
-  // Render active view content
   if (_ctrlView === 'telemetria') {
     const tel = document.getElementById('ctrl-tel-body');
     if (tel) _renderTelemetria(tel);
-    // Auto-refresh telemetria every 5s
     clearInterval(window._ctrlTelTimer);
     window._ctrlTelTimer = setInterval(() => {
       const t = document.getElementById('ctrl-tel-body');
@@ -304,6 +478,9 @@ function renderControlModule() {
   } else if (_ctrlView === 'agentes') {
     const ag = document.getElementById('ctrl-agents-body');
     if (ag) _renderAgentes(ag);
+  } else if (_ctrlView === 'datos') {
+    const dt = document.getElementById('ctrl-datos-body');
+    if (dt) _renderDatos(dt);
   }
 }
 
