@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV
+# AREX — Sistema de Inteligencia Personal · MARK IV (v65)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -9,7 +9,7 @@
 
 Sistema de inteligencia personal construido con HTML, CSS y JavaScript puro — sin frameworks ni dependencias de build. Diseñado para uso cotidiano como asistente personal completo: IA conversacional, control de finanzas, negocios, metas, proyectos, visión y más. Funciona como PWA instalable en cualquier dispositivo.
 
-Visualmente inspirado en el JARVIS de la película *Age of Ultron*: fondo negro puro con campo de estrellas animado en canvas, orbe de partículas 3D reactivo, header con pills de estado, y paleta cian sobre negro de Stark Industries.
+Visualmente inspirado en el JARVIS / Iron Man de Tony Stark: diseño HUD completo estilo Stark Industries con paleta naranja/dorado (`#ff6a00` / `#f5a623`) sobre negro, campo de estrellas animado en canvas, orbe de partículas 3D reactivo, header con animación de barrido, corner brackets en todos los paneles, scan lines, arc reactor en el boot, y grid hexagonal JARVIS en el fondo.
 
 ---
 
@@ -87,7 +87,8 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v58 | Instalable, network-first para shell, cache offline |
+| Neural Orb Engine v2 | Canvas 2D cerebros holográficos: Fibonacci nodes, synapse pulses, rim lighting, specular highlights |
+| PWA + Service Worker v65 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -321,6 +322,23 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | Firebase (6 campos) | console.firebase.google.com | No — habilita sync en la nube |
 
 > **Seguridad**: `config.js` está en `.gitignore` y nunca se commitea. Contiene credenciales reales. No compartir ni subir al repo bajo ninguna circunstancia.
+
+---
+
+## Changelog
+
+### v65 — Iron Man / Tony Stark HUD full-system redesign
+- **Paleta completa rediseñada**: naranja Stark `#ff6a00` + dorado `#f5a623` reemplazan el cian como color de acento primario en toda la interfaz
+- **Boot screen — Arc Reactor**: borde naranja pulsante con tres anillos concéntricos de resplandor, texto dorado con glow, barra de carga con gradiente naranja→dorado, fondo rotativo cónico tipo reactor
+- **Header — Puente de mando**: bordes naranja, sweep de luz animado, líneas verticales de cuadrícula, pill derecho con clip-path diagonal
+- **Dock**: pilar naranja animado en el borde derecho, logo ring con efecto arc-reactor, botones activos con brillo naranja
+- **Todos los módulos**: scan lines horizontales sutiles, borde superior naranja/dorado degradado, corner brackets en vistas
+- **Chat**: orbe central con efecto arc-reactor naranja, HUD panels con acento naranja, input naranja temático
+- **Mission Control**: telemetría y agentes con headers naranja, bordes con gradiente top
+- **Neural Orb Engine v2**: esfera más fotorrealista con rim lighting, capa volumétrica, nodo con highlight blanco interno, pulsos con núcleo white-hot, anillos de actividad expansivos, segunda reflexión especular
+- **Grid JARVIS global**: cuadrícula naranja muy sutil en todo el fondo del sistema
+- **Tipografía**: Exo 2 + JetBrains Mono aplicados globalmente en todos los elementos HUD
+- **SW v65**
 
 ---
 

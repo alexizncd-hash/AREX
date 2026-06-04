@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   AREX — Neural Orb Engine
-   Canvas 2D neural network sphere — Ultron/JARVIS brain style
-   Interconnected nodes · Pulsing synapses · Reactive states
+   AREX — Neural Orb Engine  v2
+   Photorealistic holographic brain sphere — Iron Man / JARVIS style
+   Layered sphere lighting · Rim glow · Volumetric pulses · Deep chromatics
    ═══════════════════════════════════════════════════════════════ */
 
 class NeuralOrb {
@@ -14,9 +14,11 @@ class NeuralOrb {
     this.nodes  = [];
     this.edges  = [];
     this.pulses = [];
+    this.rings  = [];
     this.alive  = true;
     this._rgb   = this._parseHex(color);
     this._build();
+    this._spawnInitialPulses();
   }
 
   _parseHex(hex) {
@@ -30,7 +32,11 @@ class NeuralOrb {
 
   _c(a) {
     const [r, g, b] = this._rgb;
-    return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+    return `rgba(${r},${g},${b},${Math.min(1, Math.max(0, a)).toFixed(3)})`;
+  }
+
+  _cw(a) {
+    return `rgba(255,255,255,${Math.min(1, Math.max(0, a)).toFixed(3)})`;
   }
 
   _build() {
@@ -38,12 +44,11 @@ class NeuralOrb {
     const h = this.canvas.height;
     this.cx = w / 2;
     this.cy = h / 2;
-    this.R  = Math.min(w, h) * 0.37;
+    this.R  = Math.min(w, h) * 0.38;
 
-    // Fibonacci spiral — even node distribution on sphere
-    const N      = 26;
+    const N      = 30;
     const golden = Math.PI * (3 - Math.sqrt(5));
-    const tilt   = 0.38; // axis tilt (radians)
+    const tilt   = 0.36;
 
     for (let i = 0; i < N; i++) {
       const y3  = 1 - (i / (N - 1)) * 2;
@@ -52,21 +57,20 @@ class NeuralOrb {
       const x3  = Math.cos(phi) * r3;
       const z3  = Math.sin(phi) * r3;
 
-      // Rotate around X by tilt angle
       const yT = y3 * Math.cos(tilt) - z3 * Math.sin(tilt);
       const zT = y3 * Math.sin(tilt) + z3 * Math.cos(tilt);
 
       this.nodes.push({
         x:     this.cx + x3 * this.R,
-        y:     this.cy + yT * this.R * 0.85,
-        z:     zT,                          // depth: -1 back, +1 front
-        size:  1.6 + Math.random() * 1.8,
-        phase: Math.random() * Math.PI * 2, // individual pulse phase
+        y:     this.cy + yT * this.R * 0.88,
+        z:     zT,
+        ox:    x3, oy: yT, oz: zT,
+        size:  1.4 + Math.random() * 2.0,
+        phase: Math.random() * Math.PI * 2,
       });
     }
 
-    // Connect nodes within radius threshold
-    const thresh = this.R * 0.74;
+    const thresh = this.R * 0.76;
     for (let i = 0; i < this.nodes.length; i++) {
       for (let j = i + 1; j < this.nodes.length; j++) {
         const dx = this.nodes[i].x - this.nodes[j].x;
@@ -78,18 +82,29 @@ class NeuralOrb {
     }
   }
 
+  _spawnInitialPulses() {
+    for (let i = 0; i < 4; i++) this._spawnPulse();
+  }
+
   _spawnPulse() {
     if (!this.edges.length) return;
     const e    = this.edges[Math.floor(Math.random() * this.edges.length)];
     const rev  = Math.random() > 0.5;
-    const base = { idle: 0.011, active: 0.018, thinking: 0.028, speaking: 0.038 };
+    const base = { idle: 0.010, active: 0.016, thinking: 0.026, speaking: 0.036 };
     this.pulses.push({
       from:  rev ? e.b : e.a,
       to:    rev ? e.a : e.b,
       t:     0,
-      speed: (base[this.state] || 0.013) * (0.65 + Math.random() * 0.7),
-      size:  3.5 + Math.random() * 2.5,
+      speed: (base[this.state] || 0.012) * (0.60 + Math.random() * 0.80),
+      size:  3.0 + Math.random() * 3.0,
     });
+  }
+
+  _spawnRing() {
+    const base = { idle: 0.003, active: 0.007, thinking: 0.016, speaking: 0.022 };
+    if (Math.random() < (base[this.state] || 0.004)) {
+      this.rings.push({ r: this.R * 0.2, maxR: this.R * (0.88 + Math.random() * 0.25), a: 0.55, speed: 0.013 + Math.random() * 0.012 });
+    }
   }
 
   draw() {
@@ -100,179 +115,255 @@ class NeuralOrb {
 
     ctx.clearRect(0, 0, w, h);
 
-    // ── Breathing multiplier ─────────────────────────
-    const breathRate = this.state === 'thinking' ? 0.065
-                     : this.state === 'speaking'  ? 0.12
-                     : 0.022;
-    const breathe = 0.80 + 0.20 * Math.sin(time * breathRate);
+    const breathRate = this.state === 'thinking' ? 0.058
+                     : this.state === 'speaking'  ? 0.11
+                     : 0.020;
+    const breathe = 0.82 + 0.18 * Math.sin(time * breathRate);
 
-    // ── Outer atmosphere glow ────────────────────────
-    const atmGrad = ctx.createRadialGradient(cx, cy, R * 0.5, cx, cy, R * 1.4);
-    atmGrad.addColorStop(0,   this._c(0.12 * breathe));
-    atmGrad.addColorStop(0.5, this._c(0.055 * breathe));
-    atmGrad.addColorStop(1,   this._c(0));
+    // ── Deep space ambient fog ────────────────────────
+    const fogGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.9);
+    fogGrad.addColorStop(0,   this._c(0.08 * breathe));
+    fogGrad.addColorStop(0.4, this._c(0.038 * breathe));
+    fogGrad.addColorStop(1,   this._c(0));
     ctx.beginPath();
-    ctx.arc(cx, cy, R * 1.4, 0, Math.PI * 2);
-    ctx.fillStyle = atmGrad;
+    ctx.arc(cx, cy, R * 1.9, 0, Math.PI * 2);
+    ctx.fillStyle = fogGrad;
     ctx.fill();
 
-    // ── Sphere rim ───────────────────────────────────
+    // ── Outer atmosphere — dual layer ────────────────
+    const atm1 = ctx.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 1.42);
+    atm1.addColorStop(0,   this._c(0.18 * breathe));
+    atm1.addColorStop(0.55, this._c(0.065 * breathe));
+    atm1.addColorStop(1,   this._c(0));
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 1.42, 0, Math.PI * 2);
+    ctx.fillStyle = atm1;
+    ctx.fill();
+
+    // ── Sphere body fill (volumetric) ─────────────────
+    const bodyGrad = ctx.createRadialGradient(
+      cx - R * 0.22, cy - R * 0.22, 0,
+      cx, cy, R
+    );
+    bodyGrad.addColorStop(0,   this._c(0.16 * breathe));
+    bodyGrad.addColorStop(0.45, this._c(0.07 * breathe));
+    bodyGrad.addColorStop(0.8,  this._c(0.022 * breathe));
+    bodyGrad.addColorStop(1,    this._c(0.005));
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.strokeStyle = this._c(0.32 * breathe);
-    ctx.lineWidth = 1.4;
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // ── Sphere rim stroke ─────────────────────────────
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = this._c(0.42 * breathe);
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    // Inner dim fill to give sphere volume
-    const fillGrad = ctx.createRadialGradient(cx - R * 0.2, cy - R * 0.2, 0, cx, cy, R);
-    fillGrad.addColorStop(0,   this._c(0.09 * breathe));
-    fillGrad.addColorStop(0.6, this._c(0.04 * breathe));
-    fillGrad.addColorStop(1,   this._c(0.01));
+    // ── Inner caustic ring (adds glass depth) ─────────
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.fillStyle = fillGrad;
-    ctx.fill();
+    ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2);
+    ctx.strokeStyle = this._c(0.07 * breathe);
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
 
-    // ── Clip to sphere boundary ──────────────────────
+    // ── Expanding activity rings ──────────────────────
+    this._spawnRing();
+    this.rings = this.rings.filter(ring => ring.r < ring.maxR);
+    for (const ring of this.rings) {
+      const progress = ring.r / ring.maxR;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+      ctx.strokeStyle = this._c(ring.a * (1 - progress) * breathe);
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+      ring.r += (ring.maxR - R * 0.2) * ring.speed;
+      ring.a *= 0.975;
+    }
+
+    // ── Clip to sphere ────────────────────────────────
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, R - 0.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, R - 0.8, 0, Math.PI * 2);
     ctx.clip();
 
-    // ── Sort edges by average depth ──────────────────
+    // ── z-sorted edges ────────────────────────────────
     const sortedEdges = this.edges
       .map(e => ({ ...e, z: (this.nodes[e.a].z + this.nodes[e.b].z) / 2 }))
       .sort((a, b) => a.z - b.z);
 
-    // ── Draw edges (neural connections) ─────────────
     for (const e of sortedEdges) {
       const na = this.nodes[e.a];
       const nb = this.nodes[e.b];
-      const depth = (e.z + 1) / 2;           // 0=back, 1=front
-      const alpha = 0.035 + depth * 0.13;
+      const depth = (e.z + 1) / 2;
+      const alpha = 0.028 + depth * 0.14;
       ctx.beginPath();
       ctx.moveTo(na.x, na.y);
       ctx.lineTo(nb.x, nb.y);
       ctx.strokeStyle = this._c(alpha);
-      ctx.lineWidth = 0.55;
+      ctx.lineWidth = 0.5 + depth * 0.4;
       ctx.stroke();
     }
 
-    // ── Draw synapse pulses ──────────────────────────
+    // ── Synapse pulses ────────────────────────────────
     for (const p of this.pulses) {
       const na = this.nodes[p.from];
       const nb = this.nodes[p.to];
       const px = na.x + (nb.x - na.x) * p.t;
       const py = na.y + (nb.y - na.y) * p.t;
       const avgZ = (na.z + nb.z) / 2;
-      const zAlpha = 0.45 + ((avgZ + 1) / 2) * 0.5;
+      const zAlpha = 0.4 + ((avgZ + 1) / 2) * 0.55;
 
-      // Trail gradient from t0 to current
-      const trailFrac = 0.22;
+      const trailFrac = 0.28;
       const t0  = Math.max(0, p.t - trailFrac);
       const tx0 = na.x + (nb.x - na.x) * t0;
       const ty0 = na.y + (nb.y - na.y) * t0;
 
+      // Trail
       const tGrad = ctx.createLinearGradient(tx0, ty0, px, py);
       tGrad.addColorStop(0, this._c(0));
-      tGrad.addColorStop(1, this._c(zAlpha * 0.9));
+      tGrad.addColorStop(0.5, this._c(zAlpha * 0.4));
+      tGrad.addColorStop(1, this._c(zAlpha * 0.95));
       ctx.beginPath();
       ctx.moveTo(tx0, ty0);
       ctx.lineTo(px, py);
       ctx.strokeStyle = tGrad;
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.6;
       ctx.stroke();
 
-      // Head glow
-      const hGlow = ctx.createRadialGradient(px, py, 0, px, py, p.size * 2.2);
-      hGlow.addColorStop(0, this._c(zAlpha));
-      hGlow.addColorStop(0.45, this._c(zAlpha * 0.35));
-      hGlow.addColorStop(1, this._c(0));
+      // Outer halo
+      const outerHalo = ctx.createRadialGradient(px, py, 0, px, py, p.size * 3.5);
+      outerHalo.addColorStop(0, this._c(zAlpha * 0.7));
+      outerHalo.addColorStop(0.35, this._c(zAlpha * 0.28));
+      outerHalo.addColorStop(0.7, this._c(zAlpha * 0.08));
+      outerHalo.addColorStop(1, this._c(0));
       ctx.beginPath();
-      ctx.arc(px, py, p.size * 2.2, 0, Math.PI * 2);
-      ctx.fillStyle = hGlow;
+      ctx.arc(px, py, p.size * 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = outerHalo;
       ctx.fill();
 
-      // Head dot
+      // Inner white-hot core
+      const coreGrad = ctx.createRadialGradient(px, py, 0, px, py, p.size * 0.7);
+      coreGrad.addColorStop(0, this._cw(zAlpha * 0.9));
+      coreGrad.addColorStop(1, this._c(zAlpha * 0.5));
       ctx.beginPath();
-      ctx.arc(px, py, p.size * 0.55, 0, Math.PI * 2);
-      ctx.fillStyle = this._c(zAlpha);
+      ctx.arc(px, py, p.size * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = coreGrad;
       ctx.fill();
 
       p.t += p.speed;
     }
     this.pulses = this.pulses.filter(p => p.t < 1);
 
-    // ── Sort nodes back→front then draw ─────────────
+    // ── z-sorted nodes ────────────────────────────────
     const sortedNodes = this.nodes
       .map((n, i) => ({ ...n, i }))
       .sort((a, b) => a.z - b.z);
 
     for (const n of sortedNodes) {
       const depth = (n.z + 1) / 2;
-      const pulse = 0.80 + 0.20 * Math.sin(time * 0.04 + n.phase);
-      const size  = n.size * pulse * (0.45 + depth * 0.55);
-      const alpha = 0.25 + depth * 0.65;
+      const pulse = 0.78 + 0.22 * Math.sin(time * 0.038 + n.phase);
+      const size  = n.size * pulse * (0.4 + depth * 0.6);
+      const alpha = 0.22 + depth * 0.72;
 
-      // Node ambient halo
-      const nHalo = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, size * 4.5);
-      nHalo.addColorStop(0, this._c(alpha * 0.55));
-      nHalo.addColorStop(0.5, this._c(alpha * 0.12));
+      // Node ambient halo (wide, soft)
+      const nHalo = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, size * 5.5);
+      nHalo.addColorStop(0, this._c(alpha * 0.5));
+      nHalo.addColorStop(0.35, this._c(alpha * 0.14));
       nHalo.addColorStop(1, this._c(0));
       ctx.beginPath();
-      ctx.arc(n.x, n.y, size * 4.5, 0, Math.PI * 2);
+      ctx.arc(n.x, n.y, size * 5.5, 0, Math.PI * 2);
       ctx.fillStyle = nHalo;
       ctx.fill();
 
-      // Node core
+      // Node core with white highlight center
+      const nCore = ctx.createRadialGradient(n.x - size * 0.3, n.y - size * 0.3, 0, n.x, n.y, size);
+      nCore.addColorStop(0, this._cw(Math.min(1, alpha * 0.85)));
+      nCore.addColorStop(0.4, this._c(alpha));
+      nCore.addColorStop(1, this._c(alpha * 0.5));
       ctx.beginPath();
       ctx.arc(n.x, n.y, size, 0, Math.PI * 2);
-      ctx.fillStyle = this._c(alpha);
+      ctx.fillStyle = nCore;
       ctx.fill();
     }
 
-    ctx.restore(); // end sphere clip
+    ctx.restore();
 
-    // ── Specular highlight (glass sphere look) ───────
-    const shineX = cx - R * 0.28;
-    const shineY = cy - R * 0.30;
-    const shine  = ctx.createRadialGradient(shineX, shineY, 0, shineX, shineY, R * 0.54);
-    shine.addColorStop(0, 'rgba(255,255,255,0.24)');
-    shine.addColorStop(0.4, 'rgba(255,255,255,0.07)');
-    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    // ── Rim lighting — edge glow on back side ─────────
+    const rimX = cx + R * 0.38;
+    const rimY = cy - R * 0.38;
+    const rimGrad = ctx.createRadialGradient(rimX, rimY, R * 0.52, cx, cy, R * 1.06);
+    rimGrad.addColorStop(0, this._c(0));
+    rimGrad.addColorStop(0.72, this._c(0.18 * breathe));
+    rimGrad.addColorStop(0.88, this._c(0.32 * breathe));
+    rimGrad.addColorStop(1, this._c(0));
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 1.06, 0, Math.PI * 2);
+    ctx.fillStyle = rimGrad;
+    ctx.fill();
+    ctx.restore();
+
+    // ── Specular highlight (glossy glass sphere) ──────
+    const shX = cx - R * 0.30;
+    const shY = cy - R * 0.32;
+    const shine1 = ctx.createRadialGradient(shX, shY, 0, shX, shY, R * 0.46);
+    shine1.addColorStop(0, 'rgba(255,255,255,0.32)');
+    shine1.addColorStop(0.38, 'rgba(255,255,255,0.10)');
+    shine1.addColorStop(0.7, 'rgba(255,255,255,0.02)');
+    shine1.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.clip();
-    ctx.fillStyle = shine;
+    ctx.fillStyle = shine1;
+    ctx.fillRect(0, 0, w, h);
+
+    // Secondary micro-highlight
+    const shX2 = cx + R * 0.22;
+    const shY2 = cy + R * 0.30;
+    const shine2 = ctx.createRadialGradient(shX2, shY2, 0, shX2, shY2, R * 0.18);
+    shine2.addColorStop(0, 'rgba(255,255,255,0.09)');
+    shine2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = shine2;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
-    // ── Activity burst ring (thinking / speaking) ────
+    // ── Thinking / speaking burst rings ──────────────
     if (this.state === 'thinking' || this.state === 'speaking') {
-      const bSpeed = this.state === 'speaking' ? 0.22 : 0.10;
+      const bSpeed = this.state === 'speaking' ? 0.21 : 0.09;
       const bPhase = (time * bSpeed) % 1;
-      const bR     = R * 0.9 * bPhase;
-      const bA     = 0.4 * (1 - bPhase) * breathe;
+      const bR     = R * 0.95 * bPhase;
+      const bA     = 0.45 * (1 - bPhase) * breathe;
       ctx.beginPath();
       ctx.arc(cx, cy, bR, 0, Math.PI * 2);
       ctx.strokeStyle = this._c(bA);
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      const bPhase2 = ((time * bSpeed) + 0.45) % 1;
+      const bR2 = R * 0.95 * bPhase2;
+      const bA2 = 0.28 * (1 - bPhase2) * breathe;
+      ctx.beginPath();
+      ctx.arc(cx, cy, bR2, 0, Math.PI * 2);
+      ctx.strokeStyle = this._c(bA2);
+      ctx.lineWidth = 0.9;
       ctx.stroke();
     }
 
     // ── Tick ─────────────────────────────────────────
     this.time++;
 
-    const spawnRate = { idle: 0.038, active: 0.09, thinking: 0.26, speaking: 0.38 };
-    if (Math.random() < (spawnRate[this.state] || 0.04)) this._spawnPulse();
+    const spawnRate = { idle: 0.042, active: 0.10, thinking: 0.28, speaking: 0.40 };
+    if (Math.random() < (spawnRate[this.state] || 0.045)) this._spawnPulse();
   }
 
   setState(s) {
     this.state = s;
-    // Burst of pulses for visual feedback
-    const burst = { thinking: 8, speaking: 10, active: 5, idle: 2 };
+    const burst = { thinking: 10, speaking: 14, active: 6, idle: 2 };
     for (let i = 0; i < (burst[s] || 3); i++) this._spawnPulse();
+    for (let i = 0; i < 3; i++) this._spawnRing();
   }
 
   start() {
@@ -294,7 +385,6 @@ class NeuralOrb {
 window._neuralOrbs = window._neuralOrbs || {};
 
 window.initNeuralOrbs = function () {
-  // Destroy existing orbs before re-init
   Object.values(window._neuralOrbs).forEach(o => o.destroy());
   window._neuralOrbs = {};
 

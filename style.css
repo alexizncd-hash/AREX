@@ -5874,3 +5874,851 @@ header {
   background: rgba(0,0,0,0.5) !important;
 }
 .agent-run-btn:active { transform: scale(0.92) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   AREX — IRON MAN / TONY STARK HUD  (v65)
+   Full-system redesign: arc reactor palette, hex grids, corner
+   brackets, diagonal cuts, scan lines, photon glow
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Iron Man palette vars ──────────────────────────── */
+:root {
+  --iron:        #ff6a00;
+  --iron-dim:    #cc4a00;
+  --iron-glow:   rgba(255,106,0,0.22);
+  --iron-pulse:  rgba(255,106,0,0.50);
+  --gold:        #f5a623;
+  --gold-dim:    #b87a12;
+  --gold-glow:   rgba(245,166,35,0.20);
+  --hud-bg:      rgba(0,6,14,0.72);
+  --hud-border:  rgba(255,106,0,0.28);
+  --hud-line:    rgba(255,106,0,0.14);
+  --scan-line:   rgba(255,106,0,0.035);
+}
+
+/* ── SCAN LINE overlay (everywhere) ──────────────────
+   Subtle horizontal lines across all panels */
+.module-panel::before,
+main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 3px,
+    var(--scan-line) 3px,
+    var(--scan-line) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Global: iron-hud font upgrade ───────────────────
+   Use Exo 2 everywhere when available */
+:root {
+  --font-display: 'Exo 2', 'Trebuchet MS', Arial, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+  --font:         'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* ── Boot screen — Arc Reactor ───────────────────────── */
+#boot-screen {
+  background: radial-gradient(ellipse at 50% 50%, #020c16 0%, #010810 55%, #000508 100%) !important;
+  position: relative;
+  overflow: hidden;
+}
+#boot-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px, transparent 2px,
+    rgba(0,212,255,0.025) 2px, rgba(0,212,255,0.025) 3px
+  );
+  pointer-events: none;
+}
+#boot-screen::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 600px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255,106,0,0.04) 60deg,
+    transparent 120deg,
+    rgba(0,212,255,0.04) 180deg,
+    transparent 240deg,
+    rgba(255,106,0,0.03) 300deg,
+    transparent 360deg
+  );
+  border-radius: 50%;
+  animation: boot-conic-spin 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes boot-conic-spin {
+  to { transform: translate(-50%,-50%) rotate(360deg); }
+}
+
+/* Arc reactor orb rings */
+.boot-logo {
+  position: relative !important;
+  background: radial-gradient(circle at 38% 32%,
+    rgba(255,255,255,0.22) 0%,
+    rgba(0,212,255,0.14) 30%,
+    rgba(0,212,255,0.06) 60%,
+    transparent 100%) !important;
+  border: 2px solid var(--iron) !important;
+  box-shadow:
+    0 0 0 8px rgba(255,106,0,0.06),
+    0 0 0 18px rgba(255,106,0,0.04),
+    0 0 0 36px rgba(255,106,0,0.02),
+    0 0 50px var(--iron-pulse),
+    0 0 100px rgba(255,106,0,0.25),
+    inset 0 0 24px rgba(0,212,255,0.15) !important;
+  animation: arc-reactor-pulse 2s ease-in-out infinite !important;
+  font-family: 'Exo 2', monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 2px !important;
+  color: #fff !important;
+  text-shadow: 0 0 20px var(--iron), 0 0 40px var(--gold) !important;
+}
+@keyframes arc-reactor-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 8px rgba(255,106,0,0.06),
+      0 0 0 18px rgba(255,106,0,0.04),
+      0 0 0 36px rgba(255,106,0,0.02),
+      0 0 50px var(--iron-pulse),
+      0 0 100px rgba(255,106,0,0.25),
+      inset 0 0 24px rgba(0,212,255,0.15);
+    border-color: var(--iron);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(255,106,0,0.10),
+      0 0 0 28px rgba(255,106,0,0.06),
+      0 0 0 52px rgba(255,106,0,0.03),
+      0 0 70px rgba(255,106,0,0.7),
+      0 0 130px rgba(255,106,0,0.35),
+      inset 0 0 32px rgba(0,212,255,0.22);
+    border-color: var(--gold);
+  }
+}
+
+#boot-lines {
+  color: var(--gold) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+  letter-spacing: 2.5px !important;
+  text-shadow: 0 0 8px var(--gold) !important;
+}
+
+#boot-bar-wrap {
+  width: 320px !important;
+  height: 3px !important;
+  background: rgba(255,106,0,0.12) !important;
+  border: none !important;
+  position: relative;
+}
+#boot-bar-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0; top: -4px;
+  width: 100%; height: 1px;
+  background: rgba(255,106,0,0.2);
+}
+#boot-bar {
+  background: linear-gradient(90deg, var(--iron-dim), var(--iron), var(--gold)) !important;
+  box-shadow: 0 0 8px var(--iron), 0 0 18px var(--iron-glow) !important;
+  height: 100% !important;
+}
+
+/* ── Header — Iron Man command bridge ────────────────── */
+header {
+  background: rgba(2,6,14,0.88) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(255,106,0,0.22) !important;
+  box-shadow:
+    0 2px 0 rgba(255,106,0,0.12),
+    0 4px 30px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,106,0,0.08) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,106,0,0.5) 20%,
+    var(--gold) 50%,
+    rgba(255,106,0,0.5) 80%,
+    transparent 100%
+  );
+  animation: hdr-iron-sweep 4s ease-in-out infinite;
+}
+@keyframes hdr-iron-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px, transparent 119px,
+    rgba(255,106,0,0.04) 119px, rgba(255,106,0,0.04) 120px
+  );
+  pointer-events: none;
+}
+
+.hdr-pill-left {
+  background: rgba(255,106,0,0.07) !important;
+  border: 1px solid rgba(255,106,0,0.25) !important;
+  box-shadow: 0 0 12px rgba(255,106,0,0.10) !important;
+}
+.hdr-pill-name {
+  color: var(--iron) !important;
+  text-shadow: 0 0 8px var(--iron-glow) !important;
+  font-family: 'Exo 2', monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 3px !important;
+}
+.hdr-dot {
+  background: var(--iron) !important;
+  box-shadow: 0 0 8px var(--iron) !important;
+}
+.hdr-mode {
+  color: var(--gold) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 2px !important;
+}
+.hdr-clock {
+  color: rgba(255,106,0,0.75) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  text-shadow: 0 0 6px var(--iron-glow) !important;
+  letter-spacing: 3px !important;
+}
+.hdr-pill-right {
+  background: rgba(255,106,0,0.08) !important;
+  border: 1px solid rgba(255,106,0,0.35) !important;
+  color: var(--iron) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 2px !important;
+  text-shadow: 0 0 8px var(--iron-glow) !important;
+  box-shadow: 0 0 16px rgba(255,106,0,0.12) !important;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%) !important;
+}
+.hdr-pill-right:hover {
+  background: rgba(255,106,0,0.16) !important;
+  border-color: var(--iron) !important;
+  box-shadow: 0 0 24px rgba(255,106,0,0.30) !important;
+  color: var(--gold) !important;
+}
+
+/* ── Dock — Iron Man angular style ───────────────────── */
+#dock {
+  background: rgba(2,5,12,0.95) !important;
+  border-right: 1px solid rgba(255,106,0,0.16) !important;
+  box-shadow: 2px 0 24px rgba(0,0,0,0.7), inset -1px 0 0 rgba(255,106,0,0.08) !important;
+}
+#dock::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; width: 1px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(255,106,0,0.4) 20%,
+    var(--iron) 50%,
+    rgba(255,106,0,0.4) 80%,
+    transparent 100%
+  );
+  animation: dock-iron-pillar 3s ease-in-out infinite;
+}
+@keyframes dock-iron-pillar {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+
+.dock-logo-ring {
+  border-color: var(--iron) !important;
+  color: var(--iron) !important;
+  box-shadow: 0 0 14px var(--iron-pulse), inset 0 0 10px var(--iron-glow) !important;
+  background: radial-gradient(circle at 35% 30%, rgba(255,106,0,0.15), transparent 70%) !important;
+  animation: arc-reactor-pulse 3s ease-in-out infinite !important;
+}
+
+#dock .nav-btn:hover {
+  background: rgba(255,106,0,0.08) !important;
+  border-color: rgba(255,106,0,0.38) !important;
+  color: var(--iron) !important;
+  box-shadow: 0 0 14px rgba(255,106,0,0.20) !important;
+}
+#dock .nav-btn.active {
+  background: rgba(255,106,0,0.10) !important;
+  border-color: rgba(255,106,0,0.55) !important;
+  color: var(--iron) !important;
+  border-left: 2px solid var(--iron) !important;
+  box-shadow: 0 0 20px rgba(255,106,0,0.28), inset 0 0 8px rgba(255,106,0,0.06) !important;
+}
+.dock-badge {
+  background: var(--iron) !important;
+  color: #000 !important;
+  box-shadow: 0 0 6px var(--iron) !important;
+}
+.dock-pulse-dot {
+  background: var(--iron) !important;
+  box-shadow: 0 0 8px var(--iron) !important;
+}
+
+/* ── Module panels — Iron Man corner brackets ─────────── */
+.module-panel {
+  background: rgba(0,6,16,0.62) !important;
+  backdrop-filter: blur(22px) saturate(160%) !important;
+  border: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+/* Top-left bracket */
+.module-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px, transparent 3px,
+    var(--scan-line) 3px, var(--scan-line) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+/* Iron accent top border */
+.module-panel::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,
+    var(--iron) 0%,
+    var(--gold) 50%,
+    var(--iron) 100%
+  );
+  box-shadow: 0 0 12px var(--iron-glow), 0 0 24px rgba(255,106,0,0.15);
+  z-index: 1;
+}
+
+/* Corner bracket overlays via pseudo-elements on children */
+.module-panel > *:first-child::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 20px; height: 20px;
+  border-top: 1.5px solid var(--iron);
+  border-left: 1.5px solid var(--iron);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.module-panel > *:first-child::after {
+  content: '';
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 20px; height: 20px;
+  border-top: 1.5px solid var(--iron);
+  border-right: 1.5px solid var(--iron);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* ── Chat module ─────────────────────────────────────── */
+#module-chat {
+  background: rgba(0,5,14,0.55) !important;
+}
+
+/* HUD stage orb ring */
+.reactor-wrap .orb {
+  border-color: var(--iron) !important;
+  box-shadow:
+    0 0 0 8px rgba(255,106,0,0.06),
+    0 0 0 20px rgba(255,106,0,0.03),
+    0 0 40px var(--iron-pulse),
+    0 0 80px rgba(255,106,0,0.20),
+    inset 0 0 30px rgba(255,106,0,0.08) !important;
+  animation: arc-reactor-pulse 2.5s ease-in-out infinite !important;
+  background: radial-gradient(circle at 38% 32%,
+    rgba(255,255,255,0.14) 0%,
+    rgba(255,106,0,0.08) 35%,
+    transparent 70%) !important;
+}
+.status-float {
+  color: var(--iron) !important;
+  text-shadow: 0 0 10px var(--iron-glow) !important;
+  font-family: 'Exo 2', monospace !important;
+  letter-spacing: 4px !important;
+}
+
+/* HUD panels */
+.hud-panel {
+  background: rgba(255,106,0,0.05) !important;
+  border: 1px solid rgba(255,106,0,0.22) !important;
+  box-shadow: 0 0 16px rgba(255,106,0,0.08) !important;
+}
+.hud-ph {
+  color: var(--iron) !important;
+  border-bottom-color: rgba(255,106,0,0.2) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 3px !important;
+  text-shadow: 0 0 6px var(--iron-glow) !important;
+}
+.hud-dot {
+  background: var(--iron) !important;
+  box-shadow: 0 0 6px var(--iron) !important;
+}
+
+/* ── Chat bubbles ─────────────────────────────────────── */
+.msg-user .msg-bubble {
+  background: rgba(255,106,0,0.10) !important;
+  border: 1px solid rgba(255,106,0,0.28) !important;
+  border-radius: 12px 12px 4px 12px !important;
+}
+.msg-arex .msg-bubble {
+  background: rgba(0,212,255,0.05) !important;
+  border: 1px solid rgba(0,212,255,0.18) !important;
+}
+
+/* ── Input bar — holographic terminal ────────────────── */
+.input-wrap,
+.input-row {
+  background: rgba(2,6,14,0.80) !important;
+  border-top: 1px solid rgba(255,106,0,0.20) !important;
+  backdrop-filter: blur(20px) !important;
+}
+#msg-input,
+.msg-input {
+  background: rgba(255,106,0,0.04) !important;
+  border: 1px solid rgba(255,106,0,0.22) !important;
+  color: var(--gold) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  caret-color: var(--iron) !important;
+}
+#msg-input:focus,
+.msg-input:focus {
+  border-color: var(--iron) !important;
+  box-shadow: 0 0 0 2px rgba(255,106,0,0.12), 0 0 12px rgba(255,106,0,0.15) !important;
+  outline: none !important;
+}
+#msg-input::placeholder,
+.msg-input::placeholder {
+  color: rgba(255,106,0,0.35) !important;
+}
+
+/* Send button */
+#btn-send,
+.btn-send {
+  background: linear-gradient(135deg, var(--iron-dim), var(--iron)) !important;
+  border: none !important;
+  box-shadow: 0 0 16px rgba(255,106,0,0.40), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%) !important;
+}
+#btn-send:hover,
+.btn-send:hover {
+  background: linear-gradient(135deg, var(--iron), var(--gold)) !important;
+  box-shadow: 0 0 28px rgba(255,106,0,0.60) !important;
+}
+
+/* ── Module tab bar ──────────────────────────────────── */
+.module-tabs,
+.ctrl-tabs {
+  background: rgba(2,6,14,0.75) !important;
+  border-bottom: 1px solid rgba(255,106,0,0.16) !important;
+}
+.module-tab,
+.ctrl-tab {
+  color: rgba(255,106,0,0.55) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 2px !important;
+  border-bottom: 2px solid transparent !important;
+  transition: all 0.18s !important;
+}
+.module-tab:hover,
+.ctrl-tab:hover {
+  color: var(--iron) !important;
+  background: rgba(255,106,0,0.06) !important;
+}
+.module-tab.active,
+.ctrl-tab.active {
+  color: var(--iron) !important;
+  border-bottom-color: var(--iron) !important;
+  background: rgba(255,106,0,0.08) !important;
+  text-shadow: 0 0 8px var(--iron-glow) !important;
+}
+
+/* ── Mission Control — diagnostics ──────────────────── */
+#module-control {
+  background: rgba(0,4,12,0.60) !important;
+}
+.ctrl-title {
+  font-family: 'Exo 2', monospace !important;
+  font-weight: 700 !important;
+  color: var(--iron) !important;
+  text-shadow: 0 0 16px var(--iron-glow), 0 0 30px rgba(255,106,0,0.2) !important;
+  letter-spacing: 6px !important;
+}
+.diag-title-text {
+  color: var(--iron) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  text-shadow: 0 0 10px var(--iron-glow) !important;
+}
+.diag-title-line {
+  background: linear-gradient(90deg, transparent, var(--iron-dim), var(--iron)) !important;
+}
+.diag-quad {
+  background: rgba(255,106,0,0.04) !important;
+  border: 1px solid rgba(255,106,0,0.18) !important;
+  box-shadow: inset 0 0 20px rgba(255,106,0,0.04) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.diag-quad::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--iron), transparent);
+}
+.diag-quad-hdr {
+  color: var(--iron) !important;
+  border-bottom-color: rgba(255,106,0,0.18) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  text-shadow: 0 0 8px var(--iron-glow) !important;
+  letter-spacing: 2.5px !important;
+}
+.diag-ico { color: var(--gold) !important; }
+.diag-k { color: rgba(255,106,0,0.60) !important; font-family: 'JetBrains Mono', monospace !important; }
+.diag-v.ok  { color: #00ffaa !important; }
+.diag-v.err { color: #ff4444 !important; }
+.diag-v.warn{ color: var(--gold) !important; }
+.diag-v.muted{ color: rgba(255,106,0,0.55) !important; }
+.diag-storage-bar { background: rgba(255,106,0,0.10) !important; }
+.diag-storage-fill { background: linear-gradient(90deg, var(--iron-dim), var(--iron)) !important; box-shadow: 0 0 8px var(--iron-glow) !important; }
+
+/* Agent orb section */
+.ctrl-agents {
+  background: transparent !important;
+}
+.agent-orb-wrap {
+  position: relative;
+}
+.agent-orb-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.agent-orb-wrap:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 40px var(--iron-glow);
+}
+.agent-orb-name {
+  font-family: 'Exo 2', monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: 4px !important;
+}
+.agent-run-btn {
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%) !important;
+  letter-spacing: 3px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+.agent-run-btn:hover {
+  background: rgba(0,0,0,0.6) !important;
+  letter-spacing: 4px !important;
+}
+
+/* ── Finanzas, Negocio, Gastos, Metas modules ────────── */
+/* Iron accent: colored top bar replaced with iron gradient */
+.fin-header,
+.neg-header,
+.gastos-header,
+.metas-header,
+.proy-header,
+.evid-header {
+  background: rgba(255,106,0,0.06) !important;
+  border-bottom: 1px solid rgba(255,106,0,0.18) !important;
+}
+
+/* Module cards */
+.fin-card,
+.neg-card,
+.gastos-card,
+.metas-card,
+.proy-card,
+.evid-card {
+  background: rgba(255,106,0,0.04) !important;
+  border: 1px solid rgba(255,106,0,0.15) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+.fin-card::before,
+.neg-card::before,
+.gastos-card::before,
+.metas-card::before,
+.proy-card::before,
+.evid-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, var(--iron-dim), var(--gold), var(--iron-dim));
+  opacity: 0.6;
+}
+
+/* Stat numbers — iron gold */
+.fin-stat-val,
+.neg-stat-val {
+  color: var(--gold) !important;
+  text-shadow: 0 0 8px var(--gold-glow) !important;
+  font-family: 'Exo 2', monospace !important;
+}
+
+/* ── Buttons system-wide ─────────────────────────────── */
+.btn-primary,
+button[class*="-add"],
+button[class*="-save"],
+button[class*="-crear"] {
+  background: linear-gradient(135deg, rgba(255,90,0,0.8), rgba(200,70,0,0.9)) !important;
+  border: 1px solid rgba(255,106,0,0.45) !important;
+  color: #fff !important;
+  box-shadow: 0 0 14px rgba(255,106,0,0.30) !important;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 2px !important;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--iron), var(--gold)) !important;
+  box-shadow: 0 0 24px rgba(255,106,0,0.50) !important;
+}
+
+/* ── Quick-action buttons (sidebar) ──────────────────── */
+.qcmd {
+  background: rgba(255,106,0,0.06) !important;
+  border: 1px solid rgba(255,106,0,0.18) !important;
+  color: var(--iron) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+.qcmd:hover {
+  background: rgba(255,106,0,0.12) !important;
+  border-color: var(--iron) !important;
+  box-shadow: 0 0 12px rgba(255,106,0,0.22) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar {
+  background: rgba(2,6,14,0.96) !important;
+  border-right: 1px solid rgba(255,106,0,0.16) !important;
+}
+.sidebar-title {
+  color: var(--iron) !important;
+  text-shadow: 0 0 8px var(--iron-glow) !important;
+  letter-spacing: 4px !important;
+}
+.ss-label {
+  color: rgba(255,106,0,0.55) !important;
+  letter-spacing: 3px !important;
+}
+.ss-dot { background: var(--iron) !important; box-shadow: 0 0 6px var(--iron) !important; }
+
+/* ── Toggle buttons ──────────────────────────────────── */
+.mtoggle {
+  background: rgba(255,106,0,0.05) !important;
+  border: 1px solid rgba(255,106,0,0.16) !important;
+  color: rgba(255,106,0,0.60) !important;
+}
+.mtoggle.on {
+  background: rgba(255,106,0,0.12) !important;
+  border-color: var(--iron) !important;
+  color: var(--iron) !important;
+  box-shadow: 0 0 14px rgba(255,106,0,0.22) !important;
+}
+.mt-st.on { color: var(--iron) !important; }
+
+/* ── Search overlay ───────────────────────────────────── */
+.bg-container {
+  background: rgba(2,6,14,0.95) !important;
+  border: 1px solid rgba(255,106,0,0.30) !important;
+  box-shadow: 0 0 60px rgba(255,106,0,0.15), 0 0 120px rgba(0,0,0,0.8) !important;
+}
+.bg-input {
+  background: rgba(255,106,0,0.04) !important;
+  border-bottom-color: rgba(255,106,0,0.25) !important;
+  color: var(--gold) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  caret-color: var(--iron) !important;
+}
+.bg-input:focus { outline: none !important; border-bottom-color: var(--iron) !important; }
+
+/* ── Scrollbar — iron themed ─────────────────────────── */
+::-webkit-scrollbar-thumb {
+  background: rgba(255,106,0,0.35) !important;
+  border-radius: 2px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,106,0,0.60) !important;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,106,0,0.04) !important;
+}
+
+/* ── JARVIS-style hex grid on bg ─────────────────────── */
+#star-canvas + * {
+  position: relative;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,106,0,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,106,0,0.022) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Vision module ────────────────────────────────────── */
+#vision-panel {
+  background: rgba(0,4,12,0.72) !important;
+  border: 1px solid rgba(255,106,0,0.22) !important;
+}
+.vision-hud-overlay {
+  background: rgba(255,106,0,0.05) !important;
+  border-color: rgba(255,106,0,0.25) !important;
+}
+
+/* ── Code blocks — arc reactor tint ──────────────────── */
+pre, code {
+  background: rgba(2,8,18,0.88) !important;
+  border: 1px solid rgba(255,106,0,0.12) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* ── Progress bars / meters ──────────────────────────── */
+.progress-fill,
+[class*="-fill"],
+[class*="-progress"] {
+  background: linear-gradient(90deg, var(--iron-dim), var(--iron)) !important;
+  box-shadow: 0 0 8px var(--iron-glow) !important;
+}
+
+/* ── Notification / alert toasts ─────────────────────── */
+.arex-toast,
+.notif-bar,
+.alert-bar {
+  background: rgba(2,6,14,0.96) !important;
+  border-left: 3px solid var(--iron) !important;
+  box-shadow: 0 0 20px rgba(255,106,0,0.20) !important;
+  color: var(--gold) !important;
+}
+
+/* ── Modal boxes ─────────────────────────────────────── */
+.modal-box {
+  background: rgba(2,6,14,0.96) !important;
+  border: 1px solid rgba(255,106,0,0.28) !important;
+  box-shadow: 0 0 60px rgba(255,106,0,0.15), 0 0 120px rgba(0,0,0,0.85) !important;
+}
+.modal-header {
+  background: rgba(255,106,0,0.06) !important;
+  border-bottom: 1px solid rgba(255,106,0,0.18) !important;
+  color: var(--iron) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 3px !important;
+}
+
+/* ── Pomodoro widget ─────────────────────────────────── */
+.pomo-widget {
+  background: rgba(2,6,14,0.96) !important;
+  border: 1px solid rgba(255,106,0,0.25) !important;
+  box-shadow: 0 0 30px rgba(255,106,0,0.15) !important;
+}
+.pomo-title {
+  color: var(--iron) !important;
+  letter-spacing: 4px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+.pomo-circle-progress { stroke: var(--iron) !important; }
+.pomo-time {
+  color: var(--gold) !important;
+  text-shadow: 0 0 12px var(--gold-glow) !important;
+  font-family: 'Exo 2', monospace !important;
+}
+
+/* ── Log entries ─────────────────────────────────────── */
+.ctrl-log-entry {
+  border-bottom: 1px solid rgba(255,106,0,0.06) !important;
+}
+.ctrl-log-ts  { color: rgba(255,106,0,0.45) !important; font-family: 'JetBrains Mono', monospace !important; }
+.ctrl-log-mod { font-family: 'JetBrains Mono', monospace !important; letter-spacing: 1px !important; }
+
+/* ── Links and highlights ────────────────────────────── */
+a { color: var(--iron) !important; text-decoration: none !important; }
+a:hover { color: var(--gold) !important; text-shadow: 0 0 6px var(--gold-glow) !important; }
+::selection { background: rgba(255,106,0,0.30) !important; color: #fff !important; }
+
+/* ── JARVIS data readout lines (corner brackets global) ──
+   Applied to section titles and key containers */
+.ss-label::before,
+.diag-quad-hdr::before,
+.ctrl-title::before {
+  content: '◈ ';
+  color: var(--iron);
+  opacity: 0.7;
+}
+
+/* ── Pulse animation recolor ─────────────────────────── */
+@keyframes logo-pulse {
+  0%, 100% {
+    box-shadow: 0 0 14px var(--iron-pulse), inset 0 0 10px var(--iron-glow);
+    border-color: var(--iron);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(255,106,0,0.7), inset 0 0 18px rgba(255,106,0,0.15);
+    border-color: var(--gold);
+  }
+}
+
+/* ── Mission auto-mode pill ──────────────────────────── */
+.mp-auto {
+  color: var(--iron) !important;
+  border-color: var(--iron) !important;
+  background: rgba(255,106,0,0.08) !important;
+  box-shadow: 0 0 8px rgba(255,106,0,0.20) !important;
+}
+
+/* ── JARVIS-style active module shimmer ─────────────── */
+.module-panel.active > *:first-child {
+  position: relative;
+}
+.module-panel.active::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0; left: 0; right: 0; height: 2px !important;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--iron) 35%,
+    var(--gold) 50%,
+    var(--iron) 65%,
+    transparent 100%) !important;
+  animation: panel-iron-shimmer 3s ease-in-out infinite !important;
+  z-index: 2 !important;
+}
+@keyframes panel-iron-shimmer {
+  0%   { background-position: -100% 0; opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { background-position: 200% 0; opacity: 0.6; }
+}
+
