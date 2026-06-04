@@ -341,6 +341,7 @@ function _buildPanel() {
         <img class="vp-result-thumb" id="vis-result-thumb" alt="frame"/>
         <div class="vp-result-body" id="vis-result-body"></div>
       </div>
+      <div class="vp-result-actions" id="vis-result-actions"></div>
     </div>
 
     <!-- SWIPE HINT -->
@@ -574,7 +575,7 @@ async function _analyze(mode, extra = '') {
     if (mode === 'recibo') {
       _handleReceipt(reply, frame, label);
     } else {
-      _showResult(label, reply, frame);
+      _showResult(label, reply, frame, mode);
       _say(`**[${label}]**\n\n${reply}`);
       _visionSpeak(reply);
     }
@@ -675,10 +676,10 @@ async function _detectQR() {
     });
     const codes = await detector.detect(img);
     if (!codes.length) {
-      _showResult('🔲 QR/CÓDIGO', 'No se detectó ningún código.\nAcerca la cámara e intenta de nuevo.', frame);
+      _showResult('🔲 QR/CÓDIGO', 'No se detectó ningún código.\nAcerca la cámara e intenta de nuevo.', frame, 'qr');
     } else {
       const txt = codes.map(c => `**${c.format.toUpperCase()}:** ${c.rawValue}`).join('\n\n');
-      _showResult('🔲 QR/CÓDIGO', txt, frame);
+      _showResult('🔲 QR/CÓDIGO', txt, frame, 'qr');
       _say(`**[🔲 QR/Código]**\n\n${txt}`);
     }
   } catch (e) {
@@ -691,7 +692,7 @@ async function _detectQR() {
 }
 
 /* ─── Result Panel ────────────────────────────────────── */
-function _showResult(label, text, thumb) {
+function _showResult(label, text, thumb, mode = '') {
   const panel = document.getElementById('vis-result');
   const lbl   = document.getElementById('vis-result-lbl');
   const body  = document.getElementById('vis-result-body');
@@ -710,10 +711,94 @@ function _showResult(label, text, thumb) {
   panel.classList.add('visible');
   clearTimeout(_resultTimer);
   if (!_contOn) _resultTimer = setTimeout(_hideResult, 20000);
+  _buildResultActions(mode, text);
 }
 
 function _hideResult() {
   document.getElementById('vis-result')?.classList.remove('visible');
+  const actionsEl = document.getElementById('vis-result-actions');
+  if (actionsEl) actionsEl.innerHTML = '';
+}
+
+/* ─── Context-aware quick actions after analysis ──────── */
+function _buildResultActions(mode, rawText) {
+  const actionsEl = document.getElementById('vis-result-actions');
+  if (!actionsEl) return;
+  actionsEl.innerHTML = '';
+  const actions = [];
+
+  if (mode === 'describe' || mode === 'scene') {
+    actions.push({ label: '+ TAREA', accent: true, fn: () => {
+      const preview = rawText.replace(/\*\*(.+?)\*\*/g, '$1').slice(0, 80).trim();
+      _voiceAddTarea(`Vista: ${preview}`, 'media');
+      _visionSpeak('Tarea agregada.');
+    }});
+    actions.push({ label: '+ NOTA', fn: () => {
+      _saveNotaFromVision(rawText);
+      _visionSpeak('Nota guardada.');
+    }});
+  } else if (mode === 'product') {
+    actions.push({ label: '+ NOTA', fn: () => {
+      _saveNotaFromVision(rawText);
+      _visionSpeak('Nota guardada.');
+    }});
+    if (window.AREX_CONFIG?.tavilyKey) {
+      actions.push({ label: 'BUSCAR PRECIO', accent: true, fn: () => {
+        const m = rawText.match(/\*\*Objeto:\*\*\s*(.+)/);
+        if (m) _searchProduct(m[1].trim().slice(0, 60));
+        _visionSpeak('Buscando precios en línea.');
+      }});
+    }
+  } else if (mode === 'text') {
+    actions.push({ label: 'COPIAR', accent: true, fn: (btn) => {
+      const clean = rawText.replace(/\*\*(.+?)\*\*/g, '$1').replace(/<[^>]+>/g, '');
+      navigator.clipboard?.writeText(clean).then(() => _visionSpeak('Texto copiado.')).catch(() => {});
+    }});
+    actions.push({ label: '+ NOTA', fn: () => {
+      _saveNotaFromVision(rawText);
+      _visionSpeak('Nota guardada.');
+    }});
+  } else if (mode === 'qr') {
+    const urlMatch = rawText.match(/https?:\/\/[^\s)<]+/);
+    if (urlMatch) {
+      actions.push({ label: 'ABRIR ENLACE', accent: true, fn: () => {
+        window.open(urlMatch[0], '_blank', 'noopener,noreferrer');
+      }});
+    }
+    actions.push({ label: 'COPIAR', fn: () => {
+      const clean = rawText.replace(/\*\*(.+?)\*\*/g, '$1').replace(/<[^>]+>/g, '');
+      navigator.clipboard?.writeText(clean).then(() => _visionSpeak('Copiado.')).catch(() => {});
+    }});
+  }
+
+  if (!actions.length) return;
+
+  actionsEl.innerHTML = actions.map((a, i) =>
+    `<button class="vp-act-btn${a.accent ? ' accent' : ''}" data-actidx="${i}">${a.label}</button>`
+  ).join('');
+
+  actionsEl.querySelectorAll('[data-actidx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      actions[parseInt(btn.dataset.actidx)]?.fn?.();
+      const orig = btn.textContent;
+      btn.textContent = '✓ ' + orig;
+      btn.disabled = true;
+    });
+  });
+}
+
+function _saveNotaFromVision(text) {
+  try {
+    const ns = JSON.parse(localStorage.getItem('arex_notas') || '[]');
+    ns.push({
+      id:        String(Date.now()),
+      texto:     text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/<[^>]+>/g, '').trim().slice(0, 500),
+      categoria: 'Visión',
+      creadaEn:  new Date().toISOString(),
+    });
+    localStorage.setItem('arex_notas', JSON.stringify(ns));
+    window.renderNotas?.();
+  } catch {}
 }
 
 /* ─── Receipt → Gasto automático ──────────────────────── */
@@ -889,7 +974,7 @@ async function _analyzeCont() {
     const isSame = _lastContTxt && _textSimilarity(reply, _lastContTxt) > 0.70;
     _lastContTxt = reply;
     if (!isSame) {
-      _showResult(MODE_LABELS.describe, reply, frame);
+      _showResult(MODE_LABELS.describe, reply, frame, 'describe');
       if (!window.speechSynthesis?.speaking) _visionSpeak(reply);
       _say(`**[Smart Auto]** ${reply}`);
     }
