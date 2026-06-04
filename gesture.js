@@ -2,13 +2,13 @@
 // Cursor · Swipe · Pinch · Particles · Haptic · Audio feedback
 
 const _GE_CDN        = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js';
-const _GE_COOL       = 1400;
-const _GE_HOLD       = 10;
-const _GE_SWIPE_THR  = 0.13;
+const _GE_COOL       = 2500;   // ms cooldown tras disparar gesto
+const _GE_HOLD       = 22;     // frames estables requeridos (22×66ms ≈ 1.45s)
+const _GE_SWIPE_THR  = 0.18;   // desplazamiento mínimo para swipe
 const _GE_SWIPE_WIN  = 9;
-const _GE_SWIPE_COOL = 1200;
+const _GE_SWIPE_COOL = 2000;   // ms entre swipes
 const _GE_PINCH_THR  = 0.06;
-const _GE_PINCH_COOL = 800;
+const _GE_PINCH_COOL = 1100;
 const _GE_TRAIL_LEN  = 14;
 
 let _ge = {
@@ -50,8 +50,8 @@ async function initGestureEngine(videoEl, canvasEl, callback) {
       locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`,
     });
     _ge.hands.setOptions({
-      maxNumHands: 1, modelComplexity: 0,
-      minDetectionConfidence: 0.72, minTrackingConfidence: 0.65,
+      maxNumHands: 1, modelComplexity: 1,
+      minDetectionConfidence: 0.80, minTrackingConfidence: 0.72,
     });
     _ge.hands.onResults(_onResults);
     await _ge.hands.initialize();
@@ -118,6 +118,15 @@ function _onResults(results) {
 
   const type = _detectGesture(lm);
   if (!type) { _ge.hold = 0; return; }
+
+  // Filtro de intencionalidad: la mano debe estar quieta, no en movimiento
+  const hist = _ge.palmHist;
+  const palmVel = hist.length >= 3
+    ? Math.abs(hist[hist.length-1].x - hist[hist.length-3].x)
+    + Math.abs(hist[hist.length-1].y - hist[hist.length-3].y)
+    : 1;
+  if (palmVel > 0.022) { _ge.hold = 0; _ge.lastType = type; return; }
+
   if (type === _ge.lastType) _ge.hold++;
   else { _ge.hold = 1; _ge.lastType = type; }
 

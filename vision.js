@@ -32,10 +32,11 @@ let _lastInterim    = '';
 let _hudModuleId    = null;
 let _gestureMapCache= null;
 let _contWasPaused  = false;
-let _busyCont       = false;  // lock for background continuous (doesn't block manual)
-let _lastPixels     = null;   // 64×48 ImageData for motion diff
+let _busyCont       = false;
+let _lastPixels     = null;
 let _noMotionCnt    = 0;
-let _lastContTxt    = '';     // last continuous result for dedup
+let _lastContTxt    = '';
+let _motionCanvas   = null;   // reused canvas for pixel diff (avoids GC pressure)
 
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
@@ -77,28 +78,19 @@ function _buildVisionPrompt(mode) {
   const ctx = _getCrossCtx();
   if (mode === 'describe') {
     if (_contOn && _contCycle > 1) {
-      return `Eres AREX en modo observación en vivo, ciclo ${_contCycle}.${pc}${ctx}
+      return `Eres AREX, el asistente de Alexiz. Llevas observando en vivo, este es el ciclo ${_contCycle}.${pc}${ctx}
 
-Haz UNA observación breve y directa sobre lo que ves ahora — una acción, cambio, detalle nuevo, o comentario ingenioso sobre la escena. Si hay una persona y coincide con alguna de las conocidas, dirígete a ella. 1-2 frases máximo. Tono JARVIS: observador, inteligente, con personalidad. En español.`;
+Cuéntame en voz alta lo más interesante de lo que ves ahora mismo — algo que cambió, una persona, un detalle curioso, lo que sea. Habla como una persona directa y observadora, no como si leyeras una lista. Si hay alguien conocido, salúdalo con energía. Máximo 2 frases, tono natural. En español.`;
     }
-    return `Eres AREX, sistema IA de Alexiz (Hermosillo, México). Observación en vivo.${pc}${ctx}
+    return `Eres AREX, el sistema de IA personal de Alexiz (Hermosillo, México). Tienes la cámara apuntando a algo y necesitas describirlo.${pc}${ctx}
 
-Describe EXACTAMENTE lo que observas visualmente:
-• PERSONAS: color y largo de cabello, complexión, ropa (colores, tipo de prenda), expresión facial, postura. Si coincide con alguna persona conocida arriba, salúdala por nombre. NUNCA respondas "no puedo describir personas" — siempre describe lo que VES físicamente.
-• OBJETOS: nombre específico, marca visible, color, material, texto legible.
-• ENTORNO: tipo de lugar, iluminación, colores dominantes, contexto.
-
-Responde en 2-3 frases directas. Tono JARVIS: preciso, observador, con personalidad. En español.`;
+Habla como una persona inteligente y observadora, no como si hicieras un inventario. Describe lo que ves de forma natural y conversacional: si hay personas, menciona cómo se ven físicamente (cabello, ropa, expresión, postura) — si alguna coincide con alguien conocido, salúdala por nombre con energía; si hay objetos interesantes o texto visible, cuéntalo de forma fluida; menciona el ambiente o lugar de fondo. Responde en 2-3 frases que suenen como si le hablaras a alguien, no como una lista. En español.`;
   }
 
   if (mode === 'scene') {
-    return `Eres AREX. Análisis exhaustivo de escena para Alexiz.${pc}${ctx}
+    return `Eres AREX. Alexiz quiere que le describas todo lo que está viendo en esta escena.${pc}${ctx}
 
-Lista TODOS los elementos visibles:
-• Personas: apariencia física (cabello, ropa, complexión, expresión, postura). Si coincide con alguna persona conocida, nómbrala.
-• Objetos: nombre, marca, colores, materiales.
-• Ambiente: interior/exterior, iluminación, colores dominantes, posibles actividades.
-Detallado y específico. En español.`;
+Cuéntaselo de forma natural, como si estuvieras ahí con él describiendo lo que pasa: quién hay y cómo se ven físicamente, qué objetos o cosas destacan, qué tipo de lugar o ambiente es, qué está pasando. Si reconoces a alguien de las personas conocidas, nómbralo. Habla fluido, sin listas ni bullet points, como una persona. En español.`;
   }
 
   // product y text usan prompts estáticos (no aplica el problema de personas)
@@ -169,7 +161,9 @@ export function closeVision() {
     window.stopContinuousMode();
   }
   _arMode = false;
-  _hudModuleId = null;
+  _hudModuleId  = null;
+  _motionCanvas = null;
+  _lastPixels   = null;
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
@@ -754,6 +748,7 @@ function _toggleContinuous() {
     _lastPixels  = null;
     _noMotionCnt = 0;
     _lastContTxt = '';
+    _motionCanvas = null;
     _setStatus('LISTO');
   }
 }
@@ -804,8 +799,8 @@ function _waitForSpeech() {
 function _checkMotion() {
   if (!_video || _video.videoWidth === 0) return true;
   try {
-    const c = document.createElement('canvas');
-    c.width = 64; c.height = 48;
+    if (!_motionCanvas) { _motionCanvas = document.createElement('canvas'); _motionCanvas.width = 64; _motionCanvas.height = 48; }
+    const c = _motionCanvas;
     const ctx = c.getContext('2d');
     ctx.drawImage(_video, 0, 0, 64, 48);
     const pixels = ctx.getImageData(0, 0, 64, 48);
@@ -931,7 +926,7 @@ function _visionSpeak(text) {
   if (!_contOn) window.speechSynthesis.cancel();
 
   const u = new SpeechSynthesisUtterance(truncated);
-  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
+  u.lang = 'es-MX'; u.rate = 0.97; u.pitch = 0.90; u.volume = 1;
 
   const voices = window.speechSynthesis.getVoices();
   if (voices.length) _applyVoice(u);
@@ -1253,7 +1248,7 @@ function _processVoiceCmd(text) {
   // "AREX gasto 150 comida"
   const gastoMatch = t.match(/\bgasto\s+(\d+(?:[.,]\d+)?)\s*(\w+)?/);
   if (gastoMatch) {
-    const monto = parseFloat(gastoMatch[1].replace(',', '.'));
+    const monto = parseFloat(gastoMatch[1].replace(/,/g, ''));
     const cat   = gastoMatch[2] || 'otro';
     if (monto > 0) {
       window.gpAddGastoAuto?.(monto, cat, 'AREX Voz');
