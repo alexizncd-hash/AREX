@@ -5463,3 +5463,323 @@ header::after {
 #vision-panel.wk-open .vp-hud-top   { width:46% !important; }
 #vision-panel.wk-open .vp-hud-bottom { width:46% !important; }
 #vision-panel.wk-open .vp-status-badge { left:23% !important; transform:translateX(-50%) !important; }
+
+/* ═══════════════════════════════════════════════════════
+   AREX — TRANSLUCENCY SYSTEM + 3D AGENT ORBS v63
+   Glass panels showing star field through all surfaces
+═══════════════════════════════════════════════════════ */
+
+/* ── Universal Glass Translucency ──────────────────── */
+.module-panel {
+  background: rgba(0,8,24,0.50) !important;
+  backdrop-filter: blur(24px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(170%) !important;
+}
+#workspace > .module-panel.active::before {
+  /* keep shimmer animation but glass panel */
+}
+.chat {
+  background: rgba(0,5,16,0.46) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+.msg.arex .bubble {
+  background: rgba(0,6,22,0.62) !important;
+  backdrop-filter: blur(10px) !important;
+}
+.msg.user .bubble {
+  background: rgba(0,212,255,0.10) !important;
+  backdrop-filter: blur(10px) !important;
+}
+.input-bar {
+  background: rgba(0,5,16,0.58) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+header {
+  background: rgba(0,6,18,0.58) !important;
+  backdrop-filter: blur(32px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+}
+#dock {
+  background: rgba(0,3,10,0.68) !important;
+  backdrop-filter: blur(22px) !important;
+  -webkit-backdrop-filter: blur(22px) !important;
+}
+.sidebar {
+  background: rgba(0,4,12,0.70) !important;
+  backdrop-filter: blur(26px) !important;
+  -webkit-backdrop-filter: blur(26px) !important;
+}
+.modal-box {
+  background: rgba(0,6,18,0.68) !important;
+  backdrop-filter: blur(26px) !important;
+  -webkit-backdrop-filter: blur(26px) !important;
+}
+.hud-panel {
+  background: rgba(0,4,16,0.68) !important;
+  backdrop-filter: blur(22px) !important;
+  -webkit-backdrop-filter: blur(22px) !important;
+}
+.dash-widget {
+  background: rgba(0,5,18,0.55) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+.dash-topbar {
+  background: rgba(0,5,18,0.60) !important;
+  backdrop-filter: blur(16px) !important;
+}
+.status-float {
+  background: rgba(0,4,16,0.68) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* All module cards — glass */
+.fin-card, .deuda-card, .cuenta-card, .finanzas-resumen-card,
+.meta-card, .tarea-item, .note-item, .proyecto-card,
+.neg-stat-card, .negocio-stats-card, .gasto-item,
+.ctrl-agent-card, .hud-panel, .dash-kpi {
+  background: rgba(0,8,24,0.52) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+.tarea-item:hover {
+  background: rgba(0,12,30,0.65) !important;
+}
+.note-item { background: rgba(0,8,24,0.52) !important; }
+
+/* Subnav bars */
+.finanzas-subnav, .negocio-subnav, .metas-subnav,
+.gastos-subnav, .proyectos-subnav, .gp-nav,
+[class*="subnav"] {
+  background: rgba(0,3,12,0.72) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+/* Vision panel glass */
+#vision-panel {
+  background: transparent !important;
+}
+.vp-telemetry, .vp-gest-guide, .vp-module-hud,
+.vp-result, .vp-gesture-config, .vp-personas-panel,
+.vp-voice-bar {
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+.vp-hud-top, .vp-hud-bottom {
+  background: rgba(0,4,14,0.52) !important;
+  backdrop-filter: blur(16px) !important;
+}
+#vis-workspace {
+  background: rgba(0,4,14,0.68) !important;
+}
+
+/* ── 3D AGENT ORBS ─────────────────────────────────── */
+
+/* Grid layout for agent orb section */
+.ctrl-agents {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 24px !important;
+  padding: 24px 16px !important;
+  place-items: center !important;
+}
+
+/* Orb wrapper */
+.agent-orb-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.agent-orb-wrap:hover { transform: translateY(-4px); }
+
+/* 3D stage with perspective */
+.agent-orb-stage {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 240px;
+  perspective-origin: 50% 40%;
+}
+
+/* Orbital rings */
+.agent-orb-ring {
+  position: absolute;
+  border-radius: 50%;
+  left: 50%; top: 50%;
+  pointer-events: none;
+}
+.agent-orb-ring.r1 {
+  width: 96px; height: 96px;
+  margin-left: -48px; margin-top: -48px;
+  border: 1.5px solid var(--aoc);
+  opacity: 0.5;
+  animation: aorbit1 7s linear infinite;
+  box-shadow: 0 0 8px var(--aog);
+}
+.agent-orb-ring.r2 {
+  width: 112px; height: 112px;
+  margin-left: -56px; margin-top: -56px;
+  border: 1px dashed var(--aoc);
+  opacity: 0.25;
+  animation: aorbit2 12s linear infinite reverse;
+}
+@keyframes aorbit1 {
+  from { transform: rotateX(66deg) rotateZ(0deg); }
+  to   { transform: rotateX(66deg) rotateZ(360deg); }
+}
+@keyframes aorbit2 {
+  from { transform: rotateX(58deg) rotateZ(30deg); }
+  to   { transform: rotateX(58deg) rotateZ(390deg); }
+}
+
+/* 3D sphere — the actual orb */
+.agent-orb-sphere {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle at 34% 28%,
+    rgba(255,255,255,0.38) 0%,
+    var(--aoc) 28%,
+    rgba(0,0,0,0.55) 75%,
+    rgba(0,0,0,0.70) 100%);
+  box-shadow:
+    0 0 28px var(--aog),
+    0 0 55px var(--aog),
+    0 0 90px rgba(0,0,0,0.0),
+    inset 0 0 22px rgba(0,0,0,0.55),
+    inset -6px -6px 18px rgba(0,0,0,0.45);
+  animation: orb-breathe-agent 3s ease-in-out infinite;
+  z-index: 1;
+  transition: box-shadow 0.3s;
+}
+
+/* Specular highlight */
+.agent-orb-shine {
+  position: absolute;
+  top: 12%; left: 16%;
+  width: 30%; height: 22%;
+  background: radial-gradient(circle, rgba(255,255,255,0.65) 0%, transparent 72%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Secondary rim light */
+.agent-orb-rim {
+  position: absolute;
+  bottom: 10%; right: 12%;
+  width: 18%; height: 14%;
+  background: radial-gradient(circle, var(--aoc) 0%, transparent 70%);
+  border-radius: 50%;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Breathing — idle */
+@keyframes orb-breathe-agent {
+  0%,100% {
+    transform: scale(1);
+    box-shadow: 0 0 28px var(--aog), 0 0 55px var(--aog), inset 0 0 22px rgba(0,0,0,0.55);
+  }
+  50% {
+    transform: scale(1.07);
+    box-shadow: 0 0 45px var(--aog), 0 0 80px var(--aog), 0 0 110px var(--aog), inset 0 0 22px rgba(0,0,0,0.55);
+    filter: brightness(1.15);
+  }
+}
+
+/* Thinking state */
+.agent-orb-wrap[data-state="thinking"] .agent-orb-sphere {
+  animation: orb-think-agent 0.42s ease-in-out infinite !important;
+}
+@keyframes orb-think-agent {
+  0%,100% { transform:scale(1);   filter:brightness(1); }
+  50%      { transform:scale(0.91); filter:brightness(1.5); }
+}
+.agent-orb-wrap[data-state="thinking"] .agent-orb-ring.r1 {
+  animation-duration: 1.5s !important;
+}
+
+/* Speaking state */
+.agent-orb-wrap[data-state="speaking"] .agent-orb-sphere {
+  animation: orb-speak-agent 0.16s ease-in-out infinite !important;
+}
+@keyframes orb-speak-agent {
+  0%,100% { transform:scaleY(1)    scaleX(1);    }
+  50%      { transform:scaleY(1.14) scaleX(0.91); }
+}
+
+/* Online state ring pulse */
+.agent-orb-wrap[data-state="online"] .agent-orb-ring.r1 {
+  animation-duration: 4s !important;
+  opacity: 0.8 !important;
+}
+
+/* Info below orb */
+.agent-orb-name {
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: 3.5px;
+  color: var(--aoc);
+  text-shadow: 0 0 12px var(--aog);
+  margin-top: 4px;
+}
+.agent-orb-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.5px;
+  max-width: 130px;
+  line-height: 1.4;
+}
+.agent-orb-status {
+  font-size: 8px;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  font-family: var(--font);
+}
+.agent-orb-status.online {
+  color: var(--green);
+  border: 1px solid rgba(0,255,170,0.32);
+  background: rgba(0,255,170,0.07);
+}
+.agent-orb-status.standby {
+  color: var(--text-muted);
+  border: 1px solid rgba(74,122,150,0.25);
+}
+.agent-run-btn {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--aoc);
+  color: var(--aoc);
+  font-family: var(--font);
+  font-size: 8px;
+  letter-spacing: 2px;
+  padding: 5px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  opacity: 0.7;
+}
+.agent-run-btn:hover {
+  background: var(--aog);
+  opacity: 1;
+  box-shadow: 0 0 16px var(--aog);
+}
+.agent-run-btn:active { transform: scale(0.93); }
+
+/* ── Dock mini-orbs: fix colors to match AGENTES ─── */
+.dao-hermes   { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #00ffaa 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(0,255,170,0.8) !important; }
+.dao-atlas    { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #ff9900 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(255,153,0,0.8) !important; }
+.dao-sentinel { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #8B5CF6 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(139,92,246,0.8) !important; }
+.dao-scribe   { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4) 0%, #00d4ff 40%, rgba(0,0,0,0.5) 100%) !important; box-shadow: 0 0 8px rgba(0,212,255,0.8) !important; }
+.dao-orb { width: 10px !important; height: 10px !important; animation: dao-pulse 2.5s ease-in-out infinite !important; }

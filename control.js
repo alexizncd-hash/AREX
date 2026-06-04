@@ -215,16 +215,56 @@ function _getAgentStatus(area) {
 
 function _renderAgentes(el) {
   el.innerHTML = AGENTES.map(a => {
-    const status  = _getAgentStatus(a.area);
-    const last    = _getAgentLastAction(a.area);
-    return `<div class="ctrl-agent-card" style="--agent-color:${a.color}">
-      <div class="ctrl-agent-name">${a.nombre}</div>
-      <div class="ctrl-agent-desc">${a.desc}</div>
-      <div class="ctrl-agent-status ${status}">${status === 'online' ? '● ACTIVO' : '○ EN ESPERA'}</div>
-      <div class="ctrl-agent-last">${last}</div>
-    </div>`;
+    const status = _getAgentStatus(a.area);
+    const last   = _getAgentLastAction(a.area);
+    // Derive glow color from agent color
+    const hex = a.color.replace('#','');
+    const r = parseInt(hex.slice(0,2),16);
+    const g = parseInt(hex.slice(2,4),16);
+    const b = parseInt(hex.slice(4,6),16);
+    const glow = `rgba(${r},${g},${b},0.38)`;
+    return `
+      <div class="agent-orb-wrap" data-state="${status}"
+           style="--aoc:${a.color};--aog:${glow}"
+           onclick="window._runAgent('${a.id}','${a.area}')"
+           title="${a.nombre} — ${a.desc}">
+        <div class="agent-orb-stage">
+          <div class="agent-orb-ring r2"></div>
+          <div class="agent-orb-ring r1"></div>
+          <div class="agent-orb-sphere">
+            <div class="agent-orb-shine"></div>
+            <div class="agent-orb-rim"></div>
+          </div>
+        </div>
+        <div class="agent-orb-name">${a.nombre}</div>
+        <div class="agent-orb-desc">${a.desc}</div>
+        <div class="agent-orb-status ${status}">
+          ${status === 'online' ? '● ACTIVO' : '○ EN ESPERA'}
+        </div>
+        <div style="font-size:8px;color:var(--text-muted);text-align:center;max-width:120px;margin-top:2px;letter-spacing:0.3px">${last}</div>
+        <button class="agent-run-btn">EJECUTAR</button>
+      </div>`;
   }).join('');
 }
+
+window._runAgent = function(agentId, area) {
+  // Set orb to thinking state temporarily
+  const wrap = document.querySelector(`.agent-orb-wrap[data-state]`);
+  const all  = document.querySelectorAll('.agent-orb-wrap');
+  all.forEach(w => {
+    if (w.querySelector('.agent-orb-name')?.textContent === agentId.toUpperCase()) {
+      w.dataset.state = 'thinking';
+      setTimeout(() => { w.dataset.state = _getAgentStatus(area); }, 3000);
+    }
+  });
+  logBitacora(area, `Agente ${agentId.toUpperCase()} ejecutado manualmente`);
+  // Route to relevant module
+  if (typeof window.AREXNav?.cambiarModulo === 'function') {
+    const modMap = { finanzas:'finanzas', negocio:'negocio', sistema:'control', chat:'chat' };
+    const mod = modMap[area] || area;
+    window.AREXNav.cambiarModulo(mod);
+  }
+};
 
 /* ── Render principal del módulo ────────────────────── */
 function renderControlModule() {
