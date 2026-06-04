@@ -2,14 +2,23 @@
    AREX — Módulo Rutas de Reparto
    ═══════════════════════════════════════════════════════ */
 
-#module-reparto {
-  padding: 0 !important;
+/* Active panel fills workspace (mirrors other module rules in finanzas.css) */
+#module-reparto.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 !important;
 }
+
 #rep-wrap {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 

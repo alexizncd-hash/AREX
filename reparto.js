@@ -127,6 +127,7 @@ function _createRepMap(container) {
 
   _repMap.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
   _repMap.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+  _repMap.doubleClickZoom.disable();
 
   _repMap.on('load', () => {
     if (msgEl) msgEl.style.display = 'none';

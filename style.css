@@ -6183,7 +6183,7 @@ header::after {
   backdrop-filter: blur(22px) saturate(160%) !important;
   border: none !important;
   position: relative !important;
-  overflow: hidden !important;
+  overflow: hidden;
 }
 /* Top-left bracket */
 .module-panel::before {
