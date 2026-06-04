@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="proyectos.css"/>
 <link rel="stylesheet" href="evidencias.css"/>
 <link rel="stylesheet" href="control.css"/>
+<link rel="stylesheet" href="reparto.css"/>
 </head>
 <body>
 
@@ -448,6 +449,14 @@
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg>
       <span class="dock-label">PROYECTOS</span>
+    </button>
+    <button class="nav-btn" data-module="reparto" data-tooltip="Rutas de Reparto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="10" r="3"/>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+        <path d="M2 20l5-2 5 2 5-2 5 2" stroke-linecap="round"/>
+      </svg>
+      <span class="dock-label">REPARTO</span>
     </button>
     <button class="nav-btn" data-module="control" data-tooltip="Mission Control">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>
@@ -974,6 +983,10 @@
   <div class="ctrl-wrap" id="ctrl-wrap"></div>
 </div>
 
+<div id="module-reparto" class="module-panel">
+  <div id="rep-wrap"></div>
+</div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
@@ -985,6 +998,7 @@
 <script src="proyectos.js"></script>
 <script src="evidencias.js"></script>
 <script src="control.js"></script>
+<script src="reparto.js"></script>
 <script src="jarvis.js"></script>
 <script src="orb.js"></script>
 

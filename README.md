@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v65)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v66)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -66,6 +66,7 @@ arex/
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
 | **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA |
+| **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
 
 ---
 
@@ -326,6 +327,25 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v66 — Color verde neón + módulo Rutas de Reparto con mapa 3D
+- **Paleta verde**: `#00ff88` neón + `#00e5cc` teal reemplazan el naranja en todo el sistema
+- **Paneles más translúcidos**: `rgba(0,5,14,0.36)` — se ve más el fondo estelar
+- **Scan lines y decoraciones reducidas**: menos ruidoso visualmente
+- **Módulo Rutas de Reparto** (nuevo):
+  - Mapa 3D interactivo con MapLibre GL JS cargado bajo demanda (no penaliza carga inicial)
+  - Cámara inclinada 48° (estilo Apple Maps 3D) con bearing rotado
+  - Tiles CARTO dark con filtro CSS `hue-rotate(112deg)` → tinta verde AREX
+  - Geolocalización GPS real con marcador animado pulsante
+  - Clima en tiempo real (OpenWeatherMap) + región (Nominatim geocoding inverso)
+  - Integración con Negocio: carga sucursales del módulo como marcadores en el mapa
+  - Botón 📍 para fijar coordenadas GPS a cada sucursal sin salir del módulo
+  - Clic en mapa → agrega waypoints a la ruta activa con línea verde punteada
+  - "RUTA COMPLETA" → traza ruta automática por todas las sucursales activas
+  - Rutas guardadas por nombre con carga y eliminación
+  - Sidebar: sucursales, waypoints activos, rutas guardadas
+  - Controles del mapa (zoom/compass/escala) con tema verde AREX
+- **SW v66**
 
 ### v65 — Iron Man / Tony Stark HUD full-system redesign
 - **Paleta completa rediseñada**: naranja Stark `#ff6a00` + dorado `#f5a623` reemplazan el cian como color de acento primario en toda la interfaz

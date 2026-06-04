@@ -6722,3 +6722,137 @@ a:hover { color: var(--gold) !important; text-shadow: 0 0 6px var(--gold-glow) !
   100% { background-position: 200% 0; opacity: 0.6; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   AREX v66 — Color verde neón + mayor translucidez
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Paleta verde ─────────────────────────────────────── */
+:root {
+  --iron:        #00ff88;
+  --iron-dim:    #00bb55;
+  --iron-glow:   rgba(0,255,136,0.17);
+  --iron-pulse:  rgba(0,255,136,0.40);
+  --gold:        #00e5cc;
+  --gold-dim:    #00a890;
+  --gold-glow:   rgba(0,229,204,0.15);
+  --scan-line:   rgba(0,255,136,0.016);
+  --hud-border:  rgba(0,255,136,0.18);
+  --hud-line:    rgba(0,255,136,0.09);
+}
+
+/* ── Paneles más translúcidos ─────────────────────────── */
+.module-panel {
+  background: rgba(0,5,14,0.36) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+}
+#module-chat { background: rgba(0,4,12,0.38) !important; }
+#module-control { background: rgba(0,4,12,0.38) !important; }
+header {
+  background: rgba(1,5,12,0.68) !important;
+  backdrop-filter: blur(26px) saturate(160%) !important;
+}
+#dock {
+  background: rgba(1,4,10,0.78) !important;
+}
+.sidebar { background: rgba(1,4,10,0.90) !important; }
+.modal-box { background: rgba(1,5,14,0.94) !important; }
+.bg-container { background: rgba(1,5,14,0.96) !important; }
+
+/* ── Scan lines más tenues ────────────────────────────── */
+.module-panel::before, main::before {
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px, transparent 5px,
+    var(--scan-line) 5px, var(--scan-line) 6px
+  ) !important;
+}
+
+/* ── Top border panels: 1px más sutil ────────────────── */
+.module-panel::after,
+.module-panel.active::after {
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, var(--iron), var(--gold), var(--iron), transparent) !important;
+  box-shadow: 0 0 8px rgba(0,255,136,0.18) !important;
+}
+
+/* ── Corner brackets: menos prominentes ──────────────── */
+.module-panel > *:first-child::before,
+.module-panel > *:first-child::after {
+  opacity: 0.35 !important;
+  width: 14px !important; height: 14px !important;
+  border-color: var(--iron) !important;
+}
+
+/* ── Grid JARVIS: verde muy sutil ─────────────────────── */
+body::after {
+  background-image:
+    linear-gradient(rgba(0,255,136,0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.012) 1px, transparent 1px) !important;
+  background-size: 56px 56px !important;
+}
+
+/* ── Arc reactor: verde ───────────────────────────────── */
+.boot-logo {
+  border-color: var(--iron) !important;
+  box-shadow:
+    0 0 0 8px rgba(0,255,136,0.05),
+    0 0 0 18px rgba(0,255,136,0.025),
+    0 0 50px rgba(0,255,136,0.48),
+    0 0 100px rgba(0,255,136,0.20),
+    inset 0 0 24px rgba(0,212,255,0.10) !important;
+  text-shadow: 0 0 20px var(--iron), 0 0 40px var(--gold) !important;
+}
+@keyframes arc-reactor-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 8px rgba(0,255,136,0.05),
+      0 0 0 18px rgba(0,255,136,0.025),
+      0 0 50px rgba(0,255,136,0.48),
+      inset 0 0 24px rgba(0,212,255,0.10);
+    border-color: var(--iron);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(0,255,136,0.09),
+      0 0 0 28px rgba(0,255,136,0.045),
+      0 0 70px rgba(0,255,136,0.68),
+      0 0 130px rgba(0,255,136,0.28),
+      inset 0 0 32px rgba(0,229,204,0.15);
+    border-color: var(--gold);
+  }
+}
+
+/* Boot bar: verde */
+#boot-bar {
+  background: linear-gradient(90deg, var(--iron-dim), var(--iron), var(--gold)) !important;
+  box-shadow: 0 0 8px var(--iron), 0 0 16px var(--iron-glow) !important;
+}
+#boot-lines { color: #00ff88 !important; text-shadow: 0 0 8px rgba(0,255,136,0.65) !important; }
+
+/* Header sweep: verde */
+header::before {
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(0,255,136,0.42) 20%,
+    var(--gold) 50%, rgba(0,255,136,0.42) 80%, transparent 100%) !important;
+}
+
+/* Dock pillar: verde */
+#dock::after {
+  background: linear-gradient(180deg,
+    transparent 0%, rgba(0,255,136,0.38) 20%,
+    var(--iron) 50%, rgba(0,255,136,0.38) 80%, transparent 100%) !important;
+}
+
+/* Logo ring pulse: verde */
+@keyframes logo-pulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(0,255,136,0.50), inset 0 0 10px rgba(0,255,136,0.12);
+    border-color: var(--iron);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(0,255,136,0.72), inset 0 0 18px rgba(0,255,136,0.18);
+    border-color: var(--gold);
+  }
+}
+
