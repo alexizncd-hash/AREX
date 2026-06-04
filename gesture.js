@@ -103,6 +103,17 @@ function _onResults(results) {
 
   const lm = results.multiHandLandmarks[0];
 
+  // Anti-confusion multi-persona: si la palma saltó bruscamente (MediaPipe
+  // cambió de mano detectada), resetear todo y saltar el frame
+  if (_ge.palmHist.length > 0) {
+    const prev = _ge.palmHist[_ge.palmHist.length - 1];
+    const jump = Math.abs(lm[9].x - prev.x) + Math.abs(lm[9].y - prev.y);
+    if (jump > 0.28) {
+      _ge.palmHist = []; _ge.trail = []; _ge.hold = 0; _ge.lastType = null;
+      return;
+    }
+  }
+
   _ge.trail.push({ x: lm[8].x * w, y: lm[8].y * h });
   if (_ge.trail.length > _GE_TRAIL_LEN) _ge.trail.shift();
 

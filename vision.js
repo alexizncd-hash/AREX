@@ -78,9 +78,12 @@ function _buildVisionPrompt(mode) {
   const ctx = _getCrossCtx();
   if (mode === 'describe') {
     if (_contOn && _contCycle > 1) {
-      return `Eres AREX, el asistente de Alexiz. Llevas observando en vivo, este es el ciclo ${_contCycle}.${pc}${ctx}
+      const prevHint = _lastContTxt
+        ? ` Antes observaste: "${_lastContTxt.slice(0, 120).trim()}".`
+        : '';
+      return `Eres AREX, el asistente de Alexiz. Sigues observando en vivo.${prevHint}${pc}${ctx}
 
-Cuéntame en voz alta lo más interesante de lo que ves ahora mismo — algo que cambió, una persona, un detalle curioso, lo que sea. Habla como una persona directa y observadora, no como si leyeras una lista. Si hay alguien conocido, salúdalo con energía. Máximo 2 frases, tono natural. En español.`;
+Dime algo nuevo o interesante de lo que ves ahora — si algo cambió respecto a antes, menciónalo. Habla de forma natural y directa, como en una conversación. Si hay alguien conocido, salúdalo. Máximo 2 frases. En español.`;
     }
     return `Eres AREX, el sistema de IA personal de Alexiz (Hermosillo, México). Tienes la cámara apuntando a algo y necesitas describirlo.${pc}${ctx}
 
@@ -151,6 +154,7 @@ export async function openVision() {
   }
   _buildPanel();
   document.getElementById('btn-vision')?.classList.add('active');
+  setTimeout(() => _visionSpeak('Visión activa. Aquí contigo.'), 900);
 }
 
 export function closeVision() {
@@ -1186,13 +1190,31 @@ function _processVoiceCmd(text) {
     return;
   }
 
+  // Conversational JARVIS triggers
+  if (/\b(qué ves|que ves|cuéntame|cuentame|dime qué hay|dime que hay|qué hay ahí|que hay ahi|qué pasa|que pasa)\b/.test(t)) {
+    feedback('DESCRIBIR');
+    if (!_busy) _analyze('describe');
+    return;
+  }
+
+  if (/\b(dime más|dime mas|más detalle|mas detalle|explícame|explicame|amplía|amplia|y qué más|y que mas)\b/.test(t)) {
+    feedback('MÁS DETALLE');
+    if (!_busy) _analyze('scene');
+    return;
+  }
+
+  if (/\b(quién es|quien es|quién hay|quien hay|quién está|quien esta|alguien ahí|alguien ahi|reconoce)\b/.test(t)) {
+    feedback('IDENTIFICAR PERSONA');
+    if (!_busy) _analyze('describe');
+    return;
+  }
+
   if (/\b(analiz|ver|mira|describe|scene|escena|producto|objeto|texto)\b/.test(t)) {
     const mode = /\b(escena|scene)\b/.test(t) ? 'scene'
                : /\b(producto|objeto)\b/.test(t) ? 'product'
                : /\b(texto|lee)\b/.test(t) ? 'text' : 'describe';
     feedback(`ANALIZAR · ${mode.toUpperCase()}`);
-    _say(`**[Voz]** Analizando... *${t}*`);
-    _analyze(mode);
+    if (!_busy) _analyze(mode);
     return;
   }
 
@@ -1565,34 +1587,44 @@ function _handleGesture(type, data) {
     setTimeout(() => flash.classList.remove('active'), 900);
   }
 
+  const _GESTURE_PHRASES = {
+    analyze:      ['Voy a ver qué hay ahí.', 'A ver qué encuentro.', 'Dame un segundo.'],
+    scene:        ['Déjame describir lo que te rodea.', 'Analizando la escena completa.'],
+    product:      ['A ver qué es eso.', 'Identificando el objeto.'],
+    text_scan:    ['Un momento, leyendo.', 'Déjame leer eso.'],
+    recibo:       ['Dame ese recibo.', 'Escaneando el comprobante.'],
+    stop:         ['Listo, detenido.', 'Entendido.'],
+    modules:      ['Aquí los módulos.'],
+    toggle_auto:  [],
+    voice:        [],
+    flip:         ['Cambiando cámara.'],
+  };
+  const _pick = (arr) => arr.length ? arr[Math.floor(Math.random() * arr.length)] : null;
+
   switch (action) {
     case 'analyze':
-      _say('**[Gesto ✋]** Analizando...');
-      _analyze('describe');
+      if (!_busy) { _visionSpeak(_pick(_GESTURE_PHRASES.analyze)); _analyze('describe'); }
       break;
     case 'scene':
-      _say('**[Gesto]** Analizando escena...');
-      _analyze('scene');
+      if (!_busy) { _visionSpeak(_pick(_GESTURE_PHRASES.scene)); _analyze('scene'); }
       break;
     case 'product':
-      _say('**[Gesto]** Identificando objeto...');
-      _analyze('product');
+      if (!_busy) { _visionSpeak(_pick(_GESTURE_PHRASES.product)); _analyze('product'); }
       break;
     case 'text_scan':
-      _say('**[Gesto]** Leyendo texto...');
-      _analyze('text');
+      if (!_busy) { _visionSpeak(_pick(_GESTURE_PHRASES.text_scan)); _analyze('text'); }
       break;
     case 'recibo':
-      _say('**[Gesto]** Escaneando recibo...');
-      _analyze('recibo');
+      if (!_busy) { _visionSpeak(_pick(_GESTURE_PHRASES.recibo)); _analyze('recibo'); }
       break;
     case 'stop':
       _contOn = false;
       window.speechSynthesis?.cancel();
       _setStatus('LISTO');
-      _say('**[Gesto ✊]** Detenido.');
+      _visionSpeak(_pick(_GESTURE_PHRASES.stop));
       break;
     case 'modules':
+      _visionSpeak(_pick(_GESTURE_PHRASES.modules));
       _toggleModuleGrid();
       break;
     case 'toggle_auto':
@@ -1602,6 +1634,7 @@ function _handleGesture(type, data) {
       _toggleVoiceCmd();
       break;
     case 'flip':
+      _visionSpeak(_pick(_GESTURE_PHRASES.flip));
       _flipCamera();
       break;
   }
