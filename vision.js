@@ -38,6 +38,10 @@ let _noMotionCnt    = 0;
 let _lastContTxt    = '';
 let _motionCanvas   = null;   // reused canvas for pixel diff (avoids GC pressure)
 
+// Vision Workspace state (full module panels + mini-chat in vision)
+let _wkOn    = false;
+let _wkModId = 'tareas';
+
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
   try { return JSON.parse(localStorage.getItem('arex_personas') || '[]'); } catch { return []; }
@@ -168,6 +172,7 @@ export function closeVision() {
   _hudModuleId  = null;
   _motionCanvas = null;
   _lastPixels   = null;
+  _wkOn         = false;
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
@@ -362,6 +367,28 @@ function _buildPanel() {
       <div class="vp-gest-cfg-list" id="vis-gest-cfg-list"></div>
     </div>
 
+    <!-- VISION WORKSPACE (full module panels + mini-chat while camera runs) -->
+    <div id="vis-workspace">
+      <div class="vis-wk-topbar">
+        <span class="vis-wk-title">◈ <span id="vis-wk-lbl">MÓDULOS</span></span>
+        <button class="vis-wk-close" onclick="window._closeWorkspace()">✕</button>
+      </div>
+      <div class="vis-wk-tabs" id="vis-wk-tabs">
+        <button class="vis-wk-tab active" data-wkmod="tareas">TAREAS</button>
+        <button class="vis-wk-tab" data-wkmod="gastos">GASTOS</button>
+        <button class="vis-wk-tab" data-wkmod="metas">METAS</button>
+        <button class="vis-wk-tab" data-wkmod="finanzas">FINANZAS</button>
+        <button class="vis-wk-tab" data-wkmod="negocio">NEGOCIO</button>
+        <button class="vis-wk-tab" data-wkmod="notas">NOTAS</button>
+      </div>
+      <div class="vis-wk-body" id="vis-wk-body"></div>
+      <div class="vis-wk-msgs" id="vis-wk-msgs"></div>
+      <div class="vis-wk-bar">
+        <input class="vis-wk-inp" id="vis-wk-inp" placeholder='Dile algo a AREX...' autocomplete="off"/>
+        <button class="vis-wk-snd" id="vis-wk-snd">▶</button>
+      </div>
+    </div>
+
     <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
@@ -384,6 +411,9 @@ function _buildPanel() {
       </button>
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
         <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
+      </button>
+      <button class="vp-action-btn" onclick="window._toggleWorkspace()">
+        <span class="vp-btn-ico">▦</span><span class="vp-btn-lbl">PANEL</span>
       </button>
     </div>
   `;
@@ -427,6 +457,21 @@ function _buildPanel() {
   // Close module grid on outside tap
   document.getElementById('vis-module-grid').addEventListener('click', e => {
     if (e.target === document.getElementById('vis-module-grid')) _hideModuleGrid();
+  });
+
+  // Vision Workspace tabs
+  document.getElementById('vis-wk-tabs').addEventListener('click', e => {
+    const btn = e.target.closest('[data-wkmod]');
+    if (!btn) return;
+    document.querySelectorAll('.vis-wk-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    _wkModId = btn.dataset.wkmod;
+    document.getElementById('vis-wk-lbl').textContent = btn.dataset.wkmod.toUpperCase();
+    _wkRender();
+  });
+  document.getElementById('vis-wk-snd').addEventListener('click', _wkSendChat);
+  document.getElementById('vis-wk-inp').addEventListener('keydown', e => {
+    if (e.key === 'Enter') _wkSendChat();
   });
 
   // Resize canvas when window rotates / resizes
@@ -1246,6 +1291,12 @@ function _processVoiceCmd(text) {
     return;
   }
 
+  if (/\b(workspace|panel lateral|mis datos|abre el panel|panel)\b/.test(t)) {
+    feedback('WORKSPACE');
+    _toggleWorkspace();
+    return;
+  }
+
   if (/\b(módulos|modulos|navegar|navega)\b/.test(t)) {
     feedback('MÓDULOS');
     _toggleModuleGrid();
@@ -1720,4 +1771,313 @@ function _updateTelemetry() {
     const telVoice = document.getElementById('vis-tel-voice');
     if (telVoice) telVoice.textContent = '—';
   }
+}
+
+/* ─── Vision Workspace ─────────────────────────────────
+   Full module panels + mini-chat visible alongside camera
+─────────────────────────────────────────────────────── */
+
+window._toggleWorkspace = function() {
+  _wkOn ? _closeWorkspace() : _openWorkspace();
+};
+
+window._closeWorkspace = function() {
+  _wkOn = false;
+  document.getElementById('vis-workspace')?.classList.remove('vw-active');
+  _panel?.classList.remove('wk-open');
+};
+
+function _openWorkspace() {
+  _wkOn = true;
+  const ws = document.getElementById('vis-workspace');
+  if (!ws) return;
+  ws.classList.add('vw-active');
+  _panel?.classList.add('wk-open');
+  _wkRender();
+  _visionSpeak('Panel abierto. ¿Qué quieres revisar?');
+}
+
+function _wkRender() {
+  const body = document.getElementById('vis-wk-body');
+  if (!body) return;
+  body.innerHTML = _wkContent(_wkModId);
+  // bind wk action buttons after render
+  body.querySelectorAll('[data-wkaction]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.wkaction;
+      const idx    = btn.dataset.idx;
+      if (action === 'check-tarea') _wkCheckTarea(parseInt(idx));
+      if (action === 'add-tarea')   _wkAddTarea();
+      if (action === 'add-gasto')   _wkAddGasto();
+    });
+  });
+}
+
+function _wkContent(id) {
+  const now  = new Date();
+  const esc  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  switch (id) {
+    case 'tareas': {
+      const ts   = JSON.parse(localStorage.getItem('arex_tareas')  || '[]');
+      const pend = ts.filter(t => !t.done);
+      const done = ts.filter(t =>  t.done);
+      let html = `<div class="wk-section">
+        <div class="wk-sec-lbl">PENDIENTES (${pend.length})</div>`;
+      if (!pend.length) {
+        html += '<div class="wk-empty">Sin tareas pendientes ✓</div>';
+      } else {
+        html += pend.slice(0,8).map((t, i) => {
+          const allIdx = ts.indexOf(t);
+          const pri = t.prioridad || 'media';
+          const fecha = t.fecha ? ` · ${t.fecha}` : '';
+          return `<div class="wk-item" data-wkaction="check-tarea" data-idx="${allIdx}">
+            <div class="wk-chk"></div>
+            <div class="wk-pri ${pri}"></div>
+            <div class="wk-txt">${esc(t.texto)}<span style="color:var(--text-muted);font-size:9px">${fecha}</span></div>
+          </div>`;
+        }).join('');
+      }
+      if (done.length) {
+        html += `<div class="wk-sec-lbl" style="margin-top:12px">COMPLETADAS (${done.length})</div>`;
+        html += done.slice(-3).map(t =>
+          `<div class="wk-item done"><div class="wk-chk">✓</div><div class="wk-txt">${esc(t.texto)}</div></div>`
+        ).join('');
+      }
+      html += `</div>
+        <div class="wk-add">
+          <input class="wk-in" id="wk-t-in" placeholder="Nueva tarea..."/>
+          <button class="wk-btn" data-wkaction="add-tarea">+</button>
+        </div>`;
+      return html;
+    }
+
+    case 'gastos': {
+      const gs  = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+      const mes = gs.filter(g => {
+        const d = new Date(g.fecha || g.creadoEn || now);
+        return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+      });
+      const tot = mes.reduce((s,g) => s+(g.monto||0), 0);
+      const cats = {};
+      mes.forEach(g => { cats[g.categoria||'Otro'] = (cats[g.categoria||'Otro']||0)+(g.monto||0); });
+      const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,4);
+      let html = `<div class="wk-section">
+        <div class="wk-sec-lbl">RESUMEN DEL MES</div>
+        <div class="wk-stat"><span>TOTAL GASTADO</span><span>$${tot.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+        <div class="wk-stat"><span>TRANSACCIONES</span><span>${mes.length}</span></div>
+      </div>`;
+      if (topCats.length) {
+        html += `<div class="wk-section"><div class="wk-sec-lbl">POR CATEGORÍA</div>`;
+        html += topCats.map(([k,v]) =>
+          `<div class="wk-stat"><span>${esc(k)}</span><span>$${v.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>`
+        ).join('');
+        html += `</div>`;
+      }
+      const last5 = mes.slice(-5).reverse();
+      if (last5.length) {
+        html += `<div class="wk-section"><div class="wk-sec-lbl">ÚLTIMAS</div>`;
+        html += last5.map(g =>
+          `<div class="wk-stat"><span>${esc(g.concepto||g.categoria||'Gasto')}</span><span>$${(g.monto||0).toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>`
+        ).join('');
+        html += `</div>`;
+      }
+      html += `<div class="wk-add">
+        <input class="wk-in" id="wk-g-in" placeholder="Ej: 150 comida"/>
+        <button class="wk-btn" data-wkaction="add-gasto">+</button>
+      </div>`;
+      return html;
+    }
+
+    case 'metas': {
+      const ms  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
+      const act = ms.filter(m => !m.completada);
+      const com = ms.filter(m =>  m.completada);
+      if (!act.length && !com.length) return '<div class="wk-empty">Sin metas registradas</div>';
+      let html = `<div class="wk-section"><div class="wk-sec-lbl">ACTIVAS (${act.length})</div>`;
+      if (!act.length) {
+        html += '<div class="wk-empty">Todas las metas completadas 🎯</div>';
+      } else {
+        html += act.slice(0,5).map(m => {
+          const pct = m.progreso || 0;
+          return `<div class="wk-item" style="flex-direction:column;align-items:flex-start;gap:5px">
+            <div class="wk-txt">${esc(m.titulo||m.texto||'Meta')}</div>
+            <div class="wk-prog-bar" style="width:100%"><div class="wk-prog-fill" style="width:${pct}%"></div></div>
+            <span style="font-size:9px;color:var(--text-muted)">${pct}%</span>
+          </div>`;
+        }).join('');
+      }
+      html += `</div>`;
+      if (com.length) {
+        html += `<div class="wk-section"><div class="wk-sec-lbl">COMPLETADAS (${com.length})</div>`;
+        html += com.slice(-3).map(m =>
+          `<div class="wk-stat"><span>✓ ${esc(m.titulo||m.texto||'Meta')}</span><span style="color:var(--green)">100%</span></div>`
+        ).join('');
+        html += `</div>`;
+      }
+      return html;
+    }
+
+    case 'finanzas': {
+      const fd = JSON.parse(localStorage.getItem('arex_finanzas') || '{}');
+      const ing = fd.ingresoMensual || 0;
+      const deu = (fd.deudas||[]).reduce((s,d)=>s+(d.saldo||0),0);
+      const prx = (fd.deudas||[]).filter(d=>{
+        if (!d.fechaPago) return false;
+        const fp = new Date(d.fechaPago+'T00:00:00');
+        const diff = (fp-now)/(1000*60*60*24);
+        return diff>=0 && diff<=14;
+      });
+      let html = `<div class="wk-section">
+        <div class="wk-sec-lbl">PANORAMA</div>
+        <div class="wk-stat"><span>INGRESO MENSUAL</span><span>$${ing.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+        <div class="wk-stat"><span>DEUDA TOTAL</span><span style="color:${deu>0?'#ff8844':'var(--green)'}">$${deu.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+      </div>`;
+      if (prx.length) {
+        html += `<div class="wk-section"><div class="wk-sec-lbl">PRÓXIMOS PAGOS</div>`;
+        html += prx.map(d =>
+          `<div class="wk-stat"><span>${esc(d.nombre)}</span><span style="color:#ff9900">$${(d.pago||d.monto||0).toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>`
+        ).join('');
+        html += `</div>`;
+      }
+      return html;
+    }
+
+    case 'negocio': {
+      const nd = JSON.parse(localStorage.getItem('arex_negocio') || '{}');
+      const ventas  = (nd.ventas||[]);
+      const gastos  = (nd.gastos||[]);
+      const mesV = ventas.filter(v=>{const d=new Date(v.fecha||now);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+      const mesG = gastos.filter(g=>{const d=new Date(g.fecha||now);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+      const totV = mesV.reduce((s,v)=>s+(v.total||0),0);
+      const totG = mesG.reduce((s,g)=>s+(g.monto||0),0);
+      const gan  = totV - totG;
+      const stock = nd.stockKg ?? nd.stock ?? '—';
+      return `<div class="wk-section">
+        <div class="wk-sec-lbl">FRIJOL MAYOCOBA · ESTE MES</div>
+        <div class="wk-stat"><span>VENTAS</span><span style="color:var(--green)">$${totV.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+        <div class="wk-stat"><span>GASTOS</span><span style="color:#ff8844">$${totG.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+        <div class="wk-stat"><span>GANANCIA</span><span style="color:${gan>=0?'var(--cyan)':'#ff4444'}">$${gan.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
+        <div class="wk-stat"><span>STOCK DISPONIBLE</span><span>${stock} kg</span></div>
+      </div>
+      <div class="wk-section">
+        <div class="wk-sec-lbl">ÚLTIMAS VENTAS</div>
+        ${mesV.slice(-4).reverse().map(v=>`<div class="wk-stat"><span>${esc(v.sucursal||'Venta')}</span><span>$${(v.total||0).toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>`).join('') || '<div class="wk-empty">Sin ventas este mes</div>'}
+      </div>`;
+    }
+
+    case 'notas': {
+      const ns  = JSON.parse(localStorage.getItem('arex_notas') || '[]');
+      if (!ns.length) return '<div class="wk-empty">Sin notas guardadas</div>';
+      return `<div class="wk-section"><div class="wk-sec-lbl">NOTAS (${ns.length})</div>` +
+        ns.slice(-6).reverse().map(n =>
+          `<div class="wk-item" style="flex-direction:column;align-items:flex-start;gap:3px">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px">${esc(n.categoria||'General')}</div>
+            <div class="wk-txt">${esc(n.texto||n.cuerpo||'')}</div>
+          </div>`
+        ).join('') + `</div>`;
+    }
+
+    default:
+      return `<div class="wk-empty">Módulo en construcción</div>`;
+  }
+}
+
+function _wkCheckTarea(idx) {
+  const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+  if (ts[idx]) {
+    ts[idx].done = !ts[idx].done;
+    localStorage.setItem('arex_tareas', JSON.stringify(ts));
+    window.renderTareas?.();
+    _wkRender();
+    _visionSpeak(ts[idx].done ? 'Tarea completada.' : 'Tarea reactivada.');
+  }
+}
+
+function _wkAddTarea() {
+  const input = document.getElementById('wk-t-in');
+  const text  = input?.value?.trim();
+  if (!text) return;
+  input.value = '';
+  _voiceAddTarea(text, 'media');
+  _wkRender();
+  _visionSpeak(`Tarea agregada.`);
+}
+
+function _wkAddGasto() {
+  const input = document.getElementById('wk-g-in');
+  const raw   = input?.value?.trim();
+  if (!raw) return;
+  input.value = '';
+  // parse "150 comida" or "1500 compras"
+  const m = raw.match(/^(\d+(?:[.,]\d+)?)\s*(.+)?$/);
+  if (!m) return;
+  const monto = parseFloat(m[1].replace(/,/g,''));
+  const cat   = (m[2] || 'otro').trim();
+  if (monto > 0) {
+    window.gpAddGastoAuto?.(monto, cat, 'AREX Visión');
+    _wkRender();
+    _visionSpeak(`Gasto de ${monto} pesos registrado.`);
+  }
+}
+
+async function _wkSendChat() {
+  const input = document.getElementById('vis-wk-inp');
+  const text  = input?.value?.trim();
+  if (!text) return;
+  input.value = '';
+
+  const msgs = document.getElementById('vis-wk-msgs');
+  if (msgs) {
+    const um = document.createElement('div');
+    um.className = 'wk-msg-u';
+    um.textContent = text;
+    msgs.appendChild(um);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  const cfg = window.AREX_CONFIG;
+  if (!cfg?.groqKey) {
+    _wkAppendArex('Sin API key configurada.');
+    return;
+  }
+
+  const pending = msgs ? document.createElement('div') : null;
+  if (pending) {
+    pending.className = 'wk-msg-a';
+    pending.textContent = '...';
+    msgs.appendChild(pending);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.groqKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 180,
+        messages: [
+          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Estás en modo Visión AR. Responde en 1-2 oraciones naturales y directas. Sin bullets, sin markdown.' },
+          { role: 'user', content: text },
+        ],
+      }),
+    });
+    const data  = await res.json();
+    const reply = data.choices?.[0]?.message?.content || 'Sin respuesta.';
+    if (pending) { pending.textContent = reply; msgs.scrollTop = msgs.scrollHeight; }
+    _visionSpeak(reply);
+  } catch {
+    if (pending) { pending.textContent = 'Error de conexión.'; }
+  }
+}
+
+function _wkAppendArex(text) {
+  const msgs = document.getElementById('vis-wk-msgs');
+  if (!msgs) return;
+  const el = document.createElement('div');
+  el.className = 'wk-msg-a';
+  el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
 }
