@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v69)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v70)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -42,7 +42,7 @@ arex/
 ├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
 ├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v69 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v70 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)

@@ -37,6 +37,7 @@ let _lastPixels     = null;
 let _noMotionCnt    = 0;
 let _lastContTxt    = '';
 let _motionCanvas   = null;   // reused canvas for pixel diff (avoids GC pressure)
+let _captureCanvas  = null;   // reused canvas for frame capture (avoids GC pressure)
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -171,6 +172,7 @@ export function closeVision() {
   _arMode = false;
   _hudModuleId  = null;
   _motionCanvas = null;
+  _captureCanvas = null;
   _lastPixels   = null;
   _wkOn         = false;
   window.speechSynthesis?.cancel();
@@ -502,15 +504,22 @@ async function _waitForVideo() {
 
 async function _captureFrame(maxPx = 480) {
   if (!_video) return null;
+  // Keep stream alive on iOS (Safari pauses video under memory pressure)
+  if (_video.paused) { try { await _video.play(); } catch { return null; } }
   const ready = await _waitForVideo();
   if (!ready) return null;
   const vw = _video.videoWidth, vh = _video.videoHeight;
   const scale = Math.min(1, maxPx / Math.max(vw, vh));
-  const c = document.createElement('canvas');
-  c.width  = Math.round(vw * scale);
-  c.height = Math.round(vh * scale);
-  c.getContext('2d').drawImage(_video, 0, 0, c.width, c.height);
-  const dataUrl = c.toDataURL('image/jpeg', 0.72);
+  const w = Math.round(vw * scale);
+  const h = Math.round(vh * scale);
+  // Reuse canvas — avoid GC pressure on repeated captures
+  if (!_captureCanvas || _captureCanvas.width !== w || _captureCanvas.height !== h) {
+    _captureCanvas = document.createElement('canvas');
+    _captureCanvas.width  = w;
+    _captureCanvas.height = h;
+  }
+  _captureCanvas.getContext('2d').drawImage(_video, 0, 0, w, h);
+  const dataUrl = _captureCanvas.toDataURL('image/jpeg', 0.72);
   if (dataUrl.length < 5000) return null;
   return dataUrl;
 }
@@ -529,7 +538,7 @@ async function _analyze(mode, extra = '') {
     _setAnalyzing(false, mode);
     _setStatus('LISTO');
     console.warn('AREX Vision: _busy forzado a false por timeout de seguridad');
-  }, 35000);
+  }, 16000);
 
   _setStatus('CAPTURANDO...');
   _setAnalyzing(true, mode);
@@ -557,7 +566,7 @@ async function _analyze(mode, extra = '') {
     if (groqKey) {
       try {
         _setStatus('ANALIZANDO · GROQ...');
-        reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 25000);
+        reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 14000);
       } catch (e) {
         console.warn('Groq vision failed:', e.message);
       }
@@ -565,7 +574,7 @@ async function _analyze(mode, extra = '') {
 
     if (!reply && geminiKey) {
       _setStatus('ANALIZANDO · GEMINI...');
-      reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 25000);
+      reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 14000);
     }
 
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
@@ -627,13 +636,16 @@ async function _callGemini(frame, prompt, key) {
   throw new Error(lastErr);
 }
 
-async function _callGroq(frame, prompt, key) {
+async function _callGroq(frame, prompt, key, fast = false) {
+  const model = fast
+    ? 'meta-llama/llama-4-scout-17b-16e-instruct'   // más rápido para AUTO
+    : 'meta-llama/llama-4-maverick-17b-128e-instruct';
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-      max_tokens: 800,
+      model,
+      max_tokens: fast ? 220 : 800,
       messages: [{ role: 'user', content: [
         { type: 'image_url', image_url: { url: frame } },
         { type: 'text', text: prompt }
@@ -895,15 +907,17 @@ async function _runContinuous() {
   _lastPixels  = null;
   try {
     while (_contOn) {
-      await new Promise(r => setTimeout(r, 1800));
+      await new Promise(r => setTimeout(r, 3500));  // 1.8s → 3.5s: menos carga CPU/GPU
       if (!_contOn) break;
+      // Keep stream alive on iOS
+      if (_video?.paused) { _video.play().catch(() => {}); }
       const motion = _checkMotion();
       if (motion) {
         _noMotionCnt = 0;
       } else {
         _noMotionCnt++;
-        // Sin movimiento ~18s: análisis ambient de todas formas
-        if (_noMotionCnt < 10) { _setStatus('SMART · EN ESPERA'); continue; }
+        // Sin movimiento ~28s (8 ciclos × 3.5s): análisis ambient de todas formas
+        if (_noMotionCnt < 8) { _setStatus('SMART · EN ESPERA'); continue; }
         _noMotionCnt = 0;
       }
       if (_busyCont) continue;
@@ -955,20 +969,23 @@ function _checkMotion() {
 async function _analyzeCont() {
   if (_busyCont) return;
   _busyCont = true;
-  const timer = setTimeout(() => { _busyCont = false; }, 20000);
+  // Safety reset: 12s máximo — si la API no respondió, libera y sigue
+  const timer = setTimeout(() => { _busyCont = false; }, 12000);
   _setStatus('SMART · ANALIZANDO');
   try {
-    const frame = await _captureFrame(MODE_RES.describe);
+    // 240px en AUTO: suficiente para describir, mucho más rápido de enviar
+    const frame = await _captureFrame(240);
     if (!frame) return;
     const prompt  = _buildVisionPrompt('describe');
     const groqKey = window.AREX_CONFIG?.groqKey;
     const gemKey  = window.AREX_CONFIG?.geminiKey;
     let reply;
     if (groqKey) {
-      try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 18000); } catch { /**/ }
+      // fast=true → scout + 220 tokens: respuesta en ~2s vs ~6s con maverick
+      try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch { /**/ }
     }
     if (!reply && gemKey) {
-      try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 18000); } catch { /**/ }
+      try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 10000); } catch { /**/ }
     }
     if (!reply) return;
     const isSame = _lastContTxt && _textSimilarity(reply, _lastContTxt) > 0.70;
