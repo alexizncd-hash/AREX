@@ -243,3 +243,4 @@ function _agAttachEvHandlers(body) {
 
 /* ─── Public ─────────────────────────────────────────────── */
 window.renderAgendaModule = renderAgendaModule;
+window._agGetEvents = _agGetEvents;

@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v74';
-const VERSION = 'v74';
+const CACHE   = 'arex-v75';
+const VERSION = 'v75';
 const SHELL = [
   './index.html',
   './style.css',
@@ -29,6 +29,8 @@ const SHELL = [
   './reparto.css',
   './agenda.js',
   './agenda.css',
+  './habitos.js',
+  './habitos.css',
   './search.js',
   './search.css',
   './vision-orb.js',

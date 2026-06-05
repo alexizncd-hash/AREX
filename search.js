@@ -47,7 +47,7 @@ function _showHints() {
       <div class="srch-hint-row"><kbd>↑ ↓</kbd><span>Navegar resultados</span></div>
       <div class="srch-hint-row"><kbd>Enter</kbd><span>Ir al módulo</span></div>
       <div class="srch-hint-row"><kbd>Esc</kbd><span>Cerrar</span></div>
-      <div class="srch-scope">TAREAS · NOTAS · METAS · PROYECTOS · GASTOS · EVIDENCIAS · MEMORIA</div>
+      <div class="srch-scope">TAREAS · NOTAS · METAS · PROYECTOS · GASTOS · EVIDENCIAS · MEMORIA · HISTORIAL</div>
     </div>`;
 }
 
@@ -79,19 +79,33 @@ function _doSearch(query) {
     } catch {}
   }
 
-  if (!results.length) {
+  // Search through conversation sessions
+  const sessionHits = [];
+  try {
+    const sessions = JSON.parse(localStorage.getItem('arex_sessions') || '[]');
+    for (const s of sessions) {
+      if (!Array.isArray(s.messages)) continue;
+      const match = s.messages.find(m => String(m.content || '').toLowerCase().includes(q));
+      if (match) {
+        const date = s.updated ? new Date(s.updated).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'}) : '';
+        sessionHits.push({ name: s.name || 'Sesión', snippet: match.content.slice(0, 80), date, sid: s.id });
+      }
+    }
+  } catch {}
+
+  const total = results.length + sessionHits.length;
+  if (!total) {
     el.innerHTML = `<div class="srch-empty">Sin resultados para <strong>${_esc(q)}</strong></div>`;
     return;
   }
 
-  // Group by module
   const groups = {};
   for (const r of results) {
     if (!groups[r.src.id]) groups[r.src.id] = { src: r.src, items: [] };
     groups[r.src.id].items.push(r);
   }
 
-  let html = `<div class="srch-count">${results.length} resultado${results.length !== 1 ? 's' : ''}</div>`;
+  let html = `<div class="srch-count">${total} resultado${total !== 1 ? 's' : ''}</div>`;
   for (const g of Object.values(groups)) {
     html += `<div class="srch-group">
       <div class="srch-group-hdr">${g.src.icon} ${g.src.label} <span class="srch-group-cnt">${g.items.length}</span></div>`;
@@ -102,13 +116,32 @@ function _doSearch(query) {
     }
     html += `</div>`;
   }
+
+  if (sessionHits.length) {
+    html += `<div class="srch-group">
+      <div class="srch-group-hdr">💬 HISTORIAL <span class="srch-group-cnt">${sessionHits.length}</span></div>`;
+    for (const h of sessionHits.slice(0, 5)) {
+      html += `<button class="srch-item" data-sid="${_esc(h.sid)}" data-mod="chat">
+        <span class="srch-item-title">${_hi(_esc(h.name), q)}</span>
+        <span class="srch-item-sub">${_hi(_esc(h.snippet), q)}${h.date ? ` · ${h.date}` : ''}</span>
+      </button>`;
+    }
+    html += `</div>`;
+  }
+
   el.innerHTML = html;
   _srchSelIdx = -1;
 
   el.querySelectorAll('.srch-item').forEach(btn => {
     btn.addEventListener('click', () => {
+      const sid = btn.dataset.sid;
       closeSearch();
-      if (btn.dataset.mod && window.AREXNav?.cambiarModulo) window.AREXNav.cambiarModulo(btn.dataset.mod);
+      if (sid && typeof loadSession === 'function') {
+        loadSession(sid);
+        window.AREXNav?.cambiarModulo('chat');
+      } else if (btn.dataset.mod && window.AREXNav?.cambiarModulo) {
+        window.AREXNav.cambiarModulo(btn.dataset.mod);
+      }
     });
   });
 }

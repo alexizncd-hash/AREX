@@ -645,6 +645,10 @@ function saveCurrentSession() {
   saveSessions(sessions);
   renderSessionsList();
   updateDockSessionName();
+  if (history.length >= 6) {
+    const sName = autoSessionName();
+    setTimeout(() => _autoSummarizeSession([...history], sName), 1200);
+  }
 }
 
 function updateDockSessionName() {
@@ -653,6 +657,44 @@ function updateDockSessionName() {
   const sid = getCurrentSid();
   const s = getSessions().find(s => s.id === sid);
   el.textContent = s ? s.name.slice(0, 12) : '—';
+}
+
+/* ── Memoria de sesiones (resúmenes automáticos) ─────── */
+function getSessionMemories() { return _safeJSON(localStorage.getItem('arex_session_memories'), []); }
+function saveSessionMemories(arr) {
+  localStorage.setItem('arex_session_memories', JSON.stringify(arr.slice(0, 12)));
+}
+
+async function _autoSummarizeSession(msgs, sessionName) {
+  if (!AREX_CONFIG?.groqKey || msgs.length < 6) return;
+  try {
+    const excerpt = msgs.slice(-20).map(m => `${m.role === 'user' ? 'Alexiz' : 'AREX'}: ${m.content.slice(0, 200)}`).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 120,
+        messages: [
+          { role: 'system', content: 'Extrae en 1-2 oraciones MUY breves los datos clave de esta conversación (decisiones, temas, datos relevantes sobre Alexiz). En español, sin formato markdown.' },
+          { role: 'user', content: `Sesión "${sessionName}":\n${excerpt}` }
+        ]
+      })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const summary = data?.choices?.[0]?.message?.content?.trim();
+    if (!summary) return;
+    const mems = getSessionMemories();
+    mems.unshift({ id: String(Date.now()), fecha: _todayStr(), session: sessionName, resumen: summary });
+    saveSessionMemories(mems);
+  } catch(e) { console.warn('autoSummarize:', e); }
+}
+
+function buildSessionMemorySection() {
+  const mems = getSessionMemories().slice(0, 4);
+  if (!mems.length) return '';
+  const lines = mems.map(m => `- [${m.fecha}] ${m.session}: ${m.resumen}`).join('\n');
+  return `\n\nCONTEXTO DE SESIONES ANTERIORES:\n${lines}`;
 }
 
 function startNewSession() {
@@ -777,6 +819,32 @@ function updateTarea(id, changes) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
   renderTareas();
 }
+function addSubtarea(parentId, text) {
+  if (!text?.trim()) return;
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    const subs = t.subtareas || [];
+    return { ...t, subtareas: [...subs, { id: String(Date.now()), text: text.trim(), done: false }] };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+function toggleSubtarea(parentId, subId) {
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    return { ...t, subtareas: (t.subtareas || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+function deleteSubtarea(parentId, subId) {
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    return { ...t, subtareas: (t.subtareas || []).filter(s => s.id !== subId) };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
 // Swipe gestures en tarjetas de tareas: → completar/reabrir · ← borrar
 function _attachTareaSwipe(div, t) {
   const inner = div.querySelector('.tarea-swipe-inner');
@@ -853,11 +921,36 @@ function renderTareas() {
         ${!t.done ? '<button class="tarea-edit" title="Editar">✎</button>' : ''}
         <button class="tarea-del" title="Eliminar">✕</button>
       </div>`;
+    const subs = t.subtareas || [];
+    const subsDone = subs.filter(s => s.done).length;
+    const subsPctStr = subs.length ? `<span class="tarea-sub-count">${subsDone}/${subs.length}</span>` : '';
+    const subListHtml = subs.length ? `<div class="tarea-subs-list">${subs.map(s => `
+      <div class="tarea-sub-item${s.done ? ' sub-done' : ''}">
+        <button class="tarea-sub-toggle" data-pid="${t.id}" data-sid="${s.id}">${s.done ? '✓' : ''}</button>
+        <span class="tarea-sub-text">${s.text.replace(/</g,'&lt;')}</span>
+        <button class="tarea-sub-del" data-pid="${t.id}" data-sid="${s.id}">✕</button>
+      </div>`).join('')}</div>` : '';
+    const subAddHtml = !t.done ? `<div class="tarea-sub-add-row">
+      <input class="tarea-sub-input" type="text" placeholder="+ Subtarea..." data-pid="${t.id}"/>
+    </div>` : '';
     div.innerHTML = `
       <div class="tarea-swipe-bg left">${t.done ? '↺ REABRIR' : '✓ HECHO'}</div>
       <div class="tarea-swipe-bg right">✕ BORRAR</div>
-      <div class="tarea-swipe-inner">${_innerHTML}</div>`;
+      <div class="tarea-swipe-inner">${_innerHTML}${subsPctStr}</div>
+      ${subListHtml}${subAddHtml}`;
     _attachTareaSwipe(div, t);
+
+    div.querySelectorAll('.tarea-sub-toggle').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); toggleSubtarea(b.dataset.pid, b.dataset.sid); }));
+    div.querySelectorAll('.tarea-sub-del').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); deleteSubtarea(b.dataset.pid, b.dataset.sid); }));
+    div.querySelector('.tarea-sub-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const v = e.target.value.trim();
+        if (v) { addSubtarea(e.target.dataset.pid, v); e.target.value = ''; }
+        e.preventDefault();
+      }
+    });
 
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
 
@@ -2800,7 +2893,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -2829,7 +2922,7 @@ async function callGroq(webCtx) {
 
 /* ── Llamada a Groq (streaming) ─────────────────────── */
 async function callGroqStream(webCtx, onChunk) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -4606,11 +4699,47 @@ async function generarBriefing() {
   if (localStorage.getItem('arex_briefing_date') === hoy) return;
 
   const tareas = getTareas().filter(t => !t.done);
-  const recs = getRecordatorios().filter(r => !r.disparado);
-  const today = new Date();
+  const recs   = getRecordatorios().filter(r => !r.disparado);
+  const today  = new Date();
+  const mesKey = hoy.slice(0, 7);
 
   const tareasUrgentes = tareas.filter(t => t.prioridad === 'alta').slice(0, 3);
-  const tareasHoy = tareas.filter(t => t.fecha === hoy).slice(0, 3);
+  const tareasHoy      = tareas.filter(t => t.fecha === hoy).slice(0, 3);
+
+  // Metas activas con progreso
+  const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m => !m.completada);
+  const metasStr = metas.slice(0, 3).map(m => {
+    const pct = m.tipo === 'porcentaje'
+      ? `${m.valorActual || 0}%`
+      : (m.objetivo ? `${m.valorActual || 0}/${m.objetivo}` : '—');
+    return `${m.titulo || m.nombre}: ${pct}`;
+  }).join(', ') || 'ninguna';
+
+  // Gastos del mes
+  let gastosMesStr = '';
+  try {
+    const gd = _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const gArr = (gd.gastos || []).filter(g => g.fecha?.startsWith(mesKey));
+    const total = gArr.reduce((a, g) => a + (g.monto || 0), 0);
+    if (total > 0) gastosMesStr = `$${total.toLocaleString('es-MX', {maximumFractionDigits:0})} MXN`;
+  } catch {}
+
+  // Hábitos pendientes hoy (si módulo cargado)
+  let habitosStr = '';
+  try {
+    const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
+    const pendientes = habs.filter(h => !h.completados?.[hoy]).map(h => h.nombre);
+    if (pendientes.length) habitosStr = pendientes.slice(0, 3).join(', ');
+  } catch {}
+
+  // Agenda del día (si módulo cargado)
+  let agendaStr = '';
+  try {
+    if (typeof window._agGetEvents === 'function') {
+      const evHoy = window._agGetEvents().filter(e => e.fecha === hoy);
+      if (evHoy.length) agendaStr = evHoy.slice(0, 3).map(e => e.titulo).join(', ');
+    }
+  } catch {}
 
   const contexto = [
     `Fecha: ${today.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
@@ -4618,16 +4747,20 @@ async function generarBriefing() {
     `Tareas para hoy: ${tareasHoy.map(t => t.text).join(', ') || 'ninguna'}`,
     `Total pendiente: ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`,
     `Recordatorios activos: ${recs.slice(0,3).map(r => r.msg).join(', ') || 'ninguno'}`,
-  ].join('\n');
+    `Metas en progreso: ${metasStr}`,
+    gastosMesStr ? `Gastos del mes: ${gastosMesStr}` : '',
+    habitosStr   ? `Hábitos pendientes hoy: ${habitosStr}` : '',
+    agendaStr    ? `Agenda de hoy: ${agendaStr}` : '',
+  ].filter(Boolean).join('\n');
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 280,
+        model: 'llama-3.3-70b-versatile', max_tokens: 380,
         messages: [
-          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino MUY breve (3-4 líneas), directo y motivador en español. Sin listas, sin asteriscos de markdown, solo texto fluido con lo más importante del día.' },
+          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino breve (4-6 líneas) en español, directo y motivador. Puedes usar 2-3 bullet points cortos para las prioridades del día. Menciona metas, hábitos y agenda si hay datos.' },
           { role: 'user', content: `Datos de hoy:\n${contexto}` }
         ]
       })

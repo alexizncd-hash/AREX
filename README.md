@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v74)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v75)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -47,7 +47,9 @@ arex/
 ├── vision-orb.js       → Orbe 3D de partículas para el módulo Visión (estados: idle/scanning/analyzing/speaking/error)
 ├── agenda.js           → Módulo Agenda: vista semanal y mensual agregando tareas, recordatorios y metas
 ├── agenda.css          → Estilos del módulo Agenda
-├── sw.js               → Service Worker v74 (PWA / modo offline / cache network-first)
+├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
+├── habitos.css         → Estilos del módulo Hábitos
+├── sw.js               → Service Worker v75 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -73,6 +75,7 @@ arex/
 | **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA, exportar/importar datos |
 | **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
 | **AGENDA** | 📅 | Calendario semanal/mensual que agrega automáticamente tareas con fecha, recordatorios y metas con deadline |
+| **HÁBITOS** | ◎ | Hábitos diarios con streak counter, mini-calendario de los últimos 7 días y categorías personalizables |
 
 ---
 
@@ -334,6 +337,40 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v75 — Bloque 2: Hábitos + Subtareas + Briefing mejorado + Memoria conversacional + Búsqueda historial
+
+**Módulo Hábitos (`habitos.js` + `habitos.css`)**
+- Hábitos con emoji, categoría (Salud/Ejercicio/Mente/Trabajo/Personal), frecuencia (Diaria/Semanal/Lunes-Viernes)
+- Toggle de completado para hoy con streak counter `🔥 N días`
+- Mini-calendario 7 días (Mon-Sun) con puntos cyan/apagado
+- Inline form para agregar nuevos hábitos
+- Confirmación de 2 pasos para eliminar; sync a Firebase vía `arexSyncData`
+
+**Subtareas (`app.js` + `style.css`)**
+- Los objetos de tarea ahora soportan `subtareas: [{id, text, done}]`
+- Funciones: `addSubtarea`, `toggleSubtarea`, `deleteSubtarea`
+- UI: lista collapsible bajo cada tarea pendiente; badge `X/N` de progreso
+- Agregar subtarea con Enter en el campo inline de texto; delete con confirmación
+- Subtareas completadas con tachado y opacidad reducida
+
+**Briefing matutino mejorado (`app.js`)**
+- Ahora incluye: metas activas con progreso (`titulo: X/Y`), gastos del mes, hábitos pendientes hoy, agenda del día
+- Prompt actualizado: permite 4-6 líneas con 2-3 bullet points; max_tokens 380
+- Los datos de hábitos y agenda se inyectan solo si los módulos están cargados
+
+**Memoria conversacional (`app.js`)**
+- `_autoSummarizeSession()`: al guardar una sesión con ≥6 mensajes, llama a Groq para extraer 1-2 oraciones de contexto clave
+- `arex_session_memories`: almacena los últimos 12 resúmenes de sesión (`{fecha, session, resumen}`)
+- `buildSessionMemorySection()`: inyecta los 4 resúmenes más recientes en el system prompt de cada llamada
+- El modelo ahora recuerda contexto de conversaciones pasadas automáticamente
+
+**Búsqueda en historial de chat (`search.js`)**
+- `Cmd+K` ahora busca también en `arex_sessions` (hasta 10 sesiones guardadas)
+- Grupo `💬 HISTORIAL` en resultados con nombre de sesión, snippet y fecha
+- Click en resultado carga la sesión directamente vía `loadSession(sid)` y navega al chat
+
+**SW v75**
 
 ### v74 — Bloque 1: Real-time sync + FCM + Agenda + Quick Capture + Tareas Recurrentes
 
