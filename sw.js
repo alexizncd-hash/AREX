@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v72';
-const VERSION = 'v72';
+const CACHE   = 'arex-v74';
+const VERSION = 'v74';
 const SHELL = [
   './index.html',
   './style.css',
@@ -27,6 +27,8 @@ const SHELL = [
   './control.css',
   './reparto.js',
   './reparto.css',
+  './agenda.js',
+  './agenda.css',
   './search.js',
   './search.css',
   './vision-orb.js',
@@ -81,6 +83,22 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
+});
+
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json().catch?.(() => ({})) || e.data.json() : {};
+  const notif = data.notification || data;
+  const title = notif.title || 'AREX';
+  const opts = {
+    body: notif.body || '',
+    icon: './icon.svg',
+    badge: './icon.svg',
+    vibrate: [200, 100, 200],
+    data: data.data || {},
+    tag: 'arex-push',
+    renotify: true,
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
 });
 
 self.addEventListener('notificationclick', e => {

@@ -5,7 +5,7 @@
 
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
-    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment;
+    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -41,6 +41,7 @@ function setupSaveHandler() {
     const fbBucket  = document.getElementById('cfg-fb-bucket').value.trim();
     const fbSender  = document.getElementById('cfg-fb-sender').value.trim();
     const fbApp     = document.getElementById('cfg-fb-app').value.trim();
+    const fbVapid   = document.getElementById('cfg-fb-vapid').value.trim();
 
     const config = {
       groqKey:   groq,
@@ -48,7 +49,8 @@ function setupSaveHandler() {
       owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
       geminiKey: (document.getElementById('cfg-gemini')?.value || '').trim() || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
-                           storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
+                           storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp,
+                           vapidKey: fbVapid || undefined } : null
     };
     localStorage.setItem('arex_config', JSON.stringify(config));
     window.AREX_CONFIG = config;
@@ -331,12 +333,14 @@ async function initFirebase() {
   try {
     ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
-       limit, deleteDoc, doc, setDoc, getDoc, increment }
+       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
     window._arexDb = db;   // expose to global scripts (control.js telemetría)
     fbInitialized = true;
+    initRealtimeSync();
+    initFCM();
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
@@ -360,21 +364,6 @@ async function pullConfigFromFirestore() {
     localStorage.setItem('arex_config', JSON.stringify(merged));
     window.AREX_CONFIG = merged;
   } catch(e) { console.warn('pullConfig:', e); }
-}
-
-// Generic sync: push any localStorage key to Firestore doc arex/{key}
-async function arexSyncData(lsKey) {
-  if (!db) return;
-  try {
-    const raw = localStorage.getItem(lsKey);
-    if (!raw) return;
-    const payload = JSON.parse(raw);
-    // Firestore docs must be objects; wrap arrays
-    const toStore = Array.isArray(payload) ? { _arr: payload } : payload;
-    await setDoc(doc(db, 'arex_data', lsKey), toStore);
-    window._arexLastSync = Date.now();
-    _renderSyncBadge();
-  } catch(e) { console.warn('arexSyncData:', lsKey, e); }
 }
 
 // Pull all synced module data back from Firestore on boot
@@ -442,6 +431,65 @@ async function arexSyncData(lsKey) {
 }
 
 window.arexSyncData = arexSyncData;
+
+/* ── Real-time sync via onSnapshot ─────────────────── */
+const _rtUnsubs = [];
+function initRealtimeSync() {
+  if (!db || !onSnapshot) return;
+  _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
+  const watchKeys = ['arex_tareas', 'arex_metas', 'arex_notas', 'arex_recordatorios'];
+  for (const key of watchKeys) {
+    const unsub = onSnapshot(doc(db, 'arex_data', key), snap => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const remoteTs = data._updatedAt || 0;
+      const { _updatedAt, _arr, ...rest } = data;
+      const toStore = _arr !== undefined ? _arr : rest;
+      const local = localStorage.getItem(key);
+      const localTs = local ? (_safeJSON(local, {})?._updatedAt || 0) : 0;
+      if (remoteTs > localTs) {
+        localStorage.setItem(key, JSON.stringify(toStore));
+        window._arexLastSync = Date.now();
+        _renderSyncBadge();
+        if (key === 'arex_tareas') { window.renderTareas?.(); if (typeof scheduleTaskNotifications === 'function') scheduleTaskNotifications(); }
+        if (key === 'arex_metas')  window.renderMetas?.();
+        if (key === 'arex_recordatorios') { if (typeof restoreReminders === 'function') restoreReminders(); }
+      }
+    }, err => console.warn('onSnapshot', key, err));
+    _rtUnsubs.push(unsub);
+  }
+}
+window.initRealtimeSync = initRealtimeSync;
+
+/* ── Firebase Cloud Messaging (FCM) ─────────────────── */
+let _fcmMessaging = null;
+async function initFCM() {
+  if (!db || !AREX_CONFIG.firebase?.vapidKey) return;
+  try {
+    const { getMessaging, getToken, onMessage } =
+      await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js');
+    _fcmMessaging = getMessaging();
+    const swReg = await navigator.serviceWorker.ready;
+    const token = await getToken(_fcmMessaging, {
+      vapidKey: AREX_CONFIG.firebase.vapidKey,
+      serviceWorkerRegistration: swReg,
+    });
+    if (token) {
+      localStorage.setItem('arex_fcm_token', token);
+      // Foreground message handler
+      onMessage(_fcmMessaging, payload => {
+        const n = payload.notification || {};
+        if (Notification.permission === 'granted') {
+          swReg.showNotification(n.title || 'AREX', {
+            body: n.body || '',
+            icon: './icon.svg',
+            data: payload.data || {},
+          }).catch(() => {});
+        }
+      });
+    }
+  } catch(e) { console.warn('initFCM:', e); }
+}
 
 /* ── Markdown ───────────────────────────────────────── */
 if (typeof marked !== 'undefined') {
@@ -678,18 +726,48 @@ function sortPending(arr) {
   });
 }
 
-function addTarea(text, fecha = '', prioridad = 'media') {
+function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   if (!text.trim()) return;
   const arr = getTareas();
-  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad };
+  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
   renderTareas();
   if (typeof logBitacora === 'function') logBitacora('chat', 'Tarea creada: ' + (t.text?.slice(0,40) || ''));
 }
 function toggleTarea(id) {
-  saveTareasData(getTareas().map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const arr = getTareas();
+  const tarea = arr.find(t => t.id === id);
+  const newArr = arr.map(t => t.id === id ? { ...t, done: !t.done } : t);
+  // If marking done and has recurrence, spawn next occurrence
+  if (tarea && !tarea.done && tarea.repetir && tarea.repetir !== 'ninguna') {
+    const next = _nextFechaRepetir(tarea.fecha, tarea.repetir);
+    if (next) {
+      newArr.unshift({
+        id: String(Date.now() + 1),
+        text: tarea.text,
+        done: false,
+        created: Date.now(),
+        fecha: next,
+        prioridad: tarea.prioridad,
+        repetir: tarea.repetir,
+      });
+    }
+  }
+  saveTareasData(newArr);
   renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+
+function _nextFechaRepetir(fechaActual, repetir) {
+  const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
+  const next  = new Date(base);
+  if (repetir === 'diaria')   next.setDate(next.getDate() + 1);
+  else if (repetir === 'semanal')  next.setDate(next.getDate() + 7);
+  else if (repetir === 'mensual')  next.setMonth(next.getMonth() + 1);
+  else if (repetir === 'anual')    next.setFullYear(next.getFullYear() + 1);
+  else return null;
+  return next.toISOString().slice(0, 10);
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
@@ -767,6 +845,7 @@ function renderTareas() {
         <div class="tarea-meta">
           ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
           ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
+          ${t.repetir && t.repetir !== 'ninguna' ? `<span class="tarea-rep-badge">↻ ${t.repetir}</span>` : ''}
           ${t.fecha && t.done ? `<span class="tarea-fecha-done">📅 ${new Date(t.fecha+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>` : ''}
         </div>
       </div>
@@ -796,6 +875,13 @@ function renderTareas() {
               <button class="tep${t.prioridad==='baja'?' active':''}" data-p="baja">BAJA</button>
             </div>
           </div>
+          <select class="tarea-edit-rep" title="Repetición">
+            <option value="ninguna"${(t.repetir||'ninguna')==='ninguna'?' selected':''}>Sin repetir</option>
+            <option value="diaria"${t.repetir==='diaria'?' selected':''}>↻ Diaria</option>
+            <option value="semanal"${t.repetir==='semanal'?' selected':''}>↻ Semanal</option>
+            <option value="mensual"${t.repetir==='mensual'?' selected':''}>↻ Mensual</option>
+            <option value="anual"${t.repetir==='anual'?' selected':''}>↻ Anual</option>
+          </select>
           <div class="tarea-edit-btns">
             <button class="tarea-edit-save">GUARDAR</button>
             <button class="tarea-edit-cancel">CANCELAR</button>
@@ -808,7 +894,8 @@ function renderTareas() {
       div.querySelector('.tarea-edit-save').addEventListener('click', () => {
         const text = div.querySelector('.tarea-edit-text').value.trim();
         if (!text) return;
-        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep });
+        const _rep = div.querySelector('.tarea-edit-rep')?.value || 'ninguna';
+        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep, repetir: _rep });
       });
       div.querySelector('.tarea-edit-cancel').addEventListener('click', () => renderTareas());
       div.querySelector('.tarea-edit-text').select();
@@ -3269,6 +3356,7 @@ async function handleCommand(cmd) {
       document.getElementById('cfg2-fb-bucket').value  = fb.storageBucket     || '';
       document.getElementById('cfg2-fb-sender').value  = fb.messagingSenderId || '';
       document.getElementById('cfg2-fb-app').value     = fb.appId             || '';
+      document.getElementById('cfg2-fb-vapid').value   = fb.vapidKey          || '';
       document.getElementById('cfg2-ok').style.display    = 'none';
       document.getElementById('cfg2-error').style.display = 'none';
       _updateNotifStatus();
@@ -3700,7 +3788,8 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
       projectId:         document.getElementById('cfg2-fb-project').value.trim(),
       storageBucket:     document.getElementById('cfg2-fb-bucket').value.trim(),
       messagingSenderId: document.getElementById('cfg2-fb-sender').value.trim(),
-      appId:             document.getElementById('cfg2-fb-app').value.trim()
+      appId:             document.getElementById('cfg2-fb-app').value.trim(),
+      vapidKey:          document.getElementById('cfg2-fb-vapid').value.trim() || undefined,
     } : null
   };
   localStorage.setItem('arex_config', JSON.stringify(config));
@@ -3819,6 +3908,200 @@ function _showUpdateBanner() {
   `;
   document.body.appendChild(banner);
 }
+
+/* ══════════════════════════════════════════════════════
+   QUICK CAPTURE — universal fast input
+   ══════════════════════════════════════════════════════ */
+(function initQuickCapture() {
+  let _qcType    = 'tarea';
+  let _qcTimer   = null;
+  let _qcVisible = false;
+
+  function _qcOpen() {
+    const overlay = document.getElementById('qc-overlay');
+    const input   = document.getElementById('qc-input');
+    if (!overlay) return;
+    overlay.classList.add('visible');
+    _qcVisible = true;
+    setTimeout(() => input?.focus(), 80);
+    _qcSetType('tarea');
+    _qcSetHint('Escribe para clasificar...');
+    if (input) input.value = '';
+    document.getElementById('qc-extra').innerHTML = '';
+  }
+
+  function _qcClose() {
+    document.getElementById('qc-overlay')?.classList.remove('visible');
+    _qcVisible = false;
+    clearTimeout(_qcTimer);
+  }
+
+  function _qcSetType(type) {
+    _qcType = type;
+    document.querySelectorAll('.qc-pill').forEach(p => p.classList.toggle('active', p.dataset.type === type));
+    _qcRenderExtra(type);
+  }
+
+  function _qcSetHint(txt, classified = false) {
+    const el = document.getElementById('qc-classify-hint');
+    if (!el) return;
+    el.textContent = txt;
+    el.classList.toggle('classified', classified);
+  }
+
+  function _qcRenderExtra(type) {
+    const el = document.getElementById('qc-extra');
+    if (!el) return;
+    if (type === 'tarea') {
+      el.innerHTML = `<div class="qc-extra-row">
+        <span class="qc-extra-lbl">FECHA</span>
+        <input type="date" class="qc-extra-input" id="qc-tarea-fecha"/>
+        <span class="qc-extra-lbl">PRIORIDAD</span>
+        <select class="qc-extra-input" id="qc-tarea-prio" style="max-width:90px">
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>`;
+    } else if (type === 'gasto') {
+      el.innerHTML = `<div class="qc-extra-row">
+        <span class="qc-extra-lbl">$</span>
+        <input type="number" class="qc-extra-input" id="qc-gasto-monto" placeholder="Monto" min="0" step="0.01" style="max-width:100px"/>
+        <span class="qc-extra-lbl">CAT</span>
+        <select class="qc-extra-input" id="qc-gasto-cat" style="max-width:110px">
+          <option value="comida">Comida</option>
+          <option value="transporte">Transporte</option>
+          <option value="entretenimiento">Entretenimiento</option>
+          <option value="salud">Salud</option>
+          <option value="ropa">Ropa</option>
+          <option value="hogar">Hogar</option>
+          <option value="educacion">Educación</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  async function _qcClassify(text) {
+    if (text.length < 4) return;
+    clearTimeout(_qcTimer);
+    _qcTimer = setTimeout(async () => {
+      const key = window.AREX_CONFIG?.groqKey;
+      if (!key) {
+        // Heurística sin IA
+        const lower = text.toLowerCase();
+        if (/\d+\s*(peso|mxn|$|pago|gasto|compré|compre|gasté|gaste)/i.test(lower)) _qcSetType('gasto');
+        else if (/quiero|objetivo|lograr|alcanzar|meta/i.test(lower)) _qcSetType('meta');
+        else if (/nota|apunte|recordé|recorde|idea/i.test(lower)) _qcSetType('nota');
+        else _qcSetType('tarea');
+        return;
+      }
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 20,
+            messages: [{
+              role: 'user',
+              content: `Clasifica este texto en UNA palabra: tarea, nota, gasto, o meta. Solo responde la palabra. Texto: "${text.slice(0, 120)}"`
+            }]
+          })
+        });
+        const data  = await res.json();
+        const reply = (data?.choices?.[0]?.message?.content || '').toLowerCase().trim();
+        const type  = ['tarea','nota','gasto','meta'].find(t => reply.includes(t)) || 'tarea';
+        _qcSetType(type);
+        _qcSetHint(`AREX clasificó como: ${type.toUpperCase()}`, true);
+      } catch { /* use current type */ }
+    }, 700);
+  }
+
+  function _qcSave() {
+    const text = document.getElementById('qc-input')?.value?.trim();
+    if (!text) return;
+
+    try {
+      switch (_qcType) {
+        case 'tarea': {
+          const fecha = document.getElementById('qc-tarea-fecha')?.value || '';
+          const prio  = document.getElementById('qc-tarea-prio')?.value  || 'media';
+          if (typeof addTarea === 'function') addTarea(text, fecha, prio);
+          break;
+        }
+        case 'nota': {
+          const ns = _safeJSON(localStorage.getItem('arex_notas'), []);
+          ns.push({ id: String(Date.now()), texto: text, categoria: 'General', creadaEn: new Date().toISOString() });
+          localStorage.setItem('arex_notas', JSON.stringify(ns));
+          window.renderNotas?.();
+          if (typeof arexSyncData === 'function') arexSyncData('arex_notas');
+          break;
+        }
+        case 'gasto': {
+          const monto = parseFloat(document.getElementById('qc-gasto-monto')?.value || '0');
+          const cat   = document.getElementById('qc-gasto-cat')?.value || 'otro';
+          if (monto > 0 && typeof window.gpAddGastoAuto === 'function') {
+            window.gpAddGastoAuto(monto, cat, text);
+          } else if (monto > 0) {
+            const gs = _safeJSON(localStorage.getItem('arex_gastos_pers'), []);
+            gs.push({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: new Date().toISOString().slice(0,10) });
+            localStorage.setItem('arex_gastos_pers', JSON.stringify(gs));
+          }
+          break;
+        }
+        case 'meta': {
+          const ms = _safeJSON(localStorage.getItem('arex_metas'), []);
+          ms.push({ id: String(Date.now()), titulo: text, progreso: 0, completada: false, creadaEn: new Date().toISOString() });
+          localStorage.setItem('arex_metas', JSON.stringify(ms));
+          window.renderMetas?.();
+          if (typeof arexSyncData === 'function') arexSyncData('arex_metas');
+          break;
+        }
+      }
+      // Visual confirmation
+      const btn = document.getElementById('qc-save');
+      if (btn) { btn.textContent = '✓ GUARDADO'; setTimeout(() => { btn.textContent = 'GUARDAR →'; }, 1200); }
+      setTimeout(_qcClose, 800);
+      if (typeof logBitacora === 'function') logBitacora('sistema', `Quick capture: ${_qcType} — ${text.slice(0,40)}`);
+    } catch (e) { console.warn('Quick capture save:', e); }
+  }
+
+  // Wire up after DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('qc-fab')?.addEventListener('click', _qcOpen);
+    document.getElementById('qc-close')?.addEventListener('click', _qcClose);
+    document.getElementById('qc-save')?.addEventListener('click', _qcSave);
+
+    document.getElementById('qc-overlay')?.addEventListener('click', e => {
+      if (e.target.id === 'qc-overlay') _qcClose();
+    });
+
+    document.getElementById('qc-input')?.addEventListener('input', e => _qcClassify(e.target.value));
+    document.getElementById('qc-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Escape') _qcClose();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) _qcSave();
+    });
+
+    document.getElementById('qc-type-pills')?.addEventListener('click', e => {
+      const pill = e.target.closest('.qc-pill');
+      if (pill) _qcSetType(pill.dataset.type);
+    });
+
+    // Keyboard shortcut: Q key (when no input focused)
+    document.addEventListener('keydown', e => {
+      if (e.key === 'q' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        _qcVisible ? _qcClose() : _qcOpen();
+      }
+      if (e.key === 'Escape' && _qcVisible) _qcClose();
+    });
+  });
+
+  window.openQuickCapture = _qcOpen;
+})();
 
 /* ── Secuencia de arranque ──────────────────────────── */
 async function boot() {

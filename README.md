@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v72)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v74)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -45,7 +45,9 @@ arex/
 ├── search.js           → Búsqueda global Cmd+K: indexa 8 fuentes de datos, overlay con navegación por teclado
 ├── search.css          → Estilos del overlay de búsqueda global (frosted glass, z-index 9000)
 ├── vision-orb.js       → Orbe 3D de partículas para el módulo Visión (estados: idle/scanning/analyzing/speaking/error)
-├── sw.js               → Service Worker v72 (PWA / modo offline / cache network-first)
+├── agenda.js           → Módulo Agenda: vista semanal y mensual agregando tareas, recordatorios y metas
+├── agenda.css          → Estilos del módulo Agenda
+├── sw.js               → Service Worker v74 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -70,6 +72,7 @@ arex/
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
 | **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA, exportar/importar datos |
 | **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
+| **AGENDA** | 📅 | Calendario semanal/mensual que agrega automáticamente tareas con fecha, recordatorios y metas con deadline |
 
 ---
 
@@ -324,12 +327,51 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | Tavily API Key | app.tavily.com | No — habilita búsqueda web |
 | OpenWeatherMap Key | openweathermap.org | No — habilita widget de clima |
 | Firebase (6 campos) | console.firebase.google.com | No — habilita sync en la nube |
+| Firebase VAPID Key | Consola Firebase → Cloud Messaging → Web Push | No — habilita push notifications FCM |
 
 > **Seguridad**: `config.js` está en `.gitignore` y nunca se commitea. Contiene credenciales reales. No compartir ni subir al repo bajo ninguna circunstancia.
 
 ---
 
 ## Changelog
+
+### v74 — Bloque 1: Real-time sync + FCM + Agenda + Quick Capture + Tareas Recurrentes
+
+**Tareas recurrentes (`app.js`)**
+- `addTarea` acepta nuevo parámetro `repetir`: `ninguna | diaria | semanal | mensual | anual`
+- Al completar una tarea con recurrencia, `toggleTarea` genera automáticamente la siguiente ocurrencia con fecha calculada
+- Badge `↻ diaria` visible en cada tarea recurrente; selector de recurrencia en el formulario de edición
+
+**Quick Capture universal (`app.js` + `style.css` + `index.html`)**
+- Botón flotante `+` (FAB) siempre visible en la esquina inferior derecha
+- Atajo de teclado `Q` para abrir/cerrar desde cualquier lugar
+- IA con debounce 700ms clasifica el texto como **tarea / nota / gasto / meta** usando `llama-3.3-70b-versatile`
+- Campos extras dinámicos según tipo: fecha+prioridad para tareas, monto+categoría para gastos
+- Guarda directamente en el módulo correcto; se oculta automáticamente en modo Visión
+
+**Módulo Agenda/Calendario (`agenda.js` + `agenda.css`)**
+- Vista **semanal** (7 columnas, 4 en móvil): día actual resaltado con borde cyan
+- Vista **mensual**: grid 7×N con puntos de color por tipo de evento
+- Agrega automáticamente: tareas con `fecha`, recordatorios (`arex_recordatorios`) y metas con `deadline`
+- Chips de colores: cyan = tareas, naranja = recordatorios, verde = metas
+- Click en evento navega directamente al módulo de origen (`AREXNav.cambiarModulo`)
+- Botón en el dock (📅) + integrado en la navegación de jarvis.js
+
+**onSnapshot real-time sync (`app.js`)**
+- `initRealtimeSync()`: escucha en tiempo real los documentos Firestore de `arex_tareas`, `arex_metas`, `arex_notas` y `arex_recordatorios`
+- Actualiza localStorage y re-renderiza automáticamente si el timestamp remoto es mayor que el local
+- Sin polling — conexión persistente push desde Firebase; se limpia y reinicia al reconectar Firebase
+
+**FCM Push Notifications (`app.js` + `sw.js`)**
+- `initFCM()`: importa `firebase/messaging` dinámicamente, solicita permiso y obtiene token FCM
+- El token se guarda en `localStorage['arex_fcm_token']` para uso externo (Cloud Functions)
+- Mensajes en foreground manejados con `onMessage` → muestra notificación nativa vía SW
+- Campo **VAPID Key** en ambas pantallas de configuración (setup inicial y `/config`)
+- SW `push` event handler: recibe push del servidor y muestra notificación con icono AREX, vibración y `renotify: true`
+- **SW v74**
+
+### v73 — Módulo Agenda + correcciones menores
+- Creación de `agenda.js` y `agenda.css`; SW bumpeado a v73
 
 ### v72 — Orbes 3D con partículas reales + Visión libre e interactiva
 

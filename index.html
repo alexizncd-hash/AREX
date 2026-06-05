@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="evidencias.css"/>
 <link rel="stylesheet" href="control.css"/>
 <link rel="stylesheet" href="reparto.css"/>
+<link rel="stylesheet" href="agenda.css"/>
 <link rel="stylesheet" href="search.css"/>
 </head>
 <body>
@@ -52,6 +53,7 @@
     <input id="cfg-fb-bucket"  class="cfg-input" placeholder="Firebase storageBucket"/>
     <input id="cfg-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
     <input id="cfg-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
+    <input id="cfg-fb-vapid"   class="cfg-input" placeholder="Firebase VAPID Key (push notifications)"/>
     <button id="cfg-save" style="margin-top:0.5rem;background:transparent;border:1px solid #00d4ff;color:#00d4ff;font-family:monospace;font-size:12px;letter-spacing:3px;padding:10px;cursor:pointer;border-radius:2px;">INICIAR SISTEMAS</button>
     <div id="cfg-error" style="font-size:11px;color:#ff4444;text-align:center;display:none;">La Groq API Key es requerida.</div>
   </div>
@@ -293,6 +295,7 @@
         <input id="cfg2-fb-bucket"  class="cfg-input" placeholder="Firebase storageBucket"/>
         <input id="cfg2-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
         <input id="cfg2-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
+        <input id="cfg2-fb-vapid"   class="cfg-input" placeholder="Firebase VAPID Key (push notifications)"/>
         <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">BACKUP DE DATOS</div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <button onclick="exportarBackup()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;">⬇ EXPORTAR TODO</button>
@@ -462,6 +465,10 @@
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg>
       <span class="dock-label">PROYECTOS</span>
+    </button>
+    <button class="nav-btn" data-module="agenda" data-tooltip="Agenda">
+      <span class="nav-ico">📅</span>
+      <span class="dock-label">AGENDA</span>
     </button>
     <button class="nav-btn" data-module="reparto" data-tooltip="Rutas de Reparto">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -992,6 +999,8 @@
 
 <div id="module-proyectos" class="module-panel"></div>
 
+<div id="module-agenda" class="module-panel"></div>
+
 <div id="module-control" class="module-panel">
   <div class="ctrl-wrap" id="ctrl-wrap"></div>
 </div>
@@ -1012,6 +1021,7 @@
 <script src="evidencias.js"></script>
 <script src="control.js"></script>
 <script src="reparto.js"></script>
+<script src="agenda.js"></script>
 <script src="search.js"></script>
 <script src="jarvis.js"></script>
 <script src="orb.js"></script>
@@ -1057,6 +1067,35 @@
         onclick="_analizarConArex(AREXNav.moduloActual)" style="display:none">
   <span class="fab-ico">🧠</span><span class="fab-lbl">ANALIZAR</span>
 </button>
+
+<!-- QUICK CAPTURE — floating action button -->
+<button id="qc-fab" class="qc-fab" title="Captura rápida (Q)" aria-label="Captura rápida">
+  <span class="qc-fab-ico">+</span>
+</button>
+
+<div id="qc-overlay" class="qc-overlay" role="dialog" aria-modal="true">
+  <div class="qc-modal">
+    <div class="qc-modal-header">
+      <span class="qc-modal-title">◈ CAPTURA RÁPIDA</span>
+      <button class="qc-modal-close" id="qc-close" aria-label="Cerrar">✕</button>
+    </div>
+    <textarea id="qc-input" class="qc-input" placeholder="Escribe cualquier cosa... AREX lo clasifica solo." rows="3" autocomplete="off" spellcheck="false"></textarea>
+    <div class="qc-classify-row" id="qc-classify-row">
+      <span class="qc-classify-hint" id="qc-classify-hint">Escribe para clasificar...</span>
+    </div>
+    <div class="qc-type-pills" id="qc-type-pills">
+      <button class="qc-pill active" data-type="tarea">✓ TAREA</button>
+      <button class="qc-pill" data-type="nota">📝 NOTA</button>
+      <button class="qc-pill" data-type="gasto">💸 GASTO</button>
+      <button class="qc-pill" data-type="meta">🎯 META</button>
+    </div>
+    <div class="qc-extra" id="qc-extra"></div>
+    <div class="qc-footer">
+      <button class="qc-btn-save" id="qc-save">GUARDAR →</button>
+      <span class="qc-hint-key">Enter ↵ para guardar · Esc para cerrar</span>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
