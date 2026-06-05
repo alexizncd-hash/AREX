@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v71)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v72)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -44,7 +44,8 @@ arex/
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
 ├── search.js           → Búsqueda global Cmd+K: indexa 8 fuentes de datos, overlay con navegación por teclado
 ├── search.css          → Estilos del overlay de búsqueda global (frosted glass, z-index 9000)
-├── sw.js               → Service Worker v71 (PWA / modo offline / cache network-first)
+├── vision-orb.js       → Orbe 3D de partículas para el módulo Visión (estados: idle/scanning/analyzing/speaking/error)
+├── sw.js               → Service Worker v72 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -329,6 +330,31 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v72 — Orbes 3D con partículas reales + Visión libre e interactiva
+
+**Orbes neurales en verdadero 3D (`neural-orb.js`)**
+- Los 40 nodos ahora **orbitan** en 3D usando matrices de rotación Y+X aplicadas cada frame (antes estaban fijos)
+- `_updatePositions()` transforma `ox/oy/oz` → `x/y/z` con perspectiva real (`fov / (fov + z + 1.2)`)
+- Cada instancia tiene su propia velocidad y ángulo de inicio aleatorios
+- Los estados `thinking` (×2.4) y `speaking` (×3.2) aceleran la rotación
+- Nuevo estado `scanning` para integración con Visión
+- Tilt suave sinusoidal en eje X (eje X oscila ±0.06 rad con el tiempo)
+
+**Orbe 3D de partículas en Visión (`vision-orb.js` — nuevo archivo)**
+- Orbe 88×88px con 55 partículas en el HUD superior izquierdo de la cámara
+- 5 estados visuales: `idle` (cyan lento), `scanning` (giro rápido + burst), `analyzing` (blanco-cyan explosión), `speaking` (verde), `error` (rojo)
+- Se sincroniza automáticamente con el estado de AREX: analizar → `analyzing`, hablar → `speaking`, AUTO → `scanning`
+- Misma arquitectura que neural-orb: Fibonacci sphere + perspectiva + pulsos + rim glow + specular
+
+**Visión libre e interactiva (`vision.js`)**
+- **Tap en cualquier punto** → AREX analiza esa región específica (crop 55% alrededor del tap) con reticle de mira animado
+- **Mantener presionado 650ms** → Abre la barra de pregunta libre
+- **Barra de pregunta libre (siempre disponible)**: escribe cualquier cosa, AREX analiza lo que ve + responde conversacionalmente
+- **Voz natural sin restricciones**: si dices "AREX" + cualquier cosa que no sea un comando conocido, se trata como pregunta libre sobre la vista actual — sin necesidad de memorizar comandos exactos
+- Hint inferior actualizado: "TAP = ANALIZAR ZONA · MANTENER = PREGUNTAR LIBRE"
+
+- **SW v72**
 
 ### v71 — Búsqueda global Cmd+K + Export/Import + Firebase sync completo + Vision mejorado
 

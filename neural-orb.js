@@ -16,6 +16,9 @@ class NeuralOrb {
     this.pulses = [];
     this.rings  = [];
     this.alive  = true;
+    this.angleY    = Math.random() * Math.PI * 2;
+    this.angleX    = 0.28;
+    this._rotSpeed = 0.006 + Math.random() * 0.004;
     this._rgb   = this._parseHex(color);
     this._build();
     this._spawnInitialPulses();
@@ -46,7 +49,7 @@ class NeuralOrb {
     this.cy = h / 2;
     this.R  = Math.min(w, h) * 0.38;
 
-    const N      = 30;
+    const N      = 40;
     const golden = Math.PI * (3 - Math.sqrt(5));
     const tilt   = 0.36;
 
@@ -70,7 +73,7 @@ class NeuralOrb {
       });
     }
 
-    const thresh = this.R * 0.76;
+    const thresh = this.R * 0.68;
     for (let i = 0; i < this.nodes.length; i++) {
       for (let j = i + 1; j < this.nodes.length; j++) {
         const dx = this.nodes[i].x - this.nodes[j].x;
@@ -90,7 +93,7 @@ class NeuralOrb {
     if (!this.edges.length) return;
     const e    = this.edges[Math.floor(Math.random() * this.edges.length)];
     const rev  = Math.random() > 0.5;
-    const base = { idle: 0.010, active: 0.016, thinking: 0.026, speaking: 0.036 };
+    const base = { idle: 0.010, active: 0.016, thinking: 0.026, speaking: 0.036, scanning: 0.022 };
     this.pulses.push({
       from:  rev ? e.b : e.a,
       to:    rev ? e.a : e.b,
@@ -101,14 +104,40 @@ class NeuralOrb {
   }
 
   _spawnRing() {
-    const base = { idle: 0.003, active: 0.007, thinking: 0.016, speaking: 0.022 };
+    const base = { idle: 0.003, active: 0.007, thinking: 0.016, speaking: 0.022, scanning: 0.012 };
     if (Math.random() < (base[this.state] || 0.004)) {
       this.rings.push({ r: this.R * 0.2, maxR: this.R * (0.88 + Math.random() * 0.25), a: 0.55, speed: 0.013 + Math.random() * 0.012 });
     }
   }
 
+  _updatePositions() {
+    const speedMult = { thinking: 2.4, speaking: 3.2, active: 1.6 }[this.state] || 1.0;
+    this.angleY += this._rotSpeed * speedMult;
+    // Gentle tilt wobble
+    this.angleX = 0.28 + 0.08 * Math.sin(this.time * 0.008);
+
+    const cY = Math.cos(this.angleY), sY = Math.sin(this.angleY);
+    const cX = Math.cos(this.angleX), sX = Math.sin(this.angleX);
+    const fov = 3.5;
+
+    for (const n of this.nodes) {
+      // Rotate around Y axis
+      const xR = n.ox * cY + n.oz * sY;
+      const zR = -n.ox * sY + n.oz * cY;
+      // Rotate around X axis (tilt)
+      const yR = n.oy * cX - zR * sX;
+      const zF = n.oy * sX + zR * cX;
+      // Perspective projection
+      const sc = fov / (fov + zF + 1.2);
+      n.x = this.cx + xR * sc * this.R;
+      n.y = this.cy + yR * sc * this.R * 0.9;
+      n.z = zF;
+    }
+  }
+
   draw() {
     if (!this.alive) return;
+    this._updatePositions();
     const { ctx, cx, cy, R, time } = this;
     const w = this.canvas.width;
     const h = this.canvas.height;
@@ -355,13 +384,13 @@ class NeuralOrb {
     // ── Tick ─────────────────────────────────────────
     this.time++;
 
-    const spawnRate = { idle: 0.042, active: 0.10, thinking: 0.28, speaking: 0.40 };
+    const spawnRate = { idle: 0.042, active: 0.10, thinking: 0.28, speaking: 0.40, scanning: 0.22 };
     if (Math.random() < (spawnRate[this.state] || 0.045)) this._spawnPulse();
   }
 
   setState(s) {
     this.state = s;
-    const burst = { thinking: 10, speaking: 14, active: 6, idle: 2 };
+    const burst = { thinking: 10, speaking: 14, active: 6, idle: 2, scanning: 8 };
     for (let i = 0; i < (burst[s] || 3); i++) this._spawnPulse();
     for (let i = 0; i < 3; i++) this._spawnRing();
   }
