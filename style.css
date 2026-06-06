@@ -2195,6 +2195,40 @@ footer {
   .wx-cond-badge { display:none; }
 }
 
+.wx-alert {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255, 106, 0, 0.12); border: 1px solid rgba(255,106,0,0.35);
+  border-radius: 4px; padding: 5px 8px;
+  font-size: 10px; color: #ff9944; letter-spacing: 0.5px;
+}
+
+/* ── Hitos en Metas ─────────────────────────────────── */
+.meta-hitos-section { margin-top: 8px; border-top: 1px solid rgba(0,212,255,0.08); padding-top: 6px; }
+.meta-hito-count { font-size: 9px; color: var(--cyan); letter-spacing: 1px; }
+.meta-hitos-list { display:flex; flex-direction:column; gap:3px; margin:4px 0; }
+.meta-hito { display:flex; align-items:center; gap:6px; }
+.meta-hito.hito-done .hito-text { text-decoration:line-through; opacity:0.45; }
+.hito-toggle {
+  width:16px; height:16px; border-radius:2px; flex-shrink:0;
+  border:1px solid rgba(0,212,255,0.3); background:transparent;
+  color:var(--cyan); font-size:10px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.hito-toggle:hover { border-color:var(--cyan); background:rgba(0,212,255,0.1); }
+.hito-text { font-size:11px; color:var(--text-muted); flex:1; }
+.hito-del { opacity:0; font-size:9px; color:#ff4444; background:transparent; border:none; cursor:pointer; }
+.meta-hito:hover .hito-del { opacity:0.6; }
+.hito-del:hover { opacity:1 !important; }
+.meta-hito-add-row { margin-top:4px; }
+.meta-hito-input {
+  width:100%; background:transparent; border:none;
+  border-bottom:1px solid rgba(0,212,255,0.12);
+  color:var(--text-muted); font-family:var(--font); font-size:11px;
+  padding:3px 0; outline:none; letter-spacing:0.5px;
+}
+.meta-hito-input:focus { border-bottom-color:var(--cyan); }
+.meta-hito-input::placeholder { color:rgba(0,212,255,0.2); }
+
 /* Recordatorios */
 .rec-item {
   display:flex; align-items:center; gap:8px;

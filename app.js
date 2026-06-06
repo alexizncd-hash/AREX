@@ -63,7 +63,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar'];
 
 function loadAtalos() {
   return _safeJSON(localStorage.getItem('arex_atajos'), []);
@@ -489,6 +489,50 @@ async function initFCM() {
       });
     }
   } catch(e) { console.warn('initFCM:', e); }
+}
+
+/* ── Modo offline ────────────────────────────────────── */
+let _isOffline = !navigator.onLine;
+
+function _setOfflineBanner(offline) {
+  _isOffline = offline;
+  let banner = document.getElementById('arex-offline-banner');
+  if (offline) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'arex-offline-banner';
+      banner.innerHTML = '⚠ SIN CONEXIÓN — funciones de IA no disponibles · datos locales activos';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:#1a0a00;border-bottom:1px solid #ff6a00;color:#ff9944;font-family:monospace;font-size:10px;letter-spacing:2px;text-align:center;padding:5px;pointer-events:none;';
+      document.body.prepend(banner);
+    }
+  } else {
+    banner?.remove();
+  }
+}
+
+window.addEventListener('online',  () => _setOfflineBanner(false));
+window.addEventListener('offline', () => _setOfflineBanner(true));
+if (_isOffline) _setOfflineBanner(true);
+
+function _offlineFallback(userText) {
+  const t = userText.toLowerCase();
+  if (/tarea|pendiente|hacer/i.test(t)) {
+    const ts = getTareas().filter(x => !x.done);
+    if (ts.length) return `📋 **Tareas pendientes (${ts.length}):**\n${ts.slice(0,5).map(x=>`- ${x.text}`).join('\n')}`;
+  }
+  if (/nota|apunte/i.test(t)) {
+    const ns = getNotas().slice(0,3);
+    if (ns.length) return `📝 **Notas recientes:**\n${ns.map(n=>`- **${n.titulo||'Sin título'}**: ${n.cuerpo.slice(0,60)}…`).join('\n')}`;
+  }
+  if (/meta|objetivo/i.test(t)) {
+    const ms = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m=>!m.completada).slice(0,3);
+    if (ms.length) return `🎯 **Metas activas:**\n${ms.map(m=>`- ${m.titulo||m.nombre}`).join('\n')}`;
+  }
+  if (/recordatorio|recuerda/i.test(t)) {
+    const rs = getRecordatorios().filter(r=>!r.disparado).slice(0,3);
+    if (rs.length) return `⏰ **Recordatorios activos:**\n${rs.map(r=>r.msg).join('\n')}`;
+  }
+  return '📡 AREX está sin conexión. Los datos locales están disponibles.\n\nComandos útiles sin internet: `/tareas`, `/notas`, `/metas`, `/recordar`';
 }
 
 /* ── Markdown ───────────────────────────────────────── */
@@ -3510,6 +3554,18 @@ async function handleCommand(cmd) {
       break;
     }
 
+    case 'semana':
+      await generarReporteSemanal();
+      break;
+
+    case 'analizar': {
+      const sub = (args || '').toLowerCase().trim();
+      if (!sub || sub === 'gastos') await analizarGastos();
+      else if (sub === 'metas') await analizarMetas();
+      else addMsg('arex', 'Uso: `/analizar gastos` · `/analizar metas`');
+      break;
+    }
+
     case 'briefing':
       localStorage.removeItem('arex_briefing_date');
       await generarBriefing();
@@ -3604,6 +3660,12 @@ async function handleSend() {
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
 
+  if (_isOffline && !msg.startsWith('/')) {
+    addMsg('user', msg);
+    addMsg('arex', _offlineFallback(msg));
+    return;
+  }
+
   // Detectar "recuerda que..." → guardar hecho inmediatamente
   const recuerdaMatch = msg.match(/^recuerda(?:\s+que)?\s+(.+)/i);
   if (recuerdaMatch) {
@@ -3670,9 +3732,11 @@ async function handleSend() {
     hideThinking();
     const errMsg = err.message?.includes('401') ? 'API Key inválida o revocada. Ve a console.groq.com y genera una nueva key.' :
                    err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento e intenta de nuevo.' :
-                   err.message?.includes('Failed to fetch') ? 'Sin conexión a internet o CORS bloqueado.' :
-                   `Error: ${err.message}`;
+                   err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || _isOffline
+                     ? _offlineFallback(history[history.length - 2]?.content || '')
+                     : `Error: ${err.message}`;
     addMsg('arex', errMsg);
+    if (_isOffline) _setOfflineBanner(true);
     setOrb(null,'En espera de instrucciones');
     console.error(err);
   } finally {
@@ -4619,6 +4683,18 @@ function renderWeatherWidget() {
       fcHtml = `<div class="wx-fc-title">PRÓXIMAS 12H</div><div class="wx-fc-strip">${slots}</div>`;
     }
 
+    // Alerta de condiciones severas
+    let alertHtml = '';
+    if (fc?.list) {
+      const nextSlots = fc.list.slice(0, 4);
+      const severeSlot = nextSlots.find(f => (f.pop > 0.65) || (f.weather[0].id >= 200 && f.weather[0].id < 700));
+      if (severeSlot) {
+        const wDesc = severeSlot.weather[0].description.replace(/^\w/, c => c.toUpperCase());
+        const wHr   = new Date(severeSlot.dt * 1000).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+        alertHtml = `<div class="wx-alert">⚠ ${wDesc} esperado alrededor de las ${wHr}</div>`;
+      }
+    }
+
     el.innerHTML = `
       <div class="wx-card">
         <div class="wx-globe-row">
@@ -4646,6 +4722,7 @@ function renderWeatherWidget() {
           <div class="wx-s"><span class="wxs-l">NUBES</span><span class="wxs-v">${cld}%</span></div>
           <div class="wx-s"><span class="wxs-l">CONDICIÓN</span><span class="wxs-v wxs-cond">${_condLabel(wid)}</span></div>
         </div>
+        ${alertHtml}
         ${precipHtml}
         ${fcHtml}
       </div>`;
@@ -4774,6 +4851,129 @@ async function generarBriefing() {
   } catch(e) { console.warn('Briefing:', e); }
 }
 window.generarBriefing = generarBriefing;
+
+/* ── Análisis IA de gastos ───────────────────────────── */
+async function analizarGastos() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('gastos')); return; }
+  addMsg('user', '/analizar gastos');
+  setOrb('thinking', 'Analizando gastos...');
+  showThinking();
+  try {
+    const hoy = _todayStr();
+    const meses = [hoy.slice(0,7)];
+    for (let i = 1; i <= 2; i++) {
+      const d = new Date(hoy + 'T00:00:00'); d.setMonth(d.getMonth() - i);
+      meses.push(d.toISOString().slice(0,7));
+    }
+    const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const todos = gd.gastos || [];
+    const presupuesto = gd.presupuesto || {};
+    const resumen = meses.map(m => {
+      const arr   = todos.filter(g => g.fecha?.startsWith(m));
+      const total = arr.reduce((a,g) => a+(g.monto||0), 0);
+      const porCat = {};
+      arr.forEach(g => { porCat[g.categoria||'Otros'] = (porCat[g.categoria||'Otros']||0) + g.monto; });
+      return `${m}: $${total.toLocaleString('es-MX',{maximumFractionDigits:0})} — ${Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,v])=>`${c}:$${v.toLocaleString('es-MX',{maximumFractionDigits:0})}`).join(', ')}`;
+    }).join('\n');
+    const presupStr = Object.entries(presupuesto).map(([c,v])=>`${c}:$${v}`).join(', ') || 'no definido';
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:500,
+        messages:[
+          {role:'system', content:'Eres AREX, analista financiero personal de Alexiz. Analiza sus gastos y da recomendaciones claras y prácticas en español usando markdown simple.'},
+          {role:'user', content:`Gastos por mes:\n${resumen}\n\nPresupuesto: ${presupStr}\n\nDa: tendencia principal, categoría más alta, y 3 recomendaciones concretas.`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error al analizar gastos.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) addMsg('arex', reply);
+  } catch(e) { hideThinking(); addMsg('arex','No se pudo analizar: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
+
+async function analizarMetas() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('metas')); return; }
+  addMsg('user', '/analizar metas');
+  setOrb('thinking', 'Analizando metas...');
+  showThinking();
+  try {
+    const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m => !m.completada);
+    if (!metas.length) { hideThinking(); addMsg('arex','No tienes metas activas.'); return; }
+    const resumen = metas.slice(0,8).map(m => {
+      const pct = m.tipo === 'porcentaje' ? `${m.valorActual||0}%/${m.objetivo||100}%` : (m.objetivo ? `${m.valorActual||0}/${m.objetivo}` : 'cualitativa');
+      const deadline = m.fechaLimite ? ` · vence ${m.fechaLimite}` : '';
+      return `- ${m.titulo||m.nombre}: ${pct}${deadline}`;
+    }).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:400,
+        messages:[
+          {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
+          {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error al analizar.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) addMsg('arex', reply);
+  } catch(e) { hideThinking(); addMsg('arex','Error: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
+
+/* ── Reporte semanal (/semana) ───────────────────────── */
+async function generarReporteSemanal() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('semana')); return; }
+  addMsg('user', '/semana');
+  setOrb('thinking', 'Generando reporte semanal...');
+  showThinking();
+  try {
+    const hoy = new Date();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    const lunesStr = lunes.toISOString().slice(0,10);
+    const tareasHechas = getTareas().filter(t => t.done && t.doneAt && new Date(t.doneAt) >= lunes);
+    const tareasPend   = getTareas().filter(t => !t.done);
+    const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const gastosSemanales = (gd.gastos||[]).filter(g => g.fecha >= lunesStr);
+    const totalGastos = gastosSemanales.reduce((a,g)=>a+(g.monto||0),0);
+    const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m=>!m.completada).slice(0,5);
+    const metasStr = metas.map(m=>`${m.titulo||m.nombre}: ${m.valorActual||0}/${m.objetivo||'?'}`).join(', ') || 'ninguna';
+    let habitosStr = '';
+    try {
+      const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
+      const days = Array.from({length:7},(_,i)=>{const d=new Date(lunes);d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
+      habitosStr = habs.map(h=>`${h.nombre}: ${days.filter(d=>h.completados?.[d]).length}/7`).join(', ');
+    } catch {}
+    const contexto = [
+      `Semana del ${lunes.toLocaleDateString('es-MX',{day:'numeric',month:'short'})} al ${hoy.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}`,
+      `Tareas completadas: ${tareasHechas.length}`,
+      `Tareas pendientes: ${tareasPend.length}`,
+      `Gastos de la semana: $${totalGastos.toLocaleString('es-MX',{maximumFractionDigits:0})} MXN`,
+      `Metas: ${metasStr}`,
+      habitosStr ? `Hábitos: ${habitosStr}` : '',
+    ].filter(Boolean).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:480,
+        messages:[
+          {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
+          {role:'user', content:`Datos de la semana:\n${contexto}`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error generando reporte.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) {
+      const week = `${lunes.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}–${hoy.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}`;
+      addMsg('arex', `**Reporte semanal · ${week}**\n\n${reply}`);
+    }
+  } catch(e) { hideThinking(); addMsg('arex','Error: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
 
 // ── SALUDOS PROACTIVOS POR MÓDULO ─────────────────────────────────────────────
 function _proactiveModuleGreeting(mod) {

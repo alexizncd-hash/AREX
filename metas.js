@@ -154,6 +154,23 @@ function renderMetasActivas() {
           <button class="neg-btn-primary" style="width:auto;padding:7px 12px;" onclick="metaActualizar('${_escA(m.id)}')">ACTUALIZAR</button>
           ${doneBtn}
         </div>
+        ${(() => {
+          const hitos = m.hitos || [];
+          const hitosDoneN = hitos.filter(h => h.completado).length;
+          const hitosHtml = hitos.length ? `<div class="meta-hitos-list">${hitos.map(h => `
+            <div class="meta-hito${h.completado ? ' hito-done' : ''}">
+              <button class="hito-toggle" onclick="toggleHito('${_escA(m.id)}','${_escA(h.id)}')">${h.completado ? '✓' : ''}</button>
+              <span class="hito-text">${_escH(h.texto)}</span>
+              <button class="hito-del" onclick="deleteHito('${_escA(m.id)}','${_escA(h.id)}')">✕</button>
+            </div>`).join('')}</div>` : '';
+          const progHito = hitos.length ? `<span class="meta-hito-count">${hitosDoneN}/${hitos.length} hitos</span>` : '';
+          return `<div class="meta-hitos-section">
+            ${progHito}${hitosHtml}
+            <div class="meta-hito-add-row">
+              <input class="meta-hito-input" type="text" placeholder="+ Agregar hito..." data-mid="${_escA(m.id)}" onkeydown="if(event.key==='Enter'&&this.value.trim()){addHito(this.dataset.mid,this.value.trim());this.value='';event.preventDefault();}"/>
+            </div>
+          </div>`;
+        })()}
       </div>`;
   }).join('');
 }
@@ -414,6 +431,34 @@ function initMetasModule() {
     tab.addEventListener('click', () => switchMetasView(tab.dataset.view)));
   switchMetasView('activas');
 }
+
+// ── Hitos (milestones) ───────────────────────────────
+function addHito(metaId, texto) {
+  if (!texto?.trim()) return;
+  saveMetas(getMetas().map(m => {
+    if (m.id !== metaId) return m;
+    const hitos = m.hitos || [];
+    return { ...m, hitos: [...hitos, { id: String(Date.now()), texto: texto.trim(), completado: false }] };
+  }));
+  renderMetasActivas();
+}
+function toggleHito(metaId, hitoId) {
+  saveMetas(getMetas().map(m => {
+    if (m.id !== metaId) return m;
+    return { ...m, hitos: (m.hitos||[]).map(h => h.id === hitoId ? { ...h, completado: !h.completado } : h) };
+  }));
+  renderMetasActivas();
+}
+function deleteHito(metaId, hitoId) {
+  saveMetas(getMetas().map(m => {
+    if (m.id !== metaId) return m;
+    return { ...m, hitos: (m.hitos||[]).filter(h => h.id !== hitoId) };
+  }));
+  renderMetasActivas();
+}
+window.addHito    = addHito;
+window.toggleHito = toggleHito;
+window.deleteHito = deleteHito;
 
 // ── Exports globales ─────────────────────────────────
 window.renderMetasModule    = () => switchMetasView('activas');

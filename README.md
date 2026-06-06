@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v75)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v76)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v75 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v76 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -337,6 +337,33 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v76 — Bloque 3: Offline, Análisis IA, Reporte semanal, Hitos en metas, Alerta de clima
+
+**Modo offline inteligente (`app.js`)**
+- Banner naranja en la parte superior cuando no hay conexión (`navigator.onLine` + eventos)
+- Cuando el chat está offline, responde con datos locales relevantes (tareas, notas, metas, recordatorios) en lugar de error genérico
+- Fallback en el catch de `callGroq` / `streamArexReply` para errores de red
+- Comandos `/` siguen funcionando sin internet (son locales)
+
+**Análisis IA de gastos y metas (`app.js`)**
+- `/analizar gastos` — envía los últimos 3 meses de gastos a Groq, recibe: tendencia, categoría más alta, 3 recomendaciones concretas
+- `/analizar metas` — evalúa progreso de metas activas, identifica las en riesgo y da acciones para la semana
+
+**Reporte semanal (`app.js`)**
+- `/semana` — genera un reporte markdown motivador con: tareas completadas/pendientes, gastos, progreso de metas, hábitos de la semana
+- Cubre lunes-domingo de la semana en curso
+
+**Hitos en metas (`metas.js` + `style.css`)**
+- Cada meta ahora soporta `hitos: [{id, texto, completado}]`
+- UI: lista de checkpoints bajo cada meta con toggle/delete
+- Agregar hito con Enter en el input inline
+- Funciones globales: `addHito(metaId, texto)`, `toggleHito`, `deleteHito`
+
+**Alerta de clima (`app.js` + `style.css`)**
+- Si el forecast de las próximas 12h tiene probabilidad de lluvia > 65% o condiciones severas (tormenta, nieve, etc.), muestra un banner naranja de alerta con la hora estimada
+
+**SW v76**
 
 ### v75 — Bloque 2: Hábitos + Subtareas + Briefing mejorado + Memoria conversacional + Búsqueda historial
 
