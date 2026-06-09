@@ -424,6 +424,7 @@ async function arexSyncData(lsKey) {
     const toStore = Array.isArray(payload)
       ? { _arr: payload, _updatedAt: ts }
       : { ...payload, _updatedAt: ts };
+    _rtLastTs[lsKey] = ts;  // prevent onSnapshot loop for our own write
     await setDoc(doc(db, 'arex_data', lsKey), toStore);
     window._arexLastSync = Date.now();
     _renderSyncBadge();
@@ -434,6 +435,8 @@ window.arexSyncData = arexSyncData;
 
 /* ── Real-time sync via onSnapshot ─────────────────── */
 const _rtUnsubs = [];
+const _rtLastTs = {};   // tracks last _updatedAt we received or wrote per key
+
 function initRealtimeSync() {
   if (!db || !onSnapshot) return;
   _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
@@ -443,18 +446,17 @@ function initRealtimeSync() {
       if (!snap.exists()) return;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
+      // Skip if we already processed this timestamp (avoids loop after our own writes)
+      if (remoteTs <= (_rtLastTs[key] || 0)) return;
+      _rtLastTs[key] = remoteTs;
       const { _updatedAt, _arr, ...rest } = data;
       const toStore = _arr !== undefined ? _arr : rest;
-      const local = localStorage.getItem(key);
-      const localTs = local ? (_safeJSON(local, {})?._updatedAt || 0) : 0;
-      if (remoteTs > localTs) {
-        localStorage.setItem(key, JSON.stringify(toStore));
-        window._arexLastSync = Date.now();
-        _renderSyncBadge();
-        if (key === 'arex_tareas') { window.renderTareas?.(); if (typeof scheduleTaskNotifications === 'function') scheduleTaskNotifications(); }
-        if (key === 'arex_metas')  window.renderMetas?.();
-        if (key === 'arex_recordatorios') { if (typeof restoreReminders === 'function') restoreReminders(); }
-      }
+      localStorage.setItem(key, JSON.stringify(toStore));
+      window._arexLastSync = Date.now();
+      _renderSyncBadge();
+      if (key === 'arex_tareas') { window.renderTareas?.(); if (typeof scheduleTaskNotifications === 'function') scheduleTaskNotifications(); }
+      if (key === 'arex_metas')  window.renderMetas?.();
+      if (key === 'arex_recordatorios') { if (typeof restoreReminders === 'function') restoreReminders(); }
     }, err => console.warn('onSnapshot', key, err));
     _rtUnsubs.push(unsub);
   }
@@ -824,7 +826,7 @@ function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
 function toggleTarea(id) {
   const arr = getTareas();
   const tarea = arr.find(t => t.id === id);
-  const newArr = arr.map(t => t.id === id ? { ...t, done: !t.done } : t);
+  const newArr = arr.map(t => t.id === id ? { ...t, done: !t.done, ...(t.done ? { doneAt: null } : { doneAt: Date.now() }) } : t);
   // If marking done and has recurrence, spawn next occurrence
   if (tarea && !tarea.done && tarea.repetir && tarea.repetir !== 'ninguna') {
     const next = _nextFechaRepetir(tarea.fecha, tarea.repetir);
@@ -4191,7 +4193,8 @@ function _showUpdateBanner() {
         }
         case 'nota': {
           const ns = _safeJSON(localStorage.getItem('arex_notas'), []);
-          ns.push({ id: String(Date.now()), texto: text, categoria: 'General', creadaEn: new Date().toISOString() });
+          const now = Date.now();
+          ns.unshift({ id: String(now), titulo: '', cuerpo: text, pinned: false, color: '', createdAt: now, updatedAt: now });
           localStorage.setItem('arex_notas', JSON.stringify(ns));
           window.renderNotas?.();
           if (typeof arexSyncData === 'function') arexSyncData('arex_notas');
@@ -4203,15 +4206,17 @@ function _showUpdateBanner() {
           if (monto > 0 && typeof window.gpAddGastoAuto === 'function') {
             window.gpAddGastoAuto(monto, cat, text);
           } else if (monto > 0) {
-            const gs = _safeJSON(localStorage.getItem('arex_gastos_pers'), []);
-            gs.push({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: new Date().toISOString().slice(0,10) });
-            localStorage.setItem('arex_gastos_pers', JSON.stringify(gs));
+            const gpData = _safeJSON(localStorage.getItem('arex_gastos_pers'), { gastos: [], presupuesto: {} });
+            if (!Array.isArray(gpData.gastos)) gpData.gastos = [];
+            gpData.gastos.unshift({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: new Date().toISOString().slice(0,10) });
+            localStorage.setItem('arex_gastos_pers', JSON.stringify(gpData));
+            if (typeof arexSyncData === 'function') arexSyncData('arex_gastos_pers');
           }
           break;
         }
         case 'meta': {
           const ms = _safeJSON(localStorage.getItem('arex_metas'), []);
-          ms.push({ id: String(Date.now()), titulo: text, progreso: 0, completada: false, creadaEn: new Date().toISOString() });
+          ms.unshift({ id: String(Date.now()), titulo: text, descripcion: '', tipo: 'porcentaje', valorActual: 0, valorObjetivo: 100, unidad: '%', categoria: 'personal', completada: false, creada: Date.now() });
           localStorage.setItem('arex_metas', JSON.stringify(ms));
           window.renderMetas?.();
           if (typeof arexSyncData === 'function') arexSyncData('arex_metas');
@@ -4741,7 +4746,8 @@ window.refreshWeather = refreshWeather;
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.getTareas       = getTareas;
-window._arexHistory    = () => history;  // para WebXR panels
+window._arexHistory    = () => history;
+window.loadSession     = loadSession;
 
 // Actualiza countdowns de recordatorios cada 30 segundos
 setInterval(() => {

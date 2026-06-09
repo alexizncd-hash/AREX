@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v76';
-const VERSION = 'v76';
+const CACHE   = 'arex-v77';
+const VERSION = 'v77';
 const SHELL = [
   './index.html',
   './style.css',
@@ -88,7 +88,8 @@ self.addEventListener('fetch', e => {
 });
 
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json().catch?.(() => ({})) || e.data.json() : {};
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch {}
   const notif = data.notification || data;
   const title = notif.title || 'AREX';
   const opts = {

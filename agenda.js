@@ -48,11 +48,12 @@ function _agGetEvents() {
     }
   }
 
-  // Metas con deadline
+  // Metas con fechaLimite
   const metas = _safeAgJSON(localStorage.getItem('arex_metas'), []);
   for (const m of metas) {
-    if (!m.completada && m.deadline) {
-      addEv(m.deadline, {
+    const dl = m.fechaLimite || m.deadline;
+    if (!m.completada && dl) {
+      addEv(dl, {
         type: 'meta', id: m.id, title: m.titulo || m.texto || 'Meta',
         progreso: m.progreso || 0, color: 'green',
       });
