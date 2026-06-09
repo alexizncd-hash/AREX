@@ -242,8 +242,12 @@
       </div>
       <div class="cmd-group">
         <div class="cmd-group-title">PRODUCTIVIDAD</div>
+        <div class="cmd-row"><code>/hoy</code><span>Resumen del día: tareas urgentes, hábitos, agenda y recordatorios</span></div>
         <div class="cmd-row"><code>/pomodoro</code><span>Abre/cierra el widget Pomodoro</span></div>
         <div class="cmd-row"><code>/briefing</code><span>Genera el briefing del día (resumen + clima + agenda)</span></div>
+        <div class="cmd-row"><code>/semana</code><span>Reporte semanal con IA: progreso, logros y objetivos</span></div>
+        <div class="cmd-row"><code>/analizar gastos</code><span>Análisis IA de los últimos 3 meses de gastos</span></div>
+        <div class="cmd-row"><code>/analizar metas</code><span>Evaluación IA del progreso en metas activas</span></div>
       </div>
       <div class="cmd-group">
         <div class="cmd-group-title">RECORDATORIOS</div>
@@ -883,6 +887,12 @@
       <button class="tvt active" id="tvt-lista" onclick="switchTareasView('lista')">☰ LISTA</button>
       <button class="tvt" id="tvt-cal" onclick="switchTareasView('cal')">📅 CAL</button>
     </div>
+  </div>
+  <div class="tareas-filters" id="tareas-filters">
+    <button class="tf-chip active" data-f="todas" onclick="setTareasFilter('todas')">TODAS</button>
+    <button class="tf-chip" data-f="hoy" onclick="setTareasFilter('hoy')">HOY</button>
+    <button class="tf-chip" data-f="vencidas" onclick="setTareasFilter('vencidas')">VENCIDAS</button>
+    <button class="tf-chip" data-f="alta" onclick="setTareasFilter('alta')">ALTA</button>
   </div>
   <div class="tareas-add-row">
     <input type="text" id="tarea-input" class="tarea-input" placeholder="Descripción... o usa /tarea texto !alta @2026-05-25"/>

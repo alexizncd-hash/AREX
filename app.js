@@ -63,7 +63,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy'];
 
 function loadAtalos() {
   return _safeJSON(localStorage.getItem('arex_atajos'), []);
@@ -941,9 +941,26 @@ function _attachTareaSwipe(div, t) {
   inner.addEventListener('touchcancel', end);
 }
 
+let _tareasFilter = 'todas';
+
+function setTareasFilter(f) {
+  _tareasFilter = f;
+  document.querySelectorAll('.tf-chip').forEach(c => c.classList.toggle('active', c.dataset.f === f));
+  renderTareas();
+}
+window.setTareasFilter = setTareasFilter;
+
 function renderTareas() {
-  const all     = getTareas();
-  const pending = sortPending(all.filter(t => !t.done));
+  const all = getTareas();
+  let pending = sortPending(all.filter(t => !t.done));
+  if (_tareasFilter === 'hoy') {
+    const h = _todayStr();
+    pending = pending.filter(t => t.fecha === h);
+  } else if (_tareasFilter === 'vencidas') {
+    pending = pending.filter(t => urgenciaTarea(t)?.cls === 'urg-vencida');
+  } else if (_tareasFilter === 'alta') {
+    pending = pending.filter(t => t.prioridad === 'alta');
+  }
   const done    = all.filter(t =>  t.done);
 
   const makeItem = t => {
@@ -1357,6 +1374,14 @@ function renderDashboard() {
   const metas     = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).slice(0,4) : [];
   const bitacora  = (typeof _getBitacora === 'function') ? _getBitacora().slice(0,6) : [];
 
+  const hoyStr     = hoy.toISOString().slice(0, 10);
+  const habitos    = _safeJSON(localStorage.getItem('arex_habitos'), []);
+  const habsPend   = habitos.filter(h => !h.completados?.[hoyStr]);
+  const habsHechos = habitos.filter(h =>  h.completados?.[hoyStr]);
+  const agendaHoy  = typeof _agGetEvents === 'function'
+    ? _agGetEvents().filter(ev => (ev.start || '').slice(0,10) === hoyStr)
+    : [];
+
   const groqOk  = !!(window.AREX_CONFIG?.groqKey);
   const fbOk    = !!(window._arexDb);
   const gemOk   = !!(window.AREX_CONFIG?.geminiKey);
@@ -1433,6 +1458,24 @@ function renderDashboard() {
       <span class="dhud-log-ts">${t}</span>
       <span class="dhud-log-mod dhud-lmod-${e.modulo}">${e.modulo.slice(0,4).toUpperCase()}</span>
       <span class="dhud-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,32)}</span>
+    </div>`;
+  };
+
+  const mkHabit = h => {
+    const done = !!h.completados?.[hoyStr];
+    return `<div class="dhud-habit-row${done?' done':''}">
+      <button class="dhud-habit-toggle" onclick="if(typeof toggleHabitoHoy==='function'){toggleHabitoHoy('${h.id}');renderDashboard();}" title="${done?'Desmarcar':'Completar'}">${done?'✓':''}</button>
+      <span class="dhud-habit-name">${((h.emoji||'•')+' '+(h.nombre||'')).replace(/</g,'&lt;').slice(0,28)}</span>
+      ${done?'<span class="dhud-habit-done-tag">✓</span>':''}
+    </div>`;
+  };
+
+  const mkAgEv = ev => {
+    const typeLabel = ev.type==='meta'?'META':ev.type==='recordatorio'?'REC':'EVT';
+    return `<div class="dhud-agev-row">
+      <span class="dhud-agev-hora">${ev.hora||'·'}</span>
+      <span class="dhud-agev-title">${(ev.title||'').replace(/</g,'&lt;').slice(0,26)}</span>
+      <span class="dhud-agev-type dhud-agev-${ev.color||'blue'}">${typeLabel}</span>
     </div>`;
   };
 
@@ -1543,6 +1586,33 @@ function renderDashboard() {
           <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('control')">CTRL →</button>
         </div>
         ${bitacora.length ? bitacora.map(mkLog).join('') : '<div class="dhud-empty">Sin actividad registrada</div>'}
+      </div>
+    </div>
+
+    <!-- ── HÁBITOS HOY + AGENDA HOY ─────────────────── -->
+    <div class="dhud-day-grid">
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◎</span>
+          <span class="dhud-panel-title">HÁBITOS HOY</span>
+          <span class="dhud-badge${habsPend.length?' dhud-badge-alert':''}">${habitos.length ? habsHechos.length+'/'+habitos.length : '0'}</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('habitos')">VER →</button>
+        </div>
+        ${habitos.length
+          ? [...habsPend,...habsHechos].slice(0,6).map(mkHabit).join('')
+          : '<div class="dhud-empty">◎ Sin hábitos — crea en HÁBITOS</div>'}
+      </div>
+
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◷</span>
+          <span class="dhud-panel-title">AGENDA HOY</span>
+          <span class="dhud-badge">${agendaHoy.length}</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('agenda')">VER →</button>
+        </div>
+        ${agendaHoy.length
+          ? agendaHoy.map(mkAgEv).join('')
+          : '<div class="dhud-empty">◷ Sin eventos para hoy</div>'}
       </div>
     </div>
 
@@ -3560,6 +3630,10 @@ async function handleCommand(cmd) {
       await generarReporteSemanal();
       break;
 
+    case 'hoy':
+      mostrarResumenHoy();
+      break;
+
     case 'analizar': {
       const sub = (args || '').toLowerCase().trim();
       if (!sub || sub === 'gastos') await analizarGastos();
@@ -4927,6 +5001,56 @@ async function analizarMetas() {
     if (reply) addMsg('arex', reply);
   } catch(e) { hideThinking(); addMsg('arex','Error: '+e.message); }
   setOrb(null,'En espera de instrucciones');
+}
+
+/* ── Resumen del día (/hoy) ─────────────────────────── */
+function mostrarResumenHoy() {
+  addMsg('user', '/hoy');
+  const hoyStr  = new Date().toISOString().slice(0, 10);
+  const tareas  = getTareas();
+  const urgentes = sortPending(tareas.filter(t => !t.done)).filter(t => {
+    const u = urgenciaTarea(t);
+    return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
+  });
+  const habitos  = _safeJSON(localStorage.getItem('arex_habitos'), []);
+  const habsPend = habitos.filter(h => !h.completados?.[hoyStr]);
+  const agEvents = typeof _agGetEvents === 'function'
+    ? _agGetEvents().filter(ev => (ev.start || '').slice(0, 10) === hoyStr) : [];
+  const recs = _safeJSON(localStorage.getItem('arex_reminders'), []).filter(r => !r.done);
+
+  const fecha = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+  const lines = [`**◈ RESUMEN DEL DÍA · ${fecha.toUpperCase()}**\n`];
+
+  if (urgentes.length) {
+    lines.push(`**⚠ TAREAS URGENTES (${urgentes.length})**`);
+    urgentes.slice(0, 5).forEach(t => lines.push(`- ${t.text}`));
+  } else {
+    lines.push('✓ Sin tareas urgentes hoy');
+  }
+
+  if (habitos.length) {
+    lines.push('');
+    if (habsPend.length) {
+      lines.push(`**◎ HÁBITOS PENDIENTES (${habsPend.length}/${habitos.length})**`);
+      habsPend.slice(0, 5).forEach(h => lines.push(`- ${h.emoji || '•'} ${h.nombre}`));
+    } else {
+      lines.push(`✓ Todos los hábitos completados hoy (${habitos.length}/${habitos.length})`);
+    }
+  }
+
+  if (agEvents.length) {
+    lines.push('');
+    lines.push('**◷ AGENDA HOY**');
+    agEvents.forEach(ev => lines.push(`- ${ev.hora ? ev.hora + ' · ' : ''}${ev.title}`));
+  }
+
+  if (recs.length) {
+    lines.push('');
+    lines.push(`**⏰ RECORDATORIOS ACTIVOS (${recs.length})**`);
+    recs.slice(0, 3).forEach(r => lines.push(`- ${r.texto}`));
+  }
+
+  addMsg('arex', lines.join('\n'));
 }
 
 /* ── Reporte semanal (/semana) ───────────────────────── */

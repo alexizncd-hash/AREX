@@ -7288,3 +7288,78 @@ header::before {
 #vision-panel ~ .qc-fab,
 body:has(#vision-panel) .qc-fab { display: none; }
 
+/* ── Dashboard: Hábitos HOY + Agenda HOY ─────────────── */
+.dhud-day-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+@media (max-width: 600px) { .dhud-day-grid { grid-template-columns: 1fr; } }
+
+.dhud-habit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.dhud-habit-row:hover { background: rgba(0,212,255,.06); }
+.dhud-habit-row.done { opacity: .5; }
+.dhud-habit-toggle {
+  width: 20px; height: 20px;
+  border: 1px solid rgba(0,212,255,.4);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cyan);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s;
+}
+.dhud-habit-row.done .dhud-habit-toggle { background: rgba(0,212,255,.15); border-color: var(--cyan); }
+.dhud-habit-name { font-size: 12px; color: var(--text-main); flex: 1; }
+.dhud-habit-done-tag { font-size: 10px; color: var(--green); font-family: var(--font); }
+
+.dhud-agev-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 4px;
+}
+.dhud-agev-hora { font-size: 10px; color: var(--cyan); font-family: var(--font); min-width: 36px; }
+.dhud-agev-title { font-size: 12px; color: var(--text-main); flex: 1; }
+.dhud-agev-type { font-size: 9px; font-family: var(--font); padding: 1px 4px; border-radius: 3px; }
+.dhud-agev-orange { color: var(--orange); border: 1px solid rgba(255,106,0,.3); }
+.dhud-agev-green  { color: var(--green);  border: 1px solid rgba(0,255,170,.3); }
+.dhud-agev-blue   { color: var(--cyan);   border: 1px solid rgba(0,212,255,.3); }
+
+/* ── Tareas: filter chips ────────────────────────────── */
+.tareas-filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  flex-wrap: wrap;
+}
+.tf-chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,212,255,.25);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 10px;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tf-chip:hover { border-color: var(--cyan); color: var(--cyan); }
+.tf-chip.active {
+  background: rgba(0,212,255,.12);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
