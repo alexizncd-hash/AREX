@@ -76,11 +76,14 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  function stop() {
+    window.removeEventListener('deviceorientation', _onOrient);
+    window.removeEventListener('pointermove', _onPointer);
+    active = false;
+    root.style.setProperty('--ax', '0');
+    root.style.setProperty('--ay', '0');
   }
 
-  window.AREXParallax = { isActive: () => active };
+  // Not auto-init — started by MODO CINE toggle
+  window.AREXParallax = { isActive: () => active, start: init, stop };
 })();

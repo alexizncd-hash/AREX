@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v78';
-const VERSION = 'v78';
+const CACHE   = 'arex-v79';
+const VERSION = 'v79';
 const SHELL = [
   './index.html',
   './style.css',
@@ -16,8 +16,6 @@ const SHELL = [
   './metas.css',
   './webxr.js',
   './vision.js',
-  './gesture.js',
-  './neural-orb.js',
   './parallax.js',
   './proyectos.js',
   './proyectos.css',
@@ -38,6 +36,7 @@ const SHELL = [
   './holo.js',
   './manifest.json',
   './icon.svg',
+  // gesture.js, neural-orb.js are lazy-loaded on demand (not in initial shell)
 ];
 
 self.addEventListener('install', e => {

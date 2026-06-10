@@ -49,7 +49,8 @@ const AREXNav = {
     if (modulo === 'control'   && typeof renderControlModule     === 'function') renderControlModule();
     if (modulo === 'reparto'   && typeof renderRepartoModule     === 'function') renderRepartoModule();
     if (modulo === 'agenda'    && typeof renderAgendaModule      === 'function') renderAgendaModule();
-    if (modulo === 'habitos'   && typeof renderHabitosModule     === 'function') renderHabitosModule();
+    if (modulo === 'habitos'    && typeof renderHabitosModule    === 'function') renderHabitosModule();
+    if (modulo === 'evidencias' && typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
     // Update urgency badge counts
     if (typeof window._updateUrgencyBadges === 'function') window._updateUrgencyBadges();
     // Fire proactive greeting hook (registered by app.js)

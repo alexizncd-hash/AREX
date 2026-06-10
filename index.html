@@ -487,6 +487,10 @@
       </svg>
       <span class="dock-label">REPARTO</span>
     </button>
+    <button class="nav-btn" data-module="evidencias" data-tooltip="Tablero de Evidencias">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span class="dock-label">EVID</span>
+    </button>
     <button class="nav-btn" data-module="control" data-tooltip="Mission Control">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="12" cy="10" r="3"/></svg>
       <span class="dock-label">CTRL</span>
@@ -1026,6 +1030,14 @@
   <div id="rep-wrap"></div>
 </div>
 
+<div id="module-evidencias" class="module-panel">
+  <div class="ev-module-hdr">
+    <span class="ev-module-title">TABLERO DE EVIDENCIAS</span>
+    <span class="ev-module-count">(<span id="ev-count">0</span>)</span>
+  </div>
+  <div id="ev-board" class="ev-board"></div>
+</div>
+
 </div><!-- /#workspace -->
 
 <!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
@@ -1068,17 +1080,13 @@
 <!-- Visión en vivo (Fase 4) -->
 <script src="vision-orb.js"></script>
 <script type="module" src="vision.js"></script>
-<!-- HOLO ENGINE — Tony Stark JARVIS Interface -->
+<!-- HOLO ENGINE — Tony Stark JARVIS Interface (always loaded; particles opt-in via MODO CINE) -->
 <script src="holo.js"></script>
 
-<!-- GESTURE ENGINE — MediaPipe hand tracking -->
-<script src="gesture.js"></script>
-
-<!-- NEURAL ORB ENGINE — Canvas neural network spheres for agents -->
-<script src="neural-orb.js"></script>
-
-<!-- PARALLAX ENGINE — depth via gyro / pointer -->
+<!-- PARALLAX ENGINE — depth via gyro / pointer (started by MODO CINE toggle) -->
 <script src="parallax.js"></script>
+
+<!-- gesture.js and neural-orb.js are lazy-loaded on demand -->
 
 <!-- FAB: Analizar módulo con AREX IA -->
 <button id="fab-analizar" title="AREX analiza este módulo con IA"

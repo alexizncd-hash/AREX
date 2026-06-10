@@ -366,11 +366,19 @@
     const el = document.getElementById('orb');
     if (!el) return;
     if (tryWebGL(el)) {
-      (function loop() { requestAnimationFrame(loop); renderWebGL(); })();
+      (function loop() {
+        requestAnimationFrame(loop);
+        if (document.hidden || window._orbPaused) return;
+        renderWebGL();
+      })();
     } else {
       init2D(el);
     }
   }
+
+  document.addEventListener('visibilitychange', () => {
+    window._orbPaused = document.hidden;
+  });
 
   document.readyState === 'loading'
     ? document.addEventListener('DOMContentLoaded', init)

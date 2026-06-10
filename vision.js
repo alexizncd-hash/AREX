@@ -1374,9 +1374,11 @@ function _toggleGesture() {
 
   const canvas = document.getElementById('vis-gesture-canvas');
   if (_gestureOn && _video && canvas) {
-    canvas.width  = _video.clientWidth  || 320;
-    canvas.height = _video.clientHeight || 480;
-    if (typeof initGestureEngine === 'function') {
+    canvas.width  = 320;
+    canvas.height = 240;
+    const _startGE = () => {
+      if (typeof initGestureEngine !== 'function') return;
+      _say('**[Gestos]** CARGANDO MOTOR DE GESTOS...');
       initGestureEngine(_video, canvas, _handleGesture)
         .then(ok => {
           if (!ok) {
@@ -1388,6 +1390,15 @@ function _toggleGesture() {
             document.getElementById('vis-gest-guide')?.classList.add('visible');
           }
         });
+    };
+    if (typeof initGestureEngine === 'function') {
+      _startGE();
+    } else {
+      const s = document.createElement('script');
+      s.src = './gesture.js';
+      s.onload = _startGE;
+      s.onerror = () => _say('**[Gestos]** Error cargando gesture.js');
+      document.body.appendChild(s);
     }
   } else {
     if (typeof stopGestureEngine === 'function') stopGestureEngine();
