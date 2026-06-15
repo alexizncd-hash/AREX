@@ -6,7 +6,7 @@
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
     query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot,
-    getAuth, signInAnonymously, onAuthStateChanged;
+    getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -179,24 +179,45 @@ function renderHechosList() {
 }
 window.deleteHecho = deleteHecho;
 
-/* ── System prompt ──────────────────────────────────── */
+/* ── System prompt (dinámico según perfil activo) ───── */
 function buildSystemBase() {
-  const now  = new Date();
+  const p     = window._arexProfile || {};
+  const name  = p.assistantName || 'AREX';
+  const owner = p.ownerName     || 'Alexiz';
+  const loc   = p.location      || 'Hermosillo, Sonora, México';
+  const pers  = p.personality   || 'formal';
+
+  const now   = new Date();
   const fecha = now.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const hora  = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
-  return `Eres AREX, el sistema de inteligencia personal de Alexiz.
-Tu nombre nace de Alexiz y Margaret — las dos personas más importantes en su vida.
+
+  const toneMap = {
+    formal:    `Formal, preciso y directo. Sin rodeos. Como JARVIS con Tony Stark.\n- Leal y confiable. Nunca condescendiente.\n- Tratas a ${owner} como alguien capaz e inteligente.\n- Calidez breve en momentos personales, luego vuelves al modo operacional.`,
+    cálido:    `Cálido, cercano y empático. Directo pero amable.\n- Apoyas a ${owner} en cada paso. Nunca condescendiente.\n- Combinas profesionalismo con calidez genuina.`,
+    amistoso:  `Amistoso y conversacional. Natural, como hablar con un buen amigo.\n- Sin formalismos innecesarios. Claro y humano.\n- Sigues siendo útil y preciso, pero sin rigidez.`,
+  };
+  const tone = toneMap[pers] || toneMap.formal;
+
+  const phrases = name === 'VIERNES'
+    ? `"Sistemas listos." | "Procesando." | "Entendido." | "Aquí el análisis." | "Listo, ${owner}."`
+    : `"Sistemas en línea." | "Procesando, ${owner}." | "Entendido." | "Aquí el análisis." | "Datos disponibles." | "Operación completada."`;
+
+  let base = `Eres ${name}, el sistema de inteligencia personal de ${owner}.`;
+  if (name === 'AREX') base += `\nTu nombre nace de Alexiz y Margaret — las dos personas más importantes en su vida.`;
+
+  base += `
 
 CONTEXTO OPERACIONAL:
 - Fecha: ${fecha}. Hora: ${hora}.
-- Ubicación: Hermosillo, Sonora, México (UTC-7).
+- Ubicación: ${loc}.
 
 IDENTIDAD Y TONO:
-- Formal, preciso y directo. Sin rodeos. Como JARVIS con Tony Stark.
-- Leal y confiable. Nunca condescendiente.
-- Tratas a Alexiz como alguien capaz e inteligente.
-- Calidez breve en momentos personales, luego vuelves al modo operacional.
-- Nunca pierdes el contexto de la conversación.
+- ${tone}
+- Nunca pierdes el contexto de la conversación.`;
+
+  // Contexto personal de Alexiz — solo para su perfil
+  if (owner === 'Alexiz') {
+    base += `
 
 QUIÉN ES ALEXIZ:
 - Desarrollador web en crecimiento (HTML, CSS, JavaScript nivel intermedio).
@@ -206,7 +227,10 @@ QUIÉN ES ALEXIZ:
 - Positivo, busca el lado constructivo en momentos difíciles.
 - Quiere crecer: personal, espiritual, físico, económico y en relaciones.
 - Valora su familia y a Margaret, su novia — fundamental en su vida.
-- Prefiere entender el "mínimo funcional" antes de profundizar.
+- Prefiere entender el "mínimo funcional" antes de profundizar.`;
+  }
+
+  base += `
 
 MÓDULOS DEL SISTEMA (puedes referirte a ellos):
 - FINANZAS: tarjetas de crédito, saldos, gastos mensuales, calculadora de deuda, recordatorios de pago.
@@ -228,33 +252,34 @@ MÓDULOS DEL SISTEMA (puedes referirte a ellos):
 
 REGLAS:
 - Responde SIEMPRE en español.
-- 3-5 líneas por defecto. Expándete si Alexiz pide más detalle.
+- 3-5 líneas por defecto. Expándete si ${owner} pide más detalle.
 - Código: describe brevemente qué hace (1 línea), luego el bloque de código completo.
 - Señala errores o mejores enfoques directamente, sin rodeos.
-- Si hay riesgos o errores en el planteamiento de Alexiz, díselo primero.
+- Si hay riesgos o errores en el planteamiento de ${owner}, díselo primero.
 - Cuando tengas resultados de búsqueda web, úsalos e indica las fuentes con claridad.
 - Para temas de finanzas personales, considera el contexto de México (tasas, productos, normativa local).
 
 FRASES CARACTERÍSTICAS (úsalas cuando sea natural):
-"Sistemas en línea." | "Procesando, Alexiz." | "Entendido."
-"Aquí el análisis." | "Datos disponibles." | "Operación completada."
+${phrases}
 
 SISTEMA DE ACCIONES — LEE ESTO CON ATENCIÓN:
-Puedes ejecutar acciones reales dentro de AREX usando etiquetas al FINAL de tu respuesta.
+Puedes ejecutar acciones reales dentro de ${name} usando etiquetas al FINAL de tu respuesta.
 Úsalas cuando el usuario pida crear algo, o cuando detectes que debes guardar información.
 
 Crear tarea:       <arex:accion tipo="addTarea" texto="descripción" fecha="YYYY-MM-DD" prioridad="alta|media|baja"/>
 Crear nota:        <arex:accion tipo="addNota" titulo="título" cuerpo="contenido completo"/>
 Recordatorio:      <arex:accion tipo="recordar" msg="mensaje" mins="30"/>
-Guardar hecho:     <arex:accion tipo="hecho" texto="dato importante sobre Alexiz"/>
+Guardar hecho:     <arex:accion tipo="hecho" texto="dato importante sobre ${owner}"/>
 Abrir módulo:      <arex:accion tipo="modulo" nombre="tareas|notas|finanzas|habitos|inicio"/>
 
 REGLAS DE ACCIONES:
 - Usa SOLO si hay intención clara del usuario de crear algo, o si aprendes un hecho nuevo relevante.
-- Para "hecho": úsalo cuando aprendas metas, decisiones, datos personales, contexto importante de Alexiz.
+- Para "hecho": úsalo cuando aprendas metas, decisiones, datos personales, contexto importante de ${owner}.
 - Las etiquetas van AL FINAL del texto, nunca en medio de la respuesta.
 - En tu texto NO menciones las etiquetas — solo confirma brevemente lo que hiciste ("Tarea creada.", "Guardado.").
-- Puedes incluir múltiples acciones en una respuesta.`.trim();
+- Puedes incluir múltiples acciones en una respuesta.`;
+
+  return base.trim();
 }
 
 /* ── Contexto de módulos (data real de Alexiz) ──────── */
@@ -313,7 +338,8 @@ function buildModuleContext() {
   } catch(e) {}
 
   if (!parts.length) return '';
-  return `\n\nDATA EN TIEMPO REAL (usa esto cuando Alexiz pregunte sobre sus finanzas, negocio, gastos, metas o tareas):\n${parts.join('\n')}`;
+  const owner = window._arexProfile?.ownerName || 'Alexiz';
+  return `\n\nDATA EN TIEMPO REAL (usa esto cuando ${owner} pregunte sobre sus finanzas, negocio, gastos, metas o tareas):\n${parts.join('\n')}`;
 }
 
 const EXAM_ADDON = `
@@ -341,32 +367,214 @@ async function initFirebase() {
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
        limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
-    ({ getAuth, signInAnonymously, onAuthStateChanged }
+    ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+       onAuthStateChanged, signOut }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
     window._arexDb = db;
     fbInitialized = true;
 
-    // Auth anónimo — sync solo arranca cuando Firestore confirma uid
-    // La persistencia local de Firebase Auth conserva el mismo uid entre sesiones
     const auth = getAuth(fbApp);
+    window._arexAuth = auth;
+
     onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      window._arexUid = user.uid;
-      await _migrateFirestoreIfNeeded();
-      initRealtimeSync();
-      initFCM();
-      // Pull datos remotos ahora que tenemos uid
-      await pullConfigFromFirestore();
-      await pullAllModuleData();
-      if (window._arexLastSync == null) window._arexLastSync = Date.now();
-      await loadHistory();
+      if (user) {
+        window._arexUid  = user.uid;
+        window._arexUser = { uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL };
+        localStorage.setItem('arex_offline_uid', user.uid);
+        _hideLoginOverlay();
+        await _initUserSession();
+      } else {
+        // Offline fallback: si hay uid cacheado y no hay red, arrancar sin sync
+        const cachedUid = localStorage.getItem('arex_offline_uid');
+        if (cachedUid && !navigator.onLine) {
+          window._arexUid  = cachedUid;
+          window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
+          _hideLoginOverlay();
+          await _initUserSession();
+        } else {
+          _showLoginOverlay();
+        }
+      }
     });
-    signInAnonymously(auth).catch(e =>
-      console.warn('Firebase auth anónimo falló — continuando offline:', e)
-    );
   } catch(e) { console.warn('Firebase init:', e); }
+}
+
+// Arranca la sesión del usuario: perfil → migración → sync → datos
+async function _initUserSession() {
+  await loadAndApplyProfile();
+  await _migrateFirestoreIfNeeded();
+  initRealtimeSync();
+  initFCM();
+  await pullConfigFromFirestore();
+  await pullAllModuleData();
+  if (window._arexLastSync == null) window._arexLastSync = Date.now();
+  await loadHistory();
+}
+
+// ── Google Sign-In ────────────────────────────────────
+async function _doGoogleSignIn() {
+  const auth = window._arexAuth;
+  if (!auth) return;
+  const btn = document.getElementById('btn-google-signin');
+  const err = document.getElementById('login-error');
+  if (btn) btn.disabled = true;
+  if (err) err.style.display = 'none';
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code)) {
+      try { await signInWithRedirect(auth, provider); } catch(e2) { _loginError(e2.message); }
+    } else {
+      _loginError(e.message || 'Error al iniciar sesión');
+    }
+    if (btn) btn.disabled = false;
+  }
+}
+function _loginError(msg) {
+  const err = document.getElementById('login-error');
+  if (err) { err.textContent = msg; err.style.display = 'block'; }
+}
+
+// Sign-out global
+window._arexSignOut = async () => {
+  if (window._arexAuth) {
+    await signOut(window._arexAuth).catch(()=>{});
+    localStorage.removeItem('arex_offline_uid');
+    localStorage.removeItem('arex_offline_name');
+    window._arexUid = null; window._arexUser = null; window._arexProfile = null;
+    _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
+    _showLoginOverlay();
+  }
+};
+
+// ── Login overlay ─────────────────────────────────────
+function _showLoginOverlay() {
+  const ov = document.getElementById('login-overlay');
+  if (ov) ov.style.display = 'flex';
+}
+function _hideLoginOverlay() {
+  const ov = document.getElementById('login-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+// ── Sistema de perfiles ───────────────────────────────
+const _PROFILE_DEFAULTS = {
+  assistantName: 'AREX',
+  ownerName: 'Usuario',
+  personality: 'formal',
+  voiceGender: 'male',
+  voicePitch: 0.78,
+  voiceRate: 0.91,
+  location: 'México',
+  activeModules: ['finanzas','negocio','gastos','metas','tareas','notas','agenda','proyectos','habitos','control','evidencias'],
+  accent: '#00d4ff',
+};
+
+async function loadAndApplyProfile() {
+  // 1. Intentar leer desde Firestore
+  if (db && window._arexUid) {
+    try {
+      const snap = await getDoc(_userDoc('arex', 'profile'));
+      if (snap.exists()) {
+        window._arexProfile = { ..._PROFILE_DEFAULTS, ...snap.data() };
+        _applyProfile();
+        return;
+      }
+    } catch(e) { console.warn('loadProfile:', e); }
+  }
+  // 2. Leer caché local
+  const cached = localStorage.getItem('arex_profile_cache');
+  if (cached) {
+    try {
+      window._arexProfile = { ..._PROFILE_DEFAULTS, ...JSON.parse(cached) };
+      _applyProfile();
+      return;
+    } catch {}
+  }
+  // 3. Sin perfil → onboarding (excepto si ya hay datos migrados de Alexiz)
+  const isMigrated = localStorage.getItem('arex_migrated_v1');
+  if (isMigrated) {
+    // Datos previos → asumir perfil Alexiz/AREX
+    window._arexProfile = { ..._PROFILE_DEFAULTS,
+      assistantName:'AREX', ownerName:'Alexiz',
+      location:'Hermosillo, Sonora, México', personality:'formal' };
+    await _saveProfile(window._arexProfile);
+    _applyProfile();
+  } else {
+    _showOnboarding();
+  }
+}
+
+async function _saveProfile(profile) {
+  window._arexProfile = { ..._PROFILE_DEFAULTS, ...profile };
+  localStorage.setItem('arex_profile_cache', JSON.stringify(window._arexProfile));
+  if (window._arexUser?.displayName) {
+    localStorage.setItem('arex_offline_name', window._arexUser.displayName);
+  }
+  if (db && window._arexUid) {
+    try { await setDoc(_userDoc('arex', 'profile'), window._arexProfile); }
+    catch(e) { console.warn('saveProfile:', e); }
+  }
+}
+
+function _applyProfile() {
+  const p = window._arexProfile;
+  if (!p) return;
+  // Header: nombre del asistente
+  const nameEl = document.getElementById('hdr-assistant-name');
+  if (nameEl) nameEl.textContent = `${p.assistantName} · MARK 35`;
+  // Sidebar: etiqueta de voz
+  const voiceLbl = document.querySelector('#sb-voice .mt-lbl');
+  if (voiceLbl) voiceLbl.textContent = `VOZ DE ${p.assistantName}`;
+  // Color de acento personalizado
+  if (p.accent && p.accent !== '#00d4ff') {
+    document.documentElement.style.setProperty('--cyan', p.accent);
+  }
+  _updateUserUI();
+}
+
+function _updateUserUI() {
+  const u = window._arexUser;
+  const p = window._arexProfile;
+  const nameEl    = document.getElementById('sb-user-name');
+  const assistEl  = document.getElementById('sb-assistant-name');
+  const avatarEl  = document.getElementById('sb-user-avatar');
+  const section   = document.getElementById('sb-user-section');
+  if (section) section.style.display = u ? 'block' : 'none';
+  if (nameEl)   nameEl.textContent   = u?.displayName || u?.email || 'Offline';
+  if (assistEl) assistEl.textContent = p?.assistantName ? `Asistente: ${p.assistantName}` : 'AREX';
+  if (avatarEl && u?.photoURL) {
+    avatarEl.src = u.photoURL;
+    avatarEl.style.display = 'inline-block';
+  }
+}
+
+// ── Onboarding (primer login sin perfil) ─────────────
+function _showOnboarding() {
+  const ov = document.getElementById('onboarding-overlay');
+  if (ov) ov.style.display = 'flex';
+}
+function _hideOnboarding() {
+  const ov = document.getElementById('onboarding-overlay');
+  if (ov) ov.style.display = 'none';
+}
+async function _finishOnboarding() {
+  const aName  = (document.getElementById('ob-assistant-name')?.value || '').trim() || 'AREX';
+  const oName  = (document.getElementById('ob-owner-name')?.value    || '').trim() || (window._arexUser?.displayName?.split(' ')[0] || 'Usuario');
+  const vGender= document.querySelector('input[name="ob-voice"]:checked')?.value || 'male';
+  const profile = { ..._PROFILE_DEFAULTS,
+    assistantName: aName,
+    ownerName: oName,
+    voiceGender: vGender,
+    voicePitch: vGender === 'female' ? 1.05 : 0.78,
+    voiceRate:  vGender === 'female' ? 0.94 : 0.91,
+  };
+  await _saveProfile(profile);
+  _applyProfile();
+  _hideOnboarding();
 }
 
 // Migración one-time: copia datos de rutas planas viejas a users/{uid}/*
@@ -2249,21 +2457,31 @@ function showThinking() {
 }
 function hideThinking() { document.getElementById('thinking')?.remove(); }
 
-/* ── Voz de AREX ────────────────────────────────────── */
-function getMaleVoice() {
+/* ── Voz del asistente (dinámica por perfil) ────────── */
+function getVoice(profile) {
   const voices = window.speechSynthesis.getVoices();
+  const gender = profile?.voiceGender || 'male';
+  if (gender === 'female') {
+    const femaleNames = ['paulina','lucia','sofia','valentina','rosa','sabina','monica','google español','microsoft sabina'];
+    return voices.find(v => v.lang.startsWith('es') && femaleNames.some(n => v.name.toLowerCase().includes(n)))
+        || voices.find(v => v.lang.startsWith('es'));
+  }
   const maleNames = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
   return voices.find(v => v.lang.startsWith('es') && maleNames.some(n => v.name.toLowerCase().includes(n)))
       || voices.find(v => v.lang.startsWith('es'));
 }
+// Compatibilidad: getMaleVoice usada en otros lugares
+function getMaleVoice() { return getVoice({ voiceGender: 'male' }); }
+
 function arexSpeak(text) {
   if (!voiceOn && !continuousMode) return;
+  const p = window._arexProfile;
   window.speechSynthesis.cancel();
   clearInterval(_iosVoiceKa);
   isSpeaking = true;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'es-MX'; u.rate = 0.91; u.pitch = 0.78; u.volume = 1;
-  const v = getMaleVoice(); if (v) u.voice = v;
+  u.lang = 'es-MX'; u.rate = p?.voiceRate ?? 0.91; u.pitch = p?.voicePitch ?? 0.78; u.volume = 1;
+  const v = getVoice(p); if (v) u.voice = v;
   u.onstart = () => {
     setOrb('speaking','Transmitiendo respuesta');
     // Show speaking dots on last AREX message
