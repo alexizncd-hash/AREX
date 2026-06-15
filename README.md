@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v80)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v81)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v76 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v80 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -337,6 +337,20 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v81 — Corrección de bugs críticos en INICIO, Agenda y Evidencias
+
+**Dashboard INICIO en blanco (`app.js`)**
+- `renderDashboard()` lanzaba `TypeError: _agGetEvents(...).filter is not a function` porque `_agGetEvents()` retorna un objeto `{ 'yyyy-mm-dd': [...] }`, no un array
+- Corregido en 3 lugares: `renderDashboard`, `generarBriefing` y `mostrarResumenHoy` — ahora usan `_agGetEvents()[hoyStr] || []`
+
+**Panel Evidencias no llenaba la pantalla (`evidencias.css`)**
+- Faltaba la regla `#module-evidencias.module-panel.active` con `display:flex; flex:1`
+- Sin ella, el panel quedaba reducido en tamaño al activarse
+
+**Chips de tareas sin estilo en Agenda (`agenda.js`)**
+- Los eventos de tipo `tarea` tenían `color: 'cyan'` pero el CSS solo define `.dhud-agev-blue`, `.dhud-agev-orange`, `.dhud-agev-green`
+- Corregido a `color: 'blue'`
 
 ### v76 — Bloque 3: Offline, Análisis IA, Reporte semanal, Hitos en metas, Alerta de clima
 

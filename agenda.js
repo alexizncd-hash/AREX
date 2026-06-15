@@ -30,7 +30,7 @@ function _agGetEvents() {
     if (t.fecha && !t.done) {
       addEv(t.fecha, {
         type: 'tarea', id: t.id, title: t.text, prioridad: t.prioridad || 'media',
-        repetir: t.repetir || 'ninguna', color: 'cyan',
+        repetir: t.repetir || 'ninguna', color: 'blue',
       });
     }
   }
