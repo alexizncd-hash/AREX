@@ -1,4 +1,56 @@
-# AUDITORIA AREX · Sprint v82
+# AUDITORIA AREX · Sprint v83
+
+---
+
+## Sprint A — Multi-usuario (v83)
+
+### Login Google implementado
+
+- `signInWithPopup` con fallback a `signInWithRedirect` para móvil/PWA
+- Login overlay (`#login-overlay`): pantalla full-screen con botón Google
+- `onAuthStateChanged` como fuente de verdad: con user → boot; sin user → overlay
+- Offline: uid cacheado en `arex_offline_uid` (localStorage) permite arrancar sin red si ya hay sesión
+- `window._arexSignOut()` expuesto globalmente para el botón de cierre de sesión del sidebar
+
+### Rutas migradas a `users/{uid}`
+
+Igual que Sprint A v82 (ya implementado). Toda la data vive bajo `users/{uid}/arex_data/*`, `users/{uid}/conversations/*`, etc.
+
+### Sistema de perfiles
+
+| Campo | Descripción | Ejemplo AREX | Ejemplo VIERNES |
+|---|---|---|---|
+| `assistantName` | Nombre del asistente | `AREX` | `VIERNES` |
+| `ownerName` | Nombre del usuario | `Alexiz` | `Margaret` |
+| `personality` | Tono de respuesta | `formal` | `amistoso` |
+| `voiceGender` | Género de voz TTS | `male` | `female` |
+| `voicePitch` | Pitch de voz | `0.78` | `1.05` |
+| `voiceRate` | Rate de voz | `0.91` | `0.94` |
+| `location` | Ubicación para contexto | `Hermosillo, Sonora` | configurable |
+| `activeModules` | Módulos habilitados | todos | configurable |
+| `accent` | Color CSS `--cyan` | `#00d4ff` | configurable |
+
+**Dónde se guarda:** `users/{uid}/arex/profile` (Firestore) + `arex_profile_cache` (localStorage)
+**Cómo afecta el system prompt:** `buildSystemBase()` lee `window._arexProfile` en cada llamada — nombre, dueño, tono, contexto personal (solo Alexiz)
+**Cómo afecta la voz:** `arexSpeak()` usa `profile.voicePitch/voiceRate`; `getVoice(profile)` selecciona voz masculina o femenina española
+
+### Defer / Lazy-load (heredado de v82)
+
+| | Antes (v81) | Después (v83) |
+|---|---|---|
+| Scripts cargados al boot | 17 | 12 |
+| Scripts con `defer` | 0 | 12 |
+| Scripts lazy-loaded total | 2 | 7 |
+
+### Recordatorio para Alexiz
+
+1. **Activar Google Sign-In** en Firebase Console → Authentication → Sign-in method → Google
+2. **Agregar dominio** `alexizncd-hash.github.io` en Authentication → Settings → Authorized domains
+3. **Publicar reglas** Firestore (ver `FIREBASE_SETUP.md`)
+
+---
+
+## Sprint A — Fundamentos (v82)
 
 ---
 
