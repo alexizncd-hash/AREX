@@ -5,7 +5,8 @@
 
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
-    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot;
+    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot,
+    getAuth, signInAnonymously, onAuthStateChanged;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -328,6 +329,11 @@ MODO EXAMEN ACTIVO:
 let db = null;
 let fbInitialized = false;
 const SESSION = Date.now().toString();
+
+// Rutas por-usuario: todos los datos cuelgan de users/{uid}/*
+function _userDoc(...segs) { return doc(db, 'users', window._arexUid, ...segs); }
+function _userCol(...segs) { return collection(db, 'users', window._arexUid, ...segs); }
+
 async function initFirebase() {
   if (fbInitialized || !AREX_CONFIG.firebase?.apiKey) return;
   try {
@@ -335,28 +341,76 @@ async function initFirebase() {
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
        limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
+    ({ getAuth, signInAnonymously, onAuthStateChanged }
+      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
-    window._arexDb = db;   // expose to global scripts (control.js telemetría)
+    window._arexDb = db;
     fbInitialized = true;
-    initRealtimeSync();
-    initFCM();
+
+    // Auth anónimo — sync solo arranca cuando Firestore confirma uid
+    // La persistencia local de Firebase Auth conserva el mismo uid entre sesiones
+    const auth = getAuth(fbApp);
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      window._arexUid = user.uid;
+      await _migrateFirestoreIfNeeded();
+      initRealtimeSync();
+      initFCM();
+      // Pull datos remotos ahora que tenemos uid
+      await pullConfigFromFirestore();
+      await pullAllModuleData();
+      if (window._arexLastSync == null) window._arexLastSync = Date.now();
+      await loadHistory();
+    });
+    signInAnonymously(auth).catch(e =>
+      console.warn('Firebase auth anónimo falló — continuando offline:', e)
+    );
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
-async function syncConfigToFirestore() {
-  if (!db) return;
+// Migración one-time: copia datos de rutas planas viejas a users/{uid}/*
+async function _migrateFirestoreIfNeeded() {
+  if (!db || !window._arexUid) return;
+  if (localStorage.getItem('arex_migrated_v1')) return;
+  const keys = [
+    'arex_negocio','arex_gastos_pers','arex_metas','arex_tareas',
+    'arex_recordatorios','arex_memoria','arex_hechos','arex_context',
+    'arex_atajos','arex_proyectos','arex_evidencias','arex_notas',
+    'arex_finanzas','arex_finanzas_overrides','arex_reparto_routes',
+    'arex_personas','arex_gesture_map',
+  ];
   try {
-    await setDoc(doc(db, 'arex', 'config'), window.AREX_CONFIG);
+    for (const key of keys) {
+      const newSnap = await getDoc(_userDoc('arex_data', key));
+      if (newSnap.exists()) continue;                          // ya migrado
+      const oldSnap = await getDoc(doc(db, 'arex_data', key));
+      if (!oldSnap.exists()) continue;                         // no había datos viejos
+      await setDoc(_userDoc('arex_data', key), oldSnap.data());
+    }
+    // config
+    const oldCfgSnap = await getDoc(doc(db, 'arex', 'config'));
+    if (oldCfgSnap.exists()) {
+      const newCfgSnap = await getDoc(_userDoc('arex', 'config'));
+      if (!newCfgSnap.exists()) await setDoc(_userDoc('arex', 'config'), oldCfgSnap.data());
+    }
+  } catch(e) { console.warn('migración Firestore:', e); }
+  localStorage.setItem('arex_migrated_v1', '1');
+}
+
+async function syncConfigToFirestore() {
+  if (!db || !window._arexUid) return;
+  try {
+    await setDoc(_userDoc('arex', 'config'), window.AREX_CONFIG);
     window._arexLastSync = Date.now();
     _renderSyncBadge();
   } catch(e) { console.warn('syncConfig:', e); }
 }
 
 async function pullConfigFromFirestore() {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   try {
-    const snap = await getDoc(doc(db, 'arex', 'config'));
+    const snap = await getDoc(_userDoc('arex', 'config'));
     if (!snap.exists()) return;
     const remote = snap.data();
     // Keep local firebase credentials (already bootstrapped), fill rest from remote
@@ -368,7 +422,7 @@ async function pullConfigFromFirestore() {
 
 // Pull all synced module data back from Firestore on boot
 async function pullAllModuleData() {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   const keys = [
     'arex_negocio','arex_gastos_pers','arex_metas',
     'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
@@ -381,7 +435,7 @@ async function pullAllModuleData() {
   let synced = 0;
   for (const key of keys) {
     try {
-      const snap = await getDoc(doc(db, 'arex_data', key));
+      const snap = await getDoc(_userDoc('arex_data', key));
       if (!snap.exists()) continue;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
@@ -415,7 +469,7 @@ async function pullAllModuleData() {
 
 // arexSyncData con _updatedAt para resolución de conflictos cross-device
 async function arexSyncData(lsKey) {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   try {
     const raw = localStorage.getItem(lsKey);
     if (!raw) return;
@@ -425,7 +479,7 @@ async function arexSyncData(lsKey) {
       ? { _arr: payload, _updatedAt: ts }
       : { ...payload, _updatedAt: ts };
     _rtLastTs[lsKey] = ts;  // prevent onSnapshot loop for our own write
-    await setDoc(doc(db, 'arex_data', lsKey), toStore);
+    await setDoc(_userDoc('arex_data', lsKey), toStore);
     window._arexLastSync = Date.now();
     _renderSyncBadge();
   } catch(e) { console.warn('arexSyncData:', lsKey, e); }
@@ -438,11 +492,11 @@ const _rtUnsubs = [];
 const _rtLastTs = {};   // tracks last _updatedAt we received or wrote per key
 
 function initRealtimeSync() {
-  if (!db || !onSnapshot) return;
+  if (!db || !onSnapshot || !window._arexUid) return;
   _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
   const watchKeys = ['arex_tareas', 'arex_metas', 'arex_notas', 'arex_recordatorios'];
   for (const key of watchKeys) {
-    const unsub = onSnapshot(doc(db, 'arex_data', key), snap => {
+    const unsub = onSnapshot(_userDoc('arex_data', key), snap => {
       if (!snap.exists()) return;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
@@ -3128,17 +3182,17 @@ async function _analyzeWithGemini(dataURL, question) {
 
 /* ── Firebase: guardar mensaje ──────────────────────── */
 async function saveMsg(role, content) {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   try {
-    await addDoc(collection(db,'conversations'), { sessionId:SESSION, role, content, timestamp:Date.now() });
+    await addDoc(_userCol('conversations'), { sessionId:SESSION, role, content, timestamp:Date.now() });
   } catch(e) { console.warn('Firebase saveMsg:', e); }
 }
 
 /* ── Firebase: cargar historial ─────────────────────── */
 async function loadHistory() {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   try {
-    const q = query(collection(db,'conversations'), orderBy('timestamp','desc'), limit(100));
+    const q = query(_userCol('conversations'), orderBy('timestamp','desc'), limit(100));
     const snap = await getDocs(q);
     const msgs = [];
     snap.forEach(d => msgs.push(d.data()));
@@ -3158,12 +3212,12 @@ async function loadHistory() {
 
 /* ── Firebase: notas ────────────────────────────────── */
 async function saveNote(text, category = 'General') {
-  if (!db) return 'local_' + Date.now();
-  const ref = await addDoc(collection(db,'notes'), { text, category, timestamp:Date.now() });
+  if (!db || !window._arexUid) return 'local_' + Date.now();
+  const ref = await addDoc(_userCol('notes'), { text, category, timestamp:Date.now() });
   return ref.id;
 }
 async function loadNotes() {
-  if (!db) {
+  if (!db || !window._arexUid) {
     if (!notesList.querySelector('.no-db-msg')) {
       const d = document.createElement('div');
       d.className = 'no-db-msg';
@@ -3174,7 +3228,7 @@ async function loadNotes() {
     return;
   }
   try {
-    const q = query(collection(db,'notes'), orderBy('timestamp','desc'));
+    const q = query(_userCol('notes'), orderBy('timestamp','desc'));
     const snap = await getDocs(q);
     notesList.innerHTML = '';
     snap.forEach(d => {
@@ -3198,7 +3252,7 @@ function renderNote(id, text, ts, category = 'General') {
     <div class="note-text">${safeText}</div>
     <div class="note-time">${time}</div>`;
   el.querySelector('.btn-del').onclick = async () => {
-    if (db) await deleteDoc(doc(db,'notes',id)).catch(()=>{});
+    if (db && window._arexUid) await deleteDoc(_userDoc('notes', id)).catch(()=>{});
     el.remove();
   };
   notesList.prepend(el);
@@ -3206,11 +3260,11 @@ function renderNote(id, text, ts, category = 'General') {
 
 /* ── Firebase: estadísticas ─────────────────────────── */
 async function updateStats(type) {
-  if (!db) return;
+  if (!db || !window._arexUid) return;
   const today = new Date().toISOString().slice(0,10);
   try {
-    const globalRef = doc(db,'stats','global');
-    const dailyRef  = doc(db,'stats',today);
+    const globalRef = _userDoc('stats', 'global');
+    const dailyRef  = _userDoc('stats', today);
     const gUp = {}, dUp = {};
     if (type==='message'){ gUp.totalMessages=increment(1); dUp.messages=increment(1); }
     if (type==='search') { gUp.webSearches=increment(1);   dUp.searches=increment(1); }
@@ -3223,12 +3277,12 @@ async function updateStats(type) {
   } catch(e) { console.warn('Firebase stats:', e); }
 }
 async function loadStats() {
-  if (!db) return { g:{}, d:{} };
+  if (!db || !window._arexUid) return { g:{}, d:{} };
   const today = new Date().toISOString().slice(0,10);
   try {
     const [gSnap, dSnap] = await Promise.all([
-      getDoc(doc(db,'stats','global')),
-      getDoc(doc(db,'stats',today))
+      getDoc(_userDoc('stats', 'global')),
+      getDoc(_userDoc('stats', today))
     ]);
     return { g: gSnap.exists()?gSnap.data():{}, d: dSnap.exists()?dSnap.data():{} };
   } catch { return { g:{}, d:{} }; }
@@ -3419,9 +3473,9 @@ async function handleCommand(cmd) {
       chat.innerHTML = '';
       history = [];
       updateMemMetric();
-      if (db) {
+      if (db && window._arexUid) {
         try {
-          const qSnap = await getDocs(collection(db,'conversations'));
+          const qSnap = await getDocs(_userCol('conversations'));
           await Promise.all(qSnap.docs.map(d => deleteDoc(d.ref)));
         } catch(e) { console.warn('limpiar Firebase:', e); }
       }
@@ -4344,11 +4398,9 @@ async function boot() {
   const bootScreen = document.getElementById('boot-screen');
 
   // Wrap all init work — any error must NOT block the boot screen from hiding
+  // Firebase pulls (pullConfigFromFirestore, pullAllModuleData, loadHistory)
+  // se ejecutan en el callback de onAuthStateChanged, no aquí.
   try {
-    await pullConfigFromFirestore();
-    await pullAllModuleData();
-    if (window._arexLastSync == null && db) { window._arexLastSync = Date.now(); }
-    await loadHistory();
     await requestNotifPerm();
     updateCtxBadge();
     updateSidebarAll();
@@ -4392,6 +4444,25 @@ async function boot() {
   } catch(e) {
     console.warn('AREX boot error:', e);
   }
+
+  // Lazy-load motores visuales pesados tras la primera interacción
+  // (holo.js, parallax.js, vision.js no son esenciales para INICIO/CHAT)
+  const _loadVisualEngines = (() => {
+    let done = false;
+    return () => {
+      if (done) return; done = true;
+      ['holo.js', 'parallax.js', 'vision-orb.js', 'vision.js'].forEach(src => {
+        if (document.querySelector(`script[src="${src}"]`)) return;
+        const s = document.createElement('script');
+        if (src === 'vision.js') s.type = 'module';
+        s.src = src;
+        document.body.appendChild(s);
+      });
+    };
+  })();
+  document.addEventListener('pointerdown', _loadVisualEngines, { once: true });
+  document.addEventListener('keydown',     _loadVisualEngines, { once: true });
+  setTimeout(_loadVisualEngines, 4000); // fallback si no hay interacción
 
   // Always hide the boot screen regardless of what happened above
   await new Promise(r => setTimeout(r, 400));
