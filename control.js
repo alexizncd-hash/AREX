@@ -474,7 +474,8 @@ function _exportBackupJSON() {
 
 function _exportGastosCSV() {
   try {
-    const gs = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+    const raw   = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
+    const gs    = Array.isArray(raw) ? raw : (Array.isArray(raw.gastos) ? raw.gastos : []);
     if (!gs.length) { alert('Sin gastos para exportar.'); return; }
     const rows = [['Fecha','Concepto','Categoría','Monto']];
     for (const g of gs) rows.push([g.fecha||'',g.concepto||'',g.categoria||'',(g.monto||0).toFixed(2)]);
