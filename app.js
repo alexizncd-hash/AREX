@@ -1379,7 +1379,7 @@ function renderDashboard() {
   const habsPend   = habitos.filter(h => !h.completados?.[hoyStr]);
   const habsHechos = habitos.filter(h =>  h.completados?.[hoyStr]);
   const agendaHoy  = typeof _agGetEvents === 'function'
-    ? _agGetEvents().filter(ev => (ev.start || '').slice(0,10) === hoyStr)
+    ? (_agGetEvents()[hoyStr] || [])
     : [];
 
   const groqOk  = !!(window.AREX_CONFIG?.groqKey);
@@ -4893,8 +4893,8 @@ async function generarBriefing() {
   let agendaStr = '';
   try {
     if (typeof window._agGetEvents === 'function') {
-      const evHoy = window._agGetEvents().filter(e => e.fecha === hoy);
-      if (evHoy.length) agendaStr = evHoy.slice(0, 3).map(e => e.titulo).join(', ');
+      const evHoy = window._agGetEvents()[hoy] || [];
+      if (evHoy.length) agendaStr = evHoy.slice(0, 3).map(e => e.title || e.titulo).join(', ');
     }
   } catch {}
 
@@ -5015,7 +5015,7 @@ function mostrarResumenHoy() {
   const habitos  = _safeJSON(localStorage.getItem('arex_habitos'), []);
   const habsPend = habitos.filter(h => !h.completados?.[hoyStr]);
   const agEvents = typeof _agGetEvents === 'function'
-    ? _agGetEvents().filter(ev => (ev.start || '').slice(0, 10) === hoyStr) : [];
+    ? (_agGetEvents()[hoyStr] || []) : [];
   const recs = _safeJSON(localStorage.getItem('arex_reminders'), []).filter(r => !r.done);
 
   const fecha = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });

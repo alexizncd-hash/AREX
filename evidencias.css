@@ -2,6 +2,20 @@
    AREX — Evidencias Board
    ═══════════════════════════════════════════════ */
 
+#module-evidencias.module-panel.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  width: 100%;
+  max-width: 960px;
+  align-self: center;
+}
+
 .ev-board {
   display: flex;
   flex-direction: column;
