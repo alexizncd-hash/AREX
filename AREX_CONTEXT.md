@@ -1,228 +1,112 @@
-# AREX — Contexto completo del proyecto
+# AREX — Contexto completo del proyecto · v79
 
 ## ¿Qué es AREX?
-AREX es un sistema operativo de inteligencia personal estilo J.A.R.V.I.S (Iron Man), desplegado como PWA en GitHub Pages. El usuario principal es Alexiz, estudiante universitario con un negocio de frijol mayocoba servido en medio litro, listo para su disposición y reparto. Lo usa desde **Meta Quest 3S en modo AR/passthrough** y desde móvil Android.
+AREX es un sistema operativo de inteligencia personal estilo J.A.R.V.I.S (Iron Man), desplegado como PWA en GitHub Pages. El usuario principal es Alexiz, estudiante universitario con un negocio de frijol mayocoba (medio litro, listo para disposición y reparto). Prioridad de dispositivos: **1° teléfono Android**, 2° computadora, 3° Meta Quest 3S (AR futuro).
 
 **Repo:** `alexizncd-hash/AREX` (GitHub Pages, rama `main` para producción)  
 **Rama de desarrollo activa:** `claude/repo-assistance-7Vpbm`  
-**URL de producción:** se despliega automáticamente desde `main`  
 **config.js:** GITIGNOREADO — contiene API keys reales. Nunca tocar ni commitear.
 
 ---
 
 ## Stack técnico
 - **Frontend:** HTML/CSS/JS vanilla — sin frameworks, sin bundlers
-- **Módulos JS:** `app.js` usa `type="module"` (ES6); el resto son scripts globales
-- **IA:** Groq API (`llama-3.3-70b-versatile`) para chat, streaming habilitado
-- **Búsqueda web:** Tavily API (opcional, activable por toggle)
-- **Base de datos:** Firebase Firestore — historial de chat, notas, configuración, sync de módulos
-- **Service Worker:** `sw.js` — actualmente v25, network-first para shell files
-- **Librerías CDN:** highlight.js (syntax highlight en chat)
+- **app.js** usa `type="module"`; el resto son scripts globales
+- **IA:** Groq API (`llama-3.3-70b-versatile`) — streaming habilitado
+- **Búsqueda web:** Tavily API (opcional)
+- **Base de datos:** Firebase Firestore — sync en tiempo real vía `onSnapshot`
+- **Service Worker:** `sw.js` — actualmente **v79**, network-first para shell files
 - **Sin npm, sin node_modules**
 
 ---
 
-## API Keys y configuración
-Todas las API keys se guardan en `localStorage` bajo la clave `arex_config`:
-```json
-{
-  "groqKey": "...",
-  "tavilyKey": "...",
-  "owmKey": "...",
-  "firebase": { "apiKey": "...", "projectId": "...", ... }
-}
-```
-**Prioridad de carga:** `config.js` (desarrollo local) → `localStorage` → pantalla de setup
-
----
-
-## Módulos activos
+## Módulos activos (dock)
 | Módulo | Archivo | Storage key |
 |--------|---------|-------------|
+| Dashboard | `app.js` | — |
 | Chat IA | `app.js` | `arex_sessions`, `arex_history_*` |
 | Finanzas | `finanzas.js` + `finanzas-data.js` | `arex_finanzas` |
-| Negocio (frijol mayocoba) | `negocio.js` | `arex_negocio` |
-| Gastos personales | `gastos.js` | `arex_gastos_personal` |
+| Negocio | `negocio.js` | `arex_negocio` |
+| Gastos personales | `gastos.js` | `arex_gastos_pers` |
 | Metas | `metas.js` | `arex_metas` |
-| Tareas | dentro de `app.js` | `arex_tareas` |
-| Notas | dentro de `app.js` | `arex_notas` |
-| Dashboard/Inicio | dentro de `app.js` | — |
-
-**Módulos eliminados** (ya no existen): Salud, Agenda, Hábitos, SOS, Código
-
----
-
-## Arquitectura de archivos
-```
-AREX/
-├── index.html          # Shell PWA, dock de navegación, modales
-├── style.css           # Estilos globales (paleta cyan #00d4ff + negro)
-├── app.js              # Motor principal (type="module")
-├── jarvis.js           # Navegación entre módulos (AREXNav)
-├── sw.js               # Service Worker v25
-├── manifest.json       # PWA manifest
-├── icon.svg            # Icono
-├── finanzas.js         # Módulo finanzas
-├── finanzas.css
-├── finanzas-data.js    # Funciones de datos financieros
-├── negocio.js          # Módulo negocio (frijol mayocoba en medio litro)
-├── negocio.css
-├── gastos.js           # Módulo gastos personales
-├── gastos.css
-├── metas.js            # Módulo metas
-├── metas.css
-└── config.js           # GITIGNOREADO — API keys reales
-```
+| Tareas | `app.js` | `arex_tareas` |
+| Notas | `app.js` | `arex_notas` |
+| Proyectos | `proyectos.js` | `arex_proyectos` |
+| Agenda | `agenda.js` | `arex_agenda` |
+| Hábitos | `habitos.js` | `arex_habitos` |
+| Reparto | `reparto.js` | `arex_reparto_routes` |
+| Evidencias | `evidencias.js` | `arex_evidencias` |
+| Mission Control | `control.js` | `arex_bitacora`, `arex_agentes_estado` |
 
 ---
 
-## Sistema de voz (app.js)
+## Motores visuales (post-optimización v79)
 
-### Síntesis (`voiceOn`)
-- `arexSpeak(text)` — usa `SpeechSynthesisUtterance`, voz masculina española
-- Se activa con el toggle **VOZ DE AREX** en sidebar o botón en toolbar
-- Variable global: `let voiceOn = false`
+### Siempre activos (boot)
+- **orb.js** — motor único del orbe principal. WebGL con fallback 2D. Pausa cuando `document.hidden` o `window._orbPaused = true`.
+- **holo.js** — tilt 3D en cards, corner brackets, transiciones de módulo, hex grid estático, orb click ripple. Las partículas animadas (`initParticles`) y streams SVG (`initStreams`) están detrás del **MODO CINE** toggle.
+- **parallax.js** — gyro/pointer → CSS vars `--ax`/`--ay`. Se activa cuando MODO CINE está ON (via `window.AREXParallax.start()`).
 
-### Reconocimiento one-shot
-- `startListening()` — toca micrófono → habla → procesa → fin
-- Detecta comandos de voz (ver `VOICE_CMDS`) y mensajes normales
+### Lazy-load (no en boot)
+- **gesture.js** — se inyecta como script solo cuando el usuario activa el toggle de Gestos en el módulo Visión. **Gestos v2**: 5 gestos únicos (open_hand, fist, pinch, swipe_left, swipe_right), modelComplexity 0, hold 10 frames, sin partículas ni audio, anillo de progreso en dedo índice.
+- **neural-orb.js** — se inyecta solo al abrir la pestaña AGENTES en Mission Control.
 
-### Modo AR — Voz Continua (Fase 2, recién implementado)
-- Variable: `let continuousMode = false`
-- `toggleContinuousMode()` — activa/desactiva desde sidebar toggle "MODO AR"
-- `startContinuousMode()` — `SpeechRecognition` en modo `continuous: true`
-- **Wake word:** detecta `"AREX"` en el transcript → procesa lo que sigue como comando
-- Auto-restart 300ms después de que el reconocimiento se detiene
-- Pausa escucha mientras AREX habla (anti-feedback loop), reanuda 700ms después
-- Guards: `isBusy` e `isSpeaking` evitan comandos simultáneos
-- `arexSpeak` funciona con `voiceOn || continuousMode`
-- Visual: anillos orbitales animados en el orb (CSS `::before/::after` con `.ar-active`)
-- HUD indicator: `#ar-hud` — badge flotante con dot pulsante
+### Shell SW excluidos (lazy)
+`gesture.js` y `neural-orb.js` no están en el SHELL del Service Worker.
+
+---
+
+## Agentes reales (control.js · v79)
+- **HERMES** — Lee `arex_finanzas` + `arex_gastos_pers`. Calcula margen, % deuda, gasto más alto del mes, próximos pagos <7 días. Alerta si margen < $500.
+- **ATLAS** — Lee `arex_negocio`. Ganancia del mes, ventas hoy, stock bajo (<10 kg). Alerta si hay stock crítico.
+- **SENTINEL** — Checks del sistema: localStorage KB, claves huérfanas, versión SW, groqKey, Firebase.
+- **SCRIBE** — Lee `arex_notas` + `arex_tareas`. Con groqKey: resumen IA de notas recientes. Sin key: conteo local. Detecta tareas vencidas.
+
+Cada agente crea una tarjeta en `arex_evidencias` y guarda estado en `arex_agentes_estado`.
 
 ---
 
 ## Sistema de prompts AI
-
-### Construcción del system prompt en cada llamada a Groq:
 ```js
-buildSystemBase()      // personalidad AREX + datos de Alexiz + módulos
-+ (examMode ? EXAM_ADDON : '')
-+ buildContextSection()  // contexto personal (proyectos, universidad, metas)
-+ buildMemoriaSection()  // memoria permanente del usuario
-+ buildModuleContext()    // DATA EN TIEMPO REAL de todos los módulos
+buildSystemBase()          // personalidad + datos de Alexiz
++ buildContextSection()    // contexto personal (proyectos, universidad, metas)
++ buildMemoriaSection()    // memoria permanente
++ buildSessionMemorySection() // resúmenes de sesiones anteriores (auto-generados)
++ buildModuleContext()     // datos en tiempo real de todos los módulos
 ```
 
-### `buildModuleContext()` — datos en tiempo real
-Lee localStorage y devuelve texto compacto con:
-- FINANZAS: ingreso mensual, deuda total, margen, próximos pagos
-- NEGOCIO: ventas/gastos/ganancia del mes, stock en kg
-- GASTOS_PERSONALES: total del mes, número de transacciones
-- METAS_ACTIVAS: lista de metas sin completar
-- TAREAS_URGENTES: tareas vencidas o del día
+---
 
-### Variables de modo
-```js
-let voiceOn        = false;  // síntesis de voz
-let searchOn       = false;  // búsqueda web Tavily
-let examMode       = false;  // respuestas extensas estructuradas
-let continuousMode = false;  // voz continua con wake word (Modo AR)
-let isBusy         = false;  // AREX procesando — bloquea inputs
-let isSpeaking     = false;  // síntesis activa
-```
+## Comandos del chat
+`/ayuda` `/limpiar` `/examen` `/resumir` `/exportar` `/notas` `/stats` `/recordar`  
+`/contexto` `/config` `/atajos` `/memoria` `/run` `/tarea` `/briefing` `/pomodoro`  
+`/buscar` `/hechos` `/semana` `/analizar [gastos|metas]` `/hoy`
 
 ---
 
 ## Firebase Firestore
-- Colección `arex` → doc `config` (configuración de AREX)
-- Colección `arex` → doc `chat_history` (historial comprimido)
-- Colección `arex_data/{key}` — sync genérico de módulos
 - `arexSyncData(lsKey)` — sube cualquier key de localStorage a Firestore
-- `pullAllModuleData()` — al boot, descarga datos faltantes desde Firestore
-
----
-
-## Búsqueda global (Ctrl+K)
-`buscarGlobal(q)` busca en:
-- Tareas (texto, fecha)
-- Notas (título, cuerpo)
-- Hechos de memoria (texto)
-- Recordatorios pendientes (mensaje)
-- Metas (título, descripción)
-- Gastos (concepto, categoría)
-- Negocio: ventas (sucursal), gastos (concepto)
-
-`renderBusquedaGlobal(q)` — renderiza resultados con highlight y monto formateado
-
----
-
-## Recordatorios
-- `/recordar 30min mensaje`, `/recordar 20:00 mensaje`
-- `armReminder(rec)` — usa `setTimeout`, usa `registration.showNotification()` vía SW
-- `restoreReminders()` — al boot dispara notificaciones de recordatorios perdidos
-- `visibilitychange` listener — re-dispara al volver al tab
-
----
-
-## Navegación entre módulos (jarvis.js)
-```js
-AREXNav.cambiarModulo('finanzas')  // cambia el panel activo
-// Módulos: inicio, chat, finanzas, tareas, notas, negocio, gastos, metas
-```
-Paneles HTML: `#module-{nombre}.module-panel` — visibilidad por `.active`
-
----
-
-## Paleta visual
-```css
---cyan:       #00d4ff   /* color primario — todos los acentos */
---bg-dark:    #020c14   /* fondo principal */
---text-main:  #e0f4ff   /* texto principal */
---text-muted: #4a7a96   /* texto secundario */
---green:      #00ffaa   /* éxito, escuchando */
---orange:     #ff9900   /* advertencia, búsqueda */
---font:       'Courier New', monospace
-```
+- `initRealtimeSync()` — `onSnapshot` listeners, previene loops con `_rtLastTs` map
+- `initFCM()` — Firebase Cloud Messaging para push notifications
 
 ---
 
 ## Reglas de desarrollo
 1. **Nunca tocar `config.js`** ni incluirlo en commits
-2. Toda función usada desde HTML debe exportarse como `window.X = X`
-3. `app.js` es `type="module"` — imports de otros módulos solo si tienen `export`
-4. El resto de scripts son globales (sin `type="module"`)
-5. Para agregar módulo nuevo: archivo `.js` + `.css`, panel `#module-X.module-panel` en HTML, botón en dock con `data-module="X"`, caso en `jarvis.js`
-6. Service Worker: incrementar versión en `sw.js` (`CACHE` + `VERSION`) en cada deploy
-7. Firebase sync: llamar `arexSyncData(KEY)` dentro de cada función `save*()`
-8. Mantener compatibilidad móvil — el fallback 2D siempre debe funcionar
+2. Toda función usada desde HTML exportar como `window.X = X`
+3. `app.js` es `type="module"` — el resto son scripts globales
+4. Para agregar módulo: archivo `.js` + `.css`, panel `#module-X.module-panel`, botón en dock, dispatch en `jarvis.js`
+5. Service Worker: incrementar versión en `sw.js` en cada deploy
+6. Firebase sync: llamar `arexSyncData(KEY)` dentro de cada `save*()`
+7. Siempre actualizar README.md con cada commit
 
 ---
 
-## Fases AR en progreso
-
-### Fase 1 — COMPLETA
-AREX abre en Meta Browser del Quest 3S como PWA 2D normal.
-
-### Fase 2 — COMPLETA (v25)
-Voz continua con wake word "AREX". Modo AR con anillos orbitales en el orb.
-
-### Fase 3 — PENDIENTE: WebXR AR
-Paneles flotantes en espacio físico con passthrough usando WebXR Device API.
-- Three.js desde CDN: `https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js`
-- Paneles: métricas financieras, tareas del día, metas activas, chat por voz
-- Estética: overlays azules semitransparentes, glassmorphism, bordes con glow cyan
-- Hand tracking o controllers para reposicionar paneles
-- Botón "ENTRAR AR" en la interfaz 2D → lanza modo inmersivo
-
-### Fase 4 — FUTURO: Visión por computadora
-Cámara del Quest → frames → Groq Vision API → AREX describe el mundo real.
-
----
-
-## Contexto personal de Alexiz (para que AREX lo conozca)
+## Contexto personal de Alexiz
 - Estudiante universitario en México
-- Tiene un negocio de frijol mayocoba servido en medio litro, listo para su disposición y con reparto
-- Usa Meta Quest 3S (128GB) como dispositivo principal para AREX
-- Novia: Margaret (importante en su vida)
-- Quiere crecer: personal, espiritual, físico, económico y en relaciones
+- Negocio de frijol mayocoba (medio litro, listo para disposición y reparto)
+- Novia: Margaret
+- Metas: crecer personal, espiritual, físico, económico y en relaciones
+- Dispositivos: teléfono Android (principal), computadora, Meta Quest 3S
 - Prefiere entender el "mínimo funcional" antes de profundizar
-- Le gusta la estética JARVIS / Iron Man
+- Estética favorita: JARVIS / Iron Man

@@ -45,6 +45,7 @@
 
   /* ── 2. AMBIENT PARTICLE FIELD ──────────────────────────── */
   function initParticles() {
+    if (document.getElementById('holo-particles-cv')) return; // already running
     const cv = document.createElement('canvas');
     cv.id = 'holo-particles-cv';
     document.body.appendChild(cv);
@@ -57,6 +58,7 @@
     }));
 
     function frame(ts) {
+      if (!_cineParticlesActive) { cv.remove(); return; }
       cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d');
       ctx.clearRect(0, 0, W, H);
@@ -381,30 +383,52 @@
     </svg>`;
     hdr.insertBefore(btn, hdr.firstChild);
     btn.addEventListener('click', () => {
-      document.body.classList.toggle('holo-mode');
-      btn.classList.toggle('active');
-      typeof logBitacora === 'function' && logBitacora('sistema', 'Modo HOLO ' + (document.body.classList.contains('holo-mode') ? 'ON' : 'OFF'));
+      const on = document.body.classList.toggle('holo-mode');
+      btn.classList.toggle('active', on);
+      localStorage.setItem('arex_modo_cine', on ? '1' : '0');
+      if (on) _startCineEffects();
+      else    _stopCineEffects();
+      typeof logBitacora === 'function' && logBitacora('sistema', 'Modo CINE ' + (on ? 'ON' : 'OFF'));
     });
+  }
+
+  /* ── CINE effects (opt-in) ─────────────────────────────── */
+  let _cineParticlesActive = false;
+
+  function _startCineEffects() {
+    if (!_cineParticlesActive) { _cineParticlesActive = true; initParticles(); }
+    initStreams();
+    window.AREXParallax?.start?.();
+  }
+
+  function _stopCineEffects() {
+    _cineParticlesActive = false;
+    window.AREXParallax?.stop?.();
   }
 
   /* ── INIT ───────────────────────────────────────────────── */
   function init() {
     initHexGrid();
-    initParticles();
     tiltAll();
     makeDraggable('hp-tareas');
     makeDraggable('hp-finanzas');
     injectHoloLabel();
     injectHoloModeBtn();
     setTimeout(initTransitions, 700);
-    setTimeout(initStreams, 1000);
     setTimeout(initOrbClick, 500);
     setTimeout(injectCorners, 600);
-    /* Re-inject brackets when new panels are added (module switches) */
     new MutationObserver(() => injectCorners()).observe(
       document.getElementById('dock') || document.body,
       { childList: true, subtree: true }
     );
+    // Restore MODO CINE if previously enabled
+    if (localStorage.getItem('arex_modo_cine') === '1') {
+      setTimeout(() => {
+        document.body.classList.add('holo-mode');
+        document.getElementById('btn-holo-mode')?.classList.add('active');
+        _startCineEffects();
+      }, 800);
+    }
   }
 
   document.readyState === 'loading'

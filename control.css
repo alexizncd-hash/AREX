@@ -413,3 +413,93 @@
   opacity: 0.5;
   letter-spacing: 1px;
 }
+
+/* ── Pestaña DATOS (export / import / storage) ─────── */
+.datos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(0,212,255,0.07);
+}
+.datos-section:last-child { border-bottom: none; }
+
+.datos-sec-lbl {
+  font-size: 8px;
+  letter-spacing: 2.5px;
+  color: var(--cyan);
+  opacity: 0.65;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.datos-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+.datos-k {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.datos-v {
+  font-size: 9px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.datos-v.ok   { color: var(--green); }
+.datos-v.warn { color: var(--orange); }
+
+.datos-bar-track {
+  height: 2px;
+  background: rgba(0,212,255,0.1);
+  border-radius: 1px;
+  overflow: hidden;
+  margin: 2px 0 4px;
+}
+.datos-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+  border-radius: 1px;
+  transition: width 0.8s ease;
+}
+
+.datos-btn {
+  display: block;
+  background: rgba(0,212,255,0.07);
+  border: 1px solid rgba(0,212,255,0.25);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+  transition: all 0.18s;
+  width: 100%;
+}
+.datos-btn:hover {
+  background: rgba(0,212,255,0.14);
+  border-color: rgba(0,212,255,0.5);
+  color: var(--cyan);
+}
+.datos-btn.accent {
+  border-color: rgba(0,255,170,0.35);
+  color: var(--green);
+  background: rgba(0,255,170,0.05);
+}
+.datos-btn.accent:hover { background: rgba(0,255,170,0.12); }
+
+.datos-warn {
+  font-size: 8px;
+  color: var(--orange);
+  letter-spacing: 0.5px;
+  background: rgba(255,153,0,0.07);
+  border: 1px solid rgba(255,153,0,0.2);
+  border-radius: 4px;
+  padding: 5px 8px;
+}

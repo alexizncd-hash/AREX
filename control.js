@@ -240,17 +240,383 @@ function _renderAgentes(el) {
   setTimeout(() => window.initNeuralOrbs?.(), 60);
 }
 
-window._runAgent = function (agentId, area) {
+window._runAgent = async function (agentId, area) {
+  /* ── Safe JSON helper ─────────────────────────────────── */
+  const _safeCtrlJSON = (s, fb) => { try { return JSON.parse(s || 'null') ?? fb; } catch { return fb; } };
+
+  /* 1. Show thinking state */
   window.setNeuralOrbState?.(agentId, 'thinking');
-  logBitacora(area, `Agente ${agentId.toUpperCase()} ejecutado`);
-  setTimeout(() => {
-    const s = _getAgentStatus(area);
-    window.setNeuralOrbState?.(agentId, s === 'online' ? 'active' : 'idle');
-  }, 3500);
-  if (typeof window.AREXNav?.cambiarModulo === 'function') {
-    const modMap = { finanzas:'finanzas', negocio:'negocio', sistema:'control', chat:'chat' };
-    setTimeout(() => window.AREXNav.cambiarModulo(modMap[area] || area), 800);
+
+  let cardTipo    = 'general';
+  let cardTitulo  = agentId.toUpperCase();
+  let cardContent = '';
+  let shortSummary = '';
+  let hasError    = false;
+
+  try {
+    /* ════════════════════════════════════════════════════════
+       HERMES — Finanzas
+    ═══════════════════════════════════════════════════════ */
+    if (agentId === 'hermes') {
+      const finData  = _safeCtrlJSON(localStorage.getItem('arex_finanzas'), {});
+      const gpRaw    = _safeCtrlJSON(localStorage.getItem('arex_gastos_pers'), { gastos: [], presupuesto: {} });
+      const gpData   = (gpRaw && Array.isArray(gpRaw.gastos)) ? gpRaw : { gastos: Array.isArray(gpRaw) ? gpRaw : [], presupuesto: {} };
+
+      const ingreso  = finData.config?.ingresoMensual || 0;
+      const deuda    = window.calcularDeudaTotal?.() || 0;
+      const margen   = window.calcularMargen?.() || 0;
+
+      // Gasto más alto de este mes
+      const now         = new Date();
+      const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+      const gastosEsteMs = (gpData.gastos || []).filter(g => g.fecha && g.fecha >= firstOfMonth);
+      let gastoMaxMonto  = 0;
+      let gastoMaxConcepto = 'N/A';
+      for (const g of gastosEsteMs) {
+        if ((g.monto || 0) > gastoMaxMonto) {
+          gastoMaxMonto    = g.monto || 0;
+          gastoMaxConcepto = g.concepto || 'Sin nombre';
+        }
+      }
+
+      // Próximo pago <7 días
+      const proxPagos = window.obtenerProximosPagos?.(7) || [];
+      const proxStr   = proxPagos.length
+        ? proxPagos.map(p => `${p.nombre||p.concepto||'Pago'} ($${(p.monto||0).toFixed(0)})`).join(', ')
+        : 'Ninguno en los próximos 7 días';
+
+      // % deuda vs ingreso
+      const deudaPct = (deuda / Math.max(1, ingreso) * 100).toFixed(1);
+
+      cardTipo    = margen < 500 ? 'alerta' : 'finanzas';
+      cardTitulo  = 'HERMES · Reporte Financiero';
+      cardContent = `**Margen disponible:** $${margen.toFixed(0)}\n**Deuda vs ingreso:** ${deudaPct}%\n**Gasto más alto (mes):** ${gastoMaxConcepto} ($${gastoMaxMonto.toFixed(0)})\n**Próximo pago:** ${proxStr}${margen < 500 ? '\n\n⚠ ALERTA: Margen por debajo de $500' : ''}`;
+      shortSummary = `Margen $${margen.toFixed(0)} · Deuda ${deudaPct}% ingreso`;
+
+      logBitacora('finanzas', `HERMES: margen $${margen.toFixed(0)}, deuda ${deudaPct}%`);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       ATLAS — Negocio
+    ═══════════════════════════════════════════════════════ */
+    else if (agentId === 'atlas') {
+      const negocio = _safeCtrlJSON(localStorage.getItem('arex_negocio'), {});
+
+      const ganancia   = negocio.gananciasMes || negocio.ganancias_mes || 0;
+      const ventasHoy  = negocio.ventasHoy || negocio.ventas_hoy || 0;
+      const inventario = negocio.inventario || [];
+      const stockBajo  = inventario.filter(i => (i.stock ?? i.cantidad ?? 0) < 10);
+
+      cardTipo    = stockBajo.length ? 'alerta' : 'negocio';
+      cardTitulo  = 'ATLAS · Reporte de Negocio';
+      cardContent = `**Ganancias del mes:** $${Number(ganancia).toFixed(0)}\n**Ventas hoy:** $${Number(ventasHoy).toFixed(0)}\n**Stock bajo (<10kg):** ${stockBajo.length ? stockBajo.map(i => i.nombre || i.producto || 'ítem').join(', ') : 'Ninguno'}${stockBajo.length ? '\n\n⚠ ALERTA: Hay productos con stock crítico' : ''}`;
+      shortSummary = `Ganancias $${Number(ganancia).toFixed(0)} · ${stockBajo.length} productos stock bajo`;
+
+      logBitacora('negocio', `ATLAS: ganancias $${Number(ganancia).toFixed(0)}, stock bajo: ${stockBajo.length}`);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       SENTINEL — Sistema
+    ═══════════════════════════════════════════════════════ */
+    else if (agentId === 'sentinel') {
+      // localStorage usage
+      let lsBytes = 0;
+      try {
+        for (const k of Object.keys(localStorage)) {
+          lsBytes += (localStorage.getItem(k) || '').length * 2;
+        }
+      } catch {}
+      const lsKB = (lsBytes / 1024).toFixed(1);
+
+      // Orphan keys — arex_ keys not in BACKUP_KEYS
+      const orphans = [];
+      try {
+        for (const k of Object.keys(localStorage)) {
+          if (k.startsWith('arex_') && !BACKUP_KEYS.includes(k)) orphans.push(k);
+        }
+      } catch {}
+
+      const swVer  = window.AREX_SW_VERSION || 'desconocida';
+      const groqOk = !!(window.AREX_CONFIG?.groqKey);
+      const fbOk   = !!(window._arexDb);
+
+      cardTipo    = orphans.length ? 'alerta' : 'general';
+      cardTitulo  = 'SENTINEL · Diagnóstico del Sistema';
+      cardContent = `**Almacenamiento:** ${lsKB} KB\n**Service Worker:** ${swVer}\n**Groq API key:** ${groqOk ? 'Presente' : 'No configurada'}\n**Firebase:** ${fbOk ? 'Conectado' : 'Offline'}${orphans.length ? `\n\n⚠ Claves huérfanas (${orphans.length}): ${orphans.join(', ')}` : ''}`;
+      shortSummary = `${lsKB} KB · SW ${swVer} · FB ${fbOk ? 'OK' : 'OFF'}`;
+
+      logBitacora('sistema', `SENTINEL: ${lsKB} KB, FB ${fbOk ? 'OK' : 'OFFLINE'}, ${orphans.length} huérfanas`);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       SCRIBE — Notas
+    ═══════════════════════════════════════════════════════ */
+    else if (agentId === 'scribe') {
+      const notas  = _safeCtrlJSON(localStorage.getItem('arex_notas'), []);
+      const tareas = _safeCtrlJSON(localStorage.getItem('arex_tareas'), []);
+      const notasArr  = Array.isArray(notas)  ? notas  : [];
+      const tareasArr = Array.isArray(tareas) ? tareas : [];
+
+      const todayStr     = new Date().toISOString().slice(0, 10);
+      const notasSinTitulo = notasArr.filter(n => !n.titulo).length;
+      const tareasVencidas = tareasArr.filter(t => !t.done && t.fecha && t.fecha < todayStr).length;
+
+      let aiSummary = null;
+      const groqKey = window.AREX_CONFIG?.groqKey;
+      if (groqKey) {
+        try {
+          const recientes = notasArr.slice(-3).map(n => {
+            const txt = (n.titulo || n.contenido || n.texto || '').slice(0, 60);
+            return txt;
+          }).filter(Boolean);
+          if (recientes.length) {
+            const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`,
+              },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                max_tokens: 120,
+                messages: [
+                  {
+                    role: 'user',
+                    content: `Resume en 1-2 oraciones las siguientes notas recientes del usuario:\n${recientes.map((t,i) => `${i+1}. ${t}`).join('\n')}`,
+                  },
+                ],
+              }),
+            });
+            if (resp.ok) {
+              const json = await resp.json();
+              aiSummary = json.choices?.[0]?.message?.content?.trim() || null;
+            }
+          }
+        } catch {
+          // fall back to local summary below
+        }
+      }
+
+      const localSummary = notasArr.length
+        ? `Últimas notas: ${notasArr.slice(-3).map(n => (n.titulo || n.contenido || 'Sin título').slice(0, 40)).join(' · ')}`
+        : 'Sin notas registradas';
+
+      const summaryLine = aiSummary ? `**Resumen IA:** ${aiSummary}` : `**Resumen local:** ${localSummary}`;
+
+      cardTipo    = 'investigacion';
+      cardTitulo  = 'SCRIBE · Análisis de Conocimiento';
+      cardContent = `**Total notas:** ${notasArr.length}\n**Total tareas:** ${tareasArr.length}\n**Notas sin título:** ${notasSinTitulo}\n**Tareas vencidas:** ${tareasVencidas}\n${summaryLine}`;
+      shortSummary = `${notasArr.length} notas · ${tareasVencidas} tareas vencidas`;
+
+      logBitacora('chat', `SCRIBE: ${notasArr.length} notas, ${tareasVencidas} vencidas`);
+    }
+
+    /* 3. Add evidencia card */
+    if (cardContent && typeof window.addEvidencia === 'function') {
+      window.addEvidencia(cardTipo, cardTitulo, cardContent);
+    }
+
+    /* 4. Save agent state */
+    try {
+      const estado = _safeCtrlJSON(localStorage.getItem('arex_agentes_estado'), {});
+      estado[agentId] = { lastRun: Date.now(), status: 'ok', summary: shortSummary };
+      localStorage.setItem('arex_agentes_estado', JSON.stringify(estado));
+      window.arexSyncData?.('arex_agentes_estado');
+    } catch {}
+
+    /* 5. Set orb to active */
+    window.setNeuralOrbState?.(agentId, 'active');
+
+  } catch (err) {
+    hasError = true;
+    console.error(`AREX _runAgent [${agentId}] error:`, err);
+    logBitacora(area, `ERROR en agente ${agentId.toUpperCase()}: ${err.message || err}`);
+
+    try {
+      const estado = _safeCtrlJSON(localStorage.getItem('arex_agentes_estado'), {});
+      estado[agentId] = { lastRun: Date.now(), status: 'error', summary: String(err.message || err).slice(0, 80) };
+      localStorage.setItem('arex_agentes_estado', JSON.stringify(estado));
+      window.arexSyncData?.('arex_agentes_estado');
+    } catch {}
+
+    window.setNeuralOrbState?.(agentId, 'idle');
   }
+
+  /* 6. Refresh UI */
+  window.renderEvidenciasWidget?.();
+  window.renderDashboard?.();
+  renderControlModule();
+};
+
+/* ── Export / Import / Backup ────────────────────────── */
+const BACKUP_KEYS = [
+  'arex_negocio','arex_gastos_pers','arex_metas','arex_tareas',
+  'arex_recordatorios','arex_memoria','arex_hechos','arex_context',
+  'arex_atajos','arex_proyectos','arex_evidencias','arex_notas',
+  'arex_finanzas','arex_finanzas_overrides','arex_reparto_routes',
+  'arex_personas','arex_gesture_map','arex_bitacora','arex_agentes_estado',
+];
+
+function _exportBackupJSON() {
+  const backup = { _exportedAt: new Date().toISOString(), _version: window.AREX_SW_VERSION || 'arex' };
+  for (const k of BACKUP_KEYS) {
+    try { const v = localStorage.getItem(k); if (v) backup[k] = JSON.parse(v); } catch {}
+  }
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `arex-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  logBitacora('sistema', 'Backup JSON exportado');
+}
+
+function _exportGastosCSV() {
+  try {
+    const gs = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
+    if (!gs.length) { alert('Sin gastos para exportar.'); return; }
+    const rows = [['Fecha','Concepto','Categoría','Monto']];
+    for (const g of gs) rows.push([g.fecha||'',g.concepto||'',g.categoria||'',(g.monto||0).toFixed(2)]);
+    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `arex-gastos-${new Date().toISOString().slice(0,7)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logBitacora('sistema', `CSV gastos exportado (${gs.length} registros)`);
+  } catch(e) { alert('Error exportando gastos: ' + e.message); }
+}
+
+function _exportTareasCSV() {
+  try {
+    const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    if (!ts.length) { alert('Sin tareas para exportar.'); return; }
+    const rows = [['Texto','Prioridad','Fecha','Estado']];
+    for (const t of ts) rows.push([t.texto||t.text||'',t.prioridad||'media',t.fecha||'',t.done?'Completada':'Pendiente']);
+    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `arex-tareas-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logBitacora('sistema', `CSV tareas exportado (${ts.length} registros)`);
+  } catch(e) { alert('Error exportando tareas: ' + e.message); }
+}
+
+function _importBackupJSON(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      let imported = 0;
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith('arex_')) continue;
+        localStorage.setItem(k, JSON.stringify(v));
+        if (typeof arexSyncData === 'function') arexSyncData(k);
+        imported++;
+      }
+      logBitacora('sistema', `Backup importado: ${imported} módulos restaurados`);
+      // Re-render all modules
+      window.renderTareas?.();
+      window.renderMetas?.();
+      window.renderProyectosModule?.();
+      window.renderGpResumen?.();
+      if (typeof renderNegocioModule === 'function') renderNegocioModule();
+      renderControlModule();
+      const msg = `✓ ${imported} módulos restaurados desde backup (${data._exportedAt?.slice(0,10) || 'sin fecha'}).`;
+      alert(msg);
+    } catch(e) { alert('Error leyendo backup: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+function _getStorageByModule() {
+  const rows = [];
+  for (const k of BACKUP_KEYS) {
+    try {
+      const v = localStorage.getItem(k);
+      if (!v) continue;
+      const kb = (v.length * 2 / 1024).toFixed(1);
+      rows.push({ key: k.replace('arex_',''), kb: parseFloat(kb) });
+    } catch {}
+  }
+  return rows.sort((a,b) => b.kb - a.kb);
+}
+
+function _renderDatos(el) {
+  const rows  = _getStorageByModule();
+  const total = rows.reduce((s,r) => s+r.kb, 0);
+  const max   = 5120;
+  const pct   = Math.min(100, Math.round((total / max) * 100));
+  const fbOk  = !!(window._arexDb);
+  const lastSync = window._arexLastSync ? new Date(window._arexLastSync).toLocaleTimeString('es-MX') : 'Nunca';
+
+  el.innerHTML = `
+    <!-- Sync status -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">◉ SINCRONIZACIÓN FIREBASE</div>
+      <div class="datos-row">
+        <span class="datos-k">Estado</span>
+        <span class="datos-v ${fbOk?'ok':'warn'}">${fbOk?'⬤ CONECTADO':'⬤ SIN FIREBASE'}</span>
+      </div>
+      <div class="datos-row">
+        <span class="datos-k">Última sync</span>
+        <span class="datos-v">${lastSync}</span>
+      </div>
+      ${fbOk ? `<button class="datos-btn" onclick="window._forceSyncAll?.()">↑ SINCRONIZAR AHORA</button>` : ''}
+    </div>
+
+    <!-- Storage usage -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">◫ ALMACENAMIENTO LOCAL</div>
+      <div class="datos-row">
+        <span class="datos-k">Usado</span>
+        <span class="datos-v ${pct>70?'warn':'ok'}">${total.toFixed(1)} KB <span style="opacity:.5;font-size:9px">(${pct}%)</span></span>
+      </div>
+      <div class="datos-bar-track"><div class="datos-bar-fill" style="width:${pct}%"></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+        ${rows.map(r => `
+          <div class="datos-row" style="padding:2px 0">
+            <span class="datos-k" style="font-size:8px">${r.key}</span>
+            <span class="datos-v" style="font-size:8px">${r.kb} KB</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">↓ EXPORTAR</div>
+      <button class="datos-btn accent" onclick="window._exportBackupJSON?.()">⬇ BACKUP COMPLETO (.json)</button>
+      <button class="datos-btn" onclick="window._exportGastosCSV?.()">⬇ GASTOS (.csv)</button>
+      <button class="datos-btn" onclick="window._exportTareasCSV?.()">⬇ TAREAS (.csv)</button>
+    </div>
+
+    <!-- Import -->
+    <div class="datos-section">
+      <div class="datos-sec-lbl">↑ IMPORTAR / RESTAURAR</div>
+      <div class="datos-warn">⚠ Restaurar un backup sobreescribe los datos actuales.</div>
+      <label class="datos-btn" style="cursor:pointer;text-align:center">
+        ⬆ RESTAURAR BACKUP (.json)
+        <input type="file" accept=".json" style="display:none" onchange="window._importBackupJSON?.(this.files[0])"/>
+      </label>
+    </div>`;
+}
+
+window._exportBackupJSON  = _exportBackupJSON;
+window._exportGastosCSV   = _exportGastosCSV;
+window._exportTareasCSV   = _exportTareasCSV;
+window._importBackupJSON  = _importBackupJSON;
+window._forceSyncAll      = async function() {
+  for (const k of BACKUP_KEYS) {
+    if (localStorage.getItem(k) && typeof arexSyncData === 'function') await arexSyncData(k);
+  }
+  logBitacora('sistema', 'Sync manual completado');
+  renderControlModule();
 };
 
 /* ── Render principal del módulo ────────────────────── */
@@ -266,6 +632,7 @@ function renderControlModule() {
       <button class="ctrl-tab ${_ctrlView==='telemetria'?'active':''}" onclick="switchCtrlView('telemetria')">TELEMETRÍA</button>
       <button class="ctrl-tab ${_ctrlView==='bitacora'?'active':''}" onclick="switchCtrlView('bitacora')">BITÁCORA</button>
       <button class="ctrl-tab ${_ctrlView==='agentes'?'active':''}" onclick="switchCtrlView('agentes')">AGENTES</button>
+      <button class="ctrl-tab ${_ctrlView==='datos'?'active':''}" onclick="switchCtrlView('datos')">DATOS</button>
     </div>
 
     <div class="ctrl-view ${_ctrlView==='telemetria'?'active':''}" id="ctrl-tel-view">
@@ -285,13 +652,15 @@ function renderControlModule() {
 
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
+    </div>
+
+    <div class="ctrl-view ${_ctrlView==='datos'?'active':''}" id="ctrl-datos-view">
+      <div id="ctrl-datos-body"></div>
     </div>`;
 
-  // Render active view content
   if (_ctrlView === 'telemetria') {
     const tel = document.getElementById('ctrl-tel-body');
     if (tel) _renderTelemetria(tel);
-    // Auto-refresh telemetria every 5s
     clearInterval(window._ctrlTelTimer);
     window._ctrlTelTimer = setInterval(() => {
       const t = document.getElementById('ctrl-tel-body');
@@ -303,7 +672,19 @@ function renderControlModule() {
     if (log) _renderLog(log);
   } else if (_ctrlView === 'agentes') {
     const ag = document.getElementById('ctrl-agents-body');
-    if (ag) _renderAgentes(ag);
+    if (ag) {
+      if (typeof window.initNeuralOrbs !== 'function') {
+        const _s = document.createElement('script');
+        _s.src = './neural-orb.js';
+        _s.onload = () => _renderAgentes(ag);
+        document.body.appendChild(_s);
+      } else {
+        _renderAgentes(ag);
+      }
+    }
+  } else if (_ctrlView === 'datos') {
+    const dt = document.getElementById('ctrl-datos-body');
+    if (dt) _renderDatos(dt);
   }
 }
 

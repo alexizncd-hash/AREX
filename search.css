@@ -1,0 +1,182 @@
+/* ── AREX Global Search Overlay ─────────────────────────── */
+#srch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0,3,10,0.88);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(60px,10vh,110px) 1rem 2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+#srch-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.srch-box {
+  width: 100%;
+  max-width: 560px;
+  background: rgba(0,8,20,0.94);
+  border: 1px solid rgba(0,212,255,0.35);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 28px 64px rgba(0,0,0,0.65), 0 0 40px rgba(0,212,255,0.06);
+}
+
+/* Input row */
+.srch-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,212,255,0.12);
+}
+.srch-icon { color: rgba(0,212,255,0.55); font-size: 15px; flex-shrink: 0; }
+
+#srch-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+#srch-input::placeholder { color: rgba(0,212,255,0.28); }
+
+.srch-esc {
+  background: rgba(0,212,255,0.07);
+  border: 1px solid rgba(0,212,255,0.18);
+  color: rgba(0,212,255,0.45);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.srch-esc:hover { border-color: rgba(0,212,255,0.5); color: var(--cyan); }
+
+/* Results */
+#srch-results {
+  max-height: 58vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,212,255,0.18) transparent;
+}
+#srch-results::-webkit-scrollbar { width: 3px; }
+#srch-results::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.18); border-radius: 2px; }
+
+.srch-count {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  padding: 8px 16px 4px;
+  font-family: var(--font);
+}
+
+.srch-group { margin-bottom: 2px; }
+.srch-group-hdr {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  padding: 8px 16px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.7;
+  font-family: var(--font);
+}
+.srch-group-cnt {
+  background: rgba(0,212,255,0.1);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 7px;
+}
+
+.srch-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 18px;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.srch-item:hover, .srch-item.selected {
+  background: rgba(0,212,255,0.07);
+  border-left-color: rgba(0,212,255,0.45);
+}
+.srch-item-title {
+  font-size: 12px;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+}
+.srch-item-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+.srch-item-title mark, .srch-item-sub mark {
+  background: rgba(0,212,255,0.18);
+  color: var(--cyan);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.srch-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2.2rem 1rem;
+  letter-spacing: 0.3px;
+  font-family: var(--font-body);
+}
+.srch-empty strong { color: var(--cyan); }
+
+/* Hints */
+.srch-hints { padding: 12px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.srch-hint-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+}
+.srch-hint-row kbd {
+  background: rgba(0,212,255,0.07);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--cyan);
+  min-width: 52px;
+  text-align: center;
+  font-family: var(--font);
+  font-style: normal;
+}
+.srch-scope {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: rgba(0,212,255,0.25);
+  margin-top: 4px;
+  font-family: var(--font);
+}

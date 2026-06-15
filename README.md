@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v70)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v79)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -42,7 +42,14 @@ arex/
 ├── parallax.js         → Parallax Engine: profundidad holográfica vía giroscopio / puntero
 ├── holo.js             → Holo Engine: capa 3D holográfica interactiva estilo Stark (aditiva)
 ├── webxr.js            → Soporte AR experimental (WebXR, fase 3)
-├── sw.js               → Service Worker v70 (PWA / modo offline / cache network-first)
+├── search.js           → Búsqueda global Cmd+K: indexa 8 fuentes de datos, overlay con navegación por teclado
+├── search.css          → Estilos del overlay de búsqueda global (frosted glass, z-index 9000)
+├── vision-orb.js       → Orbe 3D de partículas para el módulo Visión (estados: idle/scanning/analyzing/speaking/error)
+├── agenda.js           → Módulo Agenda: vista semanal y mensual agregando tareas, recordatorios y metas
+├── agenda.css          → Estilos del módulo Agenda
+├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
+├── habitos.css         → Estilos del módulo Hábitos
+├── sw.js               → Service Worker v76 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -65,8 +72,10 @@ arex/
 | **GASTOS** | 💸 | Gastos personales diarios por categoría con presupuesto mensual y comparativa visual |
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
-| **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA |
+| **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA, exportar/importar datos |
 | **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
+| **AGENDA** | 📅 | Calendario semanal/mensual que agrega automáticamente tareas con fecha, recordatorios y metas con deadline |
+| **HÁBITOS** | ◎ | Hábitos diarios con streak counter, mini-calendario de los últimos 7 días y categorías personalizables |
 
 ---
 
@@ -321,12 +330,174 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 | Tavily API Key | app.tavily.com | No — habilita búsqueda web |
 | OpenWeatherMap Key | openweathermap.org | No — habilita widget de clima |
 | Firebase (6 campos) | console.firebase.google.com | No — habilita sync en la nube |
+| Firebase VAPID Key | Consola Firebase → Cloud Messaging → Web Push | No — habilita push notifications FCM |
 
 > **Seguridad**: `config.js` está en `.gitignore` y nunca se commitea. Contiene credenciales reales. No compartir ni subir al repo bajo ninguna circunstancia.
 
 ---
 
 ## Changelog
+
+### v76 — Bloque 3: Offline, Análisis IA, Reporte semanal, Hitos en metas, Alerta de clima
+
+**Modo offline inteligente (`app.js`)**
+- Banner naranja en la parte superior cuando no hay conexión (`navigator.onLine` + eventos)
+- Cuando el chat está offline, responde con datos locales relevantes (tareas, notas, metas, recordatorios) en lugar de error genérico
+- Fallback en el catch de `callGroq` / `streamArexReply` para errores de red
+- Comandos `/` siguen funcionando sin internet (son locales)
+
+**Análisis IA de gastos y metas (`app.js`)**
+- `/analizar gastos` — envía los últimos 3 meses de gastos a Groq, recibe: tendencia, categoría más alta, 3 recomendaciones concretas
+- `/analizar metas` — evalúa progreso de metas activas, identifica las en riesgo y da acciones para la semana
+
+**Reporte semanal (`app.js`)**
+- `/semana` — genera un reporte markdown motivador con: tareas completadas/pendientes, gastos, progreso de metas, hábitos de la semana
+- Cubre lunes-domingo de la semana en curso
+
+**Hitos en metas (`metas.js` + `style.css`)**
+- Cada meta ahora soporta `hitos: [{id, texto, completado}]`
+- UI: lista de checkpoints bajo cada meta con toggle/delete
+- Agregar hito con Enter en el input inline
+- Funciones globales: `addHito(metaId, texto)`, `toggleHito`, `deleteHito`
+
+**Alerta de clima (`app.js` + `style.css`)**
+- Si el forecast de las próximas 12h tiene probabilidad de lluvia > 65% o condiciones severas (tormenta, nieve, etc.), muestra un banner naranja de alerta con la hora estimada
+
+**SW v76**
+
+### v75 — Bloque 2: Hábitos + Subtareas + Briefing mejorado + Memoria conversacional + Búsqueda historial
+
+**Módulo Hábitos (`habitos.js` + `habitos.css`)**
+- Hábitos con emoji, categoría (Salud/Ejercicio/Mente/Trabajo/Personal), frecuencia (Diaria/Semanal/Lunes-Viernes)
+- Toggle de completado para hoy con streak counter `🔥 N días`
+- Mini-calendario 7 días (Mon-Sun) con puntos cyan/apagado
+- Inline form para agregar nuevos hábitos
+- Confirmación de 2 pasos para eliminar; sync a Firebase vía `arexSyncData`
+
+**Subtareas (`app.js` + `style.css`)**
+- Los objetos de tarea ahora soportan `subtareas: [{id, text, done}]`
+- Funciones: `addSubtarea`, `toggleSubtarea`, `deleteSubtarea`
+- UI: lista collapsible bajo cada tarea pendiente; badge `X/N` de progreso
+- Agregar subtarea con Enter en el campo inline de texto; delete con confirmación
+- Subtareas completadas con tachado y opacidad reducida
+
+**Briefing matutino mejorado (`app.js`)**
+- Ahora incluye: metas activas con progreso (`titulo: X/Y`), gastos del mes, hábitos pendientes hoy, agenda del día
+- Prompt actualizado: permite 4-6 líneas con 2-3 bullet points; max_tokens 380
+- Los datos de hábitos y agenda se inyectan solo si los módulos están cargados
+
+**Memoria conversacional (`app.js`)**
+- `_autoSummarizeSession()`: al guardar una sesión con ≥6 mensajes, llama a Groq para extraer 1-2 oraciones de contexto clave
+- `arex_session_memories`: almacena los últimos 12 resúmenes de sesión (`{fecha, session, resumen}`)
+- `buildSessionMemorySection()`: inyecta los 4 resúmenes más recientes en el system prompt de cada llamada
+- El modelo ahora recuerda contexto de conversaciones pasadas automáticamente
+
+**Búsqueda en historial de chat (`search.js`)**
+- `Cmd+K` ahora busca también en `arex_sessions` (hasta 10 sesiones guardadas)
+- Grupo `💬 HISTORIAL` en resultados con nombre de sesión, snippet y fecha
+- Click en resultado carga la sesión directamente vía `loadSession(sid)` y navega al chat
+
+**SW v75**
+
+### v74 — Bloque 1: Real-time sync + FCM + Agenda + Quick Capture + Tareas Recurrentes
+
+**Tareas recurrentes (`app.js`)**
+- `addTarea` acepta nuevo parámetro `repetir`: `ninguna | diaria | semanal | mensual | anual`
+- Al completar una tarea con recurrencia, `toggleTarea` genera automáticamente la siguiente ocurrencia con fecha calculada
+- Badge `↻ diaria` visible en cada tarea recurrente; selector de recurrencia en el formulario de edición
+
+**Quick Capture universal (`app.js` + `style.css` + `index.html`)**
+- Botón flotante `+` (FAB) siempre visible en la esquina inferior derecha
+- Atajo de teclado `Q` para abrir/cerrar desde cualquier lugar
+- IA con debounce 700ms clasifica el texto como **tarea / nota / gasto / meta** usando `llama-3.3-70b-versatile`
+- Campos extras dinámicos según tipo: fecha+prioridad para tareas, monto+categoría para gastos
+- Guarda directamente en el módulo correcto; se oculta automáticamente en modo Visión
+
+**Módulo Agenda/Calendario (`agenda.js` + `agenda.css`)**
+- Vista **semanal** (7 columnas, 4 en móvil): día actual resaltado con borde cyan
+- Vista **mensual**: grid 7×N con puntos de color por tipo de evento
+- Agrega automáticamente: tareas con `fecha`, recordatorios (`arex_recordatorios`) y metas con `deadline`
+- Chips de colores: cyan = tareas, naranja = recordatorios, verde = metas
+- Click en evento navega directamente al módulo de origen (`AREXNav.cambiarModulo`)
+- Botón en el dock (📅) + integrado en la navegación de jarvis.js
+
+**onSnapshot real-time sync (`app.js`)**
+- `initRealtimeSync()`: escucha en tiempo real los documentos Firestore de `arex_tareas`, `arex_metas`, `arex_notas` y `arex_recordatorios`
+- Actualiza localStorage y re-renderiza automáticamente si el timestamp remoto es mayor que el local
+- Sin polling — conexión persistente push desde Firebase; se limpia y reinicia al reconectar Firebase
+
+**FCM Push Notifications (`app.js` + `sw.js`)**
+- `initFCM()`: importa `firebase/messaging` dinámicamente, solicita permiso y obtiene token FCM
+- El token se guarda en `localStorage['arex_fcm_token']` para uso externo (Cloud Functions)
+- Mensajes en foreground manejados con `onMessage` → muestra notificación nativa vía SW
+- Campo **VAPID Key** en ambas pantallas de configuración (setup inicial y `/config`)
+- SW `push` event handler: recibe push del servidor y muestra notificación con icono AREX, vibración y `renotify: true`
+- **SW v74**
+
+### v73 — Módulo Agenda + correcciones menores
+- Creación de `agenda.js` y `agenda.css`; SW bumpeado a v73
+
+### v72 — Orbes 3D con partículas reales + Visión libre e interactiva
+
+**Orbes neurales en verdadero 3D (`neural-orb.js`)**
+- Los 40 nodos ahora **orbitan** en 3D usando matrices de rotación Y+X aplicadas cada frame (antes estaban fijos)
+- `_updatePositions()` transforma `ox/oy/oz` → `x/y/z` con perspectiva real (`fov / (fov + z + 1.2)`)
+- Cada instancia tiene su propia velocidad y ángulo de inicio aleatorios
+- Los estados `thinking` (×2.4) y `speaking` (×3.2) aceleran la rotación
+- Nuevo estado `scanning` para integración con Visión
+- Tilt suave sinusoidal en eje X (eje X oscila ±0.06 rad con el tiempo)
+
+**Orbe 3D de partículas en Visión (`vision-orb.js` — nuevo archivo)**
+- Orbe 88×88px con 55 partículas en el HUD superior izquierdo de la cámara
+- 5 estados visuales: `idle` (cyan lento), `scanning` (giro rápido + burst), `analyzing` (blanco-cyan explosión), `speaking` (verde), `error` (rojo)
+- Se sincroniza automáticamente con el estado de AREX: analizar → `analyzing`, hablar → `speaking`, AUTO → `scanning`
+- Misma arquitectura que neural-orb: Fibonacci sphere + perspectiva + pulsos + rim glow + specular
+
+**Visión libre e interactiva (`vision.js`)**
+- **Tap en cualquier punto** → AREX analiza esa región específica (crop 55% alrededor del tap) con reticle de mira animado
+- **Mantener presionado 650ms** → Abre la barra de pregunta libre
+- **Barra de pregunta libre (siempre disponible)**: escribe cualquier cosa, AREX analiza lo que ve + responde conversacionalmente
+- **Voz natural sin restricciones**: si dices "AREX" + cualquier cosa que no sea un comando conocido, se trata como pregunta libre sobre la vista actual — sin necesidad de memorizar comandos exactos
+- Hint inferior actualizado: "TAP = ANALIZAR ZONA · MANTENER = PREGUNTAR LIBRE"
+
+- **SW v72**
+
+### v71 — Búsqueda global Cmd+K + Export/Import + Firebase sync completo + Vision mejorado
+
+**Búsqueda global (`search.js` + `search.css`)**
+- Overlay `Cmd+K` / `Ctrl+K` con glass morphism (z-index 9000)
+- Indexa 8 fuentes: tareas, notas, metas, proyectos, gastos, evidencias, hechos, bitácora
+- Resultados agrupados por módulo con contadores, highlights `<mark>` y navegación por teclado (↑↓ Enter Esc)
+- Click navega directamente al módulo via `AREXNav.cambiarModulo()`
+
+**Export / Import (`control.js` — pestaña DATOS)**
+- **JSON full backup** con timestamp → descarga `arex-backup-YYYY-MM-DD.json`
+- **CSV gastos** con BOM (compatible Excel) → descarga `arex-gastos-YYYY-MM-DD.csv`
+- **CSV tareas** → descarga `arex-tareas-YYYY-MM-DD.csv`
+- **Import JSON**: restaura todos los `arex_*` keys, re-sincroniza Firebase, re-renderiza módulos
+- Barra de uso de almacenamiento por módulo + estadísticas de sync
+
+**Firebase sync completo (`app.js`)**
+- `pullAllModuleData()` ahora sincroniza 18 keys (antes 9 — faltaban proyectos, evidencias, notas, finanzas, reparto, personas)
+- Resolución de conflictos por `_updatedAt`: el más reciente gana
+- `arexSyncData()` incluye `_updatedAt: Date.now()` en cada push
+
+**Visión MARK IV — vidrio real + interactividad (`vision.js` + `style.css`)**
+- Panel resultado con `background: rgba(0,4,12,0.50)` + `backdrop-filter: blur(28px)` (antes casi opaco)
+- HUD con gradientes reducidos para más transparencia sobre la cámara
+- **Acciones contextuales**: después de cada análisis aparecen botones según el modo
+  - Modo describe/escena → `+ TAREA`, `+ NOTA`, `COPIAR`
+  - Modo objeto/producto → `BUSCAR PRECIO`, `+ NOTA`, `COPIAR`
+  - Modo texto/QR → `COPIAR`, `ABRIR ENLACE` (si detecta URL)
+
+**Visión AUTO — sin congelarse (`vision.js`)**
+- Ciclo continuo: 1800ms → 3500ms (menos competencia con la cámara)
+- Modelo rápido `llama-4-scout-17b-16e-instruct` en AUTO (era maverick)
+- Canvas cacheado — `_captureCanvas` reutilizado para reducir GC
+- Video keep-alive: si `_video.paused`, se reanuda automáticamente
+- Timeouts reducidos: 12s (AUTO) / 16s (manual), con `AbortController` en la API call
+
+- **SW v71**
 
 ### v66 — Color verde neón + módulo Rutas de Reparto con mapa 3D
 - **Paleta verde**: `#00ff88` neón + `#00e5cc` teal reemplazan el naranja en todo el sistema

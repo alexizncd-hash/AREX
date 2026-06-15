@@ -38,6 +38,9 @@ let _noMotionCnt    = 0;
 let _lastContTxt    = '';
 let _motionCanvas   = null;   // reused canvas for pixel diff (avoids GC pressure)
 let _captureCanvas  = null;   // reused canvas for frame capture (avoids GC pressure)
+let _tapAnalyzing  = false;
+let _longPressTimer= null;
+let _askBarVisible = false;
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -143,6 +146,98 @@ const MODE_LABELS = {
 
 const MODE_RES = { describe: 420, product: 600, text: 640, scene: 600, recibo: 720 };
 
+/* ─── Region Capture (tap to analyze) ────────────────── */
+async function _captureRegion(relX, relY, frac = 0.50) {
+  if (!_video || _video.videoWidth === 0) return null;
+  if (_video.paused) { try { await _video.play(); } catch { return null; } }
+  const vw = _video.videoWidth, vh = _video.videoHeight;
+  const size = Math.min(vw, vh) * frac;
+  const cx = relX * vw, cy = relY * vh;
+  const sx = Math.max(0, Math.min(cx - size / 2, vw - size));
+  const sy = Math.max(0, Math.min(cy - size / 2, vh - size));
+  const rw = Math.min(size, vw - sx), rh = Math.min(size, vh - sy);
+  const out = 320;
+  const cv = document.createElement('canvas');
+  cv.width = out; cv.height = Math.round(out * rh / rw);
+  cv.getContext('2d').drawImage(_video, sx, sy, rw, rh, 0, 0, cv.width, cv.height);
+  const dataUrl = cv.toDataURL('image/jpeg', 0.80);
+  return dataUrl.length < 3000 ? null : dataUrl;
+}
+
+function _drawTapReticle(x, y) {
+  const cv = document.getElementById('vis-tap-canvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const r = 44;
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.45, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,212,255,0.55)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Crosshairs
+  const arm = r * 0.7;
+  ctx.strokeStyle = 'rgba(0,212,255,0.75)';
+  ctx.lineWidth = 1.5;
+  [[x - arm, y, x - r * 0.15, y], [x + r * 0.15, y, x + arm, y],
+   [x, y - arm, x, y - r * 0.15], [x, y + r * 0.15, x, y + arm]].forEach(([x1,y1,x2,y2]) => {
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  // Label
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.fillStyle = 'rgba(0,212,255,0.9)';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('ANALIZANDO', x - 38, y + r + 18);
+  // Fade out reticle after 1.8s
+  clearTimeout(cv._fadeTimer);
+  cv._fadeTimer = setTimeout(() => ctx.clearRect(0, 0, cv.width, cv.height), 1800);
+}
+
+async function _handleTapAnalyze(clientX, clientY) {
+  if (_tapAnalyzing || _busy) return;
+  _tapAnalyzing = true;
+  const vid = document.getElementById('vis-video');
+  if (!vid) { _tapAnalyzing = false; return; }
+  const rect = vid.getBoundingClientRect();
+  const relX = (clientX - rect.left)  / rect.width;
+  const relY = (clientY - rect.top)   / rect.height;
+  // Mirror X for front camera
+  const adjX = _facingMode === 'user' ? 1 - relX : relX;
+
+  // Show reticle on tap canvas
+  const cv = document.getElementById('vis-tap-canvas');
+  if (cv) {
+    cv.width  = rect.width;
+    cv.height = rect.height;
+    _drawTapReticle(clientX - rect.left, clientY - rect.top);
+  }
+
+  _setStatus('ENFOCANDO...');
+  try {
+    const frame = await _captureRegion(adjX, relY, 0.55);
+    if (!frame) { _setStatus('LISTO'); _tapAnalyzing = false; return; }
+    const groqKey = window.AREX_CONFIG?.groqKey;
+    const gemKey  = window.AREX_CONFIG?.geminiKey;
+    const prompt  = `Eres AREX. Alexiz apuntó a una zona específica de la cámara. Descríbela en 1-2 oraciones naturales y directas: qué es, qué hace, algo interesante. Si hay texto, léelo. En español.`;
+    _setStatus('ANALIZANDO ZONA...');
+    let reply;
+    if (groqKey) { try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch {} }
+    if (!reply && gemKey) { try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 10000); } catch {} }
+    if (reply) {
+      _showResult('🎯 ZONA', reply, frame, 'describe');
+      _visionSpeak(reply);
+    }
+  } catch (e) { console.warn('tap analyze:', e); }
+  finally { _tapAnalyzing = false; _setStatus(_contOn ? 'SMART · EN ESPERA' : 'LISTO'); }
+}
+
 /* ─── Public API ──────────────────────────────────────── */
 export async function openVision() {
   if (_panel) { _panel.style.display = 'flex'; _video?.play(); return; }
@@ -191,6 +286,7 @@ export function closeVision() {
   }
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
+  window.VisionOrb?.destroy();
   _panel?._cleanupResize?.();
   _panel?.remove(); _panel = null;
   document.getElementById('btn-vision')?.classList.remove('active');
@@ -255,6 +351,8 @@ function _buildPanel() {
     <div class="vp-corner vp-tr"></div>
     <div class="vp-corner vp-bl"></div>
     <div class="vp-corner vp-br"></div>
+    <!-- 3-D PARTICLE ORB -->
+    <canvas id="vis-orb-canvas" class="vp-orb-canvas"></canvas>
 
     <!-- TOP BAR -->
     <div class="vp-hud-top">
@@ -346,8 +444,16 @@ function _buildPanel() {
       <div class="vp-result-actions" id="vis-result-actions"></div>
     </div>
 
+    <canvas id="vis-tap-canvas" class="vp-tap-canvas"></canvas>
+    <!-- QUICK ASK BAR -->
+    <div class="vp-ask-bar" id="vis-ask-bar">
+      <span class="vp-ask-ico">💬</span>
+      <input class="vp-ask-input" id="vis-ask-input" placeholder="Pregúntame sobre lo que ves..." autocomplete="off" spellcheck="false"/>
+      <button class="vp-ask-send" id="vis-ask-send">▶</button>
+    </div>
+
     <!-- SWIPE HINT -->
-    <div class="vp-swipe-hint">◀ DESLIZA ▶ · PELLIZCA PARA SELECCIONAR</div>
+    <div class="vp-swipe-hint">TAP = ANALIZAR ZONA · MANTENER = PREGUNTAR LIBRE</div>
 
     <!-- MODULE HUD (permanece en visión al navegar módulos) -->
     <div class="vp-module-hud" id="vis-module-hud">
@@ -487,6 +593,54 @@ function _buildPanel() {
   };
   window.addEventListener('resize', _resizeCanvas);
   _panel._cleanupResize = () => window.removeEventListener('resize', _resizeCanvas);
+
+  // Tap-to-analyze: single tap on video area triggers region analysis
+  const tapCv = document.getElementById('vis-tap-canvas');
+  if (tapCv) {
+    let _tapStart = null;
+    tapCv.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      _tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+      // Long press → ask bar
+      _longPressTimer = setTimeout(() => {
+        if (!_tapStart) return;
+        _tapStart = null;
+        _toggleAskBar();
+      }, 650);
+    }, { passive: true });
+    tapCv.addEventListener('touchend', e => {
+      clearTimeout(_longPressTimer);
+      if (!_tapStart) return;
+      const dx = e.changedTouches[0].clientX - _tapStart.x;
+      const dy = e.changedTouches[0].clientY - _tapStart.y;
+      const dt = Date.now() - _tapStart.t;
+      _tapStart = null;
+      // Only fire on short taps with little movement
+      if (dt < 400 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+        _handleTapAnalyze(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }
+    }, { passive: true });
+    tapCv.addEventListener('click', e => {
+      // Desktop: single click to analyze region
+      if (e.detail === 1) _handleTapAnalyze(e.clientX, e.clientY);
+    });
+  }
+
+  document.getElementById('vis-ask-send').addEventListener('click', _sendAskBar);
+  document.getElementById('vis-ask-input').addEventListener('keydown', e => { if (e.key === 'Enter') _sendAskBar(); });
+
+  // Init 3-D Vision Orb
+  const orbCv = document.getElementById('vis-orb-canvas');
+  if (orbCv && window.VisionOrb) {
+    const dpr = devicePixelRatio || 1;
+    const sz  = 88;
+    orbCv.width  = sz * dpr;
+    orbCv.height = sz * dpr;
+    orbCv.style.width  = sz + 'px';
+    orbCv.style.height = sz + 'px';
+    orbCv.getContext('2d').scale(dpr, dpr);
+    window.VisionOrb.init(orbCv);
+  }
 
   // Start telemetry ticker
   _telTimer = setInterval(_updateTelemetry, 3000);
@@ -1048,6 +1202,16 @@ function _setStatus(txt) {
     badge.classList.toggle('error',  txt.startsWith('ERROR') || txt.startsWith('SIN SEÑAL'));
     badge.classList.toggle('active', txt.includes('ANALIZANDO') || txt.includes('CONTINUO') || txt.includes('ESCANEANDO'));
   }
+  // Sync Vision Orb state
+  if (window.VisionOrb) {
+    const orbState =
+      txt.startsWith('ERROR') || txt.startsWith('SIN SEÑAL') ? 'error'
+      : txt.includes('ANALIZANDO') || txt.includes('PENSANDO') || txt.includes('ENFOCANDO') ? 'analyzing'
+      : txt.includes('ESCANEANDO') || txt.includes('SMART · ANALIZANDO') ? 'scanning'
+      : txt.includes('CONTINUO') || txt.includes('SMART') ? 'scanning'
+      : 'idle';
+    window.VisionOrb.setState(orbState);
+  }
 }
 function _setScanActive(on) {
   document.getElementById('vis-scan')?.classList.toggle('active', on);
@@ -1061,6 +1225,7 @@ function _setAnalyzing(on, mode) {
 /* ─── Voice synthesis + iOS keep-alive ───────────────── */
 function _visionSpeak(text) {
   if (!_voiceOn || !window.speechSynthesis) return;
+  window.VisionOrb?.setState('speaking');
 
   const clean = text
     .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -1090,8 +1255,8 @@ function _visionSpeak(text) {
       if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     }, 5000);
   };
-  u.onend   = () => _stopIosKa();
-  u.onerror = () => _stopIosKa();
+  u.onend   = () => { _stopIosKa(); window.VisionOrb?.setState(_contOn ? 'scanning' : 'idle'); };
+  u.onerror = () => { _stopIosKa(); window.VisionOrb?.setState('idle'); };
 
   window.speechSynthesis.speak(u);
 }
@@ -1209,9 +1374,11 @@ function _toggleGesture() {
 
   const canvas = document.getElementById('vis-gesture-canvas');
   if (_gestureOn && _video && canvas) {
-    canvas.width  = _video.clientWidth  || 320;
-    canvas.height = _video.clientHeight || 480;
-    if (typeof initGestureEngine === 'function') {
+    canvas.width  = 320;
+    canvas.height = 240;
+    const _startGE = () => {
+      if (typeof initGestureEngine !== 'function') return;
+      _say('**[Gestos]** CARGANDO MOTOR DE GESTOS...');
       initGestureEngine(_video, canvas, _handleGesture)
         .then(ok => {
           if (!ok) {
@@ -1223,6 +1390,15 @@ function _toggleGesture() {
             document.getElementById('vis-gest-guide')?.classList.add('visible');
           }
         });
+    };
+    if (typeof initGestureEngine === 'function') {
+      _startGE();
+    } else {
+      const s = document.createElement('script');
+      s.src = './gesture.js';
+      s.onload = _startGE;
+      s.onerror = () => _say('**[Gestos]** Error cargando gesture.js');
+      document.body.appendChild(s);
     }
   } else {
     if (typeof stopGestureEngine === 'function') stopGestureEngine();
@@ -1462,6 +1638,63 @@ function _processVoiceCmd(text) {
       return;
     }
   }
+
+  // Free voice fallback: if speech starts with "arex" but matched nothing,
+  // treat the rest as a natural language question about the current camera view
+  if (t.length > 3 && !_busy) {
+    feedback('PREGUNTA LIBRE');
+    _freeVoiceQuery(t);
+  }
+}
+
+async function _freeVoiceQuery(question) {
+  if (_busy) return;
+  _busy = true;
+  clearTimeout(_busyTimer);
+  _busyTimer = setTimeout(() => { _busy = false; _setScanActive(false); _setStatus('LISTO'); }, 14000);
+  _setStatus('PENSANDO...');
+  _setScanActive(true);
+  try {
+    const frame   = await _captureFrame(360);
+    const groqKey = window.AREX_CONFIG?.groqKey;
+    const gemKey  = window.AREX_CONFIG?.geminiKey;
+    if (!frame && !groqKey && !gemKey) { _busy = false; _setScanActive(false); _setStatus('LISTO'); return; }
+    const prompt = frame
+      ? `Eres AREX, el asistente de Alexiz. Tienes la cámara activa. Alexiz preguntó: "${question}". Responde en 1-3 oraciones naturales basándote en lo que ves en la imagen. Si la pregunta no es sobre la imagen, responde igual de forma directa. En español.`
+      : `Eres AREX. Alexiz preguntó mientras usaba la cámara: "${question}". Responde de forma directa en 1-2 oraciones. En español.`;
+    let reply;
+    if (frame && groqKey) { try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch {} }
+    if (!reply && frame && gemKey) { try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 10000); } catch {} }
+    if (!reply && groqKey) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 120,
+          messages: [{ role: 'user', content: prompt }] })
+      });
+      const d = await res.json();
+      reply = d?.choices?.[0]?.message?.content;
+    }
+    if (reply) { _showResult('💬 AREX', reply, frame || null, 'describe'); _visionSpeak(reply); }
+  } catch (e) { console.warn('freeVoiceQuery:', e); }
+  finally { clearTimeout(_busyTimer); _busy = false; _setScanActive(false); _setStatus(_contOn ? 'SMART · EN ESPERA' : 'LISTO'); }
+}
+
+function _toggleAskBar() {
+  _askBarVisible = !_askBarVisible;
+  const bar = document.getElementById('vis-ask-bar');
+  if (bar) {
+    bar.classList.toggle('visible', _askBarVisible);
+    if (_askBarVisible) document.getElementById('vis-ask-input')?.focus();
+  }
+}
+
+async function _sendAskBar() {
+  const input = document.getElementById('vis-ask-input');
+  const q = input?.value?.trim();
+  if (!q) return;
+  input.value = '';
+  _toggleAskBar();
+  await _freeVoiceQuery(q);
 }
 
 /* ─── Module HUD Overlay (navegar sin salir de visión) ─── */

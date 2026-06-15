@@ -5,7 +5,7 @@
 
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
-    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment;
+    query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -41,6 +41,7 @@ function setupSaveHandler() {
     const fbBucket  = document.getElementById('cfg-fb-bucket').value.trim();
     const fbSender  = document.getElementById('cfg-fb-sender').value.trim();
     const fbApp     = document.getElementById('cfg-fb-app').value.trim();
+    const fbVapid   = document.getElementById('cfg-fb-vapid').value.trim();
 
     const config = {
       groqKey:   groq,
@@ -48,7 +49,8 @@ function setupSaveHandler() {
       owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
       geminiKey: (document.getElementById('cfg-gemini')?.value || '').trim() || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
-                           storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp } : null
+                           storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp,
+                           vapidKey: fbVapid || undefined } : null
     };
     localStorage.setItem('arex_config', JSON.stringify(config));
     window.AREX_CONFIG = config;
@@ -61,7 +63,7 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy'];
 
 function loadAtalos() {
   return _safeJSON(localStorage.getItem('arex_atajos'), []);
@@ -331,12 +333,14 @@ async function initFirebase() {
   try {
     ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
-       limit, deleteDoc, doc, setDoc, getDoc, increment }
+       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
     window._arexDb = db;   // expose to global scripts (control.js telemetría)
     fbInitialized = true;
+    initRealtimeSync();
+    initFCM();
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
@@ -362,44 +366,176 @@ async function pullConfigFromFirestore() {
   } catch(e) { console.warn('pullConfig:', e); }
 }
 
-// Generic sync: push any localStorage key to Firestore doc arex/{key}
+// Pull all synced module data back from Firestore on boot
+async function pullAllModuleData() {
+  if (!db) return;
+  const keys = [
+    'arex_negocio','arex_gastos_pers','arex_metas',
+    'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
+    'arex_context','arex_atajos',
+    // Módulos previamente fuera de sync:
+    'arex_proyectos','arex_evidencias','arex_notas',
+    'arex_finanzas','arex_finanzas_overrides',
+    'arex_reparto_routes','arex_personas','arex_gesture_map',
+  ];
+  let synced = 0;
+  for (const key of keys) {
+    try {
+      const snap = await getDoc(doc(db, 'arex_data', key));
+      if (!snap.exists()) continue;
+      const data = snap.data();
+      const remoteTs = data._updatedAt || 0;
+      const { _updatedAt, _arr, ...rest } = data;
+      const toStore = _arr !== undefined ? _arr : rest;
+
+      const local = localStorage.getItem(key);
+      if (!local) {
+        localStorage.setItem(key, JSON.stringify(toStore));
+        synced++;
+      } else {
+        // Resolución de conflictos: gana el timestamp más reciente
+        try {
+          const localTs = JSON.parse(local)?._updatedAt || 0;
+          if (remoteTs > localTs) { localStorage.setItem(key, JSON.stringify(toStore)); synced++; }
+        } catch {
+          localStorage.setItem(key, JSON.stringify(toStore)); synced++;
+        }
+      }
+    } catch(e) { console.warn('pullModuleData:', key, e); }
+  }
+  if (synced > 0) {
+    window.renderTareas?.();
+    window.renderMetas?.();
+    window.renderProyectosModule?.();
+    window.renderGpResumen?.();
+    if (typeof renderNegocioModule === 'function') renderNegocioModule();
+  }
+  return synced;
+}
+
+// arexSyncData con _updatedAt para resolución de conflictos cross-device
 async function arexSyncData(lsKey) {
   if (!db) return;
   try {
     const raw = localStorage.getItem(lsKey);
     if (!raw) return;
     const payload = JSON.parse(raw);
-    // Firestore docs must be objects; wrap arrays
-    const toStore = Array.isArray(payload) ? { _arr: payload } : payload;
+    const ts = Date.now();
+    const toStore = Array.isArray(payload)
+      ? { _arr: payload, _updatedAt: ts }
+      : { ...payload, _updatedAt: ts };
+    _rtLastTs[lsKey] = ts;  // prevent onSnapshot loop for our own write
     await setDoc(doc(db, 'arex_data', lsKey), toStore);
     window._arexLastSync = Date.now();
     _renderSyncBadge();
   } catch(e) { console.warn('arexSyncData:', lsKey, e); }
 }
 
-// Pull all synced module data back from Firestore on boot
-async function pullAllModuleData() {
-  if (!db) return;
-  const keys = ['arex_negocio','arex_gastos_pers','arex_metas',
-                 'arex_tareas','arex_recordatorios','arex_memoria','arex_hechos',
-                 'arex_context','arex_atajos'];
-  for (const key of keys) {
-    try {
-      const snap = await getDoc(doc(db, 'arex_data', key));
-      if (!snap.exists()) continue;
+window.arexSyncData = arexSyncData;
+
+/* ── Real-time sync via onSnapshot ─────────────────── */
+const _rtUnsubs = [];
+const _rtLastTs = {};   // tracks last _updatedAt we received or wrote per key
+
+function initRealtimeSync() {
+  if (!db || !onSnapshot) return;
+  _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
+  const watchKeys = ['arex_tareas', 'arex_metas', 'arex_notas', 'arex_recordatorios'];
+  for (const key of watchKeys) {
+    const unsub = onSnapshot(doc(db, 'arex_data', key), snap => {
+      if (!snap.exists()) return;
       const data = snap.data();
-      // Unwrap arrays
-      const toStore = data._arr !== undefined ? data._arr : data;
-      // Only overwrite if remote is newer (by checking if local exists)
-      const local = localStorage.getItem(key);
-      if (!local) {
-        localStorage.setItem(key, JSON.stringify(toStore));
-      }
-    } catch(e) { console.warn('pullModuleData:', key, e); }
+      const remoteTs = data._updatedAt || 0;
+      // Skip if we already processed this timestamp (avoids loop after our own writes)
+      if (remoteTs <= (_rtLastTs[key] || 0)) return;
+      _rtLastTs[key] = remoteTs;
+      const { _updatedAt, _arr, ...rest } = data;
+      const toStore = _arr !== undefined ? _arr : rest;
+      localStorage.setItem(key, JSON.stringify(toStore));
+      window._arexLastSync = Date.now();
+      _renderSyncBadge();
+      if (key === 'arex_tareas') { window.renderTareas?.(); if (typeof scheduleTaskNotifications === 'function') scheduleTaskNotifications(); }
+      if (key === 'arex_metas')  window.renderMetas?.();
+      if (key === 'arex_recordatorios') { if (typeof restoreReminders === 'function') restoreReminders(); }
+    }, err => console.warn('onSnapshot', key, err));
+    _rtUnsubs.push(unsub);
+  }
+}
+window.initRealtimeSync = initRealtimeSync;
+
+/* ── Firebase Cloud Messaging (FCM) ─────────────────── */
+let _fcmMessaging = null;
+async function initFCM() {
+  if (!db || !AREX_CONFIG.firebase?.vapidKey) return;
+  try {
+    const { getMessaging, getToken, onMessage } =
+      await import('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js');
+    _fcmMessaging = getMessaging();
+    const swReg = await navigator.serviceWorker.ready;
+    const token = await getToken(_fcmMessaging, {
+      vapidKey: AREX_CONFIG.firebase.vapidKey,
+      serviceWorkerRegistration: swReg,
+    });
+    if (token) {
+      localStorage.setItem('arex_fcm_token', token);
+      // Foreground message handler
+      onMessage(_fcmMessaging, payload => {
+        const n = payload.notification || {};
+        if (Notification.permission === 'granted') {
+          swReg.showNotification(n.title || 'AREX', {
+            body: n.body || '',
+            icon: './icon.svg',
+            data: payload.data || {},
+          }).catch(() => {});
+        }
+      });
+    }
+  } catch(e) { console.warn('initFCM:', e); }
+}
+
+/* ── Modo offline ────────────────────────────────────── */
+let _isOffline = !navigator.onLine;
+
+function _setOfflineBanner(offline) {
+  _isOffline = offline;
+  let banner = document.getElementById('arex-offline-banner');
+  if (offline) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'arex-offline-banner';
+      banner.innerHTML = '⚠ SIN CONEXIÓN — funciones de IA no disponibles · datos locales activos';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:8000;background:#1a0a00;border-bottom:1px solid #ff6a00;color:#ff9944;font-family:monospace;font-size:10px;letter-spacing:2px;text-align:center;padding:5px;pointer-events:none;';
+      document.body.prepend(banner);
+    }
+  } else {
+    banner?.remove();
   }
 }
 
-window.arexSyncData = arexSyncData;
+window.addEventListener('online',  () => _setOfflineBanner(false));
+window.addEventListener('offline', () => _setOfflineBanner(true));
+if (_isOffline) _setOfflineBanner(true);
+
+function _offlineFallback(userText) {
+  const t = userText.toLowerCase();
+  if (/tarea|pendiente|hacer/i.test(t)) {
+    const ts = getTareas().filter(x => !x.done);
+    if (ts.length) return `📋 **Tareas pendientes (${ts.length}):**\n${ts.slice(0,5).map(x=>`- ${x.text}`).join('\n')}`;
+  }
+  if (/nota|apunte/i.test(t)) {
+    const ns = getNotas().slice(0,3);
+    if (ns.length) return `📝 **Notas recientes:**\n${ns.map(n=>`- **${n.titulo||'Sin título'}**: ${n.cuerpo.slice(0,60)}…`).join('\n')}`;
+  }
+  if (/meta|objetivo/i.test(t)) {
+    const ms = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m=>!m.completada).slice(0,3);
+    if (ms.length) return `🎯 **Metas activas:**\n${ms.map(m=>`- ${m.titulo||m.nombre}`).join('\n')}`;
+  }
+  if (/recordatorio|recuerda/i.test(t)) {
+    const rs = getRecordatorios().filter(r=>!r.disparado).slice(0,3);
+    if (rs.length) return `⏰ **Recordatorios activos:**\n${rs.map(r=>r.msg).join('\n')}`;
+  }
+  return '📡 AREX está sin conexión. Los datos locales están disponibles.\n\nComandos útiles sin internet: `/tareas`, `/notas`, `/metas`, `/recordar`';
+}
 
 /* ── Markdown ───────────────────────────────────────── */
 if (typeof marked !== 'undefined') {
@@ -555,6 +691,10 @@ function saveCurrentSession() {
   saveSessions(sessions);
   renderSessionsList();
   updateDockSessionName();
+  if (history.length >= 6) {
+    const sName = autoSessionName();
+    setTimeout(() => _autoSummarizeSession([...history], sName), 1200);
+  }
 }
 
 function updateDockSessionName() {
@@ -563,6 +703,44 @@ function updateDockSessionName() {
   const sid = getCurrentSid();
   const s = getSessions().find(s => s.id === sid);
   el.textContent = s ? s.name.slice(0, 12) : '—';
+}
+
+/* ── Memoria de sesiones (resúmenes automáticos) ─────── */
+function getSessionMemories() { return _safeJSON(localStorage.getItem('arex_session_memories'), []); }
+function saveSessionMemories(arr) {
+  localStorage.setItem('arex_session_memories', JSON.stringify(arr.slice(0, 12)));
+}
+
+async function _autoSummarizeSession(msgs, sessionName) {
+  if (!AREX_CONFIG?.groqKey || msgs.length < 6) return;
+  try {
+    const excerpt = msgs.slice(-20).map(m => `${m.role === 'user' ? 'Alexiz' : 'AREX'}: ${m.content.slice(0, 200)}`).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 120,
+        messages: [
+          { role: 'system', content: 'Extrae en 1-2 oraciones MUY breves los datos clave de esta conversación (decisiones, temas, datos relevantes sobre Alexiz). En español, sin formato markdown.' },
+          { role: 'user', content: `Sesión "${sessionName}":\n${excerpt}` }
+        ]
+      })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const summary = data?.choices?.[0]?.message?.content?.trim();
+    if (!summary) return;
+    const mems = getSessionMemories();
+    mems.unshift({ id: String(Date.now()), fecha: _todayStr(), session: sessionName, resumen: summary });
+    saveSessionMemories(mems);
+  } catch(e) { console.warn('autoSummarize:', e); }
+}
+
+function buildSessionMemorySection() {
+  const mems = getSessionMemories().slice(0, 4);
+  if (!mems.length) return '';
+  const lines = mems.map(m => `- [${m.fecha}] ${m.session}: ${m.resumen}`).join('\n');
+  return `\n\nCONTEXTO DE SESIONES ANTERIORES:\n${lines}`;
 }
 
 function startNewSession() {
@@ -636,18 +814,48 @@ function sortPending(arr) {
   });
 }
 
-function addTarea(text, fecha = '', prioridad = 'media') {
+function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   if (!text.trim()) return;
   const arr = getTareas();
-  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad };
+  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
   renderTareas();
   if (typeof logBitacora === 'function') logBitacora('chat', 'Tarea creada: ' + (t.text?.slice(0,40) || ''));
 }
 function toggleTarea(id) {
-  saveTareasData(getTareas().map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const arr = getTareas();
+  const tarea = arr.find(t => t.id === id);
+  const newArr = arr.map(t => t.id === id ? { ...t, done: !t.done, ...(t.done ? { doneAt: null } : { doneAt: Date.now() }) } : t);
+  // If marking done and has recurrence, spawn next occurrence
+  if (tarea && !tarea.done && tarea.repetir && tarea.repetir !== 'ninguna') {
+    const next = _nextFechaRepetir(tarea.fecha, tarea.repetir);
+    if (next) {
+      newArr.unshift({
+        id: String(Date.now() + 1),
+        text: tarea.text,
+        done: false,
+        created: Date.now(),
+        fecha: next,
+        prioridad: tarea.prioridad,
+        repetir: tarea.repetir,
+      });
+    }
+  }
+  saveTareasData(newArr);
   renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+
+function _nextFechaRepetir(fechaActual, repetir) {
+  const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
+  const next  = new Date(base);
+  if (repetir === 'diaria')   next.setDate(next.getDate() + 1);
+  else if (repetir === 'semanal')  next.setDate(next.getDate() + 7);
+  else if (repetir === 'mensual')  next.setMonth(next.getMonth() + 1);
+  else if (repetir === 'anual')    next.setFullYear(next.getFullYear() + 1);
+  else return null;
+  return next.toISOString().slice(0, 10);
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
@@ -656,6 +864,32 @@ function deleteTarea(id) {
 function updateTarea(id, changes) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
   renderTareas();
+}
+function addSubtarea(parentId, text) {
+  if (!text?.trim()) return;
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    const subs = t.subtareas || [];
+    return { ...t, subtareas: [...subs, { id: String(Date.now()), text: text.trim(), done: false }] };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+function toggleSubtarea(parentId, subId) {
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    return { ...t, subtareas: (t.subtareas || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
+}
+function deleteSubtarea(parentId, subId) {
+  saveTareasData(getTareas().map(t => {
+    if (t.id !== parentId) return t;
+    return { ...t, subtareas: (t.subtareas || []).filter(s => s.id !== subId) };
+  }));
+  renderTareas();
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
 }
 // Swipe gestures en tarjetas de tareas: → completar/reabrir · ← borrar
 function _attachTareaSwipe(div, t) {
@@ -707,9 +941,26 @@ function _attachTareaSwipe(div, t) {
   inner.addEventListener('touchcancel', end);
 }
 
+let _tareasFilter = 'todas';
+
+function setTareasFilter(f) {
+  _tareasFilter = f;
+  document.querySelectorAll('.tf-chip').forEach(c => c.classList.toggle('active', c.dataset.f === f));
+  renderTareas();
+}
+window.setTareasFilter = setTareasFilter;
+
 function renderTareas() {
-  const all     = getTareas();
-  const pending = sortPending(all.filter(t => !t.done));
+  const all = getTareas();
+  let pending = sortPending(all.filter(t => !t.done));
+  if (_tareasFilter === 'hoy') {
+    const h = _todayStr();
+    pending = pending.filter(t => t.fecha === h);
+  } else if (_tareasFilter === 'vencidas') {
+    pending = pending.filter(t => urgenciaTarea(t)?.cls === 'urg-vencida');
+  } else if (_tareasFilter === 'alta') {
+    pending = pending.filter(t => t.prioridad === 'alta');
+  }
   const done    = all.filter(t =>  t.done);
 
   const makeItem = t => {
@@ -725,6 +976,7 @@ function renderTareas() {
         <div class="tarea-meta">
           ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
           ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
+          ${t.repetir && t.repetir !== 'ninguna' ? `<span class="tarea-rep-badge">↻ ${t.repetir}</span>` : ''}
           ${t.fecha && t.done ? `<span class="tarea-fecha-done">📅 ${new Date(t.fecha+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</span>` : ''}
         </div>
       </div>
@@ -732,11 +984,36 @@ function renderTareas() {
         ${!t.done ? '<button class="tarea-edit" title="Editar">✎</button>' : ''}
         <button class="tarea-del" title="Eliminar">✕</button>
       </div>`;
+    const subs = t.subtareas || [];
+    const subsDone = subs.filter(s => s.done).length;
+    const subsPctStr = subs.length ? `<span class="tarea-sub-count">${subsDone}/${subs.length}</span>` : '';
+    const subListHtml = subs.length ? `<div class="tarea-subs-list">${subs.map(s => `
+      <div class="tarea-sub-item${s.done ? ' sub-done' : ''}">
+        <button class="tarea-sub-toggle" data-pid="${t.id}" data-sid="${s.id}">${s.done ? '✓' : ''}</button>
+        <span class="tarea-sub-text">${s.text.replace(/</g,'&lt;')}</span>
+        <button class="tarea-sub-del" data-pid="${t.id}" data-sid="${s.id}">✕</button>
+      </div>`).join('')}</div>` : '';
+    const subAddHtml = !t.done ? `<div class="tarea-sub-add-row">
+      <input class="tarea-sub-input" type="text" placeholder="+ Subtarea..." data-pid="${t.id}"/>
+    </div>` : '';
     div.innerHTML = `
       <div class="tarea-swipe-bg left">${t.done ? '↺ REABRIR' : '✓ HECHO'}</div>
       <div class="tarea-swipe-bg right">✕ BORRAR</div>
-      <div class="tarea-swipe-inner">${_innerHTML}</div>`;
+      <div class="tarea-swipe-inner">${_innerHTML}${subsPctStr}</div>
+      ${subListHtml}${subAddHtml}`;
     _attachTareaSwipe(div, t);
+
+    div.querySelectorAll('.tarea-sub-toggle').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); toggleSubtarea(b.dataset.pid, b.dataset.sid); }));
+    div.querySelectorAll('.tarea-sub-del').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); deleteSubtarea(b.dataset.pid, b.dataset.sid); }));
+    div.querySelector('.tarea-sub-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const v = e.target.value.trim();
+        if (v) { addSubtarea(e.target.dataset.pid, v); e.target.value = ''; }
+        e.preventDefault();
+      }
+    });
 
     div.querySelector('.tarea-toggle').addEventListener('click', () => toggleTarea(t.id));
 
@@ -754,6 +1031,13 @@ function renderTareas() {
               <button class="tep${t.prioridad==='baja'?' active':''}" data-p="baja">BAJA</button>
             </div>
           </div>
+          <select class="tarea-edit-rep" title="Repetición">
+            <option value="ninguna"${(t.repetir||'ninguna')==='ninguna'?' selected':''}>Sin repetir</option>
+            <option value="diaria"${t.repetir==='diaria'?' selected':''}>↻ Diaria</option>
+            <option value="semanal"${t.repetir==='semanal'?' selected':''}>↻ Semanal</option>
+            <option value="mensual"${t.repetir==='mensual'?' selected':''}>↻ Mensual</option>
+            <option value="anual"${t.repetir==='anual'?' selected':''}>↻ Anual</option>
+          </select>
           <div class="tarea-edit-btns">
             <button class="tarea-edit-save">GUARDAR</button>
             <button class="tarea-edit-cancel">CANCELAR</button>
@@ -766,7 +1050,8 @@ function renderTareas() {
       div.querySelector('.tarea-edit-save').addEventListener('click', () => {
         const text = div.querySelector('.tarea-edit-text').value.trim();
         if (!text) return;
-        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep });
+        const _rep = div.querySelector('.tarea-edit-rep')?.value || 'ninguna';
+        updateTarea(t.id, { text, fecha: div.querySelector('.tarea-edit-fecha').value, prioridad: _ep, repetir: _rep });
       });
       div.querySelector('.tarea-edit-cancel').addEventListener('click', () => renderTareas());
       div.querySelector('.tarea-edit-text').select();
@@ -1089,6 +1374,14 @@ function renderDashboard() {
   const metas     = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).slice(0,4) : [];
   const bitacora  = (typeof _getBitacora === 'function') ? _getBitacora().slice(0,6) : [];
 
+  const hoyStr     = hoy.toISOString().slice(0, 10);
+  const habitos    = _safeJSON(localStorage.getItem('arex_habitos'), []);
+  const habsPend   = habitos.filter(h => !h.completados?.[hoyStr]);
+  const habsHechos = habitos.filter(h =>  h.completados?.[hoyStr]);
+  const agendaHoy  = typeof _agGetEvents === 'function'
+    ? _agGetEvents().filter(ev => (ev.start || '').slice(0,10) === hoyStr)
+    : [];
+
   const groqOk  = !!(window.AREX_CONFIG?.groqKey);
   const fbOk    = !!(window._arexDb);
   const gemOk   = !!(window.AREX_CONFIG?.geminiKey);
@@ -1165,6 +1458,24 @@ function renderDashboard() {
       <span class="dhud-log-ts">${t}</span>
       <span class="dhud-log-mod dhud-lmod-${e.modulo}">${e.modulo.slice(0,4).toUpperCase()}</span>
       <span class="dhud-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,32)}</span>
+    </div>`;
+  };
+
+  const mkHabit = h => {
+    const done = !!h.completados?.[hoyStr];
+    return `<div class="dhud-habit-row${done?' done':''}">
+      <button class="dhud-habit-toggle" onclick="if(typeof toggleHabitoHoy==='function'){toggleHabitoHoy('${h.id}');renderDashboard();}" title="${done?'Desmarcar':'Completar'}">${done?'✓':''}</button>
+      <span class="dhud-habit-name">${((h.emoji||'•')+' '+(h.nombre||'')).replace(/</g,'&lt;').slice(0,28)}</span>
+      ${done?'<span class="dhud-habit-done-tag">✓</span>':''}
+    </div>`;
+  };
+
+  const mkAgEv = ev => {
+    const typeLabel = ev.type==='meta'?'META':ev.type==='recordatorio'?'REC':'EVT';
+    return `<div class="dhud-agev-row">
+      <span class="dhud-agev-hora">${ev.hora||'·'}</span>
+      <span class="dhud-agev-title">${(ev.title||'').replace(/</g,'&lt;').slice(0,26)}</span>
+      <span class="dhud-agev-type dhud-agev-${ev.color||'blue'}">${typeLabel}</span>
     </div>`;
   };
 
@@ -1275,6 +1586,33 @@ function renderDashboard() {
           <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('control')">CTRL →</button>
         </div>
         ${bitacora.length ? bitacora.map(mkLog).join('') : '<div class="dhud-empty">Sin actividad registrada</div>'}
+      </div>
+    </div>
+
+    <!-- ── HÁBITOS HOY + AGENDA HOY ─────────────────── -->
+    <div class="dhud-day-grid">
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◎</span>
+          <span class="dhud-panel-title">HÁBITOS HOY</span>
+          <span class="dhud-badge${habsPend.length?' dhud-badge-alert':''}">${habitos.length ? habsHechos.length+'/'+habitos.length : '0'}</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('habitos')">VER →</button>
+        </div>
+        ${habitos.length
+          ? [...habsPend,...habsHechos].slice(0,6).map(mkHabit).join('')
+          : '<div class="dhud-empty">◎ Sin hábitos — crea en HÁBITOS</div>'}
+      </div>
+
+      <div class="dhud-panel">
+        <div class="dhud-panel-hdr">
+          <span class="dhud-panel-ico">◷</span>
+          <span class="dhud-panel-title">AGENDA HOY</span>
+          <span class="dhud-badge">${agendaHoy.length}</span>
+          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('agenda')">VER →</button>
+        </div>
+        ${agendaHoy.length
+          ? agendaHoy.map(mkAgEv).join('')
+          : '<div class="dhud-empty">◷ Sin eventos para hoy</div>'}
       </div>
     </div>
 
@@ -2671,7 +3009,7 @@ async function handleFile(file) {
 
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -2700,7 +3038,7 @@ async function callGroq(webCtx) {
 
 /* ── Llamada a Groq (streaming) ─────────────────────── */
 async function callGroqStream(webCtx, onChunk) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildModuleContext();
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
   let messages = [...history];
 
   if (webCtx) {
@@ -3227,6 +3565,7 @@ async function handleCommand(cmd) {
       document.getElementById('cfg2-fb-bucket').value  = fb.storageBucket     || '';
       document.getElementById('cfg2-fb-sender').value  = fb.messagingSenderId || '';
       document.getElementById('cfg2-fb-app').value     = fb.appId             || '';
+      document.getElementById('cfg2-fb-vapid').value   = fb.vapidKey          || '';
       document.getElementById('cfg2-ok').style.display    = 'none';
       document.getElementById('cfg2-error').style.display = 'none';
       _updateNotifStatus();
@@ -3284,6 +3623,22 @@ async function handleCommand(cmd) {
         });
       }
       memoriaModal.classList.remove('hidden');
+      break;
+    }
+
+    case 'semana':
+      await generarReporteSemanal();
+      break;
+
+    case 'hoy':
+      mostrarResumenHoy();
+      break;
+
+    case 'analizar': {
+      const sub = (args || '').toLowerCase().trim();
+      if (!sub || sub === 'gastos') await analizarGastos();
+      else if (sub === 'metas') await analizarMetas();
+      else addMsg('arex', 'Uso: `/analizar gastos` · `/analizar metas`');
       break;
     }
 
@@ -3381,6 +3736,12 @@ async function handleSend() {
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
 
+  if (_isOffline && !msg.startsWith('/')) {
+    addMsg('user', msg);
+    addMsg('arex', _offlineFallback(msg));
+    return;
+  }
+
   // Detectar "recuerda que..." → guardar hecho inmediatamente
   const recuerdaMatch = msg.match(/^recuerda(?:\s+que)?\s+(.+)/i);
   if (recuerdaMatch) {
@@ -3447,9 +3808,11 @@ async function handleSend() {
     hideThinking();
     const errMsg = err.message?.includes('401') ? 'API Key inválida o revocada. Ve a console.groq.com y genera una nueva key.' :
                    err.message?.includes('429') ? 'Límite de requests alcanzado. Espera un momento e intenta de nuevo.' :
-                   err.message?.includes('Failed to fetch') ? 'Sin conexión a internet o CORS bloqueado.' :
-                   `Error: ${err.message}`;
+                   err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || _isOffline
+                     ? _offlineFallback(history[history.length - 2]?.content || '')
+                     : `Error: ${err.message}`;
     addMsg('arex', errMsg);
+    if (_isOffline) _setOfflineBanner(true);
     setOrb(null,'En espera de instrucciones');
     console.error(err);
   } finally {
@@ -3658,7 +4021,8 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
       projectId:         document.getElementById('cfg2-fb-project').value.trim(),
       storageBucket:     document.getElementById('cfg2-fb-bucket').value.trim(),
       messagingSenderId: document.getElementById('cfg2-fb-sender').value.trim(),
-      appId:             document.getElementById('cfg2-fb-app').value.trim()
+      appId:             document.getElementById('cfg2-fb-app').value.trim(),
+      vapidKey:          document.getElementById('cfg2-fb-vapid').value.trim() || undefined,
     } : null
   };
   localStorage.setItem('arex_config', JSON.stringify(config));
@@ -3778,6 +4142,203 @@ function _showUpdateBanner() {
   document.body.appendChild(banner);
 }
 
+/* ══════════════════════════════════════════════════════
+   QUICK CAPTURE — universal fast input
+   ══════════════════════════════════════════════════════ */
+(function initQuickCapture() {
+  let _qcType    = 'tarea';
+  let _qcTimer   = null;
+  let _qcVisible = false;
+
+  function _qcOpen() {
+    const overlay = document.getElementById('qc-overlay');
+    const input   = document.getElementById('qc-input');
+    if (!overlay) return;
+    overlay.classList.add('visible');
+    _qcVisible = true;
+    setTimeout(() => input?.focus(), 80);
+    _qcSetType('tarea');
+    _qcSetHint('Escribe para clasificar...');
+    if (input) input.value = '';
+    document.getElementById('qc-extra').innerHTML = '';
+  }
+
+  function _qcClose() {
+    document.getElementById('qc-overlay')?.classList.remove('visible');
+    _qcVisible = false;
+    clearTimeout(_qcTimer);
+  }
+
+  function _qcSetType(type) {
+    _qcType = type;
+    document.querySelectorAll('.qc-pill').forEach(p => p.classList.toggle('active', p.dataset.type === type));
+    _qcRenderExtra(type);
+  }
+
+  function _qcSetHint(txt, classified = false) {
+    const el = document.getElementById('qc-classify-hint');
+    if (!el) return;
+    el.textContent = txt;
+    el.classList.toggle('classified', classified);
+  }
+
+  function _qcRenderExtra(type) {
+    const el = document.getElementById('qc-extra');
+    if (!el) return;
+    if (type === 'tarea') {
+      el.innerHTML = `<div class="qc-extra-row">
+        <span class="qc-extra-lbl">FECHA</span>
+        <input type="date" class="qc-extra-input" id="qc-tarea-fecha"/>
+        <span class="qc-extra-lbl">PRIORIDAD</span>
+        <select class="qc-extra-input" id="qc-tarea-prio" style="max-width:90px">
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>`;
+    } else if (type === 'gasto') {
+      el.innerHTML = `<div class="qc-extra-row">
+        <span class="qc-extra-lbl">$</span>
+        <input type="number" class="qc-extra-input" id="qc-gasto-monto" placeholder="Monto" min="0" step="0.01" style="max-width:100px"/>
+        <span class="qc-extra-lbl">CAT</span>
+        <select class="qc-extra-input" id="qc-gasto-cat" style="max-width:110px">
+          <option value="comida">Comida</option>
+          <option value="transporte">Transporte</option>
+          <option value="entretenimiento">Entretenimiento</option>
+          <option value="salud">Salud</option>
+          <option value="ropa">Ropa</option>
+          <option value="hogar">Hogar</option>
+          <option value="educacion">Educación</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  async function _qcClassify(text) {
+    if (text.length < 4) return;
+    clearTimeout(_qcTimer);
+    _qcTimer = setTimeout(async () => {
+      const key = window.AREX_CONFIG?.groqKey;
+      if (!key) {
+        // Heurística sin IA
+        const lower = text.toLowerCase();
+        if (/\d+\s*(peso|mxn|$|pago|gasto|compré|compre|gasté|gaste)/i.test(lower)) _qcSetType('gasto');
+        else if (/quiero|objetivo|lograr|alcanzar|meta/i.test(lower)) _qcSetType('meta');
+        else if (/nota|apunte|recordé|recorde|idea/i.test(lower)) _qcSetType('nota');
+        else _qcSetType('tarea');
+        return;
+      }
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 20,
+            messages: [{
+              role: 'user',
+              content: `Clasifica este texto en UNA palabra: tarea, nota, gasto, o meta. Solo responde la palabra. Texto: "${text.slice(0, 120)}"`
+            }]
+          })
+        });
+        const data  = await res.json();
+        const reply = (data?.choices?.[0]?.message?.content || '').toLowerCase().trim();
+        const type  = ['tarea','nota','gasto','meta'].find(t => reply.includes(t)) || 'tarea';
+        _qcSetType(type);
+        _qcSetHint(`AREX clasificó como: ${type.toUpperCase()}`, true);
+      } catch { /* use current type */ }
+    }, 700);
+  }
+
+  function _qcSave() {
+    const text = document.getElementById('qc-input')?.value?.trim();
+    if (!text) return;
+
+    try {
+      switch (_qcType) {
+        case 'tarea': {
+          const fecha = document.getElementById('qc-tarea-fecha')?.value || '';
+          const prio  = document.getElementById('qc-tarea-prio')?.value  || 'media';
+          if (typeof addTarea === 'function') addTarea(text, fecha, prio);
+          break;
+        }
+        case 'nota': {
+          const ns = _safeJSON(localStorage.getItem('arex_notas'), []);
+          const now = Date.now();
+          ns.unshift({ id: String(now), titulo: '', cuerpo: text, pinned: false, color: '', createdAt: now, updatedAt: now });
+          localStorage.setItem('arex_notas', JSON.stringify(ns));
+          window.renderNotas?.();
+          if (typeof arexSyncData === 'function') arexSyncData('arex_notas');
+          break;
+        }
+        case 'gasto': {
+          const monto = parseFloat(document.getElementById('qc-gasto-monto')?.value || '0');
+          const cat   = document.getElementById('qc-gasto-cat')?.value || 'otro';
+          if (monto > 0 && typeof window.gpAddGastoAuto === 'function') {
+            window.gpAddGastoAuto(monto, cat, text);
+          } else if (monto > 0) {
+            const gpData = _safeJSON(localStorage.getItem('arex_gastos_pers'), { gastos: [], presupuesto: {} });
+            if (!Array.isArray(gpData.gastos)) gpData.gastos = [];
+            gpData.gastos.unshift({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: new Date().toISOString().slice(0,10) });
+            localStorage.setItem('arex_gastos_pers', JSON.stringify(gpData));
+            if (typeof arexSyncData === 'function') arexSyncData('arex_gastos_pers');
+          }
+          break;
+        }
+        case 'meta': {
+          const ms = _safeJSON(localStorage.getItem('arex_metas'), []);
+          ms.unshift({ id: String(Date.now()), titulo: text, descripcion: '', tipo: 'porcentaje', valorActual: 0, valorObjetivo: 100, unidad: '%', categoria: 'personal', completada: false, creada: Date.now() });
+          localStorage.setItem('arex_metas', JSON.stringify(ms));
+          window.renderMetas?.();
+          if (typeof arexSyncData === 'function') arexSyncData('arex_metas');
+          break;
+        }
+      }
+      // Visual confirmation
+      const btn = document.getElementById('qc-save');
+      if (btn) { btn.textContent = '✓ GUARDADO'; setTimeout(() => { btn.textContent = 'GUARDAR →'; }, 1200); }
+      setTimeout(_qcClose, 800);
+      if (typeof logBitacora === 'function') logBitacora('sistema', `Quick capture: ${_qcType} — ${text.slice(0,40)}`);
+    } catch (e) { console.warn('Quick capture save:', e); }
+  }
+
+  // Wire up after DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('qc-fab')?.addEventListener('click', _qcOpen);
+    document.getElementById('qc-close')?.addEventListener('click', _qcClose);
+    document.getElementById('qc-save')?.addEventListener('click', _qcSave);
+
+    document.getElementById('qc-overlay')?.addEventListener('click', e => {
+      if (e.target.id === 'qc-overlay') _qcClose();
+    });
+
+    document.getElementById('qc-input')?.addEventListener('input', e => _qcClassify(e.target.value));
+    document.getElementById('qc-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Escape') _qcClose();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) _qcSave();
+    });
+
+    document.getElementById('qc-type-pills')?.addEventListener('click', e => {
+      const pill = e.target.closest('.qc-pill');
+      if (pill) _qcSetType(pill.dataset.type);
+    });
+
+    // Keyboard shortcut: Q key (when no input focused)
+    document.addEventListener('keydown', e => {
+      if (e.key === 'q' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        _qcVisible ? _qcClose() : _qcOpen();
+      }
+      if (e.key === 'Escape' && _qcVisible) _qcClose();
+    });
+  });
+
+  window.openQuickCapture = _qcOpen;
+})();
+
 /* ── Secuencia de arranque ──────────────────────────── */
 async function boot() {
   const bootScreen = document.getElementById('boot-screen');
@@ -3795,6 +4356,7 @@ async function boot() {
     restoreReminders();
     renderHudPanels();
     initMatrixRain();
+    if (typeof initSearch === 'function') initSearch();
 
     // Restaurar preferencias de sesión anterior
     if (localStorage.getItem('arex_voiceOn') === '1') {
@@ -4200,6 +4762,18 @@ function renderWeatherWidget() {
       fcHtml = `<div class="wx-fc-title">PRÓXIMAS 12H</div><div class="wx-fc-strip">${slots}</div>`;
     }
 
+    // Alerta de condiciones severas
+    let alertHtml = '';
+    if (fc?.list) {
+      const nextSlots = fc.list.slice(0, 4);
+      const severeSlot = nextSlots.find(f => (f.pop > 0.65) || (f.weather[0].id >= 200 && f.weather[0].id < 700));
+      if (severeSlot) {
+        const wDesc = severeSlot.weather[0].description.replace(/^\w/, c => c.toUpperCase());
+        const wHr   = new Date(severeSlot.dt * 1000).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+        alertHtml = `<div class="wx-alert">⚠ ${wDesc} esperado alrededor de las ${wHr}</div>`;
+      }
+    }
+
     el.innerHTML = `
       <div class="wx-card">
         <div class="wx-globe-row">
@@ -4227,6 +4801,7 @@ function renderWeatherWidget() {
           <div class="wx-s"><span class="wxs-l">NUBES</span><span class="wxs-v">${cld}%</span></div>
           <div class="wx-s"><span class="wxs-l">CONDICIÓN</span><span class="wxs-v wxs-cond">${_condLabel(wid)}</span></div>
         </div>
+        ${alertHtml}
         ${precipHtml}
         ${fcHtml}
       </div>`;
@@ -4245,7 +4820,8 @@ window.refreshWeather = refreshWeather;
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.getTareas       = getTareas;
-window._arexHistory    = () => history;  // para WebXR panels
+window._arexHistory    = () => history;
+window.loadSession     = loadSession;
 
 // Actualiza countdowns de recordatorios cada 30 segundos
 setInterval(() => {
@@ -4280,11 +4856,47 @@ async function generarBriefing() {
   if (localStorage.getItem('arex_briefing_date') === hoy) return;
 
   const tareas = getTareas().filter(t => !t.done);
-  const recs = getRecordatorios().filter(r => !r.disparado);
-  const today = new Date();
+  const recs   = getRecordatorios().filter(r => !r.disparado);
+  const today  = new Date();
+  const mesKey = hoy.slice(0, 7);
 
   const tareasUrgentes = tareas.filter(t => t.prioridad === 'alta').slice(0, 3);
-  const tareasHoy = tareas.filter(t => t.fecha === hoy).slice(0, 3);
+  const tareasHoy      = tareas.filter(t => t.fecha === hoy).slice(0, 3);
+
+  // Metas activas con progreso
+  const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m => !m.completada);
+  const metasStr = metas.slice(0, 3).map(m => {
+    const pct = m.tipo === 'porcentaje'
+      ? `${m.valorActual || 0}%`
+      : (m.objetivo ? `${m.valorActual || 0}/${m.objetivo}` : '—');
+    return `${m.titulo || m.nombre}: ${pct}`;
+  }).join(', ') || 'ninguna';
+
+  // Gastos del mes
+  let gastosMesStr = '';
+  try {
+    const gd = _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const gArr = (gd.gastos || []).filter(g => g.fecha?.startsWith(mesKey));
+    const total = gArr.reduce((a, g) => a + (g.monto || 0), 0);
+    if (total > 0) gastosMesStr = `$${total.toLocaleString('es-MX', {maximumFractionDigits:0})} MXN`;
+  } catch {}
+
+  // Hábitos pendientes hoy (si módulo cargado)
+  let habitosStr = '';
+  try {
+    const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
+    const pendientes = habs.filter(h => !h.completados?.[hoy]).map(h => h.nombre);
+    if (pendientes.length) habitosStr = pendientes.slice(0, 3).join(', ');
+  } catch {}
+
+  // Agenda del día (si módulo cargado)
+  let agendaStr = '';
+  try {
+    if (typeof window._agGetEvents === 'function') {
+      const evHoy = window._agGetEvents().filter(e => e.fecha === hoy);
+      if (evHoy.length) agendaStr = evHoy.slice(0, 3).map(e => e.titulo).join(', ');
+    }
+  } catch {}
 
   const contexto = [
     `Fecha: ${today.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`,
@@ -4292,16 +4904,20 @@ async function generarBriefing() {
     `Tareas para hoy: ${tareasHoy.map(t => t.text).join(', ') || 'ninguna'}`,
     `Total pendiente: ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`,
     `Recordatorios activos: ${recs.slice(0,3).map(r => r.msg).join(', ') || 'ninguno'}`,
-  ].join('\n');
+    `Metas en progreso: ${metasStr}`,
+    gastosMesStr ? `Gastos del mes: ${gastosMesStr}` : '',
+    habitosStr   ? `Hábitos pendientes hoy: ${habitosStr}` : '',
+    agendaStr    ? `Agenda de hoy: ${agendaStr}` : '',
+  ].filter(Boolean).join('\n');
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 280,
+        model: 'llama-3.3-70b-versatile', max_tokens: 380,
         messages: [
-          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino MUY breve (3-4 líneas), directo y motivador en español. Sin listas, sin asteriscos de markdown, solo texto fluido con lo más importante del día.' },
+          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino breve (4-6 líneas) en español, directo y motivador. Puedes usar 2-3 bullet points cortos para las prioridades del día. Menciona metas, hábitos y agenda si hay datos.' },
           { role: 'user', content: `Datos de hoy:\n${contexto}` }
         ]
       })
@@ -4315,6 +4931,179 @@ async function generarBriefing() {
   } catch(e) { console.warn('Briefing:', e); }
 }
 window.generarBriefing = generarBriefing;
+
+/* ── Análisis IA de gastos ───────────────────────────── */
+async function analizarGastos() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('gastos')); return; }
+  addMsg('user', '/analizar gastos');
+  setOrb('thinking', 'Analizando gastos...');
+  showThinking();
+  try {
+    const hoy = _todayStr();
+    const meses = [hoy.slice(0,7)];
+    for (let i = 1; i <= 2; i++) {
+      const d = new Date(hoy + 'T00:00:00'); d.setMonth(d.getMonth() - i);
+      meses.push(d.toISOString().slice(0,7));
+    }
+    const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const todos = gd.gastos || [];
+    const presupuesto = gd.presupuesto || {};
+    const resumen = meses.map(m => {
+      const arr   = todos.filter(g => g.fecha?.startsWith(m));
+      const total = arr.reduce((a,g) => a+(g.monto||0), 0);
+      const porCat = {};
+      arr.forEach(g => { porCat[g.categoria||'Otros'] = (porCat[g.categoria||'Otros']||0) + g.monto; });
+      return `${m}: $${total.toLocaleString('es-MX',{maximumFractionDigits:0})} — ${Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,v])=>`${c}:$${v.toLocaleString('es-MX',{maximumFractionDigits:0})}`).join(', ')}`;
+    }).join('\n');
+    const presupStr = Object.entries(presupuesto).map(([c,v])=>`${c}:$${v}`).join(', ') || 'no definido';
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:500,
+        messages:[
+          {role:'system', content:'Eres AREX, analista financiero personal de Alexiz. Analiza sus gastos y da recomendaciones claras y prácticas en español usando markdown simple.'},
+          {role:'user', content:`Gastos por mes:\n${resumen}\n\nPresupuesto: ${presupStr}\n\nDa: tendencia principal, categoría más alta, y 3 recomendaciones concretas.`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error al analizar gastos.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) addMsg('arex', reply);
+  } catch(e) { hideThinking(); addMsg('arex','No se pudo analizar: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
+
+async function analizarMetas() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('metas')); return; }
+  addMsg('user', '/analizar metas');
+  setOrb('thinking', 'Analizando metas...');
+  showThinking();
+  try {
+    const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m => !m.completada);
+    if (!metas.length) { hideThinking(); addMsg('arex','No tienes metas activas.'); return; }
+    const resumen = metas.slice(0,8).map(m => {
+      const pct = m.tipo === 'porcentaje' ? `${m.valorActual||0}%/${m.objetivo||100}%` : (m.objetivo ? `${m.valorActual||0}/${m.objetivo}` : 'cualitativa');
+      const deadline = m.fechaLimite ? ` · vence ${m.fechaLimite}` : '';
+      return `- ${m.titulo||m.nombre}: ${pct}${deadline}`;
+    }).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:400,
+        messages:[
+          {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
+          {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error al analizar.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) addMsg('arex', reply);
+  } catch(e) { hideThinking(); addMsg('arex','Error: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
+
+/* ── Resumen del día (/hoy) ─────────────────────────── */
+function mostrarResumenHoy() {
+  addMsg('user', '/hoy');
+  const hoyStr  = new Date().toISOString().slice(0, 10);
+  const tareas  = getTareas();
+  const urgentes = sortPending(tareas.filter(t => !t.done)).filter(t => {
+    const u = urgenciaTarea(t);
+    return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
+  });
+  const habitos  = _safeJSON(localStorage.getItem('arex_habitos'), []);
+  const habsPend = habitos.filter(h => !h.completados?.[hoyStr]);
+  const agEvents = typeof _agGetEvents === 'function'
+    ? _agGetEvents().filter(ev => (ev.start || '').slice(0, 10) === hoyStr) : [];
+  const recs = _safeJSON(localStorage.getItem('arex_reminders'), []).filter(r => !r.done);
+
+  const fecha = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+  const lines = [`**◈ RESUMEN DEL DÍA · ${fecha.toUpperCase()}**\n`];
+
+  if (urgentes.length) {
+    lines.push(`**⚠ TAREAS URGENTES (${urgentes.length})**`);
+    urgentes.slice(0, 5).forEach(t => lines.push(`- ${t.text}`));
+  } else {
+    lines.push('✓ Sin tareas urgentes hoy');
+  }
+
+  if (habitos.length) {
+    lines.push('');
+    if (habsPend.length) {
+      lines.push(`**◎ HÁBITOS PENDIENTES (${habsPend.length}/${habitos.length})**`);
+      habsPend.slice(0, 5).forEach(h => lines.push(`- ${h.emoji || '•'} ${h.nombre}`));
+    } else {
+      lines.push(`✓ Todos los hábitos completados hoy (${habitos.length}/${habitos.length})`);
+    }
+  }
+
+  if (agEvents.length) {
+    lines.push('');
+    lines.push('**◷ AGENDA HOY**');
+    agEvents.forEach(ev => lines.push(`- ${ev.hora ? ev.hora + ' · ' : ''}${ev.title}`));
+  }
+
+  if (recs.length) {
+    lines.push('');
+    lines.push(`**⏰ RECORDATORIOS ACTIVOS (${recs.length})**`);
+    recs.slice(0, 3).forEach(r => lines.push(`- ${r.texto}`));
+  }
+
+  addMsg('arex', lines.join('\n'));
+}
+
+/* ── Reporte semanal (/semana) ───────────────────────── */
+async function generarReporteSemanal() {
+  if (_isOffline) { addMsg('arex', _offlineFallback('semana')); return; }
+  addMsg('user', '/semana');
+  setOrb('thinking', 'Generando reporte semanal...');
+  showThinking();
+  try {
+    const hoy = new Date();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    const lunesStr = lunes.toISOString().slice(0,10);
+    const tareasHechas = getTareas().filter(t => t.done && t.doneAt && new Date(t.doneAt) >= lunes);
+    const tareasPend   = getTareas().filter(t => !t.done);
+    const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
+    const gastosSemanales = (gd.gastos||[]).filter(g => g.fecha >= lunesStr);
+    const totalGastos = gastosSemanales.reduce((a,g)=>a+(g.monto||0),0);
+    const metas = _safeJSON(localStorage.getItem('arex_metas'), []).filter(m=>!m.completada).slice(0,5);
+    const metasStr = metas.map(m=>`${m.titulo||m.nombre}: ${m.valorActual||0}/${m.objetivo||'?'}`).join(', ') || 'ninguna';
+    let habitosStr = '';
+    try {
+      const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
+      const days = Array.from({length:7},(_,i)=>{const d=new Date(lunes);d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
+      habitosStr = habs.map(h=>`${h.nombre}: ${days.filter(d=>h.completados?.[d]).length}/7`).join(', ');
+    } catch {}
+    const contexto = [
+      `Semana del ${lunes.toLocaleDateString('es-MX',{day:'numeric',month:'short'})} al ${hoy.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}`,
+      `Tareas completadas: ${tareasHechas.length}`,
+      `Tareas pendientes: ${tareasPend.length}`,
+      `Gastos de la semana: $${totalGastos.toLocaleString('es-MX',{maximumFractionDigits:0})} MXN`,
+      `Metas: ${metasStr}`,
+      habitosStr ? `Hábitos: ${habitosStr}` : '',
+    ].filter(Boolean).join('\n');
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:480,
+        messages:[
+          {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
+          {role:'user', content:`Datos de la semana:\n${contexto}`}
+        ]})
+    });
+    hideThinking();
+    if (!res.ok) { addMsg('arex','Error generando reporte.'); return; }
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    if (reply) {
+      const week = `${lunes.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}–${hoy.toLocaleDateString('es-MX',{day:'numeric',month:'short'})}`;
+      addMsg('arex', `**Reporte semanal · ${week}**\n\n${reply}`);
+    }
+  } catch(e) { hideThinking(); addMsg('arex','Error: '+e.message); }
+  setOrb(null,'En espera de instrucciones');
+}
 
 // ── SALUDOS PROACTIVOS POR MÓDULO ─────────────────────────────────────────────
 function _proactiveModuleGreeting(mod) {
@@ -4453,6 +5242,9 @@ function renderBusquedaGlobal(q) {
 }
 
 function abrirBusqueda() {
+  // Usar el nuevo overlay de búsqueda global si está disponible
+  if (typeof openSearch === 'function') { openSearch(); return; }
+  // Fallback al overlay original
   const overlay = document.getElementById('busqueda-overlay');
   const input   = document.getElementById('busqueda-input');
   if (!overlay || !input) return;
@@ -4461,7 +5253,10 @@ function abrirBusqueda() {
   renderBusquedaGlobal('');
   setTimeout(() => input.focus(), 50);
 }
-function cerrarBusqueda() { document.getElementById('busqueda-overlay')?.classList.add('hidden'); }
+function cerrarBusqueda() {
+  if (typeof closeSearch === 'function') closeSearch();
+  document.getElementById('busqueda-overlay')?.classList.add('hidden');
+}
 window.abrirBusqueda  = abrirBusqueda;
 window.cerrarBusqueda = cerrarBusqueda;
 

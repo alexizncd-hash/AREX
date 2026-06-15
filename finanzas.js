@@ -84,6 +84,7 @@ const FinanzasModule = {
   },
 
   renderTarjetas() {
+    try {
     const container = document.getElementById('tarjetas-grid');
     if (!container) return;
     container.innerHTML = '';
@@ -138,9 +139,11 @@ const FinanzasModule = {
       `;
       container.appendChild(card);
     });
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderTarjetas: ' + e.message); }
   },
 
   renderGraficaGastos() {
+    try {
     const container = document.getElementById('gastos-chart');
     if (!container) return;
     container.innerHTML = '';
@@ -172,6 +175,7 @@ const FinanzasModule = {
       `;
       container.appendChild(bar);
     });
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderGraficaGastos: ' + e.message); }
   },
 
   // ── RECORDATORIOS ──────────────────────────────────────
@@ -183,6 +187,7 @@ const FinanzasModule = {
   },
 
   renderAlertas() {
+    try {
     const container = document.getElementById('alertas-urgentes');
     if (!container) return;
     container.innerHTML = '';
@@ -208,6 +213,7 @@ const FinanzasModule = {
     if (!proximosPagos.length) {
       container.innerHTML = '<p class="sin-pagos">✅ No hay pagos próximos en los siguientes 30 días</p>';
     }
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderAlertas: ' + e.message); }
   },
 
   crearAlertaPago(pago) {
@@ -229,6 +235,7 @@ const FinanzasModule = {
   },
 
   renderCalendario() {
+    try {
     const container = document.getElementById('calendario');
     if (!container) return;
 
@@ -267,9 +274,11 @@ const FinanzasModule = {
       }
       container.appendChild(el);
     }
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderCalendario: ' + e.message); }
   },
 
   renderListaTarjetas() {
+    try {
     const container = document.getElementById('tarjetas-list');
     if (!container) return;
     container.innerHTML = '';
@@ -301,6 +310,7 @@ const FinanzasModule = {
       `;
       container.appendChild(item);
     });
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderListaTarjetas: ' + e.message); }
   },
 
   // ── CALCULADORA ────────────────────────────────────────
@@ -310,6 +320,7 @@ const FinanzasModule = {
   },
 
   actualizarCalculadora() {
+    try {
     const simulacion  = simularLiquidacion(this.pagoExtraActual, this.estrategiaActual);
     const simAlt      = simularLiquidacion(this.pagoExtraActual,
       this.estrategiaActual === 'avalancha' ? 'bola_de_nieve' : 'avalancha');

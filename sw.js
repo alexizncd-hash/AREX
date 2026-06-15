@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v70';
-const VERSION = 'v70';
+const CACHE   = 'arex-v79';
+const VERSION = 'v79';
 const SHELL = [
   './index.html',
   './style.css',
@@ -16,8 +16,6 @@ const SHELL = [
   './metas.css',
   './webxr.js',
   './vision.js',
-  './gesture.js',
-  './neural-orb.js',
   './parallax.js',
   './proyectos.js',
   './proyectos.css',
@@ -27,10 +25,18 @@ const SHELL = [
   './control.css',
   './reparto.js',
   './reparto.css',
+  './agenda.js',
+  './agenda.css',
+  './habitos.js',
+  './habitos.css',
+  './search.js',
+  './search.css',
+  './vision-orb.js',
   './orb.js',
   './holo.js',
   './manifest.json',
   './icon.svg',
+  // gesture.js, neural-orb.js are lazy-loaded on demand (not in initial shell)
 ];
 
 self.addEventListener('install', e => {
@@ -78,6 +84,23 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
+});
+
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch {}
+  const notif = data.notification || data;
+  const title = notif.title || 'AREX';
+  const opts = {
+    body: notif.body || '',
+    icon: './icon.svg',
+    badge: './icon.svg',
+    vibrate: [200, 100, 200],
+    data: data.data || {},
+    tag: 'arex-push',
+    renotify: true,
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
 });
 
 self.addEventListener('notificationclick', e => {
