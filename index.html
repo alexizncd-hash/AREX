@@ -1040,21 +1040,21 @@
 
 </div><!-- /#workspace -->
 
-<!-- Finanzas módulo (antes de app.js para que estén disponibles globalmente) -->
-<script src="finanzas-data.js"></script>
-<script src="finanzas.js"></script>
-<script src="negocio.js"></script>
-<script src="gastos.js"></script>
-<script src="metas.js"></script>
-<script src="proyectos.js"></script>
-<script src="evidencias.js"></script>
-<script src="control.js"></script>
-<script src="reparto.js"></script>
-<script src="agenda.js"></script>
-<script src="habitos.js"></script>
-<script src="search.js"></script>
-<script src="jarvis.js"></script>
-<script src="orb.js"></script>
+<!-- Módulos con defer — descargan en paralelo, ejecutan en orden tras parsear el HTML -->
+<script defer src="finanzas-data.js"></script>
+<script defer src="finanzas.js"></script>
+<script defer src="negocio.js"></script>
+<script defer src="gastos.js"></script>
+<script defer src="metas.js"></script>
+<script defer src="proyectos.js"></script>
+<script defer src="evidencias.js"></script>
+<script defer src="control.js"></script>
+<script defer src="agenda.js"></script>
+<script defer src="habitos.js"></script>
+<script defer src="search.js"></script>
+<script defer src="jarvis.js"></script>
+<script defer src="orb.js"></script>
+<!-- reparto.js, holo.js, parallax.js, vision-orb.js, vision.js → lazy-loaded on demand -->
 
 <!-- Marked (Markdown parser) -->
 <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
@@ -1072,21 +1072,12 @@
 <canvas id="matrix-l" class="matrix-cv" aria-hidden="true"></canvas>
 <canvas id="matrix-r" class="matrix-cv matrix-cv-r" aria-hidden="true"></canvas>
 
-<script src="config.js"></script>
-<!-- App principal -->
+<script defer src="config.js"></script>
+<!-- App principal (type=module implica defer) -->
 <script type="module" src="app.js"></script>
 <!-- WebXR AR Panels (Fase 3) -->
 <script type="module" src="webxr.js"></script>
-<!-- Visión en vivo (Fase 4) -->
-<script src="vision-orb.js"></script>
-<script type="module" src="vision.js"></script>
-<!-- HOLO ENGINE — Tony Stark JARVIS Interface (always loaded; particles opt-in via MODO CINE) -->
-<script src="holo.js"></script>
-
-<!-- PARALLAX ENGINE — depth via gyro / pointer (started by MODO CINE toggle) -->
-<script src="parallax.js"></script>
-
-<!-- gesture.js and neural-orb.js are lazy-loaded on demand -->
+<!-- reparto.js, vision-orb.js, vision.js, holo.js, parallax.js, gesture.js, neural-orb.js → lazy-loaded on demand -->
 
 <!-- FAB: Analizar módulo con AREX IA -->
 <button id="fab-analizar" title="AREX analiza este módulo con IA"

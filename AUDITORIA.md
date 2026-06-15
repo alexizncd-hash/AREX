@@ -1,4 +1,52 @@
-# AUDITORIA AREX · Sprint v79
+# AUDITORIA AREX · Sprint v82
+
+---
+
+## Sprint A — Fundamentos (v82)
+
+### Rutas Firestore migradas a `users/{uid}`
+
+| Ruta anterior | Ruta nueva |
+|---|---|
+| `arex_data/{lsKey}` | `users/{uid}/arex_data/{lsKey}` |
+| `arex/config` | `users/{uid}/arex/config` |
+| `conversations/{id}` | `users/{uid}/conversations/{id}` |
+| `notes/{id}` | `users/{uid}/notes/{id}` |
+| `stats/global` | `users/{uid}/stats/global` |
+| `stats/{fecha}` | `users/{uid}/stats/{fecha}` |
+
+Helpers centralizados en `app.js`: `_userDoc(...segs)` y `_userCol(...segs)`.
+Migración one-time via `_migrateFirestoreIfNeeded()` — copia datos viejos a la nueva estructura una sola vez (flag `arex_migrated_v1` en localStorage).
+
+### Estado de reglas Firestore
+
+- Archivo creado: `firestore.rules`
+- Archivo CLI: `firebase.json`
+- **PENDIENTE — Alexiz debe hacer esto:** publicar en consola Firebase o via `firebase deploy --only firestore:rules`
+- Instrucciones en `FIREBASE_SETUP.md`
+
+### Scripts en el boot
+
+| | Antes (v81) | Después (v82) |
+|---|---|---|
+| Scripts cargados al boot | 17 | 12 |
+| Scripts con `defer` | 0 | 12 |
+| Scripts lazy-loaded total | 2 | 7 |
+| Archivos en SW shell | 34 | 29 |
+
+Scripts que pasaron a lazy (inyección dinámica):
+- `reparto.js` — al abrir módulo REPARTO (vía jarvis.js)
+- `holo.js`, `parallax.js`, `vision-orb.js`, `vision.js` — tras primera interacción o 4s post-boot
+- `gesture.js`, `neural-orb.js` — ya eran lazy desde v79
+
+### Recordatorio para Alexiz
+
+1. **Activar Authentication > Sign-in method > Anonymous** en Firebase Console
+2. **Publicar reglas** de seguridad Firestore (ver `FIREBASE_SETUP.md`)
+
+---
+
+## Sprint v79
 
 ## Antes / Después
 

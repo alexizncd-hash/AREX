@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v80';
-const VERSION = 'v80';
+const CACHE   = 'arex-v82';
+const VERSION = 'v82';
 const SHELL = [
   './index.html',
   './style.css',
@@ -15,15 +15,12 @@ const SHELL = [
   './metas.js',
   './metas.css',
   './webxr.js',
-  './vision.js',
-  './parallax.js',
   './proyectos.js',
   './proyectos.css',
   './evidencias.js',
   './evidencias.css',
   './control.js',
   './control.css',
-  './reparto.js',
   './reparto.css',
   './agenda.js',
   './agenda.css',
@@ -31,12 +28,11 @@ const SHELL = [
   './habitos.css',
   './search.js',
   './search.css',
-  './vision-orb.js',
   './orb.js',
-  './holo.js',
   './manifest.json',
   './icon.svg',
-  // gesture.js, neural-orb.js are lazy-loaded on demand (not in initial shell)
+  // Lazy-loaded on demand (not in initial shell):
+  // reparto.js, vision.js, vision-orb.js, holo.js, parallax.js, gesture.js, neural-orb.js
 ];
 
 self.addEventListener('install', e => {
