@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v82)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v83)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v82 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v83 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -341,6 +341,41 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v83 — Sprint A Multi-usuario: Google Sign-In + Perfiles (AREX/VIERNES) + Sistema de identidades
+
+**Google Sign-In (`app.js`)**
+- Auth reemplazado: anónimo → Google Sign-In (`signInWithPopup` con fallback a `signInWithRedirect`)
+- Login overlay: pantalla elegante con botón "Entrar con Google" (estética AREX, cyan sobre negro)
+- `onAuthStateChanged` es la fuente de verdad: con usuario → boot normal; sin usuario → login overlay
+- Offline fallback: uid cacheado en localStorage permite arrancar sin red si ya hubo un login previo
+- Botón "Cerrar sesión" en el sidebar (llama `window._arexSignOut`)
+- Info del usuario (nombre + avatar) en el sidebar mientras está logueado
+
+**Sistema de perfiles (`app.js`)**
+- `window._arexProfile` — objeto de perfil activo: `assistantName`, `ownerName`, `personality`, `voiceGender`, `voicePitch`, `voiceRate`, `location`, `activeModules`, `accent`
+- Guardado en `users/{uid}/arex/profile` (Firestore) + caché en localStorage
+- Primer login sin perfil → onboarding: nombre del asistente, nombre del usuario, voz
+- Alexiz (datos migrados) → perfil AREX precargado sin onboarding
+- VIERNES (Margaret): nombre del asistente distinto, voz femenina, pitch 1.05
+
+**System prompt dinámico (`buildSystemBase()`)**
+- Lee `window._arexProfile` en cada llamada: `assistantName`, `ownerName`, `location`, `personality`
+- El contexto personal de Alexiz (QUIÉN ES ALEXIZ, negocio de frijol, Margaret) solo aparece cuando `ownerName === 'Alexiz'`
+- Tono parametrizable: formal / cálido / amistoso
+- Frases características adaptadas por nombre del asistente
+
+**Voz dinámica (`getVoice(profile)`, `arexSpeak()`)**
+- `getMaleVoice()` reemplazado por `getVoice(profile)` — elige voz masculina o femenina española
+- `arexSpeak()` usa `profile.voicePitch` y `profile.voiceRate` en lugar de valores hardcodeados
+- VIERNES: voz femenina por defecto, pitch 1.05, rate 0.94
+
+**UI de perfil (`index.html`)**
+- `id="hdr-assistant-name"` en el header → se actualiza al cargar el perfil
+- Onboarding modal con 3 campos: nombre asistente, nombre usuario, tipo de voz
+- Sección Usuario en el sidebar: nombre, asistente activo, botón de logout
+
+**SW v83**
 
 ### v82 — Sprint A: Seguridad Firestore + Auth anónimo + Arranque rápido
 
