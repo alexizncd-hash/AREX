@@ -3,6 +3,24 @@
 // Maneja el cambio entre Chat y módulos adicionales
 // ═══════════════════════════════════════════════════════════
 
+// Inyección dinámica de scripts pesados solo cuando se necesitan
+const _lazyLoaded = {};
+function _lazyLoad(src, asModule = false) {
+  if (_lazyLoaded[src]) return Promise.resolve();
+  if (document.querySelector(`script[src="${src}"]`)) {
+    _lazyLoaded[src] = true;
+    return Promise.resolve();
+  }
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src;
+    if (asModule) s.type = 'module';
+    s.onload  = () => { _lazyLoaded[src] = true; res(); };
+    s.onerror = rej;
+    document.body.appendChild(s);
+  });
+}
+
 const AREXNav = {
   moduloActual: 'chat',
 
@@ -47,7 +65,11 @@ const AREXNav = {
     if (modulo === 'metas'     && typeof renderMetasModule       === 'function') renderMetasModule();
     if (modulo === 'proyectos' && typeof renderProyectosModule   === 'function') renderProyectosModule();
     if (modulo === 'control'   && typeof renderControlModule     === 'function') renderControlModule();
-    if (modulo === 'reparto'   && typeof renderRepartoModule     === 'function') renderRepartoModule();
+    if (modulo === 'reparto') {
+      _lazyLoad('reparto.js').then(() => {
+        if (typeof renderRepartoModule === 'function') renderRepartoModule();
+      }).catch(e => console.warn('reparto.js lazy-load:', e));
+    }
     if (modulo === 'agenda'    && typeof renderAgendaModule      === 'function') renderAgendaModule();
     if (modulo === 'habitos'    && typeof renderHabitosModule    === 'function') renderHabitosModule();
     if (modulo === 'evidencias' && typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();

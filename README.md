@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v81)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v82)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,11 +49,15 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v80 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v82 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
 ├── config.example.js   → Plantilla de configuración para nuevos dispositivos
+├── firestore.rules     → Reglas de seguridad Firestore (deploy con firebase deploy)
+├── firebase.json       → Configuración Firebase CLI (apunta a firestore.rules)
+├── FIREBASE_SETUP.md   → Guía paso a paso para activar Auth anónimo y publicar reglas
+├── AUDITORIA.md        → Auditoría de seguridad y sprints de mejora
 └── README.md           → Este archivo
 ```
 
@@ -337,6 +341,34 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v82 — Sprint A: Seguridad Firestore + Auth anónimo + Arranque rápido
+
+**Firebase Auth anónimo (`app.js`)**
+- `initFirebase()` importa ahora `firebase-auth.js` junto con Firestore
+- `signInAnonymously()` se llama al inicializar; el uid se conserva entre sesiones por la persistencia local de Firebase Auth
+- El sync (initRealtimeSync, pull, historial) solo arranca cuando `onAuthStateChanged` confirma un uid
+- Si el auth falla (sin red), la app sigue funcionando 100% con localStorage — UI nunca bloqueada
+
+**Migración de rutas a per-usuario (`app.js`)**
+- Todas las rutas de Firestore migradas: `arex_data/{key}` → `users/{uid}/arex_data/{key}`
+- Mismo patrón para `conversations`, `notes`, `arex/config`, `stats`
+- Helpers `_userDoc(...segs)` y `_userCol(...segs)` centralizan la construcción de paths
+- Migración one-time: al primer login con uid, copia datos de rutas viejas a la nueva estructura (flag `arex_migrated_v1` en localStorage para no repetir)
+
+**Reglas de seguridad Firestore (`firestore.rules`, `firebase.json`)**
+- Reglas que niegan todo por defecto y permiten solo `users/{uid}/**` cuando `auth.uid == uid`
+- `firebase.json` para deploy con `firebase deploy --only firestore:rules`
+- `FIREBASE_SETUP.md` con instrucciones en español para activar Auth anónimo y publicar reglas
+
+**Arranque rápido (`index.html`, `jarvis.js`, `app.js`, `sw.js`)**
+- Todos los módulos locales ahora usan `defer` → descarga paralela, sin bloquear el parser
+- Lazy-load de motores pesados (reparto.js, holo.js, parallax.js, vision-orb.js, vision.js): se inyectan dinámicamente tras la primera interacción o a los 4s de inactividad
+- `reparto.js` se lazy-carga en `jarvis.js` cuando el usuario abre el módulo REPARTO
+- SW shell reducido: se quitaron los 5 archivos lazy del precache inicial
+- Scripts en el boot antes/después: 17 → 12 (sin los 5 lazy)
+
+**SW v82**
 
 ### v81 — Corrección de bugs críticos en INICIO, Agenda y Evidencias
 
