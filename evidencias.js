@@ -43,11 +43,13 @@ function saveEvidenciaAsNota(id) {
 let _evSearchQ = '';
 
 function renderEvidenciasWidget() {
-  const el = document.getElementById('ev-board');
-  if (!el) return;
   const allArr = getEvidencias();
-  const cnt = document.getElementById('ev-count');
-  if (cnt) cnt.textContent = allArr.length;
+
+  // Update all count badges
+  ['ev-count', 'ev-mod-count'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) c.textContent = allArr.length;
+  });
 
   // Search filter
   const q = _evSearchQ.toLowerCase().trim();
@@ -56,13 +58,7 @@ function renderEvidenciasWidget() {
     (ev.contenido || '').toLowerCase().includes(q)
   ) : allArr;
 
-  // Search bar
   const searchHTML = `<input class="ev-search" id="ev-search-input" placeholder="Buscar evidencias..." value="${_evSearchQ.replace(/"/g,'&quot;')}" oninput="_evSearchQ=this.value;renderEvidenciasWidget()" />`;
-
-  if (!arr.length) {
-    el.innerHTML = searchHTML + '<div class="ev-empty">Sin evidencias' + (q ? ` para "${q}"` : ' aún.<br><em>Las respuestas importantes de AREX aparecerán aquí.</em>') + '</div>';
-    return;
-  }
 
   const _ts = ms => {
     const d = new Date(ms);
@@ -70,7 +66,9 @@ function renderEvidenciasWidget() {
            d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
   };
 
-  el.innerHTML = searchHTML + arr.slice(0, 20).map(ev => {
+  const emptyHTML = searchHTML + '<div class="ev-empty">Sin evidencias' + (q ? ` para "${q}"` : ' aún.<br><em>Las respuestas importantes de AREX aparecerán aquí.</em>') + '</div>';
+
+  const cardsHTML = searchHTML + arr.slice(0, 20).map(ev => {
     const t = EV_TIPOS[ev.tipo] || EV_TIPOS.general;
     const safeT = ev.titulo?.replace(/&/g,'&amp;').replace(/</g,'&lt;') || 'Sin título';
     const safeB = ev.contenido?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\*\*/g,'') || '';
@@ -89,6 +87,13 @@ function renderEvidenciasWidget() {
       </div>
     </div>`;
   }).join('');
+
+  // Paint to both containers: dashboard widget and standalone module
+  ['ev-board', 'ev-mod-board'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = arr.length ? cardsHTML : emptyHTML;
+  });
 }
 
 function evToggleExpand(id) {

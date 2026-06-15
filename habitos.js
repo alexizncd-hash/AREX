@@ -285,3 +285,7 @@ function renderHabitosModule() {
 }
 
 window.renderHabitosModule = renderHabitosModule;
+window.toggleHabitoHoy    = toggleHabitoHoy;
+window.toggleHabitoDia    = toggleHabitoDia;
+window.addHabito          = addHabito;
+window.deleteHabito       = deleteHabito;

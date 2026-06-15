@@ -475,4 +475,9 @@ function checkFinanzasAlerts() {
     });
   } catch(e) { console.warn('AREX Finanzas alerts:', e); }
 }
-window.checkFinanzasAlerts = checkFinanzasAlerts;
+window.checkFinanzasAlerts   = checkFinanzasAlerts;
+window.calcularDeudaTotal    = calcularDeudaTotal;
+window.calcularMargen        = calcularMargen;
+window.calcularGastosTotal   = calcularGastosTotal;
+window.calcularPorcentajeGastos = calcularPorcentajeGastos;
+window.obtenerProximosPagos  = obtenerProximosPagos;
