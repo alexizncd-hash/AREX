@@ -6,7 +6,8 @@
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
     query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot,
-    getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut;
+    getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+    getRedirectResult, onAuthStateChanged, signOut;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -368,7 +369,7 @@ async function initFirebase() {
        limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-       onAuthStateChanged, signOut }
+       getRedirectResult, onAuthStateChanged, signOut }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
     const fbApp = initializeApp(AREX_CONFIG.firebase);
     db = getFirestore(fbApp);
@@ -377,6 +378,18 @@ async function initFirebase() {
 
     const auth = getAuth(fbApp);
     window._arexAuth = auth;
+
+    // Procesar redirect pendiente antes de onAuthStateChanged
+    // (cuando el usuario vuelve de Google después de signInWithRedirect)
+    getRedirectResult(auth).then(result => {
+      if (result?.user) {
+        console.log('AREX: redirect result ok —', result.user.email);
+        // onAuthStateChanged manejará el resto con el usuario ya activo
+      }
+    }).catch(e => {
+      console.error('AREX getRedirectResult:', e.code, e.message);
+      _loginError(`${e.code || 'error'}: ${e.message}`);
+    });
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -398,6 +411,10 @@ async function initFirebase() {
         }
       }
     });
+
+    // Cablear el botón de login vía event listener
+    // (app.js es type="module" → las funciones no son globales → onclick inline falla)
+    _setupLoginButton();
   } catch(e) { console.warn('Firebase init:', e); }
 }
 
@@ -414,28 +431,72 @@ async function _initUserSession() {
 }
 
 // ── Google Sign-In ────────────────────────────────────
+
+// Detecta si estamos en móvil o entorno sin popups confiables
+function _isMobile() {
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini|Mobile|mobile/i.test(navigator.userAgent)
+      || window.innerWidth < 768;
+}
+
+// Cablear el botón de login con event listener (no inline onclick —
+// app.js es module, las funciones no son globales)
+function _setupLoginButton() {
+  const btn = document.getElementById('btn-google-signin');
+  if (!btn) return;
+  btn.onclick = null; // remover posible inline handler residual
+  btn.addEventListener('click', _doGoogleSignIn);
+}
+
 async function _doGoogleSignIn() {
   const auth = window._arexAuth;
-  if (!auth) return;
+  if (!auth) {
+    console.error('AREX: _doGoogleSignIn antes de que auth esté listo');
+    _loginError('Sistema no listo. Recarga la página.');
+    return;
+  }
   const btn = document.getElementById('btn-google-signin');
   const err = document.getElementById('login-error');
   if (btn) btn.disabled = true;
   if (err) err.style.display = 'none';
+
   const provider = new GoogleAuthProvider();
+
+  // Móvil / webview / Meta Browser → redirect directo (popup no funciona)
+  if (_isMobile()) {
+    try {
+      await signInWithRedirect(auth, provider);
+      // La página navega a Google; el resultado se procesa en getRedirectResult al volver
+    } catch(e) {
+      console.error('AREX signInWithRedirect (mobile):', e.code, e.message);
+      _loginError(`${e.code || 'Error'}: ${e.message}`);
+      if (btn) btn.disabled = false;
+    }
+    return;
+  }
+
+  // Desktop → popup; ante CUALQUIER error, fallback a redirect
   try {
     await signInWithPopup(auth, provider);
+    // OK: onAuthStateChanged maneja el resto
   } catch(e) {
-    if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code)) {
-      try { await signInWithRedirect(auth, provider); } catch(e2) { _loginError(e2.message); }
-    } else {
-      _loginError(e.message || 'Error al iniciar sesión');
+    console.error('AREX signInWithPopup:', e.code, e.message);
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch(e2) {
+      console.error('AREX signInWithRedirect (fallback):', e2.code, e2.message);
+      _loginError(`${e2.code || e.code || 'Error'}: ${e2.message || e.message}`);
+      if (btn) btn.disabled = false;
     }
-    if (btn) btn.disabled = false;
   }
 }
+
+// Exponer globalmente por si hay llamadas legacy desde HTML
+window._doGoogleSignIn = _doGoogleSignIn;
+
 function _loginError(msg) {
   const err = document.getElementById('login-error');
   if (err) { err.textContent = msg; err.style.display = 'block'; }
+  console.error('AREX login error:', msg);
 }
 
 // Sign-out global
