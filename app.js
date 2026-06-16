@@ -515,10 +515,18 @@ window._arexSignOut = async () => {
 function _showLoginOverlay() {
   const ov = document.getElementById('login-overlay');
   if (ov) ov.style.display = 'flex';
+  // Ocultar elementos flotantes que quedan encima del overlay
+  ['qc-fab','fab-analizar','pomo-widget'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.setProperty('display','none','important');
+  });
 }
 function _hideLoginOverlay() {
   const ov = document.getElementById('login-overlay');
   if (ov) ov.style.display = 'none';
+  // Restaurar FAB de captura rápida
+  const fab = document.getElementById('qc-fab');
+  if (fab) fab.style.removeProperty('display');
 }
 
 // ── Sistema de perfiles ───────────────────────────────
