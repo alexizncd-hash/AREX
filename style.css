@@ -8522,3 +8522,173 @@ main#module-chat.module-panel.active {
   box-shadow: 0 -4px 20px rgba(0,0,0,.5) !important;
   padding: 8px 12px !important;
 }
+
+/* ═══════════════════════════════════════════════════════
+   v99 — Sidebar: secciones como glass panels reales
+   Cada sidebar-section es una tarjeta glass independiente.
+   Sin backdrop-filter. Sin naranja.
+═══════════════════════════════════════════════════════ */
+
+/* Sidebar container: fondo muy oscuro para que las tarjetas destaquen */
+.sidebar {
+  background: rgba(2,7,18,.98) !important;
+  border-right: 1px solid rgba(34,211,238,.14) !important;
+  padding: 0 0 16px !important;
+  gap: 0 !important;
+}
+
+/* Header del sidebar — panel glass superior */
+.sidebar-hdr {
+  background: linear-gradient(155deg, rgba(14,42,66,.70), rgba(10,30,52,.60)) !important;
+  border-bottom: 1px solid rgba(34,211,238,.22) !important;
+  border-top: none !important;
+  padding: 12px 14px !important;
+  flex-shrink: 0 !important;
+}
+.sidebar-title {
+  color: #22d3ee !important;
+  text-shadow: 0 0 12px rgba(34,211,238,.40) !important;
+  letter-spacing: 5px !important;
+  font-size: 9px !important;
+}
+.btn-close {
+  background: rgba(34,211,238,.06) !important;
+  border: 1px solid rgba(34,211,238,.22) !important;
+  color: rgba(34,211,238,.55) !important;
+  border-radius: 4px !important;
+  width: 28px !important; height: 28px !important;
+  transition: all .18s !important;
+}
+.btn-close:hover {
+  background: rgba(34,211,238,.14) !important;
+  border-color: rgba(34,211,238,.55) !important;
+  color: #22d3ee !important;
+}
+
+/* ── Cada sección = glass card independiente ── */
+.sidebar-section {
+  background: linear-gradient(155deg, rgba(14,42,66,.55), rgba(10,30,52,.44)) !important;
+  border: 1px solid rgba(34,211,238,.18) !important;
+  border-top: 1px solid rgba(34,211,238,.30) !important;
+  border-radius: 8px !important;
+  margin: 6px 8px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 3px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(34,211,238,.10) !important;
+}
+
+/* Label de sección */
+.ss-label {
+  color: rgba(34,211,238,.65) !important;
+  letter-spacing: 3px !important;
+  font-size: 8px !important;
+  border-bottom: 1px solid rgba(34,211,238,.12) !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Filas de sistema (GROQ IA, FIREBASE, etc.) */
+.sys-row { padding: 3px 0 !important; }
+.ss-name { color: rgba(34,211,238,.55) !important; }
+.ss-val  { color: #22d3ee !important; font-size: 9px !important; }
+.ss-dot  { background: rgba(34,211,238,.18) !important; box-shadow: none !important; }
+.ss-dot.on-line  { background: #00ffaa !important; box-shadow: 0 0 6px rgba(0,255,170,.65) !important; }
+.ss-dot.on-ready { background: #22d3ee !important; box-shadow: 0 0 5px rgba(34,211,238,.5) !important; }
+.ss-dot.on-off   { background: rgba(34,211,238,.10) !important; box-shadow: none !important; }
+
+/* ── Toggle buttons ── */
+.mtoggle {
+  background: rgba(10,28,48,.55) !important;
+  border: 1px solid rgba(34,211,238,.15) !important;
+  color: rgba(34,211,238,.48) !important;
+  border-radius: 5px !important;
+  margin-bottom: 5px !important;
+  box-shadow: none !important;
+  transition: all .18s !important;
+}
+.mtoggle:hover {
+  background: rgba(14,42,66,.70) !important;
+  border-color: rgba(34,211,238,.32) !important;
+  color: rgba(34,211,238,.72) !important;
+}
+.mtoggle.on {
+  background: linear-gradient(155deg, rgba(14,52,82,.75), rgba(10,38,64,.62)) !important;
+  border: 1px solid rgba(34,211,238,.50) !important;
+  border-top-color: rgba(34,211,238,.82) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.20) !important;
+  color: #22d3ee !important;
+}
+.mt-ico { color: rgba(34,211,238,.40) !important; }
+.mtoggle.on .mt-ico { color: #22d3ee !important; }
+.mt-lbl { color: rgba(34,211,238,.48) !important; }
+.mtoggle.on .mt-lbl { color: #cef4ff !important; }
+.mt-st  { color: rgba(34,211,238,.25) !important; font-size: 9px !important; }
+.mtoggle.on .mt-st { color: #00ffaa !important; }
+
+/* ── Quick command grid ── */
+.qcmds { grid-template-columns: 1fr 1fr 1fr !important; gap: 5px !important; }
+.qcmd {
+  background: rgba(10,28,48,.55) !important;
+  border: 1px solid rgba(34,211,238,.16) !important;
+  color: rgba(34,211,238,.52) !important;
+  border-radius: 6px !important;
+  padding: 10px 4px !important;
+  gap: 6px !important;
+  font-family: var(--font) !important;
+  font-size: 8px !important;
+  letter-spacing: 1.5px !important;
+  box-shadow: none !important;
+  transition: all .16s !important;
+}
+.qcmd svg { color: inherit !important; }
+.qcmd:hover {
+  background: linear-gradient(155deg, rgba(14,52,82,.72), rgba(10,38,64,.58)) !important;
+  border-color: rgba(34,211,238,.48) !important;
+  border-top-color: rgba(34,211,238,.75) !important;
+  color: #22d3ee !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.38), inset 0 1px 0 rgba(34,211,238,.15) !important;
+}
+.qcmd-danger:hover {
+  background: rgba(38,10,10,.58) !important;
+  border-color: rgba(255,68,68,.48) !important;
+  border-top-color: rgba(255,68,68,.75) !important;
+  color: #ff6464 !important;
+  box-shadow: none !important;
+}
+
+/* ── Filas de sesión ── */
+.srow { padding: 4px 0 !important; }
+.srow span:first-child { color: rgba(34,211,238,.44) !important; }
+.srow span:last-child  { color: #22d3ee !important; }
+
+/* ── Botón nueva sesión ── */
+.ss-new-session-btn {
+  background: rgba(10,28,48,.55) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  color: rgba(34,211,238,.58) !important;
+  border-radius: 5px !important;
+  transition: all .16s !important;
+}
+.ss-new-session-btn:hover {
+  background: linear-gradient(155deg, rgba(14,52,82,.70), rgba(10,38,64,.55)) !important;
+  border-color: rgba(34,211,238,.48) !important;
+  color: #22d3ee !important;
+}
+
+/* ── Session items (historial de sesiones) ── */
+.session-item {
+  background: rgba(10,28,48,.52) !important;
+  border: 1px solid rgba(34,211,238,.14) !important;
+  border-radius: 5px !important;
+  transition: all .15s !important;
+}
+.session-item:hover {
+  background: rgba(14,42,66,.68) !important;
+  border-color: rgba(34,211,238,.34) !important;
+}
+.session-item.active {
+  background: linear-gradient(155deg, rgba(14,52,82,.72), rgba(10,38,64,.58)) !important;
+  border-color: rgba(34,211,238,.48) !important;
+  border-top-color: rgba(34,211,238,.72) !important;
+}
+.session-name    { color: rgba(34,211,238,.85) !important; }
+.session-preview { color: rgba(34,211,238,.42) !important; }
