@@ -7363,3 +7363,74 @@ body:has(#vision-panel) .qc-fab { display: none; }
   color: var(--cyan);
 }
 
+/* ═══════════════════════════════════════
+   v89 — Glass Azul + HUD Estética
+═══════════════════════════════════════ */
+
+/* Glass card base */
+.glass-card {
+  background: linear-gradient(155deg, rgba(20,55,80,.6), rgba(14,40,60,.5));
+  border: 1px solid rgba(80,200,245,.28);
+  border-top-color: rgba(80,200,245,.5);
+  box-shadow: 0 4px 24px rgba(0,0,0,.4), inset 0 1px 0 rgba(80,200,245,.12), inset 0 0 20px rgba(34,211,238,.04);
+  border-radius: 6px;
+  position: relative;
+}
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 18px; height: 18px;
+  border-top: 2px solid rgba(34,211,238,.7);
+  border-right: 2px solid rgba(34,211,238,.7);
+  border-radius: 0 6px 0 0;
+  pointer-events: none;
+}
+.glass-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 12px; height: 12px;
+  border-bottom: 1px solid rgba(34,211,238,.4);
+  border-left: 1px solid rgba(34,211,238,.4);
+  pointer-events: none;
+}
+
+/* Scanlines overlay */
+.hud-scanlines {
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,.08) 3px,
+    rgba(0,0,0,.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* Status badge pulsante */
+.status-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 6px #22d3ee;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+.status-dot.green  { background: #34ffc3; box-shadow: 0 0 6px #34ffc3; }
+.status-dot.amber  { background: #ffb84d; box-shadow: 0 0 6px #ffb84d; }
+.status-dot.violet { background: #a98bff; box-shadow: 0 0 6px #a98bff; }
+@keyframes dot-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.5; transform:scale(.8); }
+}
+
+/* Paleta v89 */
+:root {
+  --c-cyan:   #22d3ee;
+  --c-green:  #34ffc3;
+  --c-amber:  #ffb84d;
+  --c-violet: #a98bff;
+  --c-bg:     #01060d;
+}
+
