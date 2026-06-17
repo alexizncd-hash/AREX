@@ -8410,3 +8410,115 @@ main#module-chat.module-panel.active {
     bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px) !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   v98 — Panel de Control: glass blue (elimina tema --iron naranja)
+         center-tabs contenedor, reactor RAF optimización
+═══════════════════════════════════════════════════════ */
+
+/* ── Sidebar: reemplazar naranja/iron con glass cyan ── */
+.sidebar {
+  background: linear-gradient(180deg, rgba(6,18,36,.97), rgba(4,12,26,.98)) !important;
+  border-right: 1px solid rgba(34,211,238,.18) !important;
+}
+.sidebar-hdr {
+  border-bottom-color: rgba(34,211,238,.14) !important;
+  background: rgba(34,211,238,.04) !important;
+}
+.sidebar-title {
+  color: #22d3ee !important;
+  text-shadow: 0 0 10px rgba(34,211,238,.35) !important;
+  letter-spacing: 4px !important;
+}
+.btn-close {
+  color: rgba(34,211,238,.55) !important;
+  border-color: rgba(34,211,238,.22) !important;
+  background: transparent !important;
+}
+.btn-close:hover { border-color: #22d3ee !important; color: #22d3ee !important; }
+
+.sidebar-section {
+  border-bottom-color: rgba(34,211,238,.08) !important;
+}
+.ss-label {
+  color: rgba(34,211,238,.48) !important;
+  border-bottom-color: rgba(34,211,238,.08) !important;
+  letter-spacing: 3px !important;
+}
+
+/* System dots — keep semantic colors */
+.ss-dot { background: rgba(34,211,238,.20) !important; box-shadow: none !important; }
+.ss-dot.on-line  { background: #00ffaa !important; box-shadow: 0 0 7px rgba(0,255,170,.7) !important; }
+.ss-dot.on-ready { background: #22d3ee !important; box-shadow: 0 0 6px rgba(34,211,238,.5) !important; }
+.ss-dot.on-off   { background: rgba(34,211,238,.12) !important; box-shadow: none !important; }
+
+/* Toggle buttons */
+.mtoggle {
+  background: linear-gradient(155deg, rgba(14,42,66,.42), rgba(10,30,52,.34)) !important;
+  border: 1px solid rgba(34,211,238,.18) !important;
+  color: rgba(34,211,238,.55) !important;
+  box-shadow: none !important;
+}
+.mtoggle:hover {
+  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
+  border-color: rgba(34,211,238,.36) !important;
+}
+.mtoggle.on {
+  background: linear-gradient(155deg, rgba(14,52,80,.68), rgba(10,38,62,.56)) !important;
+  border-color: rgba(34,211,238,.55) !important;
+  border-top-color: rgba(34,211,238,.80) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(34,211,238,.18) !important;
+}
+.mtoggle.on .mt-ico { color: #22d3ee !important; }
+.mtoggle.on .mt-lbl { color: #e2f8ff !important; }
+.mtoggle.on .mt-st  { color: #00ffaa !important; }
+.mt-lbl { color: rgba(34,211,238,.50) !important; }
+.mt-ico { color: rgba(34,211,238,.38) !important; }
+.mt-st  { color: rgba(34,211,238,.28) !important; }
+
+/* Quick command buttons */
+.qcmd {
+  background: linear-gradient(155deg, rgba(14,42,66,.42), rgba(10,30,52,.34)) !important;
+  border: 1px solid rgba(34,211,238,.18) !important;
+  color: rgba(34,211,238,.52) !important;
+  box-shadow: none !important;
+  font-family: var(--font) !important;
+}
+.qcmd:hover {
+  background: linear-gradient(155deg, rgba(14,52,80,.65), rgba(10,38,62,.52)) !important;
+  border-color: rgba(34,211,238,.50) !important;
+  border-top-color: rgba(34,211,238,.75) !important;
+  color: #22d3ee !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(34,211,238,.15) !important;
+}
+.qcmd-danger:hover {
+  border-color: rgba(255,68,68,.55) !important;
+  border-top-color: rgba(255,68,68,.80) !important;
+  color: #ff6464 !important;
+  background: rgba(40,10,10,.55) !important;
+  box-shadow: none !important;
+}
+
+/* Session/data rows */
+.srow span:first-child { color: rgba(34,211,238,.44) !important; }
+.srow span:last-child  { color: #22d3ee !important; }
+
+/* New session button */
+.ss-new-session-btn {
+  background: linear-gradient(155deg, rgba(14,42,66,.45), rgba(10,30,52,.36)) !important;
+  border-color: rgba(34,211,238,.22) !important;
+  color: rgba(34,211,238,.55) !important;
+}
+.ss-new-session-btn:hover {
+  background: linear-gradient(155deg, rgba(14,52,80,.65), rgba(10,38,62,.52)) !important;
+  border-color: rgba(34,211,238,.50) !important;
+  color: #22d3ee !important;
+}
+
+/* center-tabs container */
+#center-tabs {
+  background: linear-gradient(180deg, rgba(4,14,28,.94), rgba(4,12,24,.98)) !important;
+  border-top: 1px solid rgba(34,211,238,.18) !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.5) !important;
+  padding: 8px 12px !important;
+}

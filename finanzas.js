@@ -638,3 +638,4 @@ if (document.readyState === 'loading') {
 } else {
   FinanzasModule.init();
 }
+window.FinanzasModule = FinanzasModule;

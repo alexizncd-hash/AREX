@@ -59,6 +59,7 @@ const AREXNav = {
     const estados  = { inicio:'INICIO', chat:'ACTIVO', finanzas:'FINANZAS', tareas:'TAREAS', notas:'NOTAS', negocio:'NEGOCIO', gastos:'GASTOS', metas:'METAS', proyectos:'PROYECTOS', control:'CONTROL', evidencias:'EVIDENCIAS', reparto:'REPARTO', agenda:'AGENDA', habitos:'HÁBITOS' };
     if (statusEl && estados[modulo]) statusEl.textContent = estados[modulo];
     if (modulo === 'inicio'    && typeof renderDashboard         === 'function') renderDashboard();
+    if (modulo === 'finanzas'  && window.FinanzasModule?.renderDashboard)        window.FinanzasModule.renderDashboard();
     if (modulo === 'notas'     && typeof renderNotas             === 'function') renderNotas();
     if (modulo === 'negocio'   && typeof renderNegocioModule     === 'function') renderNegocioModule();
     if (modulo === 'gastos'    && typeof renderGastosModule      === 'function') renderGastosModule();
@@ -115,27 +116,41 @@ function _renderCentroTabs(centro, modulos) {
   if (!bar) return;
   bar.style.display = 'flex';
   bar.style.pointerEvents = 'auto';
-  bar.innerHTML = modulos.map(m =>
-    `<button onclick="abrirTab('${m}')" id="ctab-${m}"
-      style="font-family:var(--font);font-size:10px;letter-spacing:2px;
-             padding:5px 12px;border:1px solid rgba(34,211,238,.3);
-             background:${m===tabActiva?'rgba(34,211,238,.15)':'rgba(0,0,0,.4)'};
-             color:${m===tabActiva?'#22d3ee':'rgba(34,211,238,.5)'};
-             border-radius:3px;cursor:pointer;text-transform:uppercase;">
-      ${m.toUpperCase()}
-    </button>`
-  ).join('');
+  bar.innerHTML = modulos.map(m => _ctabHTML(m, m === tabActiva)).join('');
+}
+
+function _ctabHTML(m, active) {
+  const bg  = active
+    ? 'linear-gradient(155deg,rgba(14,42,66,.82),rgba(10,30,52,.68))'
+    : 'linear-gradient(155deg,rgba(14,42,66,.42),rgba(10,30,52,.32))';
+  const bdr = active ? 'rgba(34,211,238,.55)' : 'rgba(34,211,238,.22)';
+  const clr = active ? '#22d3ee' : 'rgba(34,211,238,.50)';
+  const shd = active
+    ? '0 2px 14px rgba(0,0,0,.55),inset 0 1px 0 rgba(34,211,238,.18)'
+    : '0 1px 6px rgba(0,0,0,.35)';
+  return `<button onclick="abrirTab('${m}')" id="ctab-${m}"
+    style="font-family:var(--font);font-size:10px;letter-spacing:2px;
+           padding:6px 14px;border:1px solid ${bdr};border-top-color:${active?'rgba(34,211,238,.80)':bdr};
+           background:${bg};color:${clr};border-radius:4px;cursor:pointer;
+           text-transform:uppercase;box-shadow:${shd};transition:all .18s;">
+    ${m.toUpperCase()}
+  </button>`;
 }
 
 function abrirTab(modulo) {
   tabActiva = modulo;
   AREXNav.cambiarModulo(modulo);
   document.dispatchEvent(new CustomEvent('arex-module-change', { detail: { module: modulo } }));
-  // Update tab highlight
   document.querySelectorAll('[id^="ctab-"]').forEach(b => {
     const m = b.id.replace('ctab-','');
-    b.style.background = m === modulo ? 'rgba(34,211,238,.15)' : 'rgba(0,0,0,.4)';
-    b.style.color      = m === modulo ? '#22d3ee' : 'rgba(34,211,238,.5)';
+    const active = m === modulo;
+    const bg  = active ? 'linear-gradient(155deg,rgba(14,42,66,.82),rgba(10,30,52,.68))' : 'linear-gradient(155deg,rgba(14,42,66,.42),rgba(10,30,52,.32))';
+    const bdr = active ? 'rgba(34,211,238,.55)' : 'rgba(34,211,238,.22)';
+    b.style.background   = bg;
+    b.style.borderColor  = bdr;
+    b.style.color        = active ? '#22d3ee' : 'rgba(34,211,238,.50)';
+    b.style.boxShadow    = active ? '0 2px 14px rgba(0,0,0,.55),inset 0 1px 0 rgba(34,211,238,.18)' : '0 1px 6px rgba(0,0,0,.35)';
+    b.style.borderTopColor = active ? 'rgba(34,211,238,.80)' : bdr;
   });
 }
 

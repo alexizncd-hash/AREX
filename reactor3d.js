@@ -268,8 +268,8 @@ function init() {
   // ── Animation loop ──
   let t = 0;
   function animate(now) {
+    if (!animActive || !moduleActive) { rafId = null; return; }
     rafId = requestAnimationFrame(animate);
-    if (!animActive || !moduleActive) return;
 
     const fpsInterval = 1000 / targetFps;
     if (now - lastFrame < fpsInterval) return;
@@ -346,10 +346,12 @@ function init() {
     targetFps = animActive ? (state === 'calm' ? 30 : 60) : 1;
   });
 
-  // Escuchar cambio de módulo activo
+  // Escuchar cambio de módulo activo — pausa/reanuda RAF completamente
   document.addEventListener('arex-module-change', e => {
+    const wasActive = moduleActive;
     moduleActive = (e.detail?.module === 'inicio');
     targetFps = moduleActive ? (state === 'calm' ? 30 : 60) : 1;
+    if (!wasActive && moduleActive && !rafId) rafId = requestAnimationFrame(animate);
   });
 
   // Reducir FPS en idle
