@@ -1,0 +1,39 @@
+/* reactor3d.css — Neural Reactor canvas overlay */
+#reactor3d-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+#reactor3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#reactor3d-wrap.hidden { display: none; }
+
+/* HUD overlay layers */
+.r3d-hud-corner {
+  position: absolute;
+  width: 40px; height: 40px;
+  pointer-events: none;
+  opacity: .5;
+}
+.r3d-hud-corner.tl { top:8px;  left:8px;  border-top:1px solid #22d3ee; border-left:1px solid #22d3ee; }
+.r3d-hud-corner.tr { top:8px;  right:8px; border-top:1px solid #22d3ee; border-right:1px solid #22d3ee; }
+.r3d-hud-corner.bl { bottom:8px; left:8px;  border-bottom:1px solid #22d3ee; border-left:1px solid #22d3ee; }
+.r3d-hud-corner.br { bottom:8px; right:8px; border-bottom:1px solid #22d3ee; border-right:1px solid #22d3ee; }
+
+.r3d-status-label {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(34,211,238,.5);
+  pointer-events: none;
+  text-transform: uppercase;
+}

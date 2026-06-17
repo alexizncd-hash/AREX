@@ -87,3 +87,70 @@ if (document.readyState === 'loading') {
 }
 
 window.AREXNav = AREXNav;
+
+// ── Centro de navegación v89 ─────────────────────
+const CENTROS = {
+  capital:  ['finanzas','gastos','negocio','reparto'],
+  impulso:  ['metas','tareas','agenda','habitos'],
+  mente:    ['notas','evidencias','proyectos'],
+  control:  ['control'],
+};
+
+let centroActivo = null;
+let tabActiva    = null;
+
+function abrirCentro(centro) {
+  centroActivo = centro;
+  const modulos = CENTROS[centro];
+  if (!modulos) return;
+  tabActiva = modulos[0];
+  _renderCentroTabs(centro, modulos);
+  if (typeof cambiarModulo === 'function') cambiarModulo(tabActiva);
+}
+
+function _renderCentroTabs(centro, modulos) {
+  let bar = document.getElementById('center-tabs');
+  if (!bar) return;
+  bar.style.display = 'flex';
+  bar.style.pointerEvents = 'auto';
+  bar.innerHTML = modulos.map(m =>
+    `<button onclick="abrirTab('${m}')" id="ctab-${m}"
+      style="font-family:var(--font);font-size:10px;letter-spacing:2px;
+             padding:5px 12px;border:1px solid rgba(34,211,238,.3);
+             background:${m===tabActiva?'rgba(34,211,238,.15)':'rgba(0,0,0,.4)'};
+             color:${m===tabActiva?'#22d3ee':'rgba(34,211,238,.5)'};
+             border-radius:3px;cursor:pointer;text-transform:uppercase;">
+      ${m.toUpperCase()}
+    </button>`
+  ).join('');
+}
+
+function abrirTab(modulo) {
+  tabActiva = modulo;
+  if (typeof cambiarModulo === 'function') cambiarModulo(modulo);
+  // Update tab highlight
+  document.querySelectorAll('[id^="ctab-"]').forEach(b => {
+    const m = b.id.replace('ctab-','');
+    b.style.background = m === modulo ? 'rgba(34,211,238,.15)' : 'rgba(0,0,0,.4)';
+    b.style.color      = m === modulo ? '#22d3ee' : 'rgba(34,211,238,.5)';
+  });
+}
+
+function cerrarCentro() {
+  centroActivo = null;
+  const bar = document.getElementById('center-tabs');
+  if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+}
+
+// Override cambiarModulo to handle center routing
+const _origCambiarModulo = typeof cambiarModulo !== 'undefined' ? cambiarModulo : null;
+window.cambiarModulo = function(mod) {
+  // If switching to inicio, close center tabs
+  if (mod === 'inicio') cerrarCentro();
+  if (_origCambiarModulo) _origCambiarModulo(mod);
+  // Fire module change event for reactor3d
+  document.dispatchEvent(new CustomEvent('arex-module-change', { detail: { module: mod } }));
+};
+
+window.abrirCentro = abrirCentro;
+window.abrirTab    = abrirTab;

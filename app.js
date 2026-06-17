@@ -1056,20 +1056,10 @@ async function _autoSummarizeSession(msgs, sessionName) {
   if (!AREX_CONFIG?.groqKey || msgs.length < 6) return;
   try {
     const excerpt = msgs.slice(-20).map(m => `${m.role === 'user' ? 'Alexiz' : 'AREX'}: ${m.content.slice(0, 200)}`).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 120,
-        messages: [
-          { role: 'system', content: 'Extrae en 1-2 oraciones MUY breves los datos clave de esta conversación (decisiones, temas, datos relevantes sobre Alexiz). En español, sin formato markdown.' },
-          { role: 'user', content: `Sesión "${sessionName}":\n${excerpt}` }
-        ]
-      })
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const summary = data?.choices?.[0]?.message?.content?.trim();
+    const summary = await callBrain('rapido', [
+      { role: 'system', content: 'Extrae en 1-2 oraciones MUY breves los datos clave de esta conversación (decisiones, temas, datos relevantes sobre Alexiz). En español, sin formato markdown.' },
+      { role: 'user', content: `Sesión "${sessionName}":\n${excerpt}` }
+    ], { maxTokens: 200 });
     if (!summary) return;
     const mems = getSessionMemories();
     mems.unshift({ id: String(Date.now()), fecha: _todayStr(), session: sessionName, resumen: summary });
@@ -2268,10 +2258,19 @@ function setOrb(state, label) {
   }
   // Keep statusTxt alias for any other code
   if (statusTxt) statusTxt.textContent = label ?? '';
-  if (state === 'thinking' || state === 'searching') updateStatusBadge('procesando');
-  else if (state === 'speaking') updateStatusBadge('hablando');
-  else if (state === 'listening') updateStatusBadge('escuchando');
-  else updateStatusBadge('calmado');
+  if (state === 'thinking' || state === 'searching') {
+    updateStatusBadge('procesando');
+    window.arexReactorSetState?.('processing');
+  } else if (state === 'speaking') {
+    updateStatusBadge('hablando');
+    window.arexReactorSetState?.('speaking');
+  } else if (state === 'listening') {
+    updateStatusBadge('escuchando');
+    window.arexReactorSetState?.('listening');
+  } else {
+    updateStatusBadge('calmado');
+    window.arexReactorSetState?.('calm');
+  }
 }
 
 /* ── Render mensajes ────────────────────────────────── */
@@ -3355,6 +3354,41 @@ async function handleFile(file) {
     console.error(e);
   } finally {
     isBusy = false;
+  }
+}
+
+// ── callBrain: router de cerebros IA ─────────────────────
+// CORE  → llama-3.3-70b-versatile  (razonamiento, chat principal)
+// RAPIDO→ llama-3.1-8b-instant     (tareas simples, rapidez)
+async function callBrain(tipo, mensajes, opts = {}) {
+  const modelos = {
+    core:   'llama-3.3-70b-versatile',
+    rapido: 'llama-3.1-8b-instant',
+  };
+  const modelo = modelos[tipo] || modelos.core;
+  const body = {
+    model: modelo,
+    messages: mensajes,
+    max_tokens: opts.maxTokens || 512,
+    temperature: opts.temperature ?? 0.7,
+    stream: false,
+  };
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Groq ${res.status}`);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() || '';
+  } catch(e) {
+    if (tipo === 'rapido') {
+      // Fallback al cerebro core
+      console.warn('callBrain RAPIDO falló, reintentando con CORE:', e.message);
+      return callBrain('core', mensajes, opts);
+    }
+    throw e;
   }
 }
 
@@ -5282,20 +5316,10 @@ async function generarBriefing() {
   ].filter(Boolean).join('\n');
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 380,
-        messages: [
-          { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino breve (4-6 líneas) en español, directo y motivador. Puedes usar 2-3 bullet points cortos para las prioridades del día. Menciona metas, hábitos y agenda si hay datos.' },
-          { role: 'user', content: `Datos de hoy:\n${contexto}` }
-        ]
-      })
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const briefing = data?.choices?.[0]?.message?.content;
+    const briefing = await callBrain('rapido', [
+      { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Genera un briefing matutino breve (4-6 líneas) en español, directo y motivador. Puedes usar 2-3 bullet points cortos para las prioridades del día. Menciona metas, hábitos y agenda si hay datos.' },
+      { role: 'user', content: `Datos de hoy:\n${contexto}` }
+    ], { maxTokens: 200 });
     if (!briefing) return;
     localStorage.setItem('arex_briefing_date', hoy);
     addMsg('arex', `**Briefing — ${today.toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'short' })}**\n\n${briefing}`);
@@ -5327,18 +5351,11 @@ async function analizarGastos() {
       return `${m}: $${total.toLocaleString('es-MX',{maximumFractionDigits:0})} — ${Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,v])=>`${c}:$${v.toLocaleString('es-MX',{maximumFractionDigits:0})}`).join(', ')}`;
     }).join('\n');
     const presupStr = Object.entries(presupuesto).map(([c,v])=>`${c}:$${v}`).join(', ') || 'no definido';
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:500,
-        messages:[
-          {role:'system', content:'Eres AREX, analista financiero personal de Alexiz. Analiza sus gastos y da recomendaciones claras y prácticas en español usando markdown simple.'},
-          {role:'user', content:`Gastos por mes:\n${resumen}\n\nPresupuesto: ${presupStr}\n\nDa: tendencia principal, categoría más alta, y 3 recomendaciones concretas.`}
-        ]})
-    });
+    const reply = await callBrain('rapido', [
+      {role:'system', content:'Eres AREX, analista financiero personal de Alexiz. Analiza sus gastos y da recomendaciones claras y prácticas en español usando markdown simple.'},
+      {role:'user', content:`Gastos por mes:\n${resumen}\n\nPresupuesto: ${presupStr}\n\nDa: tendencia principal, categoría más alta, y 3 recomendaciones concretas.`}
+    ], { maxTokens: 200 });
     hideThinking();
-    if (!res.ok) { addMsg('arex','Error al analizar gastos.'); return; }
-    const data = await res.json();
-    const reply = data?.choices?.[0]?.message?.content;
     if (reply) addMsg('arex', reply);
   } catch(e) { hideThinking(); addMsg('arex','No se pudo analizar: '+e.message); }
   setOrb(null,'En espera de instrucciones');
