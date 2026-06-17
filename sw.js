@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v88';
-const VERSION = 'v88';
+const CACHE   = 'arex-v89';
+const VERSION = 'v89';
 const SHELL = [
   './index.html',
   './style.css',
@@ -30,6 +30,8 @@ const SHELL = [
   './search.js',
   './search.css',
   './orb.js',
+  './reactor3d.js',
+  './reactor3d.css',
   './manifest.json',
   './icon.svg',
   // Lazy-loaded on demand (not in initial shell):
