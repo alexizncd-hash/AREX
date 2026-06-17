@@ -152,7 +152,7 @@ function renderGpResumen() {
   const disponible   = totalPres - totalGastado;
   const diffPct      = totalAnt > 0 ? ((totalGastado - totalAnt) / totalAnt * 100).toFixed(0) : null;
   const diffLabel    = diffPct !== null
-    ? `<span style="color:${Number(diffPct) <= 0 ? '#00ffaa' : '#ff6644'};font-size:8px;margin-left:4px;">${Number(diffPct) > 0 ? '+' : ''}${diffPct}% vs mes ant.</span>`
+    ? `<span style="color:${Number(diffPct) <= 0 ? '#34ffc3' : '#ff6644'};font-size:8px;margin-left:4px;">${Number(diffPct) > 0 ? '+' : ''}${diffPct}% vs mes ant.</span>`
     : totalAnt > 0 ? '' : '';
 
   // Gasto por categoría en el mes
@@ -300,7 +300,7 @@ function renderGpPresupuesto() {
     <div class="neg-form-card">
       <div class="neg-form-title">PRESUPUESTO MENSUAL POR CATEGORÍA</div>
       ${filasHTML}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-top:1px solid rgba(0,212,255,0.1);margin-top:0.2rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-top:1px solid rgba(34,211,238,0.1);margin-top:0.2rem;">
         <span style="font-size:10px;letter-spacing:2px;color:var(--text-muted);">TOTAL PRESUPUESTO</span>
         <span id="gp-pres-total" style="font-size:15px;color:var(--cyan);">${_$MXN(total)}</span>
       </div>
@@ -413,8 +413,8 @@ function gpGuardarPresupuesto() {
   const btn = document.getElementById('gp-p-guardar-btn');
   if (btn) {
     btn.textContent = 'GUARDADO ✓';
-    btn.style.color = '#00ffaa';
-    btn.style.borderColor = '#00ffaa';
+    btn.style.color = '#34ffc3';
+    btn.style.borderColor = '#34ffc3';
     setTimeout(() => {
       btn.textContent = 'GUARDAR';
       btn.style.color = '';

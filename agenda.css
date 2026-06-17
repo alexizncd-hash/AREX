@@ -63,7 +63,7 @@
 .ag-vtab.active {
   border-color: var(--cyan);
   color: var(--cyan);
-  background: rgba(0,212,255,0.07);
+  background: rgba(34,211,238,0.07);
 }
 
 .ag-nav-row {
@@ -98,8 +98,8 @@
 }
 
 .ag-today-btn {
-  background: rgba(0,212,255,0.08);
-  border: 1px solid rgba(0,212,255,0.3);
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.3);
   color: var(--cyan);
   font-family: var(--font);
   font-size: 7px;
@@ -109,7 +109,7 @@
   border-radius: 3px;
   transition: all 0.15s;
 }
-.ag-today-btn:hover { background: rgba(0,212,255,0.15); }
+.ag-today-btn:hover { background: rgba(34,211,238,0.15); }
 
 /* ── Weekly grid ──────────────────────────────────────── */
 .ag-week-grid {
@@ -129,7 +129,7 @@
 
 .ag-day-card {
   background: rgba(0,6,18,0.7);
-  border: 1px solid rgba(0,212,255,0.10);
+  border: 1px solid rgba(34,211,238,0.10);
   border-radius: 8px;
   padding: 8px 6px;
   min-height: 90px;
@@ -138,10 +138,10 @@
   gap: 4px;
   transition: border-color 0.15s;
 }
-.ag-day-card:hover { border-color: rgba(0,212,255,0.25); }
+.ag-day-card:hover { border-color: rgba(34,211,238,0.25); }
 .ag-day-card.ag-today {
-  border-color: rgba(0,212,255,0.45);
-  background: rgba(0,212,255,0.05);
+  border-color: rgba(34,211,238,0.45);
+  background: rgba(34,211,238,0.05);
 }
 
 .ag-day-hdr {
@@ -165,7 +165,7 @@
 }
 .ag-day-num-today {
   color: var(--cyan);
-  background: rgba(0,212,255,0.12);
+  background: rgba(34,211,238,0.12);
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -179,7 +179,7 @@
   margin-left: auto;
   font-size: 7px;
   color: var(--cyan);
-  background: rgba(0,212,255,0.12);
+  background: rgba(34,211,238,0.12);
   border-radius: 8px;
   padding: 0 4px;
   font-family: var(--font);
@@ -195,7 +195,7 @@
 
 .ag-day-empty {
   font-size: 8px;
-  color: rgba(0,212,255,0.18);
+  color: rgba(34,211,238,0.18);
   font-family: var(--font);
 }
 
@@ -215,9 +215,9 @@
   transition: opacity 0.15s;
 }
 .ag-chip:hover { opacity: 0.75; }
-.ag-chip-cyan    { background: rgba(0,212,255,0.12); color: var(--cyan); }
+.ag-chip-cyan    { background: rgba(34,211,238,0.12); color: var(--cyan); }
 .ag-chip-orange  { background: rgba(255,153,0,0.12); color: var(--orange); }
-.ag-chip-green   { background: rgba(0,255,170,0.12); color: var(--green); }
+.ag-chip-green   { background: rgba(52,255,195,0.12); color: var(--green); }
 .ag-chip-ico     { flex-shrink: 0; }
 .ag-chip-txt     { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .ag-chip-time    { flex-shrink: 0; opacity: 0.7; font-size: 6.5px; }
@@ -242,7 +242,7 @@
 
 .ag-month-cell {
   background: rgba(0,6,18,0.5);
-  border: 1px solid rgba(0,212,255,0.06);
+  border: 1px solid rgba(34,211,238,0.06);
   border-radius: 4px;
   padding: 4px;
   min-height: 44px;
@@ -251,8 +251,8 @@
 }
 .ag-month-cell-empty { background: transparent; border-color: transparent; }
 .ag-month-cell.ag-has-ev { cursor: pointer; }
-.ag-month-cell.ag-today  { border-color: rgba(0,212,255,0.40); background: rgba(0,212,255,0.04); }
-.ag-month-cell:hover:not(.ag-month-cell-empty) { border-color: rgba(0,212,255,0.22); }
+.ag-month-cell.ag-today  { border-color: rgba(34,211,238,0.40); background: rgba(34,211,238,0.04); }
+.ag-month-cell:hover:not(.ag-month-cell-empty) { border-color: rgba(34,211,238,0.22); }
 
 .ag-month-day-num {
   font-size: 9px;
@@ -278,7 +278,7 @@
 .ag-month-today-list {
   margin-top: 0.8rem;
   background: rgba(0,6,18,0.7);
-  border: 1px solid rgba(0,212,255,0.15);
+  border: 1px solid rgba(34,211,238,0.15);
   border-radius: 8px;
   padding: 0.7rem;
   display: flex;
@@ -292,7 +292,7 @@
   color: var(--cyan);
   font-family: var(--font);
   opacity: 0.8;
-  border-bottom: 1px solid rgba(0,212,255,0.10);
+  border-bottom: 1px solid rgba(34,211,238,0.10);
   padding-bottom: 5px;
   margin-bottom: 2px;
   text-transform: uppercase;
@@ -308,9 +308,9 @@
   transition: opacity 0.15s;
 }
 .ag-ev-row:hover { opacity: 0.75; }
-.ag-ev-row-cyan   { background: rgba(0,212,255,0.08); }
+.ag-ev-row-cyan   { background: rgba(34,211,238,0.08); }
 .ag-ev-row-orange { background: rgba(255,153,0,0.08); }
-.ag-ev-row-green  { background: rgba(0,255,170,0.08); }
+.ag-ev-row-green  { background: rgba(52,255,195,0.08); }
 
 .ag-ev-ico { font-size: 12px; flex-shrink: 0; }
 .ag-ev-info { display: flex; flex-direction: column; gap: 1px; flex: 1; overflow: hidden; }

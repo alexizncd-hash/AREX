@@ -177,7 +177,7 @@ const AGENT_ACTIVE_MS = 300000; // 5 min — ventana de actividad reciente
 
 const AGENTES = [
   {
-    id: 'hermes', nombre: 'HERMES', color: '#00ffaa',
+    id: 'hermes', nombre: 'HERMES', color: '#34ffc3',
     desc: 'Finanzas · Monitorea deudas y alertas de pago',
     area: 'finanzas'
   },
@@ -192,7 +192,7 @@ const AGENTES = [
     area: 'sistema'
   },
   {
-    id: 'scribe', nombre: 'SCRIBE', color: '#00d4ff',
+    id: 'scribe', nombre: 'SCRIBE', color: '#22d3ee',
     desc: 'Notas · Organiza y resume información',
     area: 'chat'
   },

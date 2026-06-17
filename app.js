@@ -549,7 +549,7 @@ const _PROFILE_DEFAULTS = {
   voiceRate: 0.91,
   location: 'México',
   activeModules: ['finanzas','negocio','gastos','metas','tareas','notas','agenda','proyectos','habitos','control','evidencias'],
-  accent: '#00d4ff',
+  accent: '#22d3ee',
 };
 
 async function loadAndApplyProfile() {
@@ -609,7 +609,7 @@ function _applyProfile() {
   const voiceLbl = document.querySelector('#sb-voice .mt-lbl');
   if (voiceLbl) voiceLbl.textContent = `VOZ DE ${p.assistantName}`;
   // Color de acento personalizado
-  if (p.accent && p.accent !== '#00d4ff') {
+  if (p.accent && p.accent !== '#22d3ee') {
     document.documentElement.style.setProperty('--cyan', p.accent);
   }
   _updateUserUI();
@@ -1655,7 +1655,7 @@ function importarBackup(file) {
       const { data } = JSON.parse(e.target.result);
       if (!data) throw new Error('Formato inválido');
       Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
-      statusEl.style.color = '#00d4ff';
+      statusEl.style.color = '#22d3ee';
       statusEl.textContent = '✓ Datos restaurados. Recargando...';
       setTimeout(() => location.reload(), 1500);
     } catch {
@@ -1674,7 +1674,7 @@ function _renderSyncBadge() {
   if (!window._arexLastSync) { badge.textContent = ''; return; }
   const mins = Math.round((Date.now() - window._arexLastSync) / 60000);
   const ok   = mins < 5;
-  badge.innerHTML = `<span style="color:${ok?'#00ffaa':'#ff9900'}">● FB ${mins === 0 ? 'SYNC' : mins + 'min'}</span>`;
+  badge.innerHTML = `<span style="color:${ok?'#34ffc3':'#ff9900'}">● FB ${mins === 0 ? 'SYNC' : mins + 'min'}</span>`;
 }
 
 function renderDashboard() {
@@ -2361,7 +2361,7 @@ function _updateNotifStatus() {
   if (!el) return;
   const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
   const labels = { granted: '✓ ACTIVADAS', denied: '✗ BLOQUEADAS', default: 'SIN CONFIGURAR', unsupported: 'NO SOPORTADO' };
-  const colors  = { granted: '#00d4ff', denied: '#ff4444', default: '#4a7a96', unsupported: '#4a7a96' };
+  const colors  = { granted: '#22d3ee', denied: '#ff4444', default: '#4a7a96', unsupported: '#4a7a96' };
   el.textContent = labels[perm] || perm;
   el.style.color  = colors[perm]  || '#4a7a96';
 }
@@ -4259,7 +4259,7 @@ function _showUpdateBanner() {
   banner.style.cssText = `
     position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
     background:rgba(0,14,26,0.97);border:1px solid rgba(0,212,255,0.5);
-    color:#00d4ff;font-family:monospace;font-size:11px;letter-spacing:1px;
+    color:#22d3ee;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;
     padding:10px 14px;border-radius:6px;z-index:9999;
     display:flex;align-items:center;gap:10px;
     box-shadow:0 0 20px rgba(0,212,255,0.2);
@@ -4268,7 +4268,7 @@ function _showUpdateBanner() {
   `;
   banner.querySelector('button').style.cssText = `
     background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.5);
-    color:#00d4ff;font-family:monospace;font-size:10px;letter-spacing:2px;
+    color:#22d3ee;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;
     padding:4px 10px;border-radius:3px;cursor:pointer;
   `;
   document.body.appendChild(banner);
@@ -4713,7 +4713,7 @@ function _drawGlobe() {
     ctx.moveTo(px,py+5); ctx.lineTo(px,py+14); ctx.stroke();
     // Core dot
     ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI*2);
-    ctx.fillStyle = '#00d4ff'; ctx.fill();
+    ctx.fillStyle = '#22d3ee'; ctx.fill();
     // Bright center
     ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI*2);
     ctx.fillStyle = '#ffffff'; ctx.fill();
@@ -4879,7 +4879,7 @@ function renderWeatherWidget() {
     const rain  = d.rain?.['1h'] || 0;
     const snow  = d.snow?.['1h'] || 0;
 
-    const tempClr = temp >= 40 ? '#ff3333' : temp >= 35 ? '#ff7700' : temp >= 30 ? '#ffaa00' : temp <= 2 ? '#88ccff' : '#00d4ff';
+    const tempClr = temp >= 40 ? '#ff3333' : temp >= 35 ? '#ff7700' : temp >= 30 ? '#ffaa00' : temp <= 2 ? '#88ccff' : '#22d3ee';
 
     const minsAgo = Math.round((Date.now() - result.ts) / 60000);
     const fresh   = minsAgo === 0 ? 'ahora' : `hace ${minsAgo} min`;
@@ -5582,7 +5582,7 @@ window.renderExchangeWidget = renderExchangeWidget;
     if (lineIdx >= lines.length) { clearInterval(interval); return; }
     if (!lineEl || charIdx === 0) {
       lineEl = document.createElement('div');
-      lineEl.style.cssText = 'font-size:9px;letter-spacing:2px;color:#00d4ff;opacity:0.7;height:14px;overflow:hidden;';
+      lineEl.style.cssText = 'font-size:9px;letter-spacing:2px;color:#22d3ee;opacity:0.7;height:14px;overflow:hidden;';
       linesEl.appendChild(lineEl);
     }
     lineEl.textContent += lines[lineIdx][charIdx] || '';

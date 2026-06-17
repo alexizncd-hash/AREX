@@ -59,7 +59,7 @@
 .ctrl-tab.active {
   border-color: var(--cyan);
   color: var(--cyan);
-  background: rgba(0,212,255,0.06);
+  background: rgba(34,211,238,0.06);
 }
 
 .ctrl-view {
@@ -91,7 +91,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(0,212,255,0.05);
+  border-bottom: 1px solid rgba(34,211,238,0.05);
 }
 
 .ctrl-key {
@@ -121,7 +121,7 @@
   font-size: 10px;
   font-family: 'Courier New', monospace;
   padding: 3px 0;
-  border-bottom: 1px solid rgba(0,212,255,0.05);
+  border-bottom: 1px solid rgba(34,211,238,0.05);
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
@@ -142,12 +142,12 @@
 }
 
 .ctrl-log-mod.chat {
-  background: rgba(0,212,255,0.12);
+  background: rgba(34,211,238,0.12);
   color: var(--cyan);
 }
 
 .ctrl-log-mod.finanzas {
-  background: rgba(0,255,170,0.12);
+  background: rgba(52,255,195,0.12);
   color: var(--green);
 }
 
@@ -204,7 +204,7 @@
 
 .ctrl-agent-card {
   background: linear-gradient(135deg, rgba(0,10,22,0.94) 0%, rgba(0,5,14,0.98) 100%);
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   border-left: 3px solid var(--agent-color, var(--cyan));
   border-radius: 6px;
   padding: 0.8rem;
@@ -259,10 +259,10 @@
 .diag-title-text { white-space: nowrap; }
 .diag-title-line {
   flex: 1; height: 1px;
-  background: linear-gradient(to right, rgba(0,212,255,0.35), transparent);
+  background: linear-gradient(to right, rgba(34,211,238,0.35), transparent);
 }
 .diag-title-line:first-child {
-  background: linear-gradient(to left, rgba(0,212,255,0.35), transparent);
+  background: linear-gradient(to left, rgba(34,211,238,0.35), transparent);
 }
 
 .diag-grid {
@@ -276,7 +276,7 @@
 
 .diag-quad {
   background: rgba(0,6,18,0.92);
-  border: 1px solid rgba(0,212,255,0.15);
+  border: 1px solid rgba(34,211,238,0.15);
   border-radius: 6px;
   padding: 0.7rem;
   position: relative;
@@ -309,7 +309,7 @@
   letter-spacing: 2px;
   color: var(--cyan);
   font-family: var(--font);
-  border-bottom: 1px solid rgba(0,212,255,0.1);
+  border-bottom: 1px solid rgba(34,211,238,0.1);
   padding-bottom: 5px;
   margin-bottom: 7px;
   display: flex;
@@ -352,7 +352,7 @@
 
 .diag-storage-bar {
   height: 2px;
-  background: rgba(0,212,255,0.1);
+  background: rgba(34,211,238,0.1);
   border-radius: 1px;
   overflow: hidden;
   margin: 3px 0 2px;
@@ -373,7 +373,7 @@
   gap: 5px;
   font-family: 'Courier New', monospace;
   padding: 2px 0;
-  border-bottom: 1px solid rgba(0,212,255,0.04);
+  border-bottom: 1px solid rgba(34,211,238,0.04);
 }
 .diag-log-ts {
   color: var(--text-muted);
@@ -388,14 +388,14 @@
   border-radius: 2px;
   flex-shrink: 0;
 }
-.diag-log-mod.chat     { background: rgba(0,212,255,0.12); color: var(--cyan); }
-.diag-log-mod.finanzas { background: rgba(0,255,170,0.12); color: var(--green); }
+.diag-log-mod.chat     { background: rgba(34,211,238,0.12); color: var(--cyan); }
+.diag-log-mod.finanzas { background: rgba(52,255,195,0.12); color: var(--green); }
 .diag-log-mod.negocio  { background: rgba(255,153,0,0.12); color: var(--orange); }
 .diag-log-mod.sistema  { background: rgba(139,92,246,0.12); color: #8B5CF6; }
 .diag-log-mod.alerta   { background: rgba(255,68,68,0.12); color: #ff4444; }
-.diag-log-mod.metas    { background: rgba(0,212,255,0.07); color: var(--cyan-dim); }
+.diag-log-mod.metas    { background: rgba(34,211,238,0.07); color: var(--cyan-dim); }
 .diag-log-mod.gastos   { background: rgba(255,153,0,0.08); color: var(--orange); }
-.diag-log-mod.tareas   { background: rgba(0,255,170,0.07); color: var(--green); }
+.diag-log-mod.tareas   { background: rgba(52,255,195,0.07); color: var(--green); }
 
 .diag-log-txt {
   color: var(--text-muted);
@@ -420,7 +420,7 @@
   flex-direction: column;
   gap: 5px;
   padding: 0.6rem 0;
-  border-bottom: 1px solid rgba(0,212,255,0.07);
+  border-bottom: 1px solid rgba(34,211,238,0.07);
 }
 .datos-section:last-child { border-bottom: none; }
 
@@ -455,7 +455,7 @@
 
 .datos-bar-track {
   height: 2px;
-  background: rgba(0,212,255,0.1);
+  background: rgba(34,211,238,0.1);
   border-radius: 1px;
   overflow: hidden;
   margin: 2px 0 4px;
@@ -469,8 +469,8 @@
 
 .datos-btn {
   display: block;
-  background: rgba(0,212,255,0.07);
-  border: 1px solid rgba(0,212,255,0.25);
+  background: rgba(34,211,238,0.07);
+  border: 1px solid rgba(34,211,238,0.25);
   color: var(--text-muted);
   font-family: var(--font);
   font-size: 8px;
@@ -483,16 +483,16 @@
   width: 100%;
 }
 .datos-btn:hover {
-  background: rgba(0,212,255,0.14);
-  border-color: rgba(0,212,255,0.5);
+  background: rgba(34,211,238,0.14);
+  border-color: rgba(34,211,238,0.5);
   color: var(--cyan);
 }
 .datos-btn.accent {
-  border-color: rgba(0,255,170,0.35);
+  border-color: rgba(52,255,195,0.35);
   color: var(--green);
-  background: rgba(0,255,170,0.05);
+  background: rgba(52,255,195,0.05);
 }
-.datos-btn.accent:hover { background: rgba(0,255,170,0.12); }
+.datos-btn.accent:hover { background: rgba(52,255,195,0.12); }
 
 .datos-warn {
   font-size: 8px;

@@ -223,7 +223,7 @@ function renderNegDashboard() {
       : `<div class="neg-activity">
           ${recientes.map(r => `
             <div class="neg-act-item">
-              <span class="neg-act-dot" style="background:${r.tipo === 'venta' ? '#00ffaa' : '#ff9900'}"></span>
+              <span class="neg-act-dot" style="background:${r.tipo === 'venta' ? '#34ffc3' : '#ff9900'}"></span>
               <span class="neg-act-desc">${$DATE(r.fecha)} · ${r.desc}</span>
               <span class="${r.tipo === 'venta' ? 'neg-profit' : 'neg-loss'}">${r.tipo === 'venta' ? '' : '-'}${$MXN(r.monto)}</span>
             </div>`).join('')}

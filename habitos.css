@@ -52,8 +52,8 @@
 }
 
 .hab-btn-nuevo {
-  background: rgba(0,212,255,0.08);
-  border: 1px solid rgba(0,212,255,0.30);
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.30);
   color: var(--cyan);
   font-family: var(--font);
   font-size: 8px;
@@ -63,12 +63,12 @@
   border-radius: 3px;
   transition: background 0.15s;
 }
-.hab-btn-nuevo:hover { background: rgba(0,212,255,0.15); }
+.hab-btn-nuevo:hover { background: rgba(34,211,238,0.15); }
 
 /* ── Add form ────────────────────────────────────────────── */
 .hab-add-form {
-  background: rgba(0,212,255,0.04);
-  border: 1px solid rgba(0,212,255,0.20);
+  background: rgba(34,211,238,0.04);
+  border: 1px solid rgba(34,211,238,0.20);
   border-radius: 8px;
   padding: 0.8rem 1rem;
   display: flex;
@@ -85,7 +85,7 @@
 
 .hab-input {
   background: rgba(0,6,18,0.7);
-  border: 1px solid rgba(0,212,255,0.18);
+  border: 1px solid rgba(34,211,238,0.18);
   color: var(--text-main);
   font-family: var(--font);
   font-size: 11px;
@@ -94,13 +94,13 @@
   outline: none;
   transition: border-color 0.15s;
 }
-.hab-input:focus { border-color: rgba(0,212,255,0.5); }
+.hab-input:focus { border-color: rgba(34,211,238,0.5); }
 .hab-input-emoji { width: 50px; text-align: center; font-size: 16px; padding: 4px; }
 .hab-input-name  { flex: 1; min-width: 120px; }
 
 .hab-select {
   background: rgba(0,6,18,0.8);
-  border: 1px solid rgba(0,212,255,0.18);
+  border: 1px solid rgba(34,211,238,0.18);
   color: var(--text-main);
   font-family: var(--font);
   font-size: 9px;
@@ -111,11 +111,11 @@
   cursor: pointer;
   transition: border-color 0.15s;
 }
-.hab-select:focus { border-color: rgba(0,212,255,0.5); }
+.hab-select:focus { border-color: rgba(34,211,238,0.5); }
 
 .hab-btn-agregar {
-  background: rgba(0,212,255,0.12);
-  border: 1px solid rgba(0,212,255,0.35);
+  background: rgba(34,211,238,0.12);
+  border: 1px solid rgba(34,211,238,0.35);
   color: var(--cyan);
   font-family: var(--font);
   font-size: 8px;
@@ -125,11 +125,11 @@
   border-radius: 3px;
   transition: background 0.15s;
 }
-.hab-btn-agregar:hover { background: rgba(0,212,255,0.22); }
+.hab-btn-agregar:hover { background: rgba(34,211,238,0.22); }
 
 .hab-btn-cancel {
   background: transparent;
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   color: var(--text-muted);
   font-size: 10px;
   padding: 5px 9px;
@@ -158,8 +158,8 @@
 
 /* ── Habit card ──────────────────────────────────────────── */
 .hab-card {
-  background: rgba(0,212,255,0.04);
-  border: 1px solid rgba(0,212,255,0.15);
+  background: rgba(34,211,238,0.04);
+  border: 1px solid rgba(34,211,238,0.15);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   display: flex;
@@ -167,7 +167,7 @@
   gap: 0.75rem;
   transition: border-color 0.15s, background 0.15s;
 }
-.hab-card:hover { border-color: rgba(0,212,255,0.28); background: rgba(0,212,255,0.06); }
+.hab-card:hover { border-color: rgba(34,211,238,0.28); background: rgba(34,211,238,0.06); }
 
 .hab-emoji {
   font-size: 28px;
@@ -218,7 +218,7 @@
 .hab-cat-salud     { background: rgba(0,255,100,0.12);  color: #00ff7f; border: 1px solid rgba(0,255,100,0.2);  }
 .hab-cat-ejercicio { background: rgba(255,106,0,0.12);  color: #ff6a00; border: 1px solid rgba(255,106,0,0.2);  }
 .hab-cat-mente     { background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
-.hab-cat-trabajo   { background: rgba(0,212,255,0.12);  color: #00d4ff; border: 1px solid rgba(0,212,255,0.2);  }
+.hab-cat-trabajo   { background: rgba(34,211,238,0.12);  color: #22d3ee; border: 1px solid rgba(34,211,238,0.2);  }
 .hab-cat-personal  { background: rgba(100,116,139,0.12);color: #94a3b8; border: 1px solid rgba(100,116,139,0.2);}
 
 /* ── Frecuencia badge ────────────────────────────────────── */
@@ -260,18 +260,18 @@
 }
 
 .hab-dot-done {
-  background: rgba(0,212,255,0.18);
+  background: rgba(34,211,238,0.18);
   color: var(--cyan);
-  border-color: rgba(0,212,255,0.35);
+  border-color: rgba(34,211,238,0.35);
 }
 
 .hab-dot-today {
-  border-color: rgba(0,212,255,0.5);
+  border-color: rgba(34,211,238,0.5);
   color: var(--cyan);
 }
 
 .hab-dot-done.hab-dot-today {
-  background: rgba(0,212,255,0.30);
+  background: rgba(34,211,238,0.30);
   border-color: var(--cyan);
 }
 
@@ -290,7 +290,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid rgba(0,212,255,0.4);
+  border: 2px solid rgba(34,211,238,0.4);
   background: transparent;
   cursor: pointer;
   color: var(--cyan);
@@ -303,12 +303,12 @@
 }
 .hab-toggle:hover {
   border-color: var(--cyan);
-  background: rgba(0,212,255,0.10);
+  background: rgba(34,211,238,0.10);
 }
 .hab-toggle-done {
-  background: rgba(0,212,255,0.20);
+  background: rgba(34,211,238,0.20);
   border-color: var(--cyan);
-  box-shadow: 0 0 8px rgba(0,212,255,0.25);
+  box-shadow: 0 0 8px rgba(34,211,238,0.25);
 }
 
 /* ── Delete button ───────────────────────────────────────── */

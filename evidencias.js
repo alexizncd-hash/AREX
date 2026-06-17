@@ -2,11 +2,11 @@
 const EV_KEY = 'arex_evidencias';
 
 const EV_TIPOS = {
-  investigacion: { ico: '🔍', color: '#00d4ff', label: 'INVESTIGACIÓN' },
-  finanzas:      { ico: '💰', color: '#00ffaa', label: 'FINANZAS' },
+  investigacion: { ico: '🔍', color: '#22d3ee', label: 'INVESTIGACIÓN' },
+  finanzas:      { ico: '💰', color: '#34ffc3', label: 'FINANZAS' },
   alerta:        { ico: '⚠', color: '#ff9900', label: 'ALERTA' },
   meta:          { ico: '🎯', color: '#8B5CF6', label: 'META' },
-  general:       { ico: '📋', color: '#00d4ff', label: 'GENERAL' },
+  general:       { ico: '📋', color: '#22d3ee', label: 'GENERAL' },
 };
 
 function getEvidencias() {

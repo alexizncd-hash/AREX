@@ -25,7 +25,7 @@
   flex-wrap: nowrap;
   overflow-x: auto;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid rgba(0,212,255,0.1);
+  border-bottom: 1px solid rgba(34,211,238,0.1);
   flex-shrink: 0;
   scrollbar-width: none;
 }
@@ -35,7 +35,7 @@
   padding: 5px 12px;
   font-size: 9px;
   letter-spacing: 2px;
-  border: 1px solid rgba(0,212,255,0.15);
+  border: 1px solid rgba(34,211,238,0.15);
   border-radius: 6px;
   color: var(--text-muted);
   cursor: pointer;
@@ -47,10 +47,10 @@
 }
 .neg-tab:hover  { border-color: var(--cyan); color: var(--cyan); }
 .neg-tab.active {
-  border-color: rgba(0,212,255,0.6);
+  border-color: rgba(34,211,238,0.6);
   color: var(--cyan);
-  background: rgba(0,212,255,0.1);
-  box-shadow: 0 0 10px rgba(0,212,255,0.15), inset 0 0 6px rgba(0,212,255,0.04);
+  background: rgba(34,211,238,0.1);
+  box-shadow: 0 0 10px rgba(34,211,238,0.15), inset 0 0 6px rgba(34,211,238,0.04);
 }
 
 /* ── Área de contenido ── */
@@ -72,7 +72,7 @@
   gap: 0.6rem;
 }
 .neg-kpi {
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
   border-radius: 10px;
   padding: 0.9rem 1.1rem;
@@ -82,7 +82,7 @@
   overflow: hidden;
 }
 .neg-kpi:hover {
-  border-color: rgba(0,212,255,0.25);
+  border-color: rgba(34,211,238,0.25);
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(0,0,0,0.4);
 }
@@ -102,7 +102,7 @@
 
 /* ── Formularios ── */
 .neg-form-card {
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   background: rgba(0,14,26,0.5);
   border-radius: 4px;
   padding: 0.9rem;
@@ -121,7 +121,7 @@
 .neg-input {
   flex: 1;
   background: rgba(0,15,28,0.8);
-  border: 1px solid rgba(0,212,255,0.2);
+  border: 1px solid rgba(34,211,238,0.2);
   border-radius: 3px;
   color: var(--text-main);
   font-family: var(--font);
@@ -131,12 +131,12 @@
   transition: border-color 0.2s;
   min-width: 0;
 }
-.neg-input:focus { border-color: rgba(0,212,255,0.5); }
+.neg-input:focus { border-color: rgba(34,211,238,0.5); }
 
 .neg-select {
   flex: 1;
   background: rgba(0,15,28,0.8);
-  border: 1px solid rgba(0,212,255,0.2);
+  border: 1px solid rgba(34,211,238,0.2);
   border-radius: 3px;
   color: var(--text-main);
   font-family: var(--font);
@@ -150,7 +150,7 @@
 .neg-btn-primary {
   width: 100%;
   padding: 9px;
-  background: rgba(0,212,255,0.07);
+  background: rgba(34,211,238,0.07);
   border: 1px solid var(--cyan);
   color: var(--cyan);
   font-family: var(--font);
@@ -160,14 +160,14 @@
   cursor: pointer;
   transition: all 0.18s;
 }
-.neg-btn-primary:hover { background: rgba(0,212,255,0.15); }
+.neg-btn-primary:hover { background: rgba(34,211,238,0.15); }
 .neg-btn-primary:active { transform: translateY(1px); }
 
 /* ── Stock hero ── */
 .neg-stock-hero {
   text-align: center;
   padding: 1.4rem 1rem;
-  border: 1px solid rgba(0,212,255,0.2);
+  border: 1px solid rgba(34,211,238,0.2);
   border-radius: 4px;
   background: rgba(0,14,26,0.6);
 }
@@ -180,7 +180,7 @@
 /* ── Lista de items ── */
 .neg-list { display: flex; flex-direction: column; gap: 0.4rem; }
 .neg-list-item {
-  border: 1px solid rgba(0,212,255,0.1);
+  border: 1px solid rgba(34,211,238,0.1);
   background: rgba(0,14,26,0.4);
   border-radius: 3px;
   padding: 8px 10px;
@@ -189,7 +189,7 @@
   gap: 5px;
   transition: border-color 0.15s;
 }
-.neg-list-item:hover { border-color: rgba(0,212,255,0.24); }
+.neg-list-item:hover { border-color: rgba(34,211,238,0.24); }
 .neg-list-item.neg-inactive { opacity: 0.5; }
 
 .neg-li-top {
@@ -211,7 +211,7 @@
 .neg-badge {
   font-size: 8px;
   letter-spacing: 1.5px;
-  border: 1px solid rgba(0,212,255,0.3);
+  border: 1px solid rgba(34,211,238,0.3);
   color: var(--cyan);
   padding: 1px 6px;
   border-radius: 2px;
@@ -259,13 +259,13 @@
   gap: 8px;
   font-size: 11px;
   padding: 5px 0;
-  border-bottom: 1px solid rgba(0,212,255,0.05);
+  border-bottom: 1px solid rgba(34,211,238,0.05);
 }
 .neg-act-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .neg-act-desc { flex: 1; color: var(--text-muted); }
 
 /* ── Colores ── */
-.neg-profit { color: #00ffaa; }
+.neg-profit { color: #34ffc3; }
 .neg-loss   { color: #ff6644; }
 
 /* ── Section title ── */
@@ -274,7 +274,7 @@
   letter-spacing: 3px;
   color: var(--text-muted);
   padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0,212,255,0.08);
+  border-bottom: 1px solid rgba(34,211,238,0.08);
   margin-top: 0.1rem;
 }
 
@@ -291,7 +291,7 @@
 /* ── Preview de total ── */
 .neg-total-preview {
   font-size: 15px;
-  color: #00ffaa;
+  color: #34ffc3;
   text-align: center;
   letter-spacing: 1px;
   min-height: 22px;
@@ -308,7 +308,7 @@
 .neg-cfg-fila .neg-input { width: 100%; }
 
 .neg-calc-card {
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   background: rgba(0,14,26,0.5);
   border-radius: 4px;
   padding: 0.9rem;
@@ -318,13 +318,13 @@
   justify-content: space-between;
   font-size: 11px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(0,212,255,0.06);
+  border-bottom: 1px solid rgba(34,211,238,0.06);
   color: var(--text-muted);
 }
 .neg-calc-row:last-child { border-bottom: none; }
 .neg-calc-row span:last-child { color: var(--text-main); }
 .neg-calc-divider {
-  border-top: 1px solid rgba(0,212,255,0.15);
+  border-top: 1px solid rgba(34,211,238,0.15);
   margin-top: 4px;
   padding-top: 10px;
   font-size: 13px;
@@ -333,7 +333,7 @@
 /* ── Responsive ── */
 /* ── Gráfica de ventas ── */
 .neg-chart {
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   background: rgba(0,14,26,0.5);
   border-radius: 4px;
   padding: 0.8rem 0.9rem 0.6rem;
@@ -355,7 +355,7 @@
   letter-spacing: 1.5px;
   padding: 3px 7px;
   background: transparent;
-  border: 1px solid rgba(0,212,255,0.18);
+  border: 1px solid rgba(34,211,238,0.18);
   border-radius: 2px;
   color: var(--text-muted);
   cursor: pointer;
@@ -366,7 +366,7 @@
 .neg-chart-tab.active {
   border-color: var(--cyan);
   color: var(--cyan);
-  background: rgba(0,212,255,0.08);
+  background: rgba(34,211,238,0.08);
 }
 .neg-chart-bars {
   display: flex;
@@ -390,12 +390,12 @@
 }
 .neg-chart-bar {
   width: 100%;
-  background: rgba(0,212,255,0.25);
+  background: rgba(34,211,238,0.25);
   border-radius: 2px 2px 0 0;
   min-height: 2px;
   transition: height 0.3s ease;
 }
-.neg-chart-bar.has-val { background: rgba(0,212,255,0.55); }
+.neg-chart-bar.has-val { background: rgba(34,211,238,0.55); }
 .neg-chart-lbl {
   font-size: 7px;
   color: var(--text-muted);
@@ -406,7 +406,7 @@
 /* ── Meta mensual ── */
 .neg-meta-bar {
   background: rgba(0,14,26,0.5);
-  border: 1px solid rgba(0,212,255,0.12);
+  border: 1px solid rgba(34,211,238,0.12);
   border-radius: 4px;
   padding: 0.6rem 0.9rem;
 }
@@ -420,7 +420,7 @@
 }
 .neg-meta-track {
   height: 5px;
-  background: rgba(0,212,255,0.1);
+  background: rgba(34,211,238,0.1);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -430,7 +430,7 @@
   background: var(--cyan);
   transition: width 0.4s ease;
 }
-.neg-meta-fill.complete { background: #00ffaa; }
+.neg-meta-fill.complete { background: #34ffc3; }
 
 /* ── KPI trend badge ── */
 .neg-kpi-trend {
@@ -442,7 +442,7 @@
 
 /* ── Export box ── */
 .neg-export-box {
-  border: 1px solid rgba(0,212,255,0.15);
+  border: 1px solid rgba(34,211,238,0.15);
   border-radius: 4px;
   background: rgba(0,14,26,0.6);
   padding: 0.7rem 0.9rem;

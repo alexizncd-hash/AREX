@@ -44,7 +44,7 @@
   letter-spacing:2px; padding:8px; cursor:pointer;
   border-radius:2px; transition:all 0.2s;
 }
-.proj-add-btn:hover { background:rgba(0,212,255,0.08); }
+.proj-add-btn:hover { background:rgba(34,211,238,0.08); }
 
 .proj-section-label {
   font-size:8px; letter-spacing:3px; color:var(--text-muted);
@@ -55,7 +55,7 @@
 
 .proj-card {
   background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
-  border: 1px solid rgba(0,212,255,0.1);
+  border: 1px solid rgba(34,211,238,0.1);
   border-left: 3px solid var(--proj-color, var(--cyan));
   padding: 0.9rem 1rem;
   border-radius: 8px;
@@ -64,8 +64,8 @@
   position: relative;
 }
 .proj-card:hover {
-  border-color: rgba(0,212,255,0.28);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 14px rgba(0,212,255,0.05);
+  border-color: rgba(34,211,238,0.28);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 14px rgba(34,211,238,0.05);
   transform: translateX(3px);
 }
 .proj-card.proj-done { opacity:0.75; }
@@ -104,8 +104,8 @@
 }
 .proj-stat {
   font-size:9px; letter-spacing:1px; color:var(--text-muted);
-  background:rgba(0,212,255,0.05);
-  border:1px solid rgba(0,212,255,0.12);
+  background:rgba(34,211,238,0.05);
+  border:1px solid rgba(34,211,238,0.12);
   padding:2px 8px; border-radius:10px;
 }
 
@@ -118,11 +118,11 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.proj-estado-badge.activo      { border-color: rgba(0,212,255,0.3); color: var(--cyan); }
+.proj-estado-badge.activo      { border-color: rgba(34,211,238,0.3); color: var(--cyan); }
 .proj-estado-badge.planeando   { border-color: rgba(255,153,0,0.3); color: var(--orange); }
-.proj-estado-badge.en-progreso { border-color: rgba(0,255,170,0.3); color: var(--green); }
+.proj-estado-badge.en-progreso { border-color: rgba(52,255,195,0.3); color: var(--green); }
 .proj-estado-badge.revision    { border-color: rgba(139,92,246,0.3); color: #8B5CF6; }
-.proj-estado-badge.completado  { border-color: rgba(0,255,170,0.25); color: var(--green); opacity: 0.75; }
+.proj-estado-badge.completado  { border-color: rgba(52,255,195,0.25); color: var(--green); opacity: 0.75; }
 
 .proj-progress-row {
   display: flex;
@@ -133,7 +133,7 @@
 .proj-progress-track {
   flex: 1;
   height: 3px;
-  background: rgba(0,212,255,0.08);
+  background: rgba(34,211,238,0.08);
   border-radius: 2px;
   overflow: hidden;
 }

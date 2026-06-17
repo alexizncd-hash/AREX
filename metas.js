@@ -6,8 +6,8 @@
 const METAS_KEY = 'arex_metas';
 
 const METAS_CATS = {
-  personal:  { l: 'Personal',   c: '#00d4ff' },
-  negocio:   { l: 'Negocio',    c: '#00ffaa' },
+  personal:  { l: 'Personal',   c: '#22d3ee' },
+  negocio:   { l: 'Negocio',    c: '#34ffc3' },
   salud:     { l: 'Salud',      c: '#ff9900' },
   finanzas:  { l: 'Finanzas',   c: '#9b59b6' },
   educacion: { l: 'Educación',  c: '#e74c3c' }

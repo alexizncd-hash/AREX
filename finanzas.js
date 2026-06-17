@@ -341,7 +341,7 @@ const FinanzasModule = {
     const altEl    = document.getElementById('resultado-alt-estrategia');
     if (altEl) {
       altEl.innerHTML = altDiff !== 0
-        ? `${altLabel}: <strong>${simAlt.meses} meses</strong> <span style="color:${altDiff > 0 ? '#ff6644' : '#00ffaa'};font-size:10px;">(${altDiff > 0 ? '+' : ''}${altDiff} meses)</span>`
+        ? `${altLabel}: <strong>${simAlt.meses} meses</strong> <span style="color:${altDiff > 0 ? '#ff6644' : '#34ffc3'};font-size:10px;">(${altDiff > 0 ? '+' : ''}${altDiff} meses)</span>`
         : `${altLabel}: misma duración`;
     }
 
@@ -432,7 +432,7 @@ const FinanzasModule = {
     ctx.fillRect(0, 0, W, H);
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(0,212,255,0.07)';
+    ctx.strokeStyle = 'rgba(34,211,238,0.07)';
     ctx.lineWidth   = 1;
     for (let i = 0; i <= 4; i++) {
       const y = PAD.top + (gH / 4) * i;
@@ -456,14 +456,14 @@ const FinanzasModule = {
     ctx.lineTo(PAD.left, PAD.top + gH);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + gH);
-    grad.addColorStop(0, 'rgba(0,212,255,0.25)');
-    grad.addColorStop(1, 'rgba(0,212,255,0.02)');
+    grad.addColorStop(0, 'rgba(34,211,238,0.25)');
+    grad.addColorStop(1, 'rgba(34,211,238,0.02)');
     ctx.fillStyle = grad;
     ctx.fill();
 
     // Line
     ctx.beginPath();
-    ctx.strokeStyle = '#00d4ff';
+    ctx.strokeStyle = '#22d3ee';
     ctx.lineWidth   = 2;
     proyeccion.forEach((p, i) => {
       const x = PAD.left + (i / (proyeccion.length - 1)) * gW;
@@ -474,7 +474,7 @@ const FinanzasModule = {
 
     // Zero line (if debt reaches 0)
     const zeroY = PAD.top + gH;
-    ctx.strokeStyle = 'rgba(0,255,170,0.3)';
+    ctx.strokeStyle = 'rgba(52,255,195,0.3)';
     ctx.lineWidth   = 1;
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(PAD.left, zeroY); ctx.lineTo(PAD.left + gW, zeroY); ctx.stroke();
@@ -496,9 +496,9 @@ const FinanzasModule = {
     const ly = PAD.top + (1 - (proyeccion[proyeccion.length - 1]?.total || 0) / maxDeuda) * gH;
     ctx.beginPath();
     ctx.arc(lx, ly, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#00ffaa';
+    ctx.fillStyle = '#34ffc3';
     ctx.fill();
-    ctx.fillStyle = '#00ffaa';
+    ctx.fillStyle = '#34ffc3';
     ctx.font      = '9px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(formatearMoneda(proyeccion[proyeccion.length - 1]?.total || 0), lx, ly - 8);
