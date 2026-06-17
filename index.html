@@ -724,6 +724,14 @@
 
 <!-- ── Módulo: Finanzas ── -->
 <div id="module-inicio" class="module-panel">
+  <div id="reactor3d-wrap">
+    <canvas id="reactor3d-canvas"></canvas>
+    <div class="r3d-hud-corner tl"></div>
+    <div class="r3d-hud-corner tr"></div>
+    <div class="r3d-hud-corner bl"></div>
+    <div class="r3d-hud-corner br"></div>
+    <div class="r3d-status-label" id="r3d-state-label">NEURAL CORE · ACTIVO</div>
+  </div>
   <div id="dash-content" class="dash-content"></div>
 </div>
 
@@ -1186,5 +1194,7 @@
   </div>
 </div>
 
+<link rel="stylesheet" href="reactor3d.css">
+<script type="module" src="reactor3d.js"></script>
 </body>
 </html>
