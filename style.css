@@ -17,10 +17,10 @@
   --border:       rgba(0,212,255,0.16);
   --green:        #00ffaa;
   --orange:       #ff9900;
-  --font:         'Courier New', 'Lucida Console', monospace;
-  --font-display: 'Trebuchet MS', 'Arial Narrow', Arial, sans-serif;
-  --font-body:    system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono:    'Courier New', 'Lucida Console', monospace;
+  --font:         'Rajdhani', sans-serif;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Rajdhani', sans-serif;
+  --font-mono:    'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
   /* aliases */
   --text:         #e8f4ff;
   --glass:        rgba(0,6,18,0.7);
