@@ -4170,7 +4170,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') cerrarBusqueda();
 });
 document.getElementById('busqueda-overlay')?.addEventListener('click', e => { if (e.target.id === 'busqueda-overlay') cerrarBusqueda(); });
-document.getElementById('busqueda-input')?.addEventListener('input', e => renderBusquedaGlobal(e.target.value));
+{ let _bgt; document.getElementById('busqueda-input')?.addEventListener('input', e => { clearTimeout(_bgt); _bgt = setTimeout(() => renderBusquedaGlobal(e.target.value), 220); }); }
 
 // Sidebar: abrir / cerrar
 document.getElementById('btn-sidebar').addEventListener('click', openSidebar);
@@ -4179,7 +4179,7 @@ document.getElementById('sidebar-overlay').addEventListener('click', closeSideba
 
 // Notas
 document.getElementById('notas-add-btn').addEventListener('click', addNota);
-document.getElementById('notas-search').addEventListener('input', renderNotas);
+{ let _nst; document.getElementById('notas-search').addEventListener('input', () => { clearTimeout(_nst); _nst = setTimeout(renderNotas, 250); }); }
 
 // Calendario de tareas
 document.getElementById('cal-prev').addEventListener('click', () => {
@@ -4972,11 +4972,11 @@ window.getTareas       = getTareas;
 window._arexHistory    = () => history;
 window.loadSession     = loadSession;
 
-// Actualiza countdowns de recordatorios cada 30 segundos
+// Actualiza countdowns de recordatorios cada 30 segundos (short-circuit si no hay elementos)
 setInterval(() => {
-  document.querySelectorAll('.rec-cd[data-de]').forEach(el => {
-    el.textContent = fmtCountdown(parseInt(el.dataset.de));
-  });
+  const els = document.querySelectorAll('.rec-cd[data-de]');
+  if (!els.length) return;
+  els.forEach(el => { el.textContent = fmtCountdown(parseInt(el.dataset.de)); });
 }, 30000);
 
 // Punto de entrada — siempre registrar el handler del setup

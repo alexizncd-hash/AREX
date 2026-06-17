@@ -7956,3 +7956,18 @@ body::after {
 .isys-item b.ok   { color: #34ffc3; }
 .isys-item b.warn { color: #ffb84d; }
 .isys-item b.off  { color: #ff4444; }
+
+/* ═══════════════════════════════════════════════════════
+   v92 perf — GPU compositing hints + render optimization
+═══════════════════════════════════════════════════════ */
+#reactor3d-canvas { will-change: transform; }
+#module-inicio    { will-change: scroll-position; }
+
+/* Scanlines: isolate to own composite layer to avoid repaints */
+body::after { will-change: auto; }
+
+/* Centro cards: promote glow to own layer only on hover to save idle memory */
+.inicio-card:hover .ic-glow { will-change: opacity; }
+
+/* Dock on mobile: contain layout for faster scrolling */
+#dock { contain: layout style; }

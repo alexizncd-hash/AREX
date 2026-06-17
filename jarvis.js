@@ -73,10 +73,12 @@ const AREXNav = {
     if (modulo === 'agenda'    && typeof renderAgendaModule      === 'function') renderAgendaModule();
     if (modulo === 'habitos'    && typeof renderHabitosModule    === 'function') renderHabitosModule();
     if (modulo === 'evidencias' && typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
-    // Update urgency badge counts
-    if (typeof window._updateUrgencyBadges === 'function') window._updateUrgencyBadges();
+    // Update urgency badge counts (debounced — rapid module switches batch into one call)
+    clearTimeout(AREXNav._badgeTimer);
+    AREXNav._badgeTimer = setTimeout(() => { if (typeof window._updateUrgencyBadges === 'function') window._updateUrgencyBadges(); }, 300);
     // Fire proactive greeting hook (registered by app.js)
-    setTimeout(() => window._arexModuleGreeting?.(modulo), 650);
+    clearTimeout(AREXNav._greetTimer);
+    AREXNav._greetTimer = setTimeout(() => window._arexModuleGreeting?.(modulo), 700);
   }
 };
 
