@@ -362,7 +362,8 @@ function _userDoc(...segs) { return doc(db, 'users', window._arexUid, ...segs); 
 function _userCol(...segs) { return collection(db, 'users', window._arexUid, ...segs); }
 
 async function initFirebase() {
-  if (fbInitialized || !AREX_CONFIG.firebase?.apiKey) return;
+  const fbConfig = window.AREX_FIREBASE_CONFIG || AREX_CONFIG?.firebase;
+  if (fbInitialized || !fbConfig?.apiKey) return;
   try {
     ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
@@ -371,7 +372,7 @@ async function initFirebase() {
     ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
        getRedirectResult, onAuthStateChanged, signOut }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
-    const fbApp = initializeApp(AREX_CONFIG.firebase);
+    const fbApp = initializeApp(fbConfig);
     db = getFirestore(fbApp);
     window._arexDb = db;
     fbInitialized = true;
