@@ -8333,3 +8333,80 @@ main#module-chat.module-panel.active {
   border-color: rgba(34,211,238,.48) !important;
   border-top-color: rgba(34,211,238,.65) !important;
 }
+
+/* ═══════════════════════════════════════════════════════
+   v97 — Glass blue: Tareas, Notas, --glass global,
+         center-tabs mobile fix
+═══════════════════════════════════════════════════════ */
+
+/* Update root glass variable — propagates to hab-form, cal-day-tasks, etc. */
+:root {
+  --glass:  rgba(14,42,66,.62);
+  --border: rgba(34,211,238,.20);
+}
+
+/* ── TAREAS: tarea-item cards ── */
+.tarea-item {
+  background: linear-gradient(155deg, rgba(14,42,66,.58), rgba(10,30,52,.46)) !important;
+  border: 1px solid rgba(34,211,238,.18) !important;
+  border-top-color: rgba(34,211,238,.32) !important;
+  border-left-width: 3px !important;
+  border-left-color: transparent !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.10) !important;
+}
+.tarea-item:hover {
+  border-color: rgba(34,211,238,.32) !important;
+  border-top-color: rgba(34,211,238,.52) !important;
+}
+/* Urgency left-border colors */
+.tarea-item.urg-vencida,
+.tarea-item.urg-hoy {
+  border-left-color: #ef4444 !important;
+  background: linear-gradient(155deg, rgba(32,12,12,.64), rgba(22,8,8,.52)) !important;
+}
+.tarea-item.urg-vencida.prio-alta-item,
+.tarea-item.urg-hoy.prio-alta-item {
+  background: linear-gradient(155deg, rgba(44,10,10,.72), rgba(32,6,6,.60)) !important;
+  box-shadow: inset 3px 0 0 #ef4444, 0 0 12px rgba(239,68,68,.15) !important;
+}
+.tarea-item.urg-pronto { border-left-color: #f97316 !important; }
+.tarea-item.urg-semana { border-left-color: #f59e0b !important; }
+
+/* Tareas calendar: subtle glass on today/selected states */
+.cal-cell:not(.empty):hover {
+  background: rgba(14,42,66,.52) !important;
+  border-color: rgba(34,211,238,.26) !important;
+}
+.cal-cell.hoy {
+  background: rgba(34,211,238,.14) !important;
+  border-color: rgba(34,211,238,.44) !important;
+}
+.cal-cell.sel {
+  background: rgba(34,211,238,.20) !important;
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 10px rgba(34,211,238,.18) !important;
+}
+
+/* ── NOTAS: nota-card ── */
+.nota-card {
+  background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48)) !important;
+  border-color: rgba(34,211,238,.20) !important;
+  border-top-color: rgba(34,211,238,.36) !important;
+  box-shadow: 0 3px 16px rgba(0,0,0,.44), inset 0 1px 0 rgba(34,211,238,.10) !important;
+}
+.nota-card:hover { border-color: rgba(34,211,238,.34) !important; }
+.nota-card.pinned {
+  border-color: rgba(34,211,238,.55) !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.10) !important;
+}
+/* Color variants — glass tint matching note color */
+.nota-card.nc-amber   { background: rgba(30,20,0,.74) !important; border-color: rgba(255,176,0,.30) !important; }
+.nota-card.nc-emerald { background: rgba(0,30,14,.74) !important; border-color: rgba(0,200,100,.28) !important; }
+.nota-card.nc-rose    { background: rgba(30,0,9,.74) !important;  border-color: rgba(220,50,60,.28) !important; }
+
+/* ── center-tabs: sit above mobile dock ── */
+@media (max-width: 900px) {
+  #center-tabs {
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px) !important;
+  }
+}
