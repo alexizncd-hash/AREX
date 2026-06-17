@@ -127,7 +127,8 @@ function _renderCentroTabs(centro, modulos) {
 
 function abrirTab(modulo) {
   tabActiva = modulo;
-  if (typeof cambiarModulo === 'function') cambiarModulo(modulo);
+  AREXNav.cambiarModulo(modulo);
+  document.dispatchEvent(new CustomEvent('arex-module-change', { detail: { module: modulo } }));
   // Update tab highlight
   document.querySelectorAll('[id^="ctab-"]').forEach(b => {
     const m = b.id.replace('ctab-','');
@@ -142,13 +143,10 @@ function cerrarCentro() {
   if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
 }
 
-// Override cambiarModulo to handle center routing
-const _origCambiarModulo = typeof cambiarModulo !== 'undefined' ? cambiarModulo : null;
+// Exponer cambiarModulo globalmente apuntando directamente a AREXNav
 window.cambiarModulo = function(mod) {
-  // If switching to inicio, close center tabs
   if (mod === 'inicio') cerrarCentro();
-  if (_origCambiarModulo) _origCambiarModulo(mod);
-  // Fire module change event for reactor3d
+  AREXNav.cambiarModulo(mod);
   document.dispatchEvent(new CustomEvent('arex-module-change', { detail: { module: mod } }));
 };
 

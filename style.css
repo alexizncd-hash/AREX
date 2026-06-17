@@ -7514,3 +7514,174 @@ body:has(#vision-panel) .qc-fab { display: none; }
 .module-panel {
   background: rgba(0,4,14,.92) !important;
 }
+
+/* ═══════════════════════════════════════════════════
+   v91 — DISEÑO FUTURISTA REAL: clases verificadas
+═══════════════════════════════════════════════════ */
+
+/* ── Dashboard panels (dhud-panel) ──────────────── */
+.dhud-panel {
+  background: linear-gradient(155deg, rgba(10,35,60,.75) 0%, rgba(5,18,38,.7) 100%) !important;
+  border: 1px solid rgba(34,211,238,.2) !important;
+  border-top: 1px solid rgba(34,211,238,.45) !important;
+  border-radius: 6px !important;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,.6),
+    inset 0 1px 0 rgba(34,211,238,.12),
+    inset 0 0 30px rgba(34,211,238,.03) !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+/* Esquina HUD superior derecha */
+.dhud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 22px; height: 22px;
+  border-top: 2px solid rgba(34,211,238,.7);
+  border-right: 2px solid rgba(34,211,238,.7);
+  pointer-events: none;
+}
+
+/* ── Panel header ────────────────────────────────── */
+.dhud-panel-hdr {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  background: rgba(34,211,238,.06) !important;
+  border-bottom: 1px solid rgba(34,211,238,.15) !important;
+}
+.dhud-panel-title {
+  font-family: var(--font, 'Rajdhani', sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 3px !important;
+  color: #22d3ee !important;
+  text-shadow: 0 0 12px rgba(34,211,238,.5) !important;
+}
+.dhud-panel-ico {
+  color: #22d3ee !important;
+  font-size: 12px !important;
+  opacity: .7 !important;
+}
+.dhud-panel-link {
+  margin-left: auto !important;
+  font-family: var(--font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important;
+  letter-spacing: 2px !important;
+  color: rgba(34,211,238,.5) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: color .2s !important;
+}
+.dhud-panel-link:hover { color: #22d3ee !important; }
+
+/* ── KPI rows ────────────────────────────────────── */
+.dhud-kpi-row { padding: 8px 12px !important; border-bottom: 1px solid rgba(34,211,238,.06) !important; }
+.dhud-kpi-hdr { display: flex !important; justify-content: space-between !important; margin-bottom: 4px !important; }
+.dhud-kpi-lbl { font-size: 9px !important; letter-spacing: 2px !important; color: rgba(34,211,238,.55) !important; font-family: var(--font-mono) !important; }
+.dhud-kpi-num { font-size: 13px !important; font-weight: 700 !important; font-family: var(--font, 'Rajdhani') !important; }
+.dhud-kpi-track { height: 2px !important; background: rgba(34,211,238,.1) !important; border-radius: 1px !important; }
+.dhud-kpi-fill  { height: 100% !important; border-radius: 1px !important; box-shadow: 0 0 6px currentColor !important; transition: width .5s !important; }
+
+/* ── Tarea rows ──────────────────────────────────── */
+.dhud-tarea-row {
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  padding: 6px 12px !important;
+  border-bottom: 1px solid rgba(34,211,238,.05) !important;
+  font-family: var(--font, 'Rajdhani') !important;
+  font-size: 13px !important;
+}
+.dhud-tarea-row.dhud-urg { border-left: 2px solid #ffb84d !important; }
+.dhud-check {
+  width: 14px !important; height: 14px !important;
+  border: 1px solid rgba(34,211,238,.4) !important;
+  border-radius: 2px !important; background: transparent !important;
+  cursor: pointer !important; flex-shrink: 0 !important;
+}
+.dhud-tarea-txt { color: rgba(200,230,255,.85) !important; font-size: 12px !important; flex: 1 !important; }
+
+/* ── Goal rows ───────────────────────────────────── */
+.dhud-goal-row { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 12px !important; border-bottom: 1px solid rgba(34,211,238,.05) !important; }
+.dhud-goal-txt { font-family: var(--font) !important; font-size: 12px !important; color: rgba(200,230,255,.85) !important; }
+.dhud-goal-pct { font-family: var(--font-mono) !important; font-size: 11px !important; font-weight: 700 !important; }
+
+/* ── Log rows ────────────────────────────────────── */
+.dhud-log-row { display: flex !important; gap: 8px !important; padding: 5px 12px !important; font-family: var(--font-mono) !important; font-size: 10px !important; border-bottom: 1px solid rgba(34,211,238,.04) !important; }
+.dhud-log-ts  { color: rgba(34,211,238,.4) !important; flex-shrink: 0 !important; }
+.dhud-log-mod { color: #22d3ee !important; font-weight: 700 !important; flex-shrink: 0 !important; }
+.dhud-log-txt { color: rgba(200,230,255,.6) !important; }
+
+/* ── Habit rows ──────────────────────────────────── */
+.dhud-habit-row { display: flex !important; align-items: center !important; gap: 8px !important; padding: 6px 12px !important; font-family: var(--font) !important; font-size: 13px !important; }
+.dhud-habit-row.done .dhud-habit-txt { color: rgba(34,211,238,.4) !important; text-decoration: line-through !important; }
+.dhud-habit-toggle { width: 18px !important; height: 18px !important; border: 1px solid rgba(34,211,238,.5) !important; border-radius: 50% !important; background: transparent !important; cursor: pointer !important; color: #34ffc3 !important; font-size: 10px !important; flex-shrink: 0 !important; }
+
+/* ── Topbar del dashboard ────────────────────────── */
+.dash-topbar {
+  background: linear-gradient(90deg, rgba(0,12,28,.8), rgba(0,20,45,.6)) !important;
+  border: 1px solid rgba(34,211,238,.15) !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 0 20px rgba(34,211,238,.03) !important;
+}
+
+/* ── Agentes del dock ────────────────────────────── */
+.dhud-agev-chip {
+  font-family: var(--font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 1.5px !important;
+}
+
+/* ── Tabs de centros ─────────────────────────────── */
+#center-tabs button {
+  font-family: var(--font, 'Rajdhani') !important;
+  font-weight: 600 !important;
+  font-size: 10px !important;
+  letter-spacing: 2.5px !important;
+  transition: all .2s !important;
+}
+
+/* ── Global font enforce ─────────────────────────── */
+:root {
+  --font: 'Rajdhani', 'Share Tech Mono', sans-serif !important;
+  --font-mono: 'Share Tech Mono', 'Courier New', monospace !important;
+  --font-display: 'Rajdhani', sans-serif !important;
+  --font-body: 'Rajdhani', sans-serif !important;
+}
+* { font-family: var(--font) !important; }
+code, pre, .font-mono, [class*="mono"], [class*="code"],
+.dhud-log-ts, .dhud-log-mod, .dhud-log-txt,
+.dhud-kpi-lbl, .dhud-goal-pct, .dhud-panel-link,
+#center-tabs, .dock-label, .ss-name, .ss-val, .ss-label {
+  font-family: var(--font-mono) !important;
+}
+
+/* ── Módulos: colores de acento por centro ──────── */
+#module-finanzas, #module-gastos, #module-negocio, #module-reparto {
+  --mod-glow: rgba(52,255,195,.15);
+}
+#module-metas, #module-tareas, #module-agenda, #module-habitos {
+  --mod-glow: rgba(34,211,238,.12);
+}
+#module-notas, #module-evidencias, #module-proyectos {
+  --mod-glow: rgba(169,139,255,.12);
+}
+.module-panel.active {
+  box-shadow: inset 0 0 60px var(--mod-glow, rgba(34,211,238,.06)) !important;
+}
+
+/* ── Scanlines globales (body overlay) ───────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,.06) 3px, rgba(0,0,0,.06) 4px
+  );
+  pointer-events: none;
+  z-index: 9400;
+}
