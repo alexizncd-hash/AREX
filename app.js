@@ -1681,355 +1681,99 @@ function renderDashboard() {
   const el = document.getElementById('dash-content');
   if (!el) return;
 
-  const fin        = getFinanzasData();
-  const tareas     = getTareas();
-  const pendientes = sortPending(tareas.filter(t => !t.done));
-  const urgentes   = pendientes.filter(t => { const u = urgenciaTarea(t); return u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy'; });
-  const mostrar    = pendientes.slice(0, 7);
-
-  const deuda      = calcularDeudaTotal();
-  const margen     = calcularMargen();
-  const ingreso    = fin.config.ingresoMensual;
-  const gastosMes  = ingreso - margen;
-  const pagos      = obtenerProximosPagos(30);
-
-  const hoy       = new Date();
-  const diasMes   = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
-  const pctMes    = Math.round((hoy.getDate() / diasMes) * 100);
-  const diasRest  = diasMes - hoy.getDate();
-  const semana    = hoy.toLocaleDateString('es-MX', { weekday:'long' }).toUpperCase();
-  const diaNum    = String(hoy.getDate()).padStart(2, '0');
-  const mesStr    = hoy.toLocaleDateString('es-MX', { month:'long' }).toUpperCase();
-  const anio      = hoy.getFullYear();
-
-  const metas     = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).slice(0,4) : [];
-  const bitacora  = (typeof _getBitacora === 'function') ? _getBitacora().slice(0,6) : [];
-
-  const hoyStr     = hoy.toISOString().slice(0, 10);
-  const habitos    = _safeJSON(localStorage.getItem('arex_habitos'), []);
-  const habsPend   = habitos.filter(h => !h.completados?.[hoyStr]);
-  const habsHechos = habitos.filter(h =>  h.completados?.[hoyStr]);
-  const agendaHoy  = typeof _agGetEvents === 'function'
-    ? (_agGetEvents()[hoyStr] || [])
-    : [];
-
-  const groqOk  = !!(window.AREX_CONFIG?.groqKey);
-  const fbOk    = !!(window._arexDb);
-  const gemOk   = !!(window.AREX_CONFIG?.geminiKey);
-
-  // Month SVG ring
-  const R = 18, C = +(R * 2 * Math.PI).toFixed(1);
-  const OFF = +(C * (1 - pctMes / 100)).toFixed(1);
-  const monthRing = `<svg class="dhud-month-svg" viewBox="0 0 48 48" width="48" height="48">
-    <circle cx="24" cy="24" r="${R}" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="3"/>
-    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--cyan)" stroke-width="3"
-      stroke-dasharray="${C}" stroke-dashoffset="${OFF}" stroke-linecap="round"
-      transform="rotate(-90 24 24)" style="transition:stroke-dashoffset 1.2s ease"/>
-    <text x="24" y="28" text-anchor="middle" fill="var(--cyan)"
-      font-size="9" font-family="Courier New,monospace" font-weight="700">${pctMes}%</text>
-  </svg>`;
-
-  const MODS = [
-    { id:'chat',      lbl:'IA',       ico:'◈', col:'var(--cyan)'  },
-    { id:'finanzas',  lbl:'FIN',      ico:'◉', col:'#00ffaa'      },
-    { id:'tareas',    lbl:'TAREAS',   ico:'◫', col:'var(--cyan)'  },
-    { id:'notas',     lbl:'NOTAS',    ico:'◷', col:'#8B5CF6'      },
-    { id:'negocio',   lbl:'NEGOCIO',  ico:'◈', col:'#ff9900'      },
-    { id:'gastos',    lbl:'GASTOS',   ico:'◉', col:'#ff6644'      },
-    { id:'metas',     lbl:'METAS',    ico:'◎', col:'var(--cyan)'  },
-    { id:'proyectos', lbl:'PROYECT',  ico:'◫', col:'#8B5CF6'      },
-    { id:'control',   lbl:'CTRL',     ico:'◷', col:'var(--cyan)'  },
-  ];
-
-  const mkTarea = t => {
-    const u   = urgenciaTarea(t);
-    const urg = u?.cls === 'urg-vencida' || u?.cls === 'urg-hoy';
-    return `<div class="dhud-tarea-row${urg ? ' dhud-urg' : ''}">
-      <button class="dhud-check" data-id="${t.id}"></button>
-      <span class="dhud-tarea-txt">${t.text.replace(/</g,'&lt;')}</span>
-      <span class="dhud-prio-dot dhud-prio-${t.prioridad||'media'}"></span>
-      ${u ? `<span class="dhud-flag dhud-flag-${u.cls}">${u.icon}</span>` : ''}
-    </div>`;
-  };
-
-  const mkKpi = (lbl, val, max, color, display) => {
-    const pct = Math.min(100, Math.round(Math.abs(val) / Math.max(1, Math.abs(max)) * 100));
-    return `<div class="dhud-kpi-row">
-      <div class="dhud-kpi-hdr">
-        <span class="dhud-kpi-lbl">${lbl}</span>
-        <span class="dhud-kpi-num" style="color:${color}">${display}</span>
-      </div>
-      <div class="dhud-kpi-track">
-        <div class="dhud-kpi-fill" style="width:${pct}%;background:${color}"></div>
-      </div>
-    </div>`;
-  };
-
-  const mkGoal = m => {
-    const pct = m.porcentaje ?? 0;
-    const r2 = 12, c2 = +(r2 * 2 * Math.PI).toFixed(1);
-    const o2 = +(c2 * (1 - pct / 100)).toFixed(1);
-    const gc  = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--cyan)' : 'var(--orange)';
-    return `<div class="dhud-goal-row">
-      <svg class="dhud-goal-ring" viewBox="0 0 32 32" width="32" height="32">
-        <circle cx="16" cy="16" r="${r2}" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="2.5"/>
-        <circle cx="16" cy="16" r="${r2}" fill="none" stroke="${gc}" stroke-width="2.5"
-          stroke-dasharray="${c2}" stroke-dashoffset="${o2}" stroke-linecap="round" transform="rotate(-90 16 16)"/>
-      </svg>
-      <div class="dhud-goal-info">
-        <span class="dhud-goal-txt">${(m.titulo||m.nombre||'Meta').replace(/</g,'&lt;').slice(0,28)}</span>
-        <span class="dhud-goal-pct" style="color:${gc}">${pct}%</span>
-      </div>
-    </div>`;
-  };
-
-  const mkLog = e => {
-    const t = new Date(e.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="dhud-log-row">
-      <span class="dhud-log-ts">${t}</span>
-      <span class="dhud-log-mod dhud-lmod-${e.modulo}">${e.modulo.slice(0,4).toUpperCase()}</span>
-      <span class="dhud-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,32)}</span>
-    </div>`;
-  };
-
-  const mkHabit = h => {
-    const done = !!h.completados?.[hoyStr];
-    return `<div class="dhud-habit-row${done?' done':''}">
-      <button class="dhud-habit-toggle" onclick="if(typeof toggleHabitoHoy==='function'){toggleHabitoHoy('${h.id}');renderDashboard();}" title="${done?'Desmarcar':'Completar'}">${done?'✓':''}</button>
-      <span class="dhud-habit-name">${((h.emoji||'•')+' '+(h.nombre||'')).replace(/</g,'&lt;').slice(0,28)}</span>
-      ${done?'<span class="dhud-habit-done-tag">✓</span>':''}
-    </div>`;
-  };
-
-  const mkAgEv = ev => {
-    const typeLabel = ev.type==='meta'?'META':ev.type==='recordatorio'?'REC':'EVT';
-    return `<div class="dhud-agev-row">
-      <span class="dhud-agev-hora">${ev.hora||'·'}</span>
-      <span class="dhud-agev-title">${(ev.title||'').replace(/</g,'&lt;').slice(0,26)}</span>
-      <span class="dhud-agev-type dhud-agev-${ev.color||'blue'}">${typeLabel}</span>
-    </div>`;
-  };
+  // Gather live stats
+  const tareas       = getTareas();
+  const pendTotal    = tareas.filter(t => !t.done).length;
+  const urgentes     = tareas.filter(t => { if (t.done) return false; const u = urgenciaTarea(t); return u?.cls==='urg-vencida'||u?.cls==='urg-hoy'; }).length;
+  const margen       = calcularMargen();
+  const margenStr    = typeof formatearMoneda === 'function' ? formatearMoneda(margen) : `$${margen}`;
+  const metasActivas = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).length : 0;
+  const hoyStr       = new Date().toISOString().slice(0, 10);
+  const habitos      = _safeJSON(localStorage.getItem('arex_habitos'), []);
+  const habsHoy      = habitos.filter(h => h.completados?.[hoyStr]).length;
+  const notas        = _safeJSON(localStorage.getItem('arex_notas'), []).length;
+  const proyectos    = _safeJSON(localStorage.getItem('arex_proyectos'), []).filter(p => p.estado !== 'completado').length;
+  const groqOk       = !!(window.AREX_CONFIG?.groqKey);
+  const fbOk         = !!(window._arexDb);
+  const gemOk        = !!(window.AREX_CONFIG?.geminiKey);
+  const firstName    = (window._arexUser?.displayName || 'Alexiz').split(' ')[0];
 
   el.innerHTML = `
-    <!-- ── COMMAND HEADER ─────────────────────────────── -->
-    <div class="dhud-header">
-      <div class="dhud-date-block">
-        <div class="dhud-weekday">${semana}</div>
-        <div class="dhud-date-num">${diaNum} · ${mesStr} · ${anio}</div>
-        <div class="dhud-live-clock" id="dhud-clock">--:--:--</div>
+    <!-- Hero (transparent — reactor visible behind) -->
+    <div class="inicio-hero">
+      <div class="inicio-state-lbl" id="inicio-state-lbl">EN ESPERA</div>
+      <div class="inicio-welcome">
+        Sistemas en línea. Soy <strong>AREX</strong>.<br>
+        Listo para asistirte, ${firstName}.
       </div>
-      <div class="dhud-sys-status">
-        <div class="dhud-sys-row"><span class="dhud-sys-dot ${groqOk?'ok':'off'}"></span><span class="dhud-sys-name">GROQ AI</span><span class="dhud-sys-val ${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</span></div>
-        <div class="dhud-sys-row"><span class="dhud-sys-dot ${fbOk?'ok':'warn'}"></span><span class="dhud-sys-name">FIREBASE</span><span class="dhud-sys-val ${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</span></div>
-        <div class="dhud-sys-row"><span class="dhud-sys-dot ${gemOk?'ok':'muted'}"></span><span class="dhud-sys-name">GEMINI</span><span class="dhud-sys-val ${gemOk?'ok':'muted'}">${gemOk?'ACTIVO':'STANDBY'}</span></div>
-      </div>
-      <div class="dhud-month-block">
-        ${monthRing}
-        <div class="dhud-month-info">
-          <div class="dhud-month-lbl">MES · ${pctMes}%</div>
-          <div class="dhud-month-days">${diasRest} días rest.</div>
-          <div class="dhud-month-days">${diaNum} de ${diasMes}</div>
-        </div>
-      </div>
+      <div class="inicio-tap-hint">▸ TOCA EL REACTOR ◂</div>
     </div>
 
-    <!-- ── MODULE LAUNCHERS ──────────────────────────── -->
-    <div class="dhud-launchers">
-      ${MODS.map(m=>`
-        <button class="dhud-launcher" onclick="AREXNav.cambiarModulo('${m.id}')" style="--lc:${m.col}">
-          <div class="dhud-lnch-ring"></div>
-          <span class="dhud-lnch-ico">${m.ico}</span>
-          <span class="dhud-lnch-lbl">${m.lbl}</span>
-        </button>`).join('')}
-    </div>
+    <!-- Centro cards -->
+    <div class="inicio-centros">
+      <div class="inicio-sec">
+        <span class="inicio-sec-lbl">Centros operativos</span>
+        <span class="inicio-sec-ln"></span>
+        <span class="inicio-sec-n">05 ACTIVOS</span>
+      </div>
 
-    <!-- ── DIVIDER ────────────────────────────────────── -->
-    <div class="dhud-divider">
-      <span class="dhud-div-line"></span>
-      <span class="dhud-div-label">◈ INTEL OPERACIONAL</span>
-      <span class="dhud-div-line dhud-div-line-r"></span>
-    </div>
-
-    <!-- ── MAIN 2-COL ─────────────────────────────────── -->
-    <div class="dhud-main-grid">
-
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◉</span>
-          <span class="dhud-panel-title">TACTICAL</span>
-          <span class="dhud-badge${urgentes.length?' dhud-badge-alert':''}">${pendientes.length}</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('tareas')">VER TODAS →</button>
+      <div class="inicio-grid">
+        <div class="inicio-card cap" onclick="abrirCentro('capital');cambiarModulo('finanzas')">
+          <span class="ic-glow"></span><span class="ic-scan"></span>
+          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
+          <span class="ic-ico">💰</span>
+          <div class="ic-name">Capital</div>
+          <div class="ic-subs">Finanzas · Gastos · Negocio · Reparto</div>
+          <div class="ic-stat">${margenStr} margen</div>
         </div>
-        <div class="dhud-tarea-list" id="dhud-tarea-list">
-          ${mostrar.length ? mostrar.map(mkTarea).join('') : '<div class="dhud-empty">◎ Sin misiones pendientes</div>'}
+
+        <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
+          <span class="ic-glow"></span><span class="ic-scan"></span>
+          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
+          <span class="ic-ico">🎯</span>
+          <div class="ic-name">Impulso</div>
+          <div class="ic-subs">Metas · Tareas · Agenda · Hábitos</div>
+          <div class="ic-stat">${pendTotal} tarea${pendTotal!==1?'s':''}${urgentes?` · ⚠ ${urgentes}`:''}</div>
         </div>
-        <div class="dhud-quick-add">
-          <input class="dhud-qa-input" id="dhud-qa-txt" placeholder="+ Nueva misión..." autocomplete="off"/>
-          <select class="dhud-qa-prio" id="dhud-qa-prio">
-            <option value="baja">BAJA</option>
-            <option value="media" selected>MED</option>
-            <option value="alta">ALTA</option>
-          </select>
-          <button class="dhud-qa-btn" id="dhud-qa-add">ADD</button>
+
+        <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
+          <span class="ic-glow"></span><span class="ic-scan"></span>
+          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
+          <span class="ic-ico">🧠</span>
+          <div class="ic-name">Mente</div>
+          <div class="ic-subs">Notas · Evidencias · Proyectos</div>
+          <div class="ic-stat">${notas} nota${notas!==1?'s':''} · ${proyectos} proy.</div>
+        </div>
+
+        <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
+          <span class="ic-glow"></span><span class="ic-scan"></span>
+          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
+          <span class="ic-ico">⚙️</span>
+          <div class="ic-name">Control</div>
+          <div class="ic-subs">Telemetría · Agentes · Bitácora</div>
+          <div class="ic-stat">${groqOk?'IA ✓':'IA ✗'} · ${fbOk?'DB ✓':'DB ✗'} · ${gemOk?'VIS ✓':'VIS —'}</div>
+        </div>
+
+        <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
+          <span class="ic-glow"></span><span class="ic-scan"></span>
+          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
+          <span class="ic-ico ic-ico-lg">💬</span>
+          <div>
+            <div class="ic-name">Hablar con AREX</div>
+            <div class="ic-subs">Chat · voz · comandos · visión</div>
+          </div>
         </div>
       </div>
 
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◈</span>
-          <span class="dhud-panel-title">INTEL FINANCIERO</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('finanzas')">VER →</button>
-        </div>
-        <div class="dhud-kpi-list">
-          ${mkKpi('INGRESO MENSUAL', ingreso,  ingreso, '#00ffaa', formatearMoneda(ingreso))}
-          ${mkKpi('DEUDA TOTAL',     deuda,    ingreso, '#ff4455', formatearMoneda(deuda))}
-          ${mkKpi('GASTOS',          gastosMes, ingreso, '#ff9900', formatearMoneda(gastosMes))}
-          ${mkKpi('MARGEN LIBRE',    Math.abs(margen), ingreso, margen>=0?'#00ffaa':'#ff4455', formatearMoneda(margen))}
-        </div>
-        ${pagos.length?`
-        <div class="dhud-pagos-hdr">◷ PRÓXIMOS PAGOS</div>
-        <div class="dhud-pagos-list">${pagos.slice(0,3).map(p=>`
-          <div class="dhud-pago-row dhud-pago-${p.urgencia}">
-            <span class="dhud-pago-nom">${p.tarjeta}</span>
-            <span class="dhud-pago-dias">${p.diasRestantes===0?'⚠ HOY':p.diasRestantes+'d'}</span>
-            <span class="dhud-pago-amt">${formatearMoneda(p.pagoMinimo)}</span>
-          </div>`).join('')}
-        </div>`:''}
-      </div>
-    </div>
-
-    <!-- ── BOTTOM 2-COL ───────────────────────────────── -->
-    <div class="dhud-bottom-grid">
-
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◎</span>
-          <span class="dhud-panel-title">MISIONES ACTIVAS</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('metas')">VER →</button>
-        </div>
-        ${metas.length ? metas.map(mkGoal).join('') : '<div class="dhud-empty">◎ Sin metas — crea en METAS</div>'}
-      </div>
-
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◷</span>
-          <span class="dhud-panel-title">INTEL LOG</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('control')">CTRL →</button>
-        </div>
-        ${bitacora.length ? bitacora.map(mkLog).join('') : '<div class="dhud-empty">Sin actividad registrada</div>'}
+      <!-- System status -->
+      <div class="inicio-sys-bar">
+        <span class="isys-item"><i class="isys-dot ${groqOk?'ok':'off'}"></i>GROQ <b class="${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</b></span>
+        <span class="isys-item"><i class="isys-dot ${fbOk?'ok':'warn'}"></i>FIREBASE <b class="${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</b></span>
+        <span class="isys-item"><i class="isys-dot ok"></i>AREX <b class="ok">ACTIVO</b></span>
       </div>
     </div>
-
-    <!-- ── HÁBITOS HOY + AGENDA HOY ─────────────────── -->
-    <div class="dhud-day-grid">
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◎</span>
-          <span class="dhud-panel-title">HÁBITOS HOY</span>
-          <span class="dhud-badge${habsPend.length?' dhud-badge-alert':''}">${habitos.length ? habsHechos.length+'/'+habitos.length : '0'}</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('habitos')">VER →</button>
-        </div>
-        ${habitos.length
-          ? [...habsPend,...habsHechos].slice(0,6).map(mkHabit).join('')
-          : '<div class="dhud-empty">◎ Sin hábitos — crea en HÁBITOS</div>'}
-      </div>
-
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">◷</span>
-          <span class="dhud-panel-title">AGENDA HOY</span>
-          <span class="dhud-badge">${agendaHoy.length}</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('agenda')">VER →</button>
-        </div>
-        ${agendaHoy.length
-          ? agendaHoy.map(mkAgEv).join('')
-          : '<div class="dhud-empty">◷ Sin eventos para hoy</div>'}
-      </div>
-    </div>
-
-    <!-- ── RECORDATORIOS ──────────────────────────────── -->
-    <div class="dhud-panel">
-      <div class="dhud-panel-hdr">
-        <span class="dhud-panel-ico">⏰</span>
-        <span class="dhud-panel-title">TRANSMISIONES</span>
-        <button class="dhud-panel-link" onclick="document.getElementById('txt')?.focus()">+ NUEVO →</button>
-      </div>
-      <div id="dash-rec-body" class="dhud-rec-body">${_buildRecHtml()}</div>
-    </div>
-
-    <!-- ── WEATHER ────────────────────────────────────── -->
-    <div id="dash-weather" class="dhud-panel"></div>
-
-    <!-- ── NOTAS FIJADAS ──────────────────────────────── -->
-    <div id="dash-notas-widget" style="display:none">
-      <div class="dhud-panel">
-        <div class="dhud-panel-hdr">
-          <span class="dhud-panel-ico">📌</span>
-          <span class="dhud-panel-title">NOTAS FIJADAS</span>
-          <button class="dhud-panel-link" onclick="AREXNav.cambiarModulo('notas')">VER →</button>
-        </div>
-        <div class="dash-notas-body"></div>
-      </div>
-    </div>
-
-    <!-- ── EVIDENCIAS ─────────────────────────────────── -->
-    <div id="ev-section"></div>
     <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
   `;
-
-  // Task checkboxes
-  el.querySelectorAll('.dhud-check').forEach(btn =>
-    btn.addEventListener('click', () => { toggleTarea(btn.dataset.id); renderDashboard(); })
-  );
-  el.querySelectorAll('.rec-dismiss').forEach(b =>
-    b.addEventListener('click', () => dismissReminder(b.dataset.id))
-  );
-
-  // Quick-add task
-  const qaAdd   = document.getElementById('dhud-qa-add');
-  const qaInput = document.getElementById('dhud-qa-txt');
-  const qaPrio  = document.getElementById('dhud-qa-prio');
-  if (qaAdd && qaInput) {
-    const doAdd = () => {
-      const txt = qaInput.value.trim();
-      if (!txt) { qaInput.classList.add('dhud-qa-shake'); setTimeout(()=>qaInput.classList.remove('dhud-qa-shake'),400); qaInput.focus(); return; }
-      addTarea(txt, '', qaPrio?.value || 'media');
-      qaInput.value = '';
-      renderDashboard();
-    };
-    qaAdd.addEventListener('click', doAdd);
-    qaInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
-  }
-
-  // Live clock — ticks every second while inicio is active
-  clearInterval(window._dhudClockTimer);
-  const tickClock = () => {
-    const c = document.getElementById('dhud-clock');
-    if (c && document.getElementById('module-inicio')?.classList.contains('active')) {
-      c.textContent = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-    } else {
-      clearInterval(window._dhudClockTimer);
-    }
-  };
-  tickClock();
-  window._dhudClockTimer = setInterval(tickClock, 1000);
-
-  renderWeatherWidget();
-  renderNotasWidget();
-
-  // Evidencias
-  const evSection = document.getElementById('ev-section');
-  if (evSection) {
-    evSection.innerHTML = `<div class="dhud-panel">
-      <div class="dhud-panel-hdr">
-        <span class="dhud-panel-ico">◈</span>
-        <span class="dhud-panel-title">EVIDENCIAS</span>
-        <span class="proj-count" id="ev-count">0</span>
-      </div>
-      <div class="ev-board" id="ev-board"></div>
-    </div>`;
-    if (typeof renderEvidenciasWidget === 'function') renderEvidenciasWidget();
-  }
 }
 
 function renderSessionsList() {
