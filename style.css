@@ -7971,3 +7971,159 @@ body::after { will-change: auto; }
 
 /* Dock on mobile: contain layout for faster scrolling */
 #dock { contain: layout style; }
+
+/* ═══════════════════════════════════════════════════════
+   v94 FIX — Corrige conflictos de CSS acumulados
+   Siempre va ÚLTIMO para ganar la cascada
+═══════════════════════════════════════════════════════ */
+
+/* ── INICIO: reactor como fondo ABSOLUTO, dash-content scrollable ── */
+#module-inicio {
+  position: relative !important;
+  overflow: hidden !important;       /* el panel en sí no scrollea */
+  display: block !important;         /* no flex — usa el layout normal de módulos */
+  background: transparent !important;
+  will-change: auto !important;
+}
+
+/* Reactor: absoluto dentro del panel INICIO — NO fixed (no debe tapar otros módulos) */
+#reactor3d-wrap {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  will-change: auto !important;
+}
+
+#reactor3d-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  will-change: transform !important;
+}
+
+/* dash-content: sobre el reactor, scrollable independientemente */
+#module-inicio #dash-content {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+/* Ocultar scrollbar pero mantener scroll funcional */
+#module-inicio #dash-content::-webkit-scrollbar { display: none; }
+#module-inicio #dash-content { scrollbar-width: none; }
+
+/* ── .module-panel: reset de reglas rotas ── */
+.module-panel {
+  display: none !important;        /* oculto por defecto */
+}
+.module-panel.active {
+  display: block !important;       /* visible cuando activo */
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 10 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: rgba(0,4,14,.94) !important;
+}
+
+/* Módulo inicio no tiene fondo oscuro (reactor lo da) */
+#module-inicio.module-panel.active,
+#module-inicio.active {
+  background: transparent !important;
+}
+
+/* ── Tamaño del Hero ── */
+.inicio-hero {
+  min-height: 48vh !important;
+  min-height: 48dvh !important;
+  pointer-events: none !important;
+}
+
+/* ── Cards: espacio inferior para no quedar tapadas por dock ── */
+.inicio-centros { padding-bottom: 80px !important; }
+
+/* ── Dock: siempre encima en móvil ── */
+@media (max-width: 768px) {
+  #dock { z-index: 300 !important; }
+  #center-tabs { z-index: 290 !important; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   v94 FINAL — Corrige TODOS los conflictos acumulados
+   Este bloque es el último y gana la cascada completa
+═══════════════════════════════════════════════════════ */
+
+/* 1. Revert el error de v94: module-panel.active NO debe ser absolute */
+.module-panel.active {
+  position: relative !important;
+  inset: auto !important;
+}
+
+/* 2. INICIO: flex column, transparent, overflow hidden (dash-content scrollea dentro) */
+#module-inicio.module-panel.active,
+#module-inicio.active {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  background: transparent !important;
+  width: 100% !important;
+  max-width: 960px !important;
+  align-self: center !important;
+  will-change: auto !important;
+}
+
+/* 3. Reactor: ABSOLUTO dentro de inicio — NO fixed (no debe tapar otros módulos) */
+#reactor3d-wrap {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  will-change: auto !important;
+}
+
+/* 4. dash-content: capa scrollable sobre el reactor */
+#module-inicio #dash-content {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+  scrollbar-width: none !important;
+}
+#module-inicio #dash-content::-webkit-scrollbar { display: none; }
+
+/* 5. Resto de módulos: mantienen su flex normal (mismo que finanzas.css) */
+#module-finanzas.module-panel.active,
+#module-gastos.module-panel.active,
+#module-metas.module-panel.active,
+#module-tareas.module-panel.active,
+#module-notas.module-panel.active,
+#module-negocio.module-panel.active,
+#module-proyectos.module-panel.active,
+#module-evidencias.module-panel.active,
+#module-control.module-panel.active,
+#module-agenda.module-panel.active,
+#module-habitos.module-panel.active,
+#module-reparto.module-panel.active {
+  position: relative !important;
+  inset: auto !important;
+}
+
+/* 6. Chat (main) permanece como flex */
+main#module-chat.module-panel.active {
+  display: flex !important;
+  position: relative !important;
+  inset: auto !important;
+}
