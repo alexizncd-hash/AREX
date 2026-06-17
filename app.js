@@ -386,14 +386,15 @@ async function initFirebase() {
     const auth = getAuth(fbApp);
     window._arexAuth = auth;
 
-    // Bandera: saber cuándo getRedirectResult ya resolvió
-    // Evita mostrar login antes de que Firebase procese el retorno de Google
-    let _redirectDone = false;
-    const _redirectPromise = getRedirectResult(auth).then(result => {
+    // Procesar redirect pendiente (por si venía de una sesión anterior con redirect)
+    getRedirectResult(auth).then(result => {
       if (result?.user) console.log('AREX: redirect result ok —', result.user.email);
     }).catch(e => {
-      console.error('AREX getRedirectResult:', e.code, e.message);
-    }).finally(() => { _redirectDone = true; });
+      if (e.code !== 'auth/no-current-user')
+        console.warn('AREX getRedirectResult:', e.code, e.message);
+    });
+
+    let _firstAuthCheck = true;
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -402,27 +403,28 @@ async function initFirebase() {
         localStorage.setItem('arex_offline_uid', user.uid);
         localStorage.setItem('arex_offline_name', user.displayName || '');
         _hideLoginOverlay();
-        await _initUserSession();
+        try {
+          await _initUserSession();
+        } catch(e) {
+          console.error('AREX _initUserSession:', e);
+          // Usuario autenticado pero sesión falló — no volver a login
+        }
       } else {
-        // Esperar a que el redirect y la restauración de sesión terminen
-        // antes de decidir mostrar el login (evita el bucle falso positivo)
-        if (!_redirectDone) await _redirectPromise;
-        if (window._arexUid) return; // ya autenticado por redirect
-
+        // Primera vez: Firebase puede tardar hasta ~1s en restaurar sesión desde IndexedDB.
+        // El boot screen cubre este período; no mostrar login todavía.
+        if (_firstAuthCheck) {
+          _firstAuthCheck = false;
+          await new Promise(r => setTimeout(r, 1000));
+          if (window._arexUid) return; // sesión restaurada durante la espera
+        }
         const cachedUid = localStorage.getItem('arex_offline_uid');
         if (cachedUid && !navigator.onLine) {
-          // Offline fallback
           window._arexUid  = cachedUid;
           window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
           _hideLoginOverlay();
-          await _initUserSession();
-        } else if (cachedUid && navigator.onLine) {
-          // Sesión previa detectada — dar 2s para que Firebase restaure desde IndexedDB
-          await new Promise(r => setTimeout(r, 2000));
-          if (window._arexUid) return; // sesión restaurada
-          localStorage.removeItem('arex_offline_uid');
-          _showLoginOverlay();
+          try { await _initUserSession(); } catch(e) { console.error('AREX offline session:', e); }
         } else {
+          if (cachedUid) localStorage.removeItem('arex_offline_uid');
           _showLoginOverlay();
         }
       }
@@ -465,11 +467,7 @@ function _setupLoginButton() {
 
 async function _doGoogleSignIn() {
   const auth = window._arexAuth;
-  if (!auth) {
-    console.error('AREX: _doGoogleSignIn antes de que auth esté listo');
-    _loginError('Sistema no listo. Recarga la página.');
-    return;
-  }
+  if (!auth) { _loginError('Sistema no listo. Recarga la página.'); return; }
   const btn = document.getElementById('btn-google-signin');
   const err = document.getElementById('login-error');
   if (btn) btn.disabled = true;
@@ -477,30 +475,26 @@ async function _doGoogleSignIn() {
 
   const provider = new GoogleAuthProvider();
 
-  // Móvil / webview / Meta Browser → redirect directo (popup no funciona)
-  if (_isMobile()) {
-    try {
-      await signInWithRedirect(auth, provider);
-      // La página navega a Google; el resultado se procesa en getRedirectResult al volver
-    } catch(e) {
-      console.error('AREX signInWithRedirect (mobile):', e.code, e.message);
-      _loginError(`${e.code || 'Error'}: ${e.message}`);
-      if (btn) btn.disabled = false;
-    }
-    return;
-  }
-
-  // Desktop → popup; ante CUALQUIER error, fallback a redirect
+  // Popup funciona en iOS Safari, Android Chrome y desktop si el usuario lo inicia.
+  // Solo usar redirect si el navegador bloqueó el popup explícitamente.
   try {
     await signInWithPopup(auth, provider);
-    // OK: onAuthStateChanged maneja el resto
+    // onAuthStateChanged maneja el resto
   } catch(e) {
     console.error('AREX signInWithPopup:', e.code, e.message);
-    try {
-      await signInWithRedirect(auth, provider);
-    } catch(e2) {
-      console.error('AREX signInWithRedirect (fallback):', e2.code, e2.message);
-      _loginError(`${e2.code || e.code || 'Error'}: ${e2.message || e.message}`);
+    if (e.code === 'auth/popup-blocked') {
+      // Navegador bloqueó el popup → usar redirect como último recurso
+      try {
+        await signInWithRedirect(auth, provider);
+      } catch(e2) {
+        _loginError(`${e2.code || 'Error'}: ${e2.message}`);
+        if (btn) btn.disabled = false;
+      }
+    } else if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+      // El usuario cerró el popup — no es un error
+      if (btn) btn.disabled = false;
+    } else {
+      _loginError(`${e.code || 'Error'}: ${e.message}`);
       if (btn) btn.disabled = false;
     }
   }
