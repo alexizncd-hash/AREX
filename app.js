@@ -72,6 +72,7 @@ function loadAtalos() {
 }
 function saveAtalos(arr) {
   localStorage.setItem('arex_atajos', JSON.stringify(arr));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_atajos');
 }
 function renderAtajosList() {
   const list = document.getElementById('atajos-list');
@@ -109,6 +110,7 @@ function loadPersonalContext() {
 }
 function savePersonalContext(ctx) {
   localStorage.setItem('arex_context', JSON.stringify(ctx));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_context');
 }
 function buildContextSection() {
   const ctx = loadPersonalContext();
@@ -132,6 +134,7 @@ function loadMemoria() {
 }
 function saveMemoria(entries) {
   localStorage.setItem('arex_memoria', JSON.stringify(entries));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_memoria');
 }
 function buildMemoriaSection() {
   const entries  = loadMemoria();
@@ -145,7 +148,10 @@ function buildMemoriaSection() {
 
 /* ── Memoria de hechos ──────────────────────────────── */
 function getHechos() { return _safeJSON(localStorage.getItem('arex_hechos'), []); }
-function saveHechos(arr) { localStorage.setItem('arex_hechos', JSON.stringify(arr)); }
+function saveHechos(arr) {
+  localStorage.setItem('arex_hechos', JSON.stringify(arr));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_hechos');
+}
 
 function addHecho(texto, fuente = 'auto') {
   if (!texto?.trim()) return;
@@ -380,33 +386,42 @@ async function initFirebase() {
     const auth = getAuth(fbApp);
     window._arexAuth = auth;
 
-    // Procesar redirect pendiente antes de onAuthStateChanged
-    // (cuando el usuario vuelve de Google después de signInWithRedirect)
-    getRedirectResult(auth).then(result => {
-      if (result?.user) {
-        console.log('AREX: redirect result ok —', result.user.email);
-        // onAuthStateChanged manejará el resto con el usuario ya activo
-      }
+    // Bandera: saber cuándo getRedirectResult ya resolvió
+    // Evita mostrar login antes de que Firebase procese el retorno de Google
+    let _redirectDone = false;
+    const _redirectPromise = getRedirectResult(auth).then(result => {
+      if (result?.user) console.log('AREX: redirect result ok —', result.user.email);
     }).catch(e => {
       console.error('AREX getRedirectResult:', e.code, e.message);
-      _loginError(`${e.code || 'error'}: ${e.message}`);
-    });
+    }).finally(() => { _redirectDone = true; });
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         window._arexUid  = user.uid;
         window._arexUser = { uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL };
         localStorage.setItem('arex_offline_uid', user.uid);
+        localStorage.setItem('arex_offline_name', user.displayName || '');
         _hideLoginOverlay();
         await _initUserSession();
       } else {
-        // Offline fallback: si hay uid cacheado y no hay red, arrancar sin sync
+        // Esperar a que el redirect y la restauración de sesión terminen
+        // antes de decidir mostrar el login (evita el bucle falso positivo)
+        if (!_redirectDone) await _redirectPromise;
+        if (window._arexUid) return; // ya autenticado por redirect
+
         const cachedUid = localStorage.getItem('arex_offline_uid');
         if (cachedUid && !navigator.onLine) {
+          // Offline fallback
           window._arexUid  = cachedUid;
           window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
           _hideLoginOverlay();
           await _initUserSession();
+        } else if (cachedUid && navigator.onLine) {
+          // Sesión previa detectada — dar 2s para que Firebase restaure desde IndexedDB
+          await new Promise(r => setTimeout(r, 2000));
+          if (window._arexUid) return; // sesión restaurada
+          localStorage.removeItem('arex_offline_uid');
+          _showLoginOverlay();
         } else {
           _showLoginOverlay();
         }
@@ -3615,7 +3630,10 @@ async function requestNotifPerm() {
 }
 /* ── Recordatorios persistentes ─────────────────────── */
 function getRecordatorios() { return _safeJSON(localStorage.getItem('arex_recordatorios'), []); }
-function saveRecordatorios(arr) { localStorage.setItem('arex_recordatorios', JSON.stringify(arr)); }
+function saveRecordatorios(arr) {
+  localStorage.setItem('arex_recordatorios', JSON.stringify(arr));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_recordatorios');
+}
 
 function fmtCountdown(disparaEn) {
   const ms = disparaEn - Date.now();
