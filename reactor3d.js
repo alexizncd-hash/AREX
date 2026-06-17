@@ -142,6 +142,50 @@ function init() {
   });
   scene.add(haloGroup);
 
+  // ── INNER ORB GLOW: additive-blended layered spheres ──
+  // Additive blending sums pixel values — creates genuine volumetric glow
+  const innerGlowGroup = new THREE.Group();
+  const innerGlowMats  = [];
+  [0.07, 0.11, 0.15, 0.20, 0.26].forEach((r, i) => {
+    const geo = new THREE.SphereGeometry(r, 14, 14);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x22d3ee,
+      transparent: true,
+      opacity: [0.42, 0.28, 0.17, 0.10, 0.055][i],
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    innerGlowMats.push(mat);
+    innerGlowGroup.add(new THREE.Mesh(geo, mat));
+  });
+  // White-hot pinpoint at exact center
+  const hotCoreMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.85,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  innerGlowGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), hotCoreMat));
+
+  // Close corona ring — fast spin, additive glow
+  const coronaMat = new THREE.MeshBasicMaterial({
+    color: 0x22d3ee, transparent: true, opacity: 0.65,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const coronaMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(0.30, 0.008, 6, 64), coronaMat
+  );
+  // Second tilted corona ring
+  const corona2Mat = new THREE.MeshBasicMaterial({
+    color: 0xa98bff, transparent: true, opacity: 0.45,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const corona2Mesh = new THREE.Mesh(
+    new THREE.TorusGeometry(0.24, 0.006, 6, 48), corona2Mat
+  );
+  corona2Mesh.rotation.x = Math.PI / 3;
+  innerGlowGroup.add(coronaMesh);
+  innerGlowGroup.add(corona2Mesh);
+  scene.add(innerGlowGroup);
+
   // ── 4 ANILLOS ──
   const rings = [];
   const ringDefs = [
@@ -278,6 +322,18 @@ function init() {
     nodeGroup.rotation.y += 0.001 * spd;
     haloGroup.rotation.y += 0.0008 * spd;
     haloGroup.rotation.x += 0.0005 * spd;
+
+    // Inner glow: breathe at a faster rate than core, colorize
+    const innerPulse = 0.90 + Math.sin(t * 3.8) * 0.10;
+    innerGlowGroup.scale.setScalar(innerPulse);
+    innerGlowMats.forEach(m => m.color.setHex(col.primary));
+    hotCoreMat.opacity = 0.7 + Math.sin(t * 4.2) * 0.15;
+    coronaMat.color.setHex(col.primary);
+    corona2Mat.color.setHex(col.secondary);
+    coronaMesh.rotation.z  += 0.018 * spd;
+    coronaMesh.rotation.y  += 0.006 * spd;
+    corona2Mesh.rotation.y += 0.022 * spd;
+    corona2Mesh.rotation.z += 0.009 * spd;
 
     renderer.render(scene, camera);
   }

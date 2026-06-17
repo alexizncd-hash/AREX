@@ -8186,3 +8186,150 @@ main#module-chat.module-panel.active {
     padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   v96 — Glass blue design system — ALL modules
+   Same formula as INICIO center cards.
+   NO backdrop-filter — GPU efficient.
+═══════════════════════════════════════════════════════ */
+
+/* ── GLASS BASE: primary card types ── */
+.tarjeta-card,
+.neg-kpi,
+.meta-card,
+.hab-card,
+.ag-day-card {
+  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  border-top-color: rgba(34,211,238,.38) !important;
+  box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13), inset 0 0 22px rgba(14,55,90,.22) !important;
+  backdrop-filter: none !important;
+}
+/* tarjeta-card has inline borderLeftColor set by JS — preserve it by using border shorthand then re-specifying sides */
+.tarjeta-card {
+  border-top: 1px solid rgba(34,211,238,.38) !important;
+  border-right: 1px solid rgba(34,211,238,.20) !important;
+  border-bottom: 1px solid rgba(34,211,238,.15) !important;
+}
+
+.tarjeta-card:hover,
+.neg-kpi:hover,
+.meta-card:hover,
+.hab-card:hover,
+.ag-day-card:hover {
+  border-color: rgba(34,211,238,.34) !important;
+  border-top-color: rgba(34,211,238,.58) !important;
+}
+
+/* Cards with CSS-defined colored left-border accent — preserve border-left */
+.ev-card,
+.proj-card {
+  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
+  border-top: 1px solid rgba(34,211,238,.38) !important;
+  border-right: 1px solid rgba(34,211,238,.18) !important;
+  border-bottom: 1px solid rgba(34,211,238,.15) !important;
+  box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13) !important;
+  backdrop-filter: none !important;
+}
+
+/* Form / utility cards */
+.neg-form-card,
+.neg-calc-card,
+.neg-chart,
+.neg-stock-hero {
+  background: linear-gradient(155deg, rgba(14,42,66,.55), rgba(10,30,52,.44)) !important;
+  border: 1px solid rgba(34,211,238,.17) !important;
+  border-top-color: rgba(34,211,238,.30) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.08) !important;
+  backdrop-filter: none !important;
+}
+
+/* KPI warn state */
+.neg-kpi.neg-kpi-warn {
+  border-color: rgba(255,153,0,.38) !important;
+  border-top-color: rgba(255,153,0,.55) !important;
+}
+
+/* List items */
+.neg-list-item,
+.tarjeta-list-item,
+.list-info-item,
+.rep-suc-row,
+.rep-wp-row,
+.rep-saved-row {
+  background: rgba(14,42,66,.38) !important;
+  border-color: rgba(34,211,238,.18) !important;
+  backdrop-filter: none !important;
+}
+.neg-list-item:hover,
+.tarjeta-list-item:hover {
+  border-color: rgba(34,211,238,.36) !important;
+  background: rgba(14,42,66,.55) !important;
+}
+
+/* Gastos category row */
+.gp-cat-row {
+  background: rgba(14,42,66,.42) !important;
+  border-color: rgba(34,211,238,.18) !important;
+}
+
+/* Agenda events */
+.ag-ev-row {
+  background: rgba(14,42,66,.38) !important;
+}
+.ag-ev-row-cyan   { background: rgba(14,62,80,.42) !important; }
+.ag-ev-row-orange { background: rgba(66,42,14,.40) !important; }
+.ag-ev-row-green  { background: rgba(14,66,42,.40) !important; }
+
+/* Control/Diagnostic quads — remove expensive backdrop-filter */
+.diag-quad {
+  background: linear-gradient(155deg, rgba(14,42,66,.65), rgba(10,30,52,.55)) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  border-top-color: rgba(34,211,238,.40) !important;
+  box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13) !important;
+  backdrop-filter: none !important;
+}
+
+/* Finanzas calendar cells */
+.calendario-dia {
+  background: rgba(14,42,66,.42) !important;
+  border-color: rgba(34,211,238,.15) !important;
+}
+.calendario-dia:hover { background: rgba(14,42,66,.65) !important; border-color: rgba(34,211,238,.30) !important; }
+.calendario-dia.hoy   { background: rgba(34,211,238,.18) !important; border-color: rgba(34,211,238,.55) !important; }
+.calendario-dia.tiene-pago { background: rgba(80,14,14,.40) !important; }
+
+/* Finanzas alerta cards */
+.alerta-pago {
+  background: rgba(14,42,66,.45) !important;
+  border-color: rgba(34,211,238,.18) !important;
+}
+
+/* Module tab active state */
+.neg-tab.active {
+  background: rgba(34,211,238,.12) !important;
+  border-color: rgba(34,211,238,.50) !important;
+}
+
+/* Gasto/presupuesto alert banner */
+.gp-alert-banner {
+  background: rgba(14,42,66,.55) !important;
+  border-color: rgba(34,211,238,.22) !important;
+}
+
+/* Stat cards (dashboard stats) */
+.stat-card,
+.wx-card {
+  background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48)) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  border-top-color: rgba(34,211,238,.36) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(34,211,238,.10) !important;
+  backdrop-filter: none !important;
+}
+
+/* Evidencias board cards today highlight */
+.ag-day-card.ag-today {
+  background: rgba(34,211,238,.14) !important;
+  border-color: rgba(34,211,238,.48) !important;
+  border-top-color: rgba(34,211,238,.65) !important;
+}
