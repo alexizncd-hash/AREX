@@ -4542,11 +4542,19 @@ async function boot() {
   document.addEventListener('keydown',     _loadVisualEngines, { once: true });
   setTimeout(_loadVisualEngines, 4000); // fallback si no hay interacción
 
-  // Always hide the boot screen regardless of what happened above
+  // Fade boot screen — but only fully hide once auth state is resolved.
+  // Prevents the gap where main app is visible between boot and login overlay.
   await new Promise(r => setTimeout(r, 400));
   bootScreen.style.transition = 'opacity 0.6s';
   bootScreen.style.opacity = '0';
   await new Promise(r => setTimeout(r, 600));
+  // Wait until either authenticated or login overlay is showing (max 2.5s)
+  for (let i = 0; i < 25; i++) {
+    if (window._arexUid) break;
+    const lo = document.getElementById('login-overlay');
+    if (lo && lo.style.display !== 'none') break;
+    await new Promise(r => setTimeout(r, 100));
+  }
   bootScreen.style.display = 'none';
   txt?.focus();
   setTimeout(() => generarBriefing(), 800);

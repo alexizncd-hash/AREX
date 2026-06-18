@@ -7426,8 +7426,36 @@ body:has(#vision-panel) .qc-fab { display: none; }
   50%      { opacity:.5; transform:scale(.8); }
 }
 
-/* Paleta v89 */
+
+/* ═══════════════════════════════════════════════════════════════
+   AREX v101 — Consolidated design system
+   Replaces all v89-v100 patch blocks as single source of truth.
+   NO backdrop-filter. GPU efficient.
+   ─────────────────────────────────────────────────────────────── */
+
+/* 1. Root variables & palette */
 :root {
+  --font:         'Rajdhani', 'Share Tech Mono', sans-serif;
+  --font-mono:    'Share Tech Mono', 'Courier New', monospace;
+  --font-display: 'Rajdhani', sans-serif;
+  --font-body:    'Rajdhani', sans-serif;
+  --cyan:         #22d3ee;
+  --cyan-dim:     #0ea5c8;
+  --cyan-glow:    rgba(34,211,238,.18);
+  --cyan-pulse:   rgba(34,211,238,.45);
+  --green:        #34ffc3;
+  --amber:        #ffb84d;
+  --violet:       #a98bff;
+  --bg-dark:      #01060d;
+  --bg-panel:     rgba(14,40,60,.50);
+  --ice:          #e6f8ff;
+  --muted:        #7fa8bd;
+  --steel:        #456b80;
+  --text-main:    #e6f8ff;
+  --text-muted:   #7fa8bd;
+  --border:       rgba(34,211,238,.20);
+  --glass:        rgba(14,42,66,.62);
+  /* Legacy aliases */
   --c-cyan:   #22d3ee;
   --c-green:  #34ffc3;
   --c-amber:  #ffb84d;
@@ -7435,17 +7463,72 @@ body:has(#vision-panel) .qc-fab { display: none; }
   --c-bg:     #01060d;
 }
 
-
-/* ═══════════════════════════════════════════════════
-   v89 — Reactor 3D layering + INICIO transparent
-═══════════════════════════════════════════════════ */
-
-/* INICIO: reactor como fondo, contenido encima */
-#module-inicio {
-  position: relative !important;
-  overflow: hidden !important;
-  background: transparent !important;
+/* 2. Global font */
+* { font-family: var(--font) !important; }
+code, pre, .font-mono, [class*="mono"], [class*="code"],
+.dhud-log-ts, .dhud-log-mod, .dhud-log-txt,
+.dhud-kpi-lbl, .dhud-goal-pct, .dhud-panel-link,
+#center-tabs, .dock-label, .ss-name, .ss-val, .ss-label {
+  font-family: var(--font-mono) !important;
 }
+
+/* 3. Scanlines overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,.06) 3px, rgba(0,0,0,.06) 4px
+  );
+  pointer-events: none;
+  z-index: 9400;
+}
+
+/* 4. Module panel display */
+.module-panel { display: none !important; }
+.module-panel.active {
+  display: block !important;
+  position: relative !important;
+  inset: auto !important;
+  z-index: 10 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: rgba(0,4,14,.94) !important;
+  box-shadow: inset 0 0 60px var(--mod-glow, rgba(34,211,238,.06)) !important;
+}
+main#module-chat.module-panel.active { display: flex !important; }
+
+/* INICIO: transparent so reactor shows, flex column */
+#module-inicio { display: none !important; }
+#module-inicio.module-panel.active,
+#module-inicio.active {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  background: transparent !important;
+  width: 100% !important;
+  max-width: 960px !important;
+  align-self: center !important;
+  box-shadow: none !important;
+}
+
+/* Per-module accent glow */
+#module-finanzas, #module-gastos, #module-negocio, #module-reparto {
+  --mod-glow: rgba(52,255,195,.15);
+}
+#module-metas, #module-tareas, #module-agenda, #module-habitos {
+  --mod-glow: rgba(34,211,238,.12);
+}
+#module-notas, #module-evidencias, #module-proyectos {
+  --mod-glow: rgba(169,139,255,.12);
+}
+
+/* 5. Reactor 3D layout */
 #reactor3d-wrap {
   position: absolute !important;
   inset: 0 !important;
@@ -7456,31 +7539,27 @@ body:has(#vision-panel) .qc-fab { display: none; }
   width: 100% !important;
   height: 100% !important;
   display: block !important;
+  will-change: transform !important;
 }
-#module-inicio .dash-content,
 #module-inicio #dash-content {
-  position: relative !important;
-  z-index: 1 !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
   background: transparent !important;
+  pointer-events: auto !important;
+  scrollbar-width: none !important;
 }
+#module-inicio #dash-content::-webkit-scrollbar { display: none; }
 
-/* Dash cards con glass azul */
-.hud-card, .dash-card, .inicio-card,
-.hud-panel, .dash-widget, .dash-section,
-.dash-topbar, .dash-row > div,
-.inicio-widget {
-  background: linear-gradient(155deg, rgba(20,55,80,.55), rgba(14,40,60,.45)) !important;
-  border: 1px solid rgba(80,200,245,.22) !important;
-  border-top-color: rgba(80,200,245,.4) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(80,200,245,.1) !important;
-  backdrop-filter: none !important;
-}
-
-/* Dock 5 centros: más limpio */
+/* 6. Dock */
 #dock {
-  background: rgba(0,4,12,0.96) !important;
+  background: rgba(0,4,12,.96) !important;
   border-right: 1px solid rgba(34,211,238,.15) !important;
   width: 64px !important;
+  contain: layout style;
 }
 .nav-btn {
   width: 52px !important;
@@ -7502,139 +7581,15 @@ body:has(#vision-panel) .qc-fab { display: none; }
 }
 .nav-btn.active .dock-label { color: #22d3ee !important; }
 
-/* Center tabs bar */
+/* 7. Center tabs */
 #center-tabs {
-  background: rgba(0,4,12,.95) !important;
-  border-top: 1px solid rgba(34,211,238,.15) !important;
-  padding: 6px 12px !important;
-  gap: 6px !important;
-}
-
-/* Todos los paneles de módulos: fondo más oscuro y saturado */
-.module-panel {
-  background: rgba(0,4,14,.92) !important;
-}
-
-/* ═══════════════════════════════════════════════════
-   v91 — DISEÑO FUTURISTA REAL: clases verificadas
-═══════════════════════════════════════════════════ */
-
-/* ── Dashboard panels (dhud-panel) ──────────────── */
-.dhud-panel {
-  background: linear-gradient(155deg, rgba(10,35,60,.75) 0%, rgba(5,18,38,.7) 100%) !important;
-  border: 1px solid rgba(34,211,238,.2) !important;
-  border-top: 1px solid rgba(34,211,238,.45) !important;
-  border-radius: 6px !important;
-  box-shadow:
-    0 8px 32px rgba(0,0,0,.6),
-    inset 0 1px 0 rgba(34,211,238,.12),
-    inset 0 0 30px rgba(34,211,238,.03) !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-/* Esquina HUD superior derecha */
-.dhud-panel::before {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 22px; height: 22px;
-  border-top: 2px solid rgba(34,211,238,.7);
-  border-right: 2px solid rgba(34,211,238,.7);
-  pointer-events: none;
-}
-
-/* ── Panel header ────────────────────────────────── */
-.dhud-panel-hdr {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
+  background: linear-gradient(180deg, rgba(4,14,28,.94), rgba(4,12,24,.98)) !important;
+  border-top: 1px solid rgba(34,211,238,.18) !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.5) !important;
   padding: 8px 12px !important;
-  background: rgba(34,211,238,.06) !important;
-  border-bottom: 1px solid rgba(34,211,238,.15) !important;
+  gap: 6px !important;
+  z-index: 290;
 }
-.dhud-panel-title {
-  font-family: var(--font, 'Rajdhani', sans-serif) !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  letter-spacing: 3px !important;
-  color: #22d3ee !important;
-  text-shadow: 0 0 12px rgba(34,211,238,.5) !important;
-}
-.dhud-panel-ico {
-  color: #22d3ee !important;
-  font-size: 12px !important;
-  opacity: .7 !important;
-}
-.dhud-panel-link {
-  margin-left: auto !important;
-  font-family: var(--font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 9px !important;
-  letter-spacing: 2px !important;
-  color: rgba(34,211,238,.5) !important;
-  background: transparent !important;
-  border: none !important;
-  cursor: pointer !important;
-  transition: color .2s !important;
-}
-.dhud-panel-link:hover { color: #22d3ee !important; }
-
-/* ── KPI rows ────────────────────────────────────── */
-.dhud-kpi-row { padding: 8px 12px !important; border-bottom: 1px solid rgba(34,211,238,.06) !important; }
-.dhud-kpi-hdr { display: flex !important; justify-content: space-between !important; margin-bottom: 4px !important; }
-.dhud-kpi-lbl { font-size: 9px !important; letter-spacing: 2px !important; color: rgba(34,211,238,.55) !important; font-family: var(--font-mono) !important; }
-.dhud-kpi-num { font-size: 13px !important; font-weight: 700 !important; font-family: var(--font, 'Rajdhani') !important; }
-.dhud-kpi-track { height: 2px !important; background: rgba(34,211,238,.1) !important; border-radius: 1px !important; }
-.dhud-kpi-fill  { height: 100% !important; border-radius: 1px !important; box-shadow: 0 0 6px currentColor !important; transition: width .5s !important; }
-
-/* ── Tarea rows ──────────────────────────────────── */
-.dhud-tarea-row {
-  display: flex !important; align-items: center !important; gap: 8px !important;
-  padding: 6px 12px !important;
-  border-bottom: 1px solid rgba(34,211,238,.05) !important;
-  font-family: var(--font, 'Rajdhani') !important;
-  font-size: 13px !important;
-}
-.dhud-tarea-row.dhud-urg { border-left: 2px solid #ffb84d !important; }
-.dhud-check {
-  width: 14px !important; height: 14px !important;
-  border: 1px solid rgba(34,211,238,.4) !important;
-  border-radius: 2px !important; background: transparent !important;
-  cursor: pointer !important; flex-shrink: 0 !important;
-}
-.dhud-tarea-txt { color: rgba(200,230,255,.85) !important; font-size: 12px !important; flex: 1 !important; }
-
-/* ── Goal rows ───────────────────────────────────── */
-.dhud-goal-row { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 12px !important; border-bottom: 1px solid rgba(34,211,238,.05) !important; }
-.dhud-goal-txt { font-family: var(--font) !important; font-size: 12px !important; color: rgba(200,230,255,.85) !important; }
-.dhud-goal-pct { font-family: var(--font-mono) !important; font-size: 11px !important; font-weight: 700 !important; }
-
-/* ── Log rows ────────────────────────────────────── */
-.dhud-log-row { display: flex !important; gap: 8px !important; padding: 5px 12px !important; font-family: var(--font-mono) !important; font-size: 10px !important; border-bottom: 1px solid rgba(34,211,238,.04) !important; }
-.dhud-log-ts  { color: rgba(34,211,238,.4) !important; flex-shrink: 0 !important; }
-.dhud-log-mod { color: #22d3ee !important; font-weight: 700 !important; flex-shrink: 0 !important; }
-.dhud-log-txt { color: rgba(200,230,255,.6) !important; }
-
-/* ── Habit rows ──────────────────────────────────── */
-.dhud-habit-row { display: flex !important; align-items: center !important; gap: 8px !important; padding: 6px 12px !important; font-family: var(--font) !important; font-size: 13px !important; }
-.dhud-habit-row.done .dhud-habit-txt { color: rgba(34,211,238,.4) !important; text-decoration: line-through !important; }
-.dhud-habit-toggle { width: 18px !important; height: 18px !important; border: 1px solid rgba(34,211,238,.5) !important; border-radius: 50% !important; background: transparent !important; cursor: pointer !important; color: #34ffc3 !important; font-size: 10px !important; flex-shrink: 0 !important; }
-
-/* ── Topbar del dashboard ────────────────────────── */
-.dash-topbar {
-  background: linear-gradient(90deg, rgba(0,12,28,.8), rgba(0,20,45,.6)) !important;
-  border: 1px solid rgba(34,211,238,.15) !important;
-  border-radius: 4px !important;
-  box-shadow: inset 0 0 20px rgba(34,211,238,.03) !important;
-}
-
-/* ── Agentes del dock ────────────────────────────── */
-.dhud-agev-chip {
-  font-family: var(--font-mono) !important;
-  font-size: 9px !important;
-  letter-spacing: 1.5px !important;
-}
-
-/* ── Tabs de centros ─────────────────────────────── */
 #center-tabs button {
   font-family: var(--font, 'Rajdhani') !important;
   font-weight: 600 !important;
@@ -7643,81 +7598,10 @@ body:has(#vision-panel) .qc-fab { display: none; }
   transition: all .2s !important;
 }
 
-/* ── Global font enforce ─────────────────────────── */
-:root {
-  --font: 'Rajdhani', 'Share Tech Mono', sans-serif !important;
-  --font-mono: 'Share Tech Mono', 'Courier New', monospace !important;
-  --font-display: 'Rajdhani', sans-serif !important;
-  --font-body: 'Rajdhani', sans-serif !important;
-}
-* { font-family: var(--font) !important; }
-code, pre, .font-mono, [class*="mono"], [class*="code"],
-.dhud-log-ts, .dhud-log-mod, .dhud-log-txt,
-.dhud-kpi-lbl, .dhud-goal-pct, .dhud-panel-link,
-#center-tabs, .dock-label, .ss-name, .ss-val, .ss-label {
-  font-family: var(--font-mono) !important;
-}
-
-/* ── Módulos: colores de acento por centro ──────── */
-#module-finanzas, #module-gastos, #module-negocio, #module-reparto {
-  --mod-glow: rgba(52,255,195,.15);
-}
-#module-metas, #module-tareas, #module-agenda, #module-habitos {
-  --mod-glow: rgba(34,211,238,.12);
-}
-#module-notas, #module-evidencias, #module-proyectos {
-  --mod-glow: rgba(169,139,255,.12);
-}
-.module-panel.active {
-  box-shadow: inset 0 0 60px var(--mod-glow, rgba(34,211,238,.06)) !important;
-}
-
-/* ── Scanlines globales (body overlay) ───────────── */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    180deg,
-    transparent 0px, transparent 3px,
-    rgba(0,0,0,.06) 3px, rgba(0,0,0,.06) 4px
-  );
-  pointer-events: none;
-  z-index: 9400;
-}
-
-/* ═══════════════════════════════════════════════════════
-   v92 — INICIO Centro Cards (futuristic glass, no backdrop-filter)
-═══════════════════════════════════════════════════════ */
-
-/* INICIO: scrollable so cards appear below reactor */
-#module-inicio {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-#reactor3d-wrap {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-}
-
-#module-inicio #dash-content {
-  position: relative !important;
-  z-index: 2 !important;
-  width: 100% !important;
-  flex: 1 !important;
-  background: transparent !important;
-  pointer-events: auto !important;
-}
-
-/* Hero area — transparent so reactor shows behind */
+/* 8. INICIO hero & cards */
 .inicio-hero {
-  min-height: 46vh;
+  min-height: 48vh;
+  min-height: 48dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -7726,7 +7610,6 @@ body::after {
   pointer-events: none;
   text-align: center;
 }
-
 .inicio-state-lbl {
   font-size: 11px;
   letter-spacing: 9px;
@@ -7734,9 +7617,7 @@ body::after {
   font-weight: 500;
   margin-bottom: 8px;
   text-shadow: 0 0 18px rgba(34,211,238,.7);
-  font-family: var(--font-mono) !important;
 }
-
 .inicio-welcome {
   font-size: 15px;
   font-weight: 300;
@@ -7744,60 +7625,16 @@ body::after {
   line-height: 1.6;
   text-shadow: 0 2px 28px rgba(0,0,0,.98);
 }
+.inicio-welcome strong { color: #22d3ee; font-weight: 700; letter-spacing: 2px; }
+.inicio-tap-hint { margin-top: 13px; font-size: 8px; letter-spacing: 2.5px; color: #456b80; }
+.inicio-centros { padding: 6px 14px 80px; }
+.inicio-sec { display: flex; align-items: center; gap: 10px; margin: 16px 2px 14px; }
+.inicio-sec-lbl { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #7fa8bd; font-weight: 600; white-space: nowrap; }
+.inicio-sec-n { font-size: 8px; color: #456b80; }
+.inicio-sec-ln { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(80,200,245,.28), transparent); }
+.inicio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.inicio-welcome strong {
-  color: #22d3ee;
-  font-weight: 700;
-  letter-spacing: 2px;
-}
-
-.inicio-tap-hint {
-  margin-top: 13px;
-  font-size: 8px;
-  letter-spacing: 2.5px;
-  color: #456b80;
-  font-family: var(--font-mono) !important;
-}
-
-/* Section label */
-.inicio-centros { padding: 6px 14px 130px; }
-
-.inicio-sec {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 16px 2px 14px;
-}
-
-.inicio-sec-lbl {
-  font-size: 10px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: #7fa8bd;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.inicio-sec-n {
-  font-size: 8px;
-  color: #456b80;
-  font-family: var(--font-mono) !important;
-}
-
-.inicio-sec-ln {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(80,200,245,.28), transparent);
-}
-
-/* 2-column grid */
-.inicio-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-/* Glass card — NO backdrop-filter (GPU efficient) */
+/* Glass card — NO backdrop-filter */
 .inicio-card {
   --ac: #22d3ee;
   position: relative;
@@ -7815,33 +7652,18 @@ body::after {
   transition: transform .3s cubic-bezier(.34,1.56,.64,1), border-color .3s, box-shadow .3s;
   -webkit-tap-highlight-color: transparent;
 }
-
 .inicio-card:active { transform: scale(.95); }
-
-.inicio-card.cap { --ac: #34ffc3; }
-.inicio-card.imp { --ac: #22d3ee; }
-.inicio-card.men { --ac: #a98bff; }
-.inicio-card.con { --ac: #ffb84d; }
+.inicio-card.cap  { --ac: #34ffc3; }
+.inicio-card.imp  { --ac: #22d3ee; }
+.inicio-card.men  { --ac: #a98bff; }
+.inicio-card.con  { --ac: #ffb84d; }
 .inicio-card.chat { --ac: #22d3ee; }
-
 .inicio-card:hover {
   border-color: rgba(120,220,255,.55);
-  box-shadow:
-    0 22px 50px -18px rgba(0,0,0,1),
-    0 0 38px -10px var(--ac),
-    inset 0 0 30px rgba(20,90,130,.32);
+  box-shadow: 0 22px 50px -18px rgba(0,0,0,1), 0 0 38px -10px var(--ac), inset 0 0 30px rgba(20,90,130,.32);
 }
-
-.inicio-card.ic-full {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
+.inicio-card.ic-full { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; }
 .inicio-card.ic-full .ic-ico { margin: 0; font-size: 28px !important; }
-
-/* Glow blob */
 .ic-glow {
   position: absolute;
   top: -45%; right: -35%;
@@ -7852,348 +7674,85 @@ body::after {
   filter: blur(8px);
   pointer-events: none;
 }
-
-/* Scan overlay */
+.inicio-card:hover .ic-glow { will-change: opacity; }
 .ic-scan {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 3px,
-    rgba(34,211,238,.022) 3px 4px
-  );
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(34,211,238,.022) 3px 4px);
   pointer-events: none;
   border-radius: 16px;
 }
-
-/* Corner accents */
-.ic-corner {
-  position: absolute;
-  width: 14px; height: 14px;
-  pointer-events: none;
-}
-
-.ic-corner-tr {
-  top: 9px; right: 9px;
-  border-top: 1.5px solid var(--ac);
-  border-right: 1.5px solid var(--ac);
-  opacity: .65;
-  border-radius: 0 4px 0 0;
-}
-
-.ic-corner-bl {
-  bottom: 9px; left: 9px;
-  border-bottom: 1.5px solid rgba(80,200,245,.35);
-  border-left: 1.5px solid rgba(80,200,245,.35);
-  opacity: .5;
-  border-radius: 0 0 0 4px;
-}
-
-/* Card content */
-.ic-ico {
-  font-size: 24px;
-  display: block;
-  margin-bottom: 10px;
-  line-height: 1;
-}
-
+.ic-corner { position: absolute; width: 14px; height: 14px; pointer-events: none; }
+.ic-corner-tr { top: 9px; right: 9px; border-top: 1.5px solid var(--ac); border-right: 1.5px solid var(--ac); opacity: .65; border-radius: 0 4px 0 0; }
+.ic-corner-bl { bottom: 9px; left: 9px; border-bottom: 1.5px solid rgba(80,200,245,.35); border-left: 1.5px solid rgba(80,200,245,.35); opacity: .5; border-radius: 0 0 0 4px; }
+.ic-ico { font-size: 24px; display: block; margin-bottom: 10px; line-height: 1; }
 .ic-ico-lg { font-size: 28px !important; }
-
-.ic-name {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  color: #e6f8ff;
-}
-
-.ic-subs {
-  font-size: 9.5px;
-  color: #7fa8bd;
-  margin-top: 6px;
-  letter-spacing: .4px;
-  line-height: 1.5;
-}
-
-.ic-stat {
-  font-size: 12px;
-  margin-top: 10px;
-  font-weight: 600;
-  color: var(--ac);
-  letter-spacing: .5px;
-}
-
-/* System status bar */
-.inicio-sys-bar {
-  display: flex;
-  gap: 14px;
-  padding: 14px 4px 4px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.isys-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  color: #456b80;
-  font-family: var(--font-mono) !important;
-}
-
-.isys-dot {
-  display: inline-block;
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
+.ic-name { font-size: 15px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #e6f8ff; }
+.ic-subs { font-size: 9.5px; color: #7fa8bd; margin-top: 6px; letter-spacing: .4px; line-height: 1.5; }
+.ic-stat { font-size: 12px; margin-top: 10px; font-weight: 600; color: var(--ac); letter-spacing: .5px; }
+.inicio-sys-bar { display: flex; gap: 14px; padding: 14px 4px 4px; justify-content: center; flex-wrap: wrap; }
+.isys-item { display: flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: 1.5px; color: #456b80; }
+.isys-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 .isys-dot.ok   { background: #34ffc3; box-shadow: 0 0 5px #34ffc3; animation: pulse-dot 2s ease-in-out infinite; }
 .isys-dot.warn { background: #ffb84d; }
 .isys-dot.off  { background: #ff4444; }
-
 .isys-item b.ok   { color: #34ffc3; }
 .isys-item b.warn { color: #ffb84d; }
 .isys-item b.off  { color: #ff4444; }
 
-/* ═══════════════════════════════════════════════════════
-   v92 perf — GPU compositing hints + render optimization
-═══════════════════════════════════════════════════════ */
-#reactor3d-canvas { will-change: transform; }
-#module-inicio    { will-change: scroll-position; }
-
-/* Scanlines: isolate to own composite layer to avoid repaints */
-body::after { will-change: auto; }
-
-/* Centro cards: promote glow to own layer only on hover to save idle memory */
-.inicio-card:hover .ic-glow { will-change: opacity; }
-
-/* Dock on mobile: contain layout for faster scrolling */
-#dock { contain: layout style; }
-
-/* ═══════════════════════════════════════════════════════
-   v94 FIX — Corrige conflictos de CSS acumulados
-   Siempre va ÚLTIMO para ganar la cascada
-═══════════════════════════════════════════════════════ */
-
-/* ── INICIO: reactor como fondo ABSOLUTO, dash-content scrollable ── */
-#module-inicio {
-  position: relative !important;
-  overflow: hidden !important;       /* el panel en sí no scrollea */
-  display: block !important;         /* no flex — usa el layout normal de módulos */
-  background: transparent !important;
-  will-change: auto !important;
+/* 9. Dashboard panels (dhud system) */
+.dhud-panel {
+  background: linear-gradient(155deg, rgba(10,35,60,.75), rgba(5,18,38,.7));
+  border: 1px solid rgba(34,211,238,.2);
+  border-top: 1px solid rgba(34,211,238,.45);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6), inset 0 1px 0 rgba(34,211,238,.12), inset 0 0 30px rgba(34,211,238,.03);
+  overflow: hidden;
+  position: relative;
+}
+.dhud-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 22px; height: 22px;
+  border-top: 2px solid rgba(34,211,238,.7);
+  border-right: 2px solid rgba(34,211,238,.7);
+  pointer-events: none;
+}
+.dhud-panel-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(34,211,238,.06); border-bottom: 1px solid rgba(34,211,238,.15); }
+.dhud-panel-title { font-size: 10px; font-weight: 700; letter-spacing: 3px; color: #22d3ee; text-shadow: 0 0 12px rgba(34,211,238,.5); }
+.dhud-panel-ico { color: #22d3ee; font-size: 12px; opacity: .7; }
+.dhud-panel-link { margin-left: auto; font-size: 9px; letter-spacing: 2px; color: rgba(34,211,238,.5); background: transparent; border: none; cursor: pointer; transition: color .2s; }
+.dhud-panel-link:hover { color: #22d3ee; }
+.dhud-kpi-row { padding: 8px 12px; border-bottom: 1px solid rgba(34,211,238,.06); }
+.dhud-kpi-hdr { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.dhud-kpi-lbl { font-size: 9px; letter-spacing: 2px; color: rgba(34,211,238,.55); }
+.dhud-kpi-num { font-size: 13px; font-weight: 700; }
+.dhud-kpi-track { height: 2px; background: rgba(34,211,238,.1); border-radius: 1px; }
+.dhud-kpi-fill  { height: 100%; border-radius: 1px; box-shadow: 0 0 6px currentColor; transition: width .5s; }
+.dhud-tarea-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid rgba(34,211,238,.05); font-size: 13px; }
+.dhud-tarea-row.dhud-urg { border-left: 2px solid #ffb84d; }
+.dhud-check { width: 14px; height: 14px; border: 1px solid rgba(34,211,238,.4); border-radius: 2px; background: transparent; cursor: pointer; flex-shrink: 0; }
+.dhud-tarea-txt { color: rgba(200,230,255,.85); font-size: 12px; flex: 1; }
+.dhud-goal-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(34,211,238,.05); }
+.dhud-goal-txt { font-size: 12px; color: rgba(200,230,255,.85); }
+.dhud-goal-pct { font-size: 11px; font-weight: 700; }
+.dhud-log-row { display: flex; gap: 8px; padding: 5px 12px; font-size: 10px; border-bottom: 1px solid rgba(34,211,238,.04); }
+.dhud-log-ts  { color: rgba(34,211,238,.4); flex-shrink: 0; }
+.dhud-log-mod { color: #22d3ee; font-weight: 700; flex-shrink: 0; }
+.dhud-log-txt { color: rgba(200,230,255,.6); }
+.dhud-habit-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 13px; }
+.dhud-habit-row.done .dhud-habit-txt { color: rgba(34,211,238,.4); text-decoration: line-through; }
+.dhud-habit-toggle { width: 18px; height: 18px; border: 1px solid rgba(34,211,238,.5); border-radius: 50%; background: transparent; cursor: pointer; color: #34ffc3; font-size: 10px; flex-shrink: 0; }
+.dhud-agev-chip { font-size: 9px; letter-spacing: 1.5px; }
+.dash-topbar {
+  background: linear-gradient(90deg, rgba(0,12,28,.8), rgba(0,20,45,.6)) !important;
+  border: 1px solid rgba(34,211,238,.15) !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 0 20px rgba(34,211,238,.03) !important;
 }
 
-/* Reactor: absoluto dentro del panel INICIO — NO fixed (no debe tapar otros módulos) */
-#reactor3d-wrap {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-  will-change: auto !important;
-}
-
-#reactor3d-canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  will-change: transform !important;
-}
-
-/* dash-content: sobre el reactor, scrollable independientemente */
-#module-inicio #dash-content {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 2 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  background: transparent !important;
-  pointer-events: auto !important;
-}
-
-/* Ocultar scrollbar pero mantener scroll funcional */
-#module-inicio #dash-content::-webkit-scrollbar { display: none; }
-#module-inicio #dash-content { scrollbar-width: none; }
-
-/* ── .module-panel: reset de reglas rotas ── */
-.module-panel {
-  display: none !important;        /* oculto por defecto */
-}
-.module-panel.active {
-  display: block !important;       /* visible cuando activo */
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 10 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  background: rgba(0,4,14,.94) !important;
-}
-
-/* Módulo inicio no tiene fondo oscuro (reactor lo da) */
-#module-inicio.module-panel.active,
-#module-inicio.active {
-  background: transparent !important;
-}
-
-/* ── Tamaño del Hero ── */
-.inicio-hero {
-  min-height: 48vh !important;
-  min-height: 48dvh !important;
-  pointer-events: none !important;
-}
-
-/* ── Cards: espacio inferior para no quedar tapadas por dock ── */
-.inicio-centros { padding-bottom: 80px !important; }
-
-/* ── Dock: siempre encima en móvil ── */
-@media (max-width: 768px) {
-  #dock { z-index: 300 !important; }
-  #center-tabs { z-index: 290 !important; }
-}
-
-/* ═══════════════════════════════════════════════════════
-   v94 FINAL — Corrige TODOS los conflictos acumulados
-   Este bloque es el último y gana la cascada completa
-═══════════════════════════════════════════════════════ */
-
-/* 1. Revert el error de v94: module-panel.active NO debe ser absolute */
-.module-panel.active {
-  position: relative !important;
-  inset: auto !important;
-}
-
-/* 2. INICIO: flex column, transparent, overflow hidden (dash-content scrollea dentro) */
-#module-inicio.module-panel.active,
-#module-inicio.active {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  position: relative !important;
-  background: transparent !important;
-  width: 100% !important;
-  max-width: 960px !important;
-  align-self: center !important;
-  will-change: auto !important;
-}
-
-/* 3. Reactor: ABSOLUTO dentro de inicio — NO fixed (no debe tapar otros módulos) */
-#reactor3d-wrap {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-  will-change: auto !important;
-}
-
-/* 4. dash-content: capa scrollable sobre el reactor */
-#module-inicio #dash-content {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 2 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  background: transparent !important;
-  pointer-events: auto !important;
-  scrollbar-width: none !important;
-}
-#module-inicio #dash-content::-webkit-scrollbar { display: none; }
-
-/* 5. Resto de módulos: mantienen su flex normal (mismo que finanzas.css) */
-#module-finanzas.module-panel.active,
-#module-gastos.module-panel.active,
-#module-metas.module-panel.active,
-#module-tareas.module-panel.active,
-#module-notas.module-panel.active,
-#module-negocio.module-panel.active,
-#module-proyectos.module-panel.active,
-#module-evidencias.module-panel.active,
-#module-control.module-panel.active,
-#module-agenda.module-panel.active,
-#module-habitos.module-panel.active,
-#module-reparto.module-panel.active {
-  position: relative !important;
-  inset: auto !important;
-}
-
-/* 6. Chat (main) permanece como flex */
-main#module-chat.module-panel.active {
-  display: flex !important;
-  position: relative !important;
-  inset: auto !important;
-}
-
-/* ═══════════════════════════════════════════════════════
-   v95 — Fix definitivo: inicio siempre visible + dock oculto en móvil
-═══════════════════════════════════════════════════════ */
-
-/* BUG 1: #module-inicio tenía display:block!important sin condición .active
-   → siempre visible, tapaba otros módulos.
-   Fix: forzar display:none cuando NO está activo */
-#module-inicio:not(.active) {
-  display: none !important;
-}
-
-/* BUG 2: width:64px!important del bloque v91 aplica en TODOS los tamaños
-   → en móvil el dock queda de 64px y solo muestra INICIO.
-   Fix: en móvil forzar ancho completo y dirección horizontal */
-@media (max-width: 900px) {
-  #dock {
-    width: 100% !important;
-    max-width: 100% !important;
-    flex-direction: row !important;
-    height: auto !important;
-    border-right: none !important;
-    border-top: 1px solid rgba(34,211,238,.15) !important;
-  }
-  .dock-nav {
-    flex-direction: row !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    justify-content: space-around !important;
-    gap: 0 !important;
-  }
-  #dock .nav-btn {
-    flex: 1 !important;
-    min-width: 0 !important;
-    width: auto !important;
-    flex-direction: column !important;
-    padding: 8px 4px !important;
-    min-height: 50px !important;
-    border-radius: 0 !important;
-    border: none !important;
-    border-top: 2px solid transparent !important;
-    border-left: none !important;
-  }
-  #dock .nav-btn.active {
-    border-top-color: var(--cyan) !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    background: rgba(34,211,238,.06) !important;
-  }
-  .dock-logo,
-  .dock-bottom,
-  .dock-sos-sep { display: none !important; }
-  #workspace {
-    width: 100% !important;
-    padding-left: 0 !important;
-    padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════
-   v96 — Glass blue design system — ALL modules
-   Same formula as INICIO center cards.
-   NO backdrop-filter — GPU efficient.
-═══════════════════════════════════════════════════════ */
-
-/* ── GLASS BASE: primary card types ── */
+/* 10. Glass cards — all modules */
 .tarjeta-card,
 .neg-kpi,
 .meta-card,
@@ -8205,25 +7764,16 @@ main#module-chat.module-panel.active {
   box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13), inset 0 0 22px rgba(14,55,90,.22) !important;
   backdrop-filter: none !important;
 }
-/* tarjeta-card has inline borderLeftColor set by JS — preserve it by using border shorthand then re-specifying sides */
 .tarjeta-card {
   border-top: 1px solid rgba(34,211,238,.38) !important;
   border-right: 1px solid rgba(34,211,238,.20) !important;
   border-bottom: 1px solid rgba(34,211,238,.15) !important;
 }
-
-.tarjeta-card:hover,
-.neg-kpi:hover,
-.meta-card:hover,
-.hab-card:hover,
-.ag-day-card:hover {
+.tarjeta-card:hover, .neg-kpi:hover, .meta-card:hover, .hab-card:hover, .ag-day-card:hover {
   border-color: rgba(34,211,238,.34) !important;
   border-top-color: rgba(34,211,238,.58) !important;
 }
-
-/* Cards with CSS-defined colored left-border accent — preserve border-left */
-.ev-card,
-.proj-card {
+.ev-card, .proj-card {
   background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
   border-top: 1px solid rgba(34,211,238,.38) !important;
   border-right: 1px solid rgba(34,211,238,.18) !important;
@@ -8231,57 +7781,29 @@ main#module-chat.module-panel.active {
   box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13) !important;
   backdrop-filter: none !important;
 }
-
-/* Form / utility cards */
-.neg-form-card,
-.neg-calc-card,
-.neg-chart,
-.neg-stock-hero {
+.neg-form-card, .neg-calc-card, .neg-chart, .neg-stock-hero {
   background: linear-gradient(155deg, rgba(14,42,66,.55), rgba(10,30,52,.44)) !important;
   border: 1px solid rgba(34,211,238,.17) !important;
   border-top-color: rgba(34,211,238,.30) !important;
   box-shadow: 0 2px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.08) !important;
   backdrop-filter: none !important;
 }
-
-/* KPI warn state */
-.neg-kpi.neg-kpi-warn {
-  border-color: rgba(255,153,0,.38) !important;
-  border-top-color: rgba(255,153,0,.55) !important;
-}
-
-/* List items */
-.neg-list-item,
-.tarjeta-list-item,
-.list-info-item,
-.rep-suc-row,
-.rep-wp-row,
-.rep-saved-row {
+.neg-kpi.neg-kpi-warn { border-color: rgba(255,153,0,.38) !important; border-top-color: rgba(255,153,0,.55) !important; }
+.neg-list-item, .tarjeta-list-item, .list-info-item,
+.rep-suc-row, .rep-wp-row, .rep-saved-row {
   background: rgba(14,42,66,.38) !important;
   border-color: rgba(34,211,238,.18) !important;
   backdrop-filter: none !important;
 }
-.neg-list-item:hover,
-.tarjeta-list-item:hover {
+.neg-list-item:hover, .tarjeta-list-item:hover {
   border-color: rgba(34,211,238,.36) !important;
   background: rgba(14,42,66,.55) !important;
 }
-
-/* Gastos category row */
-.gp-cat-row {
-  background: rgba(14,42,66,.42) !important;
-  border-color: rgba(34,211,238,.18) !important;
-}
-
-/* Agenda events */
-.ag-ev-row {
-  background: rgba(14,42,66,.38) !important;
-}
+.gp-cat-row { background: rgba(14,42,66,.42) !important; border-color: rgba(34,211,238,.18) !important; }
+.ag-ev-row        { background: rgba(14,42,66,.38) !important; }
 .ag-ev-row-cyan   { background: rgba(14,62,80,.42) !important; }
 .ag-ev-row-orange { background: rgba(66,42,14,.40) !important; }
 .ag-ev-row-green  { background: rgba(14,66,42,.40) !important; }
-
-/* Control/Diagnostic quads — remove expensive backdrop-filter */
 .diag-quad {
   background: linear-gradient(155deg, rgba(14,42,66,.65), rgba(10,30,52,.55)) !important;
   border: 1px solid rgba(34,211,238,.20) !important;
@@ -8289,63 +7811,26 @@ main#module-chat.module-panel.active {
   box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13) !important;
   backdrop-filter: none !important;
 }
-
-/* Finanzas calendar cells */
-.calendario-dia {
-  background: rgba(14,42,66,.42) !important;
-  border-color: rgba(34,211,238,.15) !important;
-}
-.calendario-dia:hover { background: rgba(14,42,66,.65) !important; border-color: rgba(34,211,238,.30) !important; }
-.calendario-dia.hoy   { background: rgba(34,211,238,.18) !important; border-color: rgba(34,211,238,.55) !important; }
+.calendario-dia { background: rgba(14,42,66,.42) !important; border-color: rgba(34,211,238,.15) !important; }
+.calendario-dia:hover   { background: rgba(14,42,66,.65) !important; border-color: rgba(34,211,238,.30) !important; }
+.calendario-dia.hoy     { background: rgba(34,211,238,.18) !important; border-color: rgba(34,211,238,.55) !important; }
 .calendario-dia.tiene-pago { background: rgba(80,14,14,.40) !important; }
-
-/* Finanzas alerta cards */
-.alerta-pago {
-  background: rgba(14,42,66,.45) !important;
-  border-color: rgba(34,211,238,.18) !important;
-}
-
-/* Module tab active state */
-.neg-tab.active {
-  background: rgba(34,211,238,.12) !important;
-  border-color: rgba(34,211,238,.50) !important;
-}
-
-/* Gasto/presupuesto alert banner */
-.gp-alert-banner {
-  background: rgba(14,42,66,.55) !important;
-  border-color: rgba(34,211,238,.22) !important;
-}
-
-/* Stat cards (dashboard stats) */
-.stat-card,
-.wx-card {
+.alerta-pago { background: rgba(14,42,66,.45) !important; border-color: rgba(34,211,238,.18) !important; }
+.neg-tab.active { background: rgba(34,211,238,.12) !important; border-color: rgba(34,211,238,.50) !important; }
+.gp-alert-banner { background: rgba(14,42,66,.55) !important; border-color: rgba(34,211,238,.22) !important; }
+.stat-card, .wx-card {
   background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48)) !important;
   border: 1px solid rgba(34,211,238,.20) !important;
   border-top-color: rgba(34,211,238,.36) !important;
   box-shadow: 0 4px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(34,211,238,.10) !important;
   backdrop-filter: none !important;
 }
-
-/* Evidencias board cards today highlight */
 .ag-day-card.ag-today {
   background: rgba(34,211,238,.14) !important;
   border-color: rgba(34,211,238,.48) !important;
   border-top-color: rgba(34,211,238,.65) !important;
 }
-
-/* ═══════════════════════════════════════════════════════
-   v97 — Glass blue: Tareas, Notas, --glass global,
-         center-tabs mobile fix
-═══════════════════════════════════════════════════════ */
-
-/* Update root glass variable — propagates to hab-form, cal-day-tasks, etc. */
-:root {
-  --glass:  rgba(14,42,66,.62);
-  --border: rgba(34,211,238,.20);
-}
-
-/* ── TAREAS: tarea-item cards ── */
+/* Tareas */
 .tarea-item {
   background: linear-gradient(155deg, rgba(14,42,66,.58), rgba(10,30,52,.46)) !important;
   border: 1px solid rgba(34,211,238,.18) !important;
@@ -8354,40 +7839,21 @@ main#module-chat.module-panel.active {
   border-left-color: transparent !important;
   box-shadow: 0 2px 12px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.10) !important;
 }
-.tarea-item:hover {
-  border-color: rgba(34,211,238,.32) !important;
-  border-top-color: rgba(34,211,238,.52) !important;
-}
-/* Urgency left-border colors */
-.tarea-item.urg-vencida,
-.tarea-item.urg-hoy {
+.tarea-item:hover { border-color: rgba(34,211,238,.32) !important; border-top-color: rgba(34,211,238,.52) !important; }
+.tarea-item.urg-vencida, .tarea-item.urg-hoy {
   border-left-color: #ef4444 !important;
   background: linear-gradient(155deg, rgba(32,12,12,.64), rgba(22,8,8,.52)) !important;
 }
-.tarea-item.urg-vencida.prio-alta-item,
-.tarea-item.urg-hoy.prio-alta-item {
+.tarea-item.urg-vencida.prio-alta-item, .tarea-item.urg-hoy.prio-alta-item {
   background: linear-gradient(155deg, rgba(44,10,10,.72), rgba(32,6,6,.60)) !important;
   box-shadow: inset 3px 0 0 #ef4444, 0 0 12px rgba(239,68,68,.15) !important;
 }
 .tarea-item.urg-pronto { border-left-color: #f97316 !important; }
 .tarea-item.urg-semana { border-left-color: #f59e0b !important; }
-
-/* Tareas calendar: subtle glass on today/selected states */
-.cal-cell:not(.empty):hover {
-  background: rgba(14,42,66,.52) !important;
-  border-color: rgba(34,211,238,.26) !important;
-}
-.cal-cell.hoy {
-  background: rgba(34,211,238,.14) !important;
-  border-color: rgba(34,211,238,.44) !important;
-}
-.cal-cell.sel {
-  background: rgba(34,211,238,.20) !important;
-  border-color: var(--cyan) !important;
-  box-shadow: 0 0 10px rgba(34,211,238,.18) !important;
-}
-
-/* ── NOTAS: nota-card ── */
+.cal-cell:not(.empty):hover { background: rgba(14,42,66,.52) !important; border-color: rgba(34,211,238,.26) !important; }
+.cal-cell.hoy { background: rgba(34,211,238,.14) !important; border-color: rgba(34,211,238,.44) !important; }
+.cal-cell.sel { background: rgba(34,211,238,.20) !important; border-color: var(--cyan) !important; box-shadow: 0 0 10px rgba(34,211,238,.18) !important; }
+/* Notas */
 .nota-card {
   background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48)) !important;
   border-color: rgba(34,211,238,.20) !important;
@@ -8395,149 +7861,18 @@ main#module-chat.module-panel.active {
   box-shadow: 0 3px 16px rgba(0,0,0,.44), inset 0 1px 0 rgba(34,211,238,.10) !important;
 }
 .nota-card:hover { border-color: rgba(34,211,238,.34) !important; }
-.nota-card.pinned {
-  border-color: rgba(34,211,238,.55) !important;
-  box-shadow: 0 0 14px rgba(34,211,238,.10) !important;
-}
-/* Color variants — glass tint matching note color */
+.nota-card.pinned { border-color: rgba(34,211,238,.55) !important; box-shadow: 0 0 14px rgba(34,211,238,.10) !important; }
 .nota-card.nc-amber   { background: rgba(30,20,0,.74) !important; border-color: rgba(255,176,0,.30) !important; }
 .nota-card.nc-emerald { background: rgba(0,30,14,.74) !important; border-color: rgba(0,200,100,.28) !important; }
-.nota-card.nc-rose    { background: rgba(30,0,9,.74) !important;  border-color: rgba(220,50,60,.28) !important; }
+.nota-card.nc-rose    { background: rgba(30,0,9,.74) !important; border-color: rgba(220,50,60,.28) !important; }
 
-/* ── center-tabs: sit above mobile dock ── */
-@media (max-width: 900px) {
-  #center-tabs {
-    bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px) !important;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════
-   v98 — Panel de Control: glass blue (elimina tema --iron naranja)
-         center-tabs contenedor, reactor RAF optimización
-═══════════════════════════════════════════════════════ */
-
-/* ── Sidebar: reemplazar naranja/iron con glass cyan ── */
-.sidebar {
-  background: linear-gradient(180deg, rgba(6,18,36,.97), rgba(4,12,26,.98)) !important;
-  border-right: 1px solid rgba(34,211,238,.18) !important;
-}
-.sidebar-hdr {
-  border-bottom-color: rgba(34,211,238,.14) !important;
-  background: rgba(34,211,238,.04) !important;
-}
-.sidebar-title {
-  color: #22d3ee !important;
-  text-shadow: 0 0 10px rgba(34,211,238,.35) !important;
-  letter-spacing: 4px !important;
-}
-.btn-close {
-  color: rgba(34,211,238,.55) !important;
-  border-color: rgba(34,211,238,.22) !important;
-  background: transparent !important;
-}
-.btn-close:hover { border-color: #22d3ee !important; color: #22d3ee !important; }
-
-.sidebar-section {
-  border-bottom-color: rgba(34,211,238,.08) !important;
-}
-.ss-label {
-  color: rgba(34,211,238,.48) !important;
-  border-bottom-color: rgba(34,211,238,.08) !important;
-  letter-spacing: 3px !important;
-}
-
-/* System dots — keep semantic colors */
-.ss-dot { background: rgba(34,211,238,.20) !important; box-shadow: none !important; }
-.ss-dot.on-line  { background: #34ffc3 !important; box-shadow: 0 0 7px rgba(52,255,195,.7) !important; }
-.ss-dot.on-ready { background: #22d3ee !important; box-shadow: 0 0 6px rgba(34,211,238,.5) !important; }
-.ss-dot.on-off   { background: rgba(34,211,238,.12) !important; box-shadow: none !important; }
-
-/* Toggle buttons */
-.mtoggle {
-  background: linear-gradient(155deg, rgba(14,42,66,.42), rgba(10,30,52,.34)) !important;
-  border: 1px solid rgba(34,211,238,.18) !important;
-  color: rgba(34,211,238,.55) !important;
-  box-shadow: none !important;
-}
-.mtoggle:hover {
-  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
-  border-color: rgba(34,211,238,.36) !important;
-}
-.mtoggle.on {
-  background: linear-gradient(155deg, rgba(14,52,80,.68), rgba(10,38,62,.56)) !important;
-  border-color: rgba(34,211,238,.55) !important;
-  border-top-color: rgba(34,211,238,.80) !important;
-  box-shadow: 0 2px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(34,211,238,.18) !important;
-}
-.mtoggle.on .mt-ico { color: #22d3ee !important; }
-.mtoggle.on .mt-lbl { color: #e2f8ff !important; }
-.mtoggle.on .mt-st  { color: #34ffc3 !important; }
-.mt-lbl { color: rgba(34,211,238,.50) !important; }
-.mt-ico { color: rgba(34,211,238,.38) !important; }
-.mt-st  { color: rgba(34,211,238,.28) !important; }
-
-/* Quick command buttons */
-.qcmd {
-  background: linear-gradient(155deg, rgba(14,42,66,.42), rgba(10,30,52,.34)) !important;
-  border: 1px solid rgba(34,211,238,.18) !important;
-  color: rgba(34,211,238,.52) !important;
-  box-shadow: none !important;
-  font-family: var(--font) !important;
-}
-.qcmd:hover {
-  background: linear-gradient(155deg, rgba(14,52,80,.65), rgba(10,38,62,.52)) !important;
-  border-color: rgba(34,211,238,.50) !important;
-  border-top-color: rgba(34,211,238,.75) !important;
-  color: #22d3ee !important;
-  box-shadow: 0 2px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(34,211,238,.15) !important;
-}
-.qcmd-danger:hover {
-  border-color: rgba(255,68,68,.55) !important;
-  border-top-color: rgba(255,68,68,.80) !important;
-  color: #ff6464 !important;
-  background: rgba(40,10,10,.55) !important;
-  box-shadow: none !important;
-}
-
-/* Session/data rows */
-.srow span:first-child { color: rgba(34,211,238,.44) !important; }
-.srow span:last-child  { color: #22d3ee !important; }
-
-/* New session button */
-.ss-new-session-btn {
-  background: linear-gradient(155deg, rgba(14,42,66,.45), rgba(10,30,52,.36)) !important;
-  border-color: rgba(34,211,238,.22) !important;
-  color: rgba(34,211,238,.55) !important;
-}
-.ss-new-session-btn:hover {
-  background: linear-gradient(155deg, rgba(14,52,80,.65), rgba(10,38,62,.52)) !important;
-  border-color: rgba(34,211,238,.50) !important;
-  color: #22d3ee !important;
-}
-
-/* center-tabs container */
-#center-tabs {
-  background: linear-gradient(180deg, rgba(4,14,28,.94), rgba(4,12,24,.98)) !important;
-  border-top: 1px solid rgba(34,211,238,.18) !important;
-  box-shadow: 0 -4px 20px rgba(0,0,0,.5) !important;
-  padding: 8px 12px !important;
-}
-
-/* ═══════════════════════════════════════════════════════
-   v99 — Sidebar: secciones como glass panels reales
-   Cada sidebar-section es una tarjeta glass independiente.
-   Sin backdrop-filter. Sin naranja.
-═══════════════════════════════════════════════════════ */
-
-/* Sidebar container: fondo muy oscuro para que las tarjetas destaquen */
+/* 11. Sidebar glass */
 .sidebar {
   background: rgba(2,7,18,.98) !important;
   border-right: 1px solid rgba(34,211,238,.14) !important;
   padding: 0 0 16px !important;
   gap: 0 !important;
 }
-
-/* Header del sidebar — panel glass superior */
 .sidebar-hdr {
   background: linear-gradient(155deg, rgba(14,42,66,.70), rgba(10,30,52,.60)) !important;
   border-bottom: 1px solid rgba(34,211,238,.22) !important;
@@ -8556,16 +7891,11 @@ main#module-chat.module-panel.active {
   border: 1px solid rgba(34,211,238,.22) !important;
   color: rgba(34,211,238,.55) !important;
   border-radius: 4px !important;
-  width: 28px !important; height: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
   transition: all .18s !important;
 }
-.btn-close:hover {
-  background: rgba(34,211,238,.14) !important;
-  border-color: rgba(34,211,238,.55) !important;
-  color: #22d3ee !important;
-}
-
-/* ── Cada sección = glass card independiente ── */
+.btn-close:hover { background: rgba(34,211,238,.14) !important; border-color: rgba(34,211,238,.55) !important; color: #22d3ee !important; }
 .sidebar-section {
   background: linear-gradient(155deg, rgba(14,42,66,.55), rgba(10,30,52,.44)) !important;
   border: 1px solid rgba(34,211,238,.18) !important;
@@ -8575,8 +7905,6 @@ main#module-chat.module-panel.active {
   padding: 10px 12px !important;
   box-shadow: 0 3px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(34,211,238,.10) !important;
 }
-
-/* Label de sección */
 .ss-label {
   color: rgba(34,211,238,.65) !important;
   letter-spacing: 3px !important;
@@ -8585,8 +7913,6 @@ main#module-chat.module-panel.active {
   margin-bottom: 8px !important;
   padding-bottom: 5px !important;
 }
-
-/* Filas de sistema (GROQ IA, FIREBASE, etc.) */
 .sys-row { padding: 3px 0 !important; }
 .ss-name { color: rgba(34,211,238,.55) !important; }
 .ss-val  { color: #22d3ee !important; font-size: 9px !important; }
@@ -8594,8 +7920,6 @@ main#module-chat.module-panel.active {
 .ss-dot.on-line  { background: #34ffc3 !important; box-shadow: 0 0 6px rgba(52,255,195,.65) !important; }
 .ss-dot.on-ready { background: #22d3ee !important; box-shadow: 0 0 5px rgba(34,211,238,.5) !important; }
 .ss-dot.on-off   { background: rgba(34,211,238,.10) !important; box-shadow: none !important; }
-
-/* ── Toggle buttons ── */
 .mtoggle {
   background: rgba(10,28,48,.55) !important;
   border: 1px solid rgba(34,211,238,.15) !important;
@@ -8605,11 +7929,7 @@ main#module-chat.module-panel.active {
   box-shadow: none !important;
   transition: all .18s !important;
 }
-.mtoggle:hover {
-  background: rgba(14,42,66,.70) !important;
-  border-color: rgba(34,211,238,.32) !important;
-  color: rgba(34,211,238,.72) !important;
-}
+.mtoggle:hover { background: rgba(14,42,66,.70) !important; border-color: rgba(34,211,238,.32) !important; color: rgba(34,211,238,.72) !important; }
 .mtoggle.on {
   background: linear-gradient(155deg, rgba(14,52,82,.75), rgba(10,38,64,.62)) !important;
   border: 1px solid rgba(34,211,238,.50) !important;
@@ -8623,8 +7943,6 @@ main#module-chat.module-panel.active {
 .mtoggle.on .mt-lbl { color: #cef4ff !important; }
 .mt-st  { color: rgba(34,211,238,.25) !important; font-size: 9px !important; }
 .mtoggle.on .mt-st { color: #34ffc3 !important; }
-
-/* ── Quick command grid ── */
 .qcmds { grid-template-columns: 1fr 1fr 1fr !important; gap: 5px !important; }
 .qcmd {
   background: rgba(10,28,48,.55) !important;
@@ -8654,13 +7972,9 @@ main#module-chat.module-panel.active {
   color: #ff6464 !important;
   box-shadow: none !important;
 }
-
-/* ── Filas de sesión ── */
 .srow { padding: 4px 0 !important; }
 .srow span:first-child { color: rgba(34,211,238,.44) !important; }
 .srow span:last-child  { color: #22d3ee !important; }
-
-/* ── Botón nueva sesión ── */
 .ss-new-session-btn {
   background: rgba(10,28,48,.55) !important;
   border: 1px solid rgba(34,211,238,.20) !important;
@@ -8673,45 +7987,53 @@ main#module-chat.module-panel.active {
   border-color: rgba(34,211,238,.48) !important;
   color: #22d3ee !important;
 }
-
-/* ── Session items (historial de sesiones) ── */
-.session-item {
-  background: rgba(10,28,48,.52) !important;
-  border: 1px solid rgba(34,211,238,.14) !important;
-  border-radius: 5px !important;
-  transition: all .15s !important;
-}
-.session-item:hover {
-  background: rgba(14,42,66,.68) !important;
-  border-color: rgba(34,211,238,.34) !important;
-}
-.session-item.active {
-  background: linear-gradient(155deg, rgba(14,52,82,.72), rgba(10,38,64,.58)) !important;
-  border-color: rgba(34,211,238,.48) !important;
-  border-top-color: rgba(34,211,238,.72) !important;
-}
+.session-item { background: rgba(10,28,48,.52) !important; border: 1px solid rgba(34,211,238,.14) !important; border-radius: 5px !important; transition: all .15s !important; }
+.session-item:hover { background: rgba(14,42,66,.68) !important; border-color: rgba(34,211,238,.34) !important; }
+.session-item.active { background: linear-gradient(155deg, rgba(14,52,82,.72), rgba(10,38,64,.58)) !important; border-color: rgba(34,211,238,.48) !important; border-top-color: rgba(34,211,238,.72) !important; }
 .session-name    { color: rgba(34,211,238,.85) !important; }
 .session-preview { color: rgba(34,211,238,.42) !important; }
 
-/* ═══════════════════════════════════════════════════════
-   v100 — Paleta oficial: variables raíz actualizadas
-   Alinea --cyan, --green y derivados al diseño aprobado.
-═══════════════════════════════════════════════════════ */
-:root {
-  --cyan:         #22d3ee !important;
-  --cyan-dim:     #0ea5c8 !important;
-  --cyan-glow:    rgba(34,211,238,.18) !important;
-  --cyan-pulse:   rgba(34,211,238,.45) !important;
-  --green:        #34ffc3 !important;
-  --amber:        #ffb84d !important;
-  --violet:       #a98bff !important;
-  --bg-dark:      #01060d !important;
-  --bg-panel:     rgba(14,40,60,.50) !important;
-  --ice:          #e6f8ff !important;
-  --muted:        #7fa8bd !important;
-  --steel:        #456b80 !important;
-  --text-main:    #e6f8ff !important;
-  --text-muted:   #7fa8bd !important;
-  --border:       rgba(34,211,238,.20) !important;
-  --glass:        rgba(14,42,66,.62) !important;
+/* 12. Mobile responsive */
+@media (max-width: 900px) {
+  #dock {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-direction: row !important;
+    height: auto !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(34,211,238,.15) !important;
+    z-index: 300 !important;
+  }
+  .dock-nav {
+    flex-direction: row !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    justify-content: space-around !important;
+    gap: 0 !important;
+  }
+  #dock .nav-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    flex-direction: column !important;
+    padding: 8px 4px !important;
+    min-height: 50px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-top: 2px solid transparent !important;
+  }
+  #dock .nav-btn.active {
+    border-top-color: var(--cyan) !important;
+    background: rgba(34,211,238,.06) !important;
+  }
+  .dock-logo, .dock-bottom, .dock-sos-sep { display: none !important; }
+  #workspace {
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #center-tabs {
+    z-index: 290 !important;
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px) !important;
+  }
 }
