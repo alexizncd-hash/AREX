@@ -7489,11 +7489,11 @@ body::after {
 /* 4. Module panel display */
 .module-panel { display: none !important; }
 .module-panel.active {
-  display: block !important;
+  display: block;
   position: relative !important;
   inset: auto !important;
   z-index: 10 !important;
-  overflow-y: auto !important;
+  overflow-y: auto;
   overflow-x: hidden !important;
   background: rgba(0,4,14,.94) !important;
   box-shadow: inset 0 0 60px var(--mod-glow, rgba(34,211,238,.06)) !important;
@@ -8040,4 +8040,55 @@ main#module-chat.module-panel.active { display: flex !important; }
   #fab-analizar {
     bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px) !important;
   }
+}
+
+/* 13. Finanzas KPI cards + chart */
+.metric-card {
+  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50)) !important;
+  border: 1px solid rgba(34,211,238,.18) !important;
+  border-top-color: rgba(34,211,238,.36) !important;
+  box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.12), inset 0 0 22px rgba(14,55,90,.20) !important;
+  backdrop-filter: none !important;
+}
+.metric-card:hover {
+  border-color: rgba(34,211,238,.32) !important;
+  border-top-color: rgba(34,211,238,.55) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,.60), inset 0 1px 0 rgba(34,211,238,.18) !important;
+}
+/* Semantic left-border accents preserved */
+.metric-card.ingreso { border-left: 2px solid #10b981 !important; }
+.metric-card.deuda   { border-left: 2px solid #ef4444 !important; }
+.metric-card.gastos  { border-left: 2px solid #f59e0b !important; }
+.metric-card.margen  { border-left: 2px solid #a98bff !important; }
+
+.chart-container {
+  background: linear-gradient(155deg, rgba(14,42,66,.52), rgba(10,30,52,.42)) !important;
+  border: 1px solid rgba(34,211,238,.16) !important;
+  border-top-color: rgba(34,211,238,.28) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.08) !important;
+  backdrop-filter: none !important;
+}
+
+/* Finanzas sub-nav tabs */
+.subnav-btn {
+  background: rgba(10,28,48,.52) !important;
+  border: 1px solid rgba(34,211,238,.16) !important;
+  color: rgba(34,211,238,.50) !important;
+  border-radius: 4px !important;
+  transition: all .18s !important;
+  font-family: var(--font) !important;
+  font-size: 10px !important;
+  letter-spacing: 2px !important;
+}
+.subnav-btn:hover {
+  background: rgba(14,42,66,.68) !important;
+  border-color: rgba(34,211,238,.36) !important;
+  color: rgba(34,211,238,.80) !important;
+}
+.subnav-btn.active {
+  background: linear-gradient(155deg, rgba(14,42,66,.82), rgba(10,30,52,.68)) !important;
+  border-color: rgba(34,211,238,.55) !important;
+  border-top-color: rgba(34,211,238,.80) !important;
+  color: #22d3ee !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(34,211,238,.18) !important;
 }
