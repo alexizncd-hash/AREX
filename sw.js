@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v103';
-const VERSION = 'v103';
+const CACHE   = 'arex-v104';
+const VERSION = 'v104';
 const SHELL = [
   './index.html',
   './style.css',
