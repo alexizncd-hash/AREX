@@ -32,7 +32,8 @@
 .neg-subnav::-webkit-scrollbar { display: none; }
 
 .neg-tab {
-  padding: 5px 12px;
+  padding: 7px 14px;
+  min-height: 36px;
   font-size: 9px;
   letter-spacing: 2px;
   border: 1px solid rgba(34,211,238,0.15);
@@ -44,6 +45,8 @@
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.18s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .neg-tab:hover  { border-color: var(--cyan); color: var(--cyan); }
 .neg-tab.active {
@@ -56,6 +59,7 @@
 /* ── Área de contenido ── */
 .neg-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.9rem 1rem;
   display: flex;
@@ -439,6 +443,23 @@
   margin-left: 4px;
   opacity: 0.9;
 }
+
+/* ── KPI navegable (clickeable) ── */
+.neg-kpi-nav {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.neg-kpi-nav:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+.neg-kpi-arrow {
+  font-size: 11px;
+  opacity: 0.45;
+  margin-left: 2px;
+  transition: opacity 0.15s;
+}
+.neg-kpi-nav:hover .neg-kpi-arrow { opacity: 0.9; }
 
 /* ── Export box ── */
 .neg-export-box {

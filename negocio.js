@@ -160,23 +160,23 @@ function renderNegDashboard() {
   document.getElementById('neg-dash-content').innerHTML = `
     ${stockBajo ? `<div class="neg-stock-alert" style="margin-bottom:0.5rem;padding:8px 10px;background:rgba(255,153,0,0.06);border:1px solid rgba(255,153,0,0.3);border-left:3px solid #ff9900;border-radius:4px;font-size:10px;letter-spacing:1px;">⚠ STOCK BAJO — ${$KG(data.inventario.stockKg)} disponibles (mínimo: ${$KG(stockMin)})</div>` : ''}
     <div class="neg-kpi-grid">
-      <div class="neg-kpi ${stockBajo ? 'neg-kpi-warn' : ''}">
-        <div class="neg-kpi-lbl">STOCK</div>
+      <div class="neg-kpi neg-kpi-nav ${stockBajo ? 'neg-kpi-warn' : ''}" onclick="switchNegocioView('inventario')" title="Ver inventario">
+        <div class="neg-kpi-lbl">STOCK <span class="neg-kpi-arrow">›</span></div>
         <div class="neg-kpi-val">${$KG(data.inventario.stockKg)}</div>
         <div class="neg-kpi-sub">≈ ${mlDisp} medio litros</div>
       </div>
-      <div class="neg-kpi">
-        <div class="neg-kpi-lbl">VENTAS MES ${_trend(totalVentas, totalVentasAnt)}</div>
+      <div class="neg-kpi neg-kpi-nav" onclick="switchNegocioView('ventas')" title="Ver ventas">
+        <div class="neg-kpi-lbl">VENTAS MES ${_trend(totalVentas, totalVentasAnt)} <span class="neg-kpi-arrow">›</span></div>
         <div class="neg-kpi-val">${$MXN(totalVentas)}</div>
         <div class="neg-kpi-sub">${mlVendidos} ML · ant: ${$MXN(totalVentasAnt)}</div>
       </div>
-      <div class="neg-kpi">
-        <div class="neg-kpi-lbl">GANANCIA MES ${_trend(ganancia, gananciaAnt)}</div>
+      <div class="neg-kpi neg-kpi-nav" onclick="switchNegocioView('gastos')" title="Ver gastos">
+        <div class="neg-kpi-lbl">GANANCIA MES ${_trend(ganancia, gananciaAnt)} <span class="neg-kpi-arrow">›</span></div>
         <div class="neg-kpi-val ${ganancia >= 0 ? 'neg-profit' : 'neg-loss'}">${$MXN(ganancia)}</div>
         <div class="neg-kpi-sub">Margen: ${margen}% · ant: ${$MXN(gananciaAnt)}</div>
       </div>
-      <div class="neg-kpi">
-        <div class="neg-kpi-lbl">SUCURSALES</div>
+      <div class="neg-kpi neg-kpi-nav" onclick="switchNegocioView('sucursales')" title="Ver sucursales">
+        <div class="neg-kpi-lbl">SUCURSALES <span class="neg-kpi-arrow">›</span></div>
         <div class="neg-kpi-val">${data.sucursales.filter(s => s.activa).length}</div>
         <div class="neg-kpi-sub">${top ? 'Top: ' + top[0] : 'Sin ventas'}</div>
       </div>
