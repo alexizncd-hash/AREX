@@ -302,19 +302,29 @@ window._runAgent = async function (agentId, area) {
     else if (agentId === 'atlas') {
       const negocio = _safeCtrlJSON(localStorage.getItem('arex_negocio'), {});
 
-      const ganancia    = negocio.gananciasMes || negocio.ganancias_mes || 0;
-      const ventasHoy   = negocio.ventasHoy || negocio.ventas_hoy || 0;
       // inventario is { stockKg: number, historial: [] } — not an array
       const inventario  = negocio.inventario || {};
       const stockKg     = Number(inventario.stockKg) || 0;
-      const hayStockBajo = stockKg < 10;
+      const hayStockBajo = stockKg < (negocio.config?.stockMinimo ?? 5);
+
+      // Calculate ganancia and ventas from real arrays (not stored as flat props)
+      const now  = new Date();
+      const imTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const ventas  = negocio.ventas  || [];
+      const gastos  = negocio.gastos  || [];
+      const vMes    = ventas.filter(v => v.fecha >= imTs).reduce((a, v) => a + (v.total || 0), 0);
+      const gMes    = gastos.filter(g => g.fecha >= imTs).reduce((a, g) => a + (g.monto || 0), 0);
+      const ganancia = vMes - gMes;
+      const ventasHoy = ventas.filter(v => v.fecha >= todayTs && v.fecha < todayTs + 86400000)
+                               .reduce((a, v) => a + (v.total || 0), 0);
 
       cardTipo    = hayStockBajo ? 'alerta' : 'negocio';
       cardTitulo  = 'ATLAS · Reporte de Negocio';
-      cardContent = `**Ganancias del mes:** $${Number(ganancia).toFixed(0)}\n**Ventas hoy:** $${Number(ventasHoy).toFixed(0)}\n**Stock actual:** ${stockKg.toFixed(1)} kg${hayStockBajo ? '\n\n⚠ ALERTA: Stock por debajo de 10 kg' : ''}`;
-      shortSummary = `Ganancias $${Number(ganancia).toFixed(0)} · Stock ${stockKg.toFixed(1)} kg`;
+      cardContent = `**Ganancias del mes:** $${ganancia.toFixed(0)}\n**Ventas hoy:** $${ventasHoy.toFixed(0)}\n**Stock actual:** ${stockKg.toFixed(1)} kg${hayStockBajo ? '\n\n⚠ ALERTA: Stock por debajo de ' + (negocio.config?.stockMinimo ?? 5) + ' kg' : ''}`;
+      shortSummary = `Ganancias $${ganancia.toFixed(0)} · Stock ${stockKg.toFixed(1)} kg`;
 
-      logBitacora('negocio', `ATLAS: ganancias $${Number(ganancia).toFixed(0)}, stock ${stockKg.toFixed(1)} kg${hayStockBajo ? ' ⚠ BAJO' : ''}`);
+      logBitacora('negocio', `ATLAS: ganancias $${ganancia.toFixed(0)}, stock ${stockKg.toFixed(1)} kg${hayStockBajo ? ' ⚠ BAJO' : ''}`);
     }
 
     /* ════════════════════════════════════════════════════════

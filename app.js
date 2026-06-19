@@ -340,7 +340,7 @@ function buildModuleContext() {
     const tareas = getTareas().filter(t => !t.done);
     const hoy = new Date().toISOString().slice(0,10);
     const urgentes = tareas.filter(t => t.fecha && t.fecha <= hoy);
-    if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>t.text.slice(0,40)).join(', ')}]`);
+    if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>(t.text||t.texto||'').slice(0,40)).join(', ')}]`);
     else if (tareas.length) parts.push(`TAREAS_PENDIENTES: ${tareas.length} total`);
   } catch(e) { console.warn('AREX ctx tareas:', e); }
 
