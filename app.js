@@ -1685,7 +1685,7 @@ function renderDashboard() {
   const tareas       = getTareas();
   const pendTotal    = tareas.filter(t => !t.done).length;
   const urgentes     = tareas.filter(t => { if (t.done) return false; const u = urgenciaTarea(t); return u?.cls==='urg-vencida'||u?.cls==='urg-hoy'; }).length;
-  const margen       = calcularMargen();
+  const margen       = typeof calcularMargenReal === 'function' ? calcularMargenReal() : calcularMargen();
   const margenStr    = typeof formatearMoneda === 'function' ? formatearMoneda(margen) : `$${margen}`;
   const metasActivas = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).length : 0;
   const hoyStr       = new Date().toISOString().slice(0, 10);
@@ -1774,6 +1774,8 @@ function renderDashboard() {
     </div>
     <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
   `;
+  // Fetch live exchange rate (async, non-blocking)
+  if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
 }
 
 function renderSessionsList() {

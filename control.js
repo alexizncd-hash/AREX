@@ -275,14 +275,14 @@ window._runAgent = async function (agentId, area) {
       for (const g of gastosEsteMs) {
         if ((g.monto || 0) > gastoMaxMonto) {
           gastoMaxMonto    = g.monto || 0;
-          gastoMaxConcepto = g.concepto || 'Sin nombre';
+          gastoMaxConcepto = g.descripcion || g.categoria || 'Sin nombre';
         }
       }
 
       // Próximo pago <7 días
       const proxPagos = window.obtenerProximosPagos?.(7) || [];
       const proxStr   = proxPagos.length
-        ? proxPagos.map(p => `${p.nombre||p.concepto||'Pago'} ($${(p.monto||0).toFixed(0)})`).join(', ')
+        ? proxPagos.map(p => `${p.tarjeta||'Pago'} ($${(p.pagoMinimo||0).toFixed(0)})`).join(', ')
         : 'Ninguno en los próximos 7 días';
 
       // % deuda vs ingreso
@@ -489,8 +489,8 @@ function _exportGastosCSV() {
     const raw   = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
     const gs    = Array.isArray(raw) ? raw : (Array.isArray(raw.gastos) ? raw.gastos : []);
     if (!gs.length) { alert('Sin gastos para exportar.'); return; }
-    const rows = [['Fecha','Concepto','Categoría','Monto']];
-    for (const g of gs) rows.push([g.fecha||'',g.concepto||'',g.categoria||'',(g.monto||0).toFixed(2)]);
+    const rows = [['Fecha','Descripción','Categoría','Monto']];
+    for (const g of gs) rows.push([g.fecha||'',g.descripcion||'',g.categoria||'',(g.monto||0).toFixed(2)]);
     const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
     const url  = URL.createObjectURL(blob);

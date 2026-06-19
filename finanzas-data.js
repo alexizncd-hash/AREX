@@ -475,9 +475,45 @@ function checkFinanzasAlerts() {
     });
   } catch(e) { console.warn('AREX Finanzas alerts:', e); }
 }
+// ── Interconnected real-time calculations ─────────────────
+// Adds negocio monthly ventas on top of base salary
+function calcularIngresoReal() {
+  const base = getFinanzasData().config.ingresoMensual;
+  try {
+    const neg  = JSON.parse(localStorage.getItem('arex_negocio') || '{}');
+    const now  = new Date();
+    const imTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const vMes = (neg.ventas || []).filter(v => (v.fecha || 0) >= imTs)
+                                   .reduce((s, v) => s + (v.total || 0), 0);
+    return base + vMes;
+  } catch { return base; }
+}
+
+// Sum of arex_gastos_pers variable spending for current month
+function calcularGastosPers() {
+  try {
+    const raw    = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
+    const gastos = Array.isArray(raw) ? raw : (raw.gastos || []);
+    const now    = new Date();
+    return gastos.filter(g => {
+      if (!g.fecha) return false;
+      const d = new Date(g.fecha + 'T12:00:00');
+      return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).reduce((s, g) => s + (g.monto || 0), 0);
+  } catch { return 0; }
+}
+
+// Full real margin: (salary + negocio income) - fixed commitments - variable spending
+function calcularMargenReal() {
+  return calcularIngresoReal() - calcularGastosTotal() - calcularGastosPers();
+}
+
 window.checkFinanzasAlerts   = checkFinanzasAlerts;
 window.calcularDeudaTotal    = calcularDeudaTotal;
 window.calcularMargen        = calcularMargen;
+window.calcularMargenReal    = calcularMargenReal;
+window.calcularIngresoReal   = calcularIngresoReal;
+window.calcularGastosPers    = calcularGastosPers;
 window.calcularGastosTotal   = calcularGastosTotal;
 window.calcularPorcentajeGastos = calcularPorcentajeGastos;
 window.obtenerProximosPagos  = obtenerProximosPagos;

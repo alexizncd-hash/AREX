@@ -209,7 +209,7 @@ function _agEventChip(ev) {
   const prioMap = { alta:'!', media:'', baja:'' };
   return `<div class="ag-chip ag-chip-${ev.color}" data-evtype="${ev.type}" data-evid="${ev.id}" title="${ev.title}">
     <span class="ag-chip-ico">${icons[ev.type]||'•'}</span>
-    <span class="ag-chip-txt">${_agEsc(ev.title.slice(0,28))}${ev.title.length>28?'…':''}</span>
+    <span class="ag-chip-txt">${_agEsc((ev.title||'').slice(0,28))}${(ev.title||'').length>28?'…':''}</span>
     ${ev.hora ? `<span class="ag-chip-time">${ev.hora}</span>` : ''}
     ${ev.prioridad==='alta' ? '<span class="ag-chip-prio">!</span>' : ''}
     ${ev.repetir && ev.repetir!=='ninguna' ? '<span class="ag-chip-rep">↻</span>' : ''}

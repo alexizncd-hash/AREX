@@ -125,8 +125,9 @@ function _gpMesNavHTML() {
 
 function _gastosDelMes(gastos) {
   return gastos.filter(g => {
+    if (!g.fecha) return false;
     const d = new Date(g.fecha + 'T12:00:00');
-    return d.getMonth() === _gpMes && d.getFullYear() === _gpAnio;
+    return !isNaN(d) && d.getMonth() === _gpMes && d.getFullYear() === _gpAnio;
   });
 }
 
@@ -135,8 +136,9 @@ function _gastosDelMesAnterior(gastos) {
   let m = _gpMes - 1, y = _gpAnio;
   if (m < 0) { m = 11; y--; }
   return gastos.filter(g => {
+    if (!g.fecha) return false;
     const d = new Date(g.fecha + 'T12:00:00');
-    return d.getMonth() === m && d.getFullYear() === y;
+    return !isNaN(d) && d.getMonth() === m && d.getFullYear() === y;
   });
 }
 
