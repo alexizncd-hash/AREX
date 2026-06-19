@@ -5517,6 +5517,25 @@ window.renderExchangeWidget = renderExchangeWidget;
   update();
 })();
 
+/* ── Performance profile: reduce blur on low-end devices ── */
+(function applyPerformanceProfile() {
+  const cores  = navigator.hardwareConcurrency || 4;
+  const mem    = navigator.deviceMemory || 4;        // GB, Chrome only
+  const isLow  = cores <= 4 || mem <= 2;
+  const isMid  = !isLow && (cores <= 6 || mem <= 4);
+  const root   = document.documentElement.style;
+  if (isLow) {
+    root.setProperty('--blur-sm', '0px');
+    root.setProperty('--blur-md', '0px');
+    root.setProperty('--blur-lg', '4px');
+  } else if (isMid) {
+    root.setProperty('--blur-sm', '6px');
+    root.setProperty('--blur-md', '12px');
+    root.setProperty('--blur-lg', '18px');
+  }
+  // High-end: CSS defaults apply (--blur-sm:10, --blur-md:18, --blur-lg:26)
+})();
+
 /* ── Campo de estrellas (fondo negro con partículas) ── */
 (function initStarField() {
   const canvas = document.createElement('canvas');
