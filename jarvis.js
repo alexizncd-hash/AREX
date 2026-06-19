@@ -38,6 +38,9 @@ const AREXNav = {
   },
 
   cambiarModulo(modulo) {
+    // Cancel any ongoing speech before switching context
+    if (window.speechSynthesis?.speaking) window.speechSynthesis.cancel();
+
     // Actualizar botones
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.module === modulo);

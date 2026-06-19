@@ -24,8 +24,9 @@ function _habEsc(s) {
 /* ─── Persistencia ─────────────────────────────────────────────── */
 function getHabitos() {
   try {
-    const raw = localStorage.getItem(HABITOS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw    = localStorage.getItem(HABITOS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
 }
 

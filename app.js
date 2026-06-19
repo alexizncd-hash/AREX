@@ -1151,6 +1151,7 @@ function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
   if (typeof logBitacora === 'function') logBitacora('chat', 'Tarea creada: ' + (t.text?.slice(0,40) || ''));
 }
@@ -1190,10 +1191,12 @@ function _nextFechaRepetir(fechaActual, repetir) {
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
 }
 function updateTarea(id, changes) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
+  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
 }
 function addSubtarea(parentId, text) {
@@ -2476,6 +2479,7 @@ function startListening() {
   rec.onend   = () => stopListening();
 
   try { rec.start(); } catch(e) {
+    _listenRec = null;
     stopListening();
     addMsg('arex', 'No se pudo iniciar el micrófono. Verifica los permisos del navegador.');
   }
@@ -2667,7 +2671,7 @@ function _buildModuloContext(mod) {
     if (mod === 'tareas') {
       const pendientes = getTareas().filter(t => !t.done);
       const urgentes   = pendientes.filter(t => t.fecha && t.fecha <= todayStr);
-      return `TAREAS PENDIENTES (${pendientes.length} total, ${urgentes.length} para hoy):\n${pendientes.slice(0,12).map(t=>`[${t.prioridad||'media'}] "${t.texto}"${t.fecha?` · ${t.fecha}`:''}`).join('\n')}`;
+      return `TAREAS PENDIENTES (${pendientes.length} total, ${urgentes.length} para hoy):\n${pendientes.slice(0,12).map(t=>`[${t.prioridad||'media'}] "${t.text||t.texto||'(sin texto)'}"${t.fecha?` · ${t.fecha}`:''}`).join('\n')}`;
     }
     if (mod === 'negocio' && typeof getNegocioData === 'function') {
       const nd = getNegocioData();
