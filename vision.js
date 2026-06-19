@@ -1750,9 +1750,9 @@ function _getModuleHudContent(id) {
         const neg = JSON.parse(localStorage.getItem('arex_negocio') || '{}');
         const ventas = neg.ventas || [];
         const hoy = ventas.filter(v => new Date(v.fecha||now).toDateString()===now.toDateString());
-        const ingresoHoy = hoy.reduce((s,v)=>s+(v.precio||0)*(v.cantidad||0),0);
-        const stock = neg.inventario?.stockActual || 0;
-        const html = hoy.slice(0,3).map(v=>`<div class="vp-mhud-item">📦 ${v.cantidad||0} uds · $${((v.precio||0)*(v.cantidad||0)).toLocaleString('es-MX',{maximumFractionDigits:0})}</div>`).join('');
+        const ingresoHoy = hoy.reduce((s,v)=>s+(v.total||0),0);
+        const stock = neg.inventario?.stockKg || 0;
+        const html = hoy.slice(0,3).map(v=>`<div class="vp-mhud-item">📦 ${v.cantidad||0} ML · $${(v.total||0).toLocaleString('es-MX',{maximumFractionDigits:0})}</div>`).join('');
         return `<div class="vp-mhud-stat">Hoy: $${ingresoHoy.toLocaleString('es-MX',{maximumFractionDigits:0})} · Stock: ${stock}kg</div>${html||'<div class="vp-mhud-empty">Sin ventas hoy</div>'}`;
       }
       case 'proyectos': {
@@ -2287,7 +2287,7 @@ function _wkContent(id) {
       const totV = mesV.reduce((s,v)=>s+(v.total||0),0);
       const totG = mesG.reduce((s,g)=>s+(g.monto||0),0);
       const gan  = totV - totG;
-      const stock = nd.stockKg ?? nd.stock ?? '—';
+      const stock = nd.inventario?.stockKg ?? '—';
       return `<div class="wk-section">
         <div class="wk-sec-lbl">FRIJOL MAYOCOBA · ESTE MES</div>
         <div class="wk-stat"><span>VENTAS</span><span style="color:var(--green)">$${totV.toLocaleString('es-MX',{maximumFractionDigits:0})}</span></div>
