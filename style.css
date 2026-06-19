@@ -1131,7 +1131,7 @@ main {
 .welcome code { color:var(--cyan); background:rgba(34,211,238,0.08); padding:1px 6px; border-radius:2px; }
 
 .msg { display:flex; flex-direction:column; gap:3px; max-width:88%; min-width:0; animation:appear 0.2s ease-out; }
-@keyframes appear { from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);} }
+/* @keyframes appear defined below (line ~2671) — removed duplicate */
 .msg.user { align-self:flex-end; }
 .msg.arex { align-self:flex-start; }
 .msg .who { font-size:9px; letter-spacing:3px; color:var(--text-muted); }
@@ -8118,4 +8118,14 @@ button, a, [onclick], .nav-btn, .inicio-card,
 .subnav-btn, #center-tabs button, .mtoggle, .qcmd,
 .session-item, .ss-new-session-btn {
   touch-action: manipulation;
+}
+
+/* ── Reduced motion: accesibilidad + performance en dispositivos lentos ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -3582,17 +3582,11 @@ async function handleCommand(cmd) {
       setOrb('thinking','Generando resumen...');
       showThinking();
       try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-          body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:500,
-            messages:[{ role:'user', content:`Resume en puntos clave esta conversación entre Alexiz y AREX:\n\n${
-              history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
-            }` }] })
-        });
-        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
-        const data = await res.json();
-        const summaryText = data?.choices?.[0]?.message?.content;
+        const summaryText = await callBrain('rapido', [
+          { role:'user', content:`Resume en puntos clave esta conversación entre Alexiz y AREX:\n\n${
+            history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
+          }` }
+        ], { maxTokens: 500 });
         if (!summaryText) return;
         history.push({ role:'assistant', content: `[Resumen]\n${summaryText}` });
         await saveMsg('assistant', `[Resumen]\n${summaryText}`);
@@ -4370,20 +4364,10 @@ function _showUpdateBanner() {
         return;
       }
       try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            max_tokens: 20,
-            messages: [{
-              role: 'user',
-              content: `Clasifica este texto en UNA palabra: tarea, nota, gasto, o meta. Solo responde la palabra. Texto: "${text.slice(0, 120)}"`
-            }]
-          })
-        });
-        const data  = await res.json();
-        const reply = (data?.choices?.[0]?.message?.content || '').toLowerCase().trim();
+        const reply = (await callBrain('rapido', [{
+          role: 'user',
+          content: `Clasifica este texto en UNA palabra: tarea, nota, gasto, o meta. Solo responde la palabra. Texto: "${text.slice(0, 120)}"`
+        }], { maxTokens: 20 })).toLowerCase().trim();
         const type  = ['tarea','nota','gasto','meta'].find(t => reply.includes(t)) || 'tarea';
         _qcSetType(type);
         _qcSetHint(`AREX clasificó como: ${type.toUpperCase()}`, true);
