@@ -556,10 +556,12 @@ const FinanzasModule = {
   guardarEditor() {
     const ingreso = parseFloat(document.getElementById('edit-ingreso')?.value) || 0;
 
+    const ALLOWED_TARJETA_FIELDS = new Set(['saldo','pagoMinimo','pagoMSI','interesMensual','limite','disponible']);
     const tarjetas = [];
     document.querySelectorAll('#edit-tarjetas .edit-input[data-tid]').forEach(inp => {
       const id = inp.dataset.tid;
       const field = inp.dataset.field;
+      if (!ALLOWED_TARJETA_FIELDS.has(field)) return;
       let entry = tarjetas.find(t => t.id === id);
       if (!entry) { entry = { id }; tarjetas.push(entry); }
       entry[field] = parseFloat(inp.value) || 0;

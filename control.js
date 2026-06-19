@@ -173,7 +173,20 @@ function _renderLog(el) {
 }
 
 /* ── Agentes ─────────────────────────────────────────── */
-const AGENT_ACTIVE_MS = 300000; // 5 min — ventana de actividad reciente
+const AGENT_ACTIVE_MS  = 300000;       // 5 min — ventana de actividad reciente
+const AGENT_STALE_MS   = 30 * 60000;  // 30 min — re-run threshold when tab opens
+
+function _autoRunStaleAgents() {
+  const estado = JSON.parse(localStorage.getItem('arex_agentes_estado') || '{}');
+  let delay = 0;
+  for (const a of AGENTES) {
+    const lastRun = estado[a.id]?.lastRun || 0;
+    if (Date.now() - lastRun > AGENT_STALE_MS) {
+      setTimeout(() => window._runAgent(a.id, a.area), delay);
+      delay += 2500; // stagger to avoid API hammering
+    }
+  }
+}
 
 const AGENTES = [
   {
@@ -664,6 +677,9 @@ function renderControlModule() {
     </div>
 
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
+      <div style="display:flex;justify-content:flex-end;padding:4px 8px 0">
+        <button class="ctrl-tab" onclick="AGENTES.forEach(a=>window._runAgent(a.id,a.area))" style="font-size:9px;padding:4px 14px;border-color:var(--cyan)44;color:var(--cyan)">▶ EJECUTAR TODOS</button>
+      </div>
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
     </div>
 
@@ -689,10 +705,11 @@ function renderControlModule() {
       if (typeof window.initNeuralOrbs !== 'function') {
         const _s = document.createElement('script');
         _s.src = './neural-orb.js';
-        _s.onload = () => _renderAgentes(ag);
+        _s.onload = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
         document.body.appendChild(_s);
       } else {
         _renderAgentes(ag);
+        _autoRunStaleAgents();
       }
     }
   } else if (_ctrlView === 'datos') {
