@@ -5267,8 +5267,9 @@ function _proactiveModuleGreeting(mod) {
         return `Meta principal: ${top.titulo}. Al ${Math.round(top.progreso || 0)} por ciento.`;
       },
       finanzas() {
-        const gastos = JSON.parse(localStorage.getItem('arex_gastos_pers') || '[]');
-        const gMes = gastos.filter(g => {
+        const raw = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
+        const gastosList = Array.isArray(raw) ? raw : (raw.gastos || []);
+        const gMes = gastosList.filter(g => {
           const d = new Date(g.fecha);
           return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         }).reduce((s, g) => s + (g.monto || 0), 0);
@@ -5278,8 +5279,9 @@ function _proactiveModuleGreeting(mod) {
         try {
           const d = typeof getNegocioData === 'function' ? getNegocioData() : null;
           if (!d) return null;
-          const stockBajo = (d.inventario || []).filter(i => i.stockKg < (d.config?.stockMinimo || 5));
-          if (stockBajo.length) return `Alerta: ${stockBajo.length} producto${stockBajo.length > 1 ? 's' : ''} con stock bajo.`;
+          const stockKg = Number(d.inventario?.stockKg) || 0;
+          const stockMin = d.config?.stockMinimo ?? 5;
+          if (stockKg < stockMin) return `Alerta: stock bajo (${stockKg.toFixed(1)} kg, mínimo ${stockMin} kg).`;
         } catch (_) {}
         return null;
       },

@@ -88,7 +88,7 @@ function _doSearch(query) {
       const match = s.messages.find(m => String(m.content || '').toLowerCase().includes(q));
       if (match) {
         const date = s.updated ? new Date(s.updated).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'}) : '';
-        sessionHits.push({ name: s.name || 'Sesión', snippet: match.content.slice(0, 80), date, sid: s.id });
+        sessionHits.push({ name: s.name || 'Sesión', snippet: (match.content || '').slice(0, 80), date, sid: s.id });
       }
     }
   } catch {}
