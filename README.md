@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v115)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v116)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -341,6 +341,30 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v116 — CSS @layer Architecture: eliminación estructural de !important
+
+**`style.css`**
+- Implementado sistema CSS `@layer arex-base` para resolver el conflicto estructural de cascada
+- Todo el CSS base (líneas 1–5636) envuelto en `@layer arex-base { }` — menor prioridad en cascada
+- Los bloques v63 (Translucency), v64 (Neural Orbs) y v65 (Iron Man HUD) quedan sin capa (unlayered), ganando automáticamente sobre el base por diseño del spec CSS
+- Eliminados **790 `!important`** de los bloques v63/v64/v65 — ahora innecesarios gracias a la precedencia de reglas sin capa sobre capas
+- Reducción total: **1,075 → 336 `!important`** (−69%)
+- Los 336 restantes son legítimos (utilidades `.hidden`, overrides móviles en `@media`, glow/animation helpers)
+
+### v115 — CSS blur variables + adaptive performance profile
+
+**`style.css`**
+- Variables CSS `--blur-sm: 10px`, `--blur-md: 18px`, `--blur-lg: 26px` en `:root`
+- Reemplazados los 87 `backdrop-filter: blur(Npx)` con tiers de variables: sm/md/lg
+- `@media (prefers-reduced-motion: reduce)` agregado al final del archivo — desactiva todas las animaciones para usuarios con sensibilidad al movimiento
+- Removida animación `@keyframes appear` duplicada (línea 1134)
+
+**`app.js`**
+- IIFE `applyPerformanceProfile()`: detecta `hardwareConcurrency` y `deviceMemory` al arranque; en dispositivos low-end (≤4 cores o ≤2GB) setea `--blur-sm/md/lg` a 0px/0px/4px vía `setProperty`; en mid-end reduce a 6/12/18px
+
+**`index.html`**
+- Atributo `defer` agregado a 3 scripts CDN (`marked.min.js`, `purify.min.js`, `highlight.min.js`) para dejar de bloquear el parser HTML
 
 ### v83 — Sprint A Multi-usuario: Google Sign-In + Perfiles (AREX/VIERNES) + Sistema de identidades
 
