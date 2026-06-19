@@ -302,17 +302,19 @@ window._runAgent = async function (agentId, area) {
     else if (agentId === 'atlas') {
       const negocio = _safeCtrlJSON(localStorage.getItem('arex_negocio'), {});
 
-      const ganancia   = negocio.gananciasMes || negocio.ganancias_mes || 0;
-      const ventasHoy  = negocio.ventasHoy || negocio.ventas_hoy || 0;
-      const inventario = negocio.inventario || [];
-      const stockBajo  = inventario.filter(i => (i.stock ?? i.cantidad ?? 0) < 10);
+      const ganancia    = negocio.gananciasMes || negocio.ganancias_mes || 0;
+      const ventasHoy   = negocio.ventasHoy || negocio.ventas_hoy || 0;
+      // inventario is { stockKg: number, historial: [] } — not an array
+      const inventario  = negocio.inventario || {};
+      const stockKg     = Number(inventario.stockKg) || 0;
+      const hayStockBajo = stockKg < 10;
 
-      cardTipo    = stockBajo.length ? 'alerta' : 'negocio';
+      cardTipo    = hayStockBajo ? 'alerta' : 'negocio';
       cardTitulo  = 'ATLAS · Reporte de Negocio';
-      cardContent = `**Ganancias del mes:** $${Number(ganancia).toFixed(0)}\n**Ventas hoy:** $${Number(ventasHoy).toFixed(0)}\n**Stock bajo (<10kg):** ${stockBajo.length ? stockBajo.map(i => i.nombre || i.producto || 'ítem').join(', ') : 'Ninguno'}${stockBajo.length ? '\n\n⚠ ALERTA: Hay productos con stock crítico' : ''}`;
-      shortSummary = `Ganancias $${Number(ganancia).toFixed(0)} · ${stockBajo.length} productos stock bajo`;
+      cardContent = `**Ganancias del mes:** $${Number(ganancia).toFixed(0)}\n**Ventas hoy:** $${Number(ventasHoy).toFixed(0)}\n**Stock actual:** ${stockKg.toFixed(1)} kg${hayStockBajo ? '\n\n⚠ ALERTA: Stock por debajo de 10 kg' : ''}`;
+      shortSummary = `Ganancias $${Number(ganancia).toFixed(0)} · Stock ${stockKg.toFixed(1)} kg`;
 
-      logBitacora('negocio', `ATLAS: ganancias $${Number(ganancia).toFixed(0)}, stock bajo: ${stockBajo.length}`);
+      logBitacora('negocio', `ATLAS: ganancias $${Number(ganancia).toFixed(0)}, stock ${stockKg.toFixed(1)} kg${hayStockBajo ? ' ⚠ BAJO' : ''}`);
     }
 
     /* ════════════════════════════════════════════════════════

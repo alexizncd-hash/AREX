@@ -304,7 +304,7 @@ function buildModuleContext() {
       if (pagos.length) finTxt += `, próximos_pagos=[${pagos.slice(0,3).map(p=>`${p.tarjeta} en ${p.diasRestantes}d (${fmtM(p.pagoMinimo)})`).join(', ')}]`;
       parts.push(finTxt);
     }
-  } catch(e) {}
+  } catch(e) { console.warn('AREX ctx finanzas:', e); }
   try {
     // Negocio
     if (typeof getNegocioData === 'function') {
@@ -316,7 +316,7 @@ function buildModuleContext() {
       const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
       parts.push(`NEGOCIO (${neg.config.variedad}): ventas_mes=${fmtM(vM)}, gastos_mes=${fmtM(gM)}, ganancia_mes=${fmtM(vM-gM)}, stock=${neg.inventario.stockKg}kg`);
     }
-  } catch(e) {}
+  } catch(e) { console.warn('AREX ctx negocio:', e); }
   try {
     // Gastos personales
     if (typeof getGastosData === 'function') {
@@ -327,14 +327,14 @@ function buildModuleContext() {
       const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
       if (totalMes > 0) parts.push(`GASTOS_PERSONALES: total_mes=${fmtM(totalMes)}, gastos=${gastosMes.length}`);
     }
-  } catch(e) {}
+  } catch(e) { console.warn('AREX ctx gastos:', e); }
   try {
     // Metas
     if (typeof getMetas === 'function') {
       const metas = getMetas().filter(m => !m.completada);
       if (metas.length) parts.push(`METAS_ACTIVAS: [${metas.slice(0,5).map(m=>`"${m.titulo}"`).join(', ')}]`);
     }
-  } catch(e) {}
+  } catch(e) { console.warn('AREX ctx metas:', e); }
   try {
     // Tareas urgentes
     const tareas = getTareas().filter(t => !t.done);
@@ -342,7 +342,7 @@ function buildModuleContext() {
     const urgentes = tareas.filter(t => t.fecha && t.fecha <= hoy);
     if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>t.text.slice(0,40)).join(', ')}]`);
     else if (tareas.length) parts.push(`TAREAS_PENDIENTES: ${tareas.length} total`);
-  } catch(e) {}
+  } catch(e) { console.warn('AREX ctx tareas:', e); }
 
   if (!parts.length) return '';
   const owner = window._arexProfile?.ownerName || 'Alexiz';
@@ -2575,7 +2575,7 @@ function startContinuousMode() {
     // Para otros errores (network, service-not-allowed, etc.): pausar restart 2s en vez de loop infinito
     console.warn('AREX voice recognition error:', e.error);
     _continuousRestart = false;
-    setTimeout(() => { if (continuousMode) _continuousRestart = true; }, 2000);
+    setTimeout(() => { if (continuousMode) _continuousRestart = true; }, 1200);
   };
 
   rec.onend = () => {
