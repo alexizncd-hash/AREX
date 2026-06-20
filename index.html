@@ -999,21 +999,14 @@
 
 </div><!-- /#workspace -->
 
-<!-- Módulos con defer — descargan en paralelo, ejecutan en orden tras parsear el HTML -->
+<!-- Core scripts — cargados al inicio -->
 <script defer src="finanzas-data.js"></script>
 <script defer src="finanzas.js"></script>
-<script defer src="negocio.js"></script>
-<script defer src="gastos.js"></script>
-<script defer src="metas.js"></script>
-<script defer src="proyectos.js"></script>
-<script defer src="evidencias.js"></script>
-<script defer src="control.js"></script>
-<script defer src="agenda.js"></script>
-<script defer src="habitos.js"></script>
 <script defer src="search.js"></script>
 <script defer src="jarvis.js"></script>
 <script defer src="orb.js"></script>
-<!-- reparto.js, holo.js, parallax.js, vision-orb.js, vision.js → lazy-loaded on demand -->
+<!-- Módulos lazy-loaded por jarvis.js al abrirse: negocio, gastos, metas, proyectos,
+     evidencias, control, agenda, habitos, reparto, holo, parallax, vision-orb, vision -->
 
 <!-- Marked (Markdown parser) -->
 <script defer src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
@@ -1037,7 +1030,7 @@
 <script type="module" src="app.js"></script>
 <!-- WebXR AR Panels (Fase 3) -->
 <script type="module" src="webxr.js"></script>
-<!-- reparto.js, vision-orb.js, vision.js, holo.js, parallax.js, gesture.js, neural-orb.js → lazy-loaded on demand -->
+<!-- reparto.js, vision-orb.js, vision.js, holo.js, parallax.js, gesture.js → lazy-loaded on demand -->
 
 <!-- FAB: Analizar módulo con AREX IA -->
 <button id="fab-analizar" title="AREX analiza este módulo con IA"

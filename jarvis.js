@@ -42,22 +42,21 @@ const CENTRO_LABELS = {
 
 // ── Renders + lazy loads por módulo ─────────────────────
 function _renderModulo(modulo) {
-  if (modulo === 'inicio'    && typeof renderDashboard         === 'function') { renderDashboard(); return; }
-  if (modulo === 'finanzas'  && window.FinanzasModule?.renderDashboard)         { window.FinanzasModule.renderDashboard(); return; }
-  if (modulo === 'notas'     && typeof renderNotas             === 'function') { renderNotas(); return; }
-  if (modulo === 'negocio'   && typeof renderNegocioModule     === 'function') { renderNegocioModule(); return; }
-  if (modulo === 'gastos'    && typeof renderGastosModule      === 'function') { renderGastosModule(); return; }
-  if (modulo === 'metas'     && typeof renderMetasModule       === 'function') { renderMetasModule(); return; }
-  if (modulo === 'proyectos' && typeof renderProyectosModule   === 'function') { renderProyectosModule(); return; }
-  if (modulo === 'control'   && typeof renderControlModule     === 'function') { renderControlModule(); return; }
-  if (modulo === 'agenda'    && typeof renderAgendaModule      === 'function') { renderAgendaModule(); return; }
-  if (modulo === 'habitos'   && typeof renderHabitosModule     === 'function') { renderHabitosModule(); return; }
-  if (modulo === 'evidencias'&& typeof renderEvidenciasWidget  === 'function') { renderEvidenciasWidget(); return; }
-  if (modulo === 'reparto') {
-    _lazyLoad('reparto.js').then(() => {
-      if (typeof renderRepartoModule === 'function') renderRepartoModule();
-    }).catch(e => console.warn('reparto.js lazy-load:', e));
-  }
+  if (modulo === 'inicio')    { if (typeof renderDashboard === 'function') renderDashboard(); return; }
+  if (modulo === 'finanzas')  { if (window.FinanzasModule?.renderDashboard) window.FinanzasModule.renderDashboard(); return; }
+  if (modulo === 'notas')     { if (typeof renderNotas === 'function') renderNotas(); return; }
+
+  const _lazy = (src, fn) => _lazyLoad(src).then(() => { if (typeof fn === 'function') fn(); });
+
+  if (modulo === 'negocio')   { _lazy('negocio.js',   () => renderNegocioModule?.());  return; }
+  if (modulo === 'gastos')    { _lazy('gastos.js',    () => renderGastosModule?.());   return; }
+  if (modulo === 'metas')     { _lazy('metas.js',     () => renderMetasModule?.());    return; }
+  if (modulo === 'proyectos') { _lazy('proyectos.js', () => renderProyectosModule?.()); return; }
+  if (modulo === 'control')   { _lazy('control.js',   () => renderControlModule?.());  return; }
+  if (modulo === 'agenda')    { _lazy('agenda.js',    () => renderAgendaModule?.());   return; }
+  if (modulo === 'habitos')   { _lazy('habitos.js',   () => renderHabitosModule?.());  return; }
+  if (modulo === 'evidencias'){ _lazy('evidencias.js',() => renderEvidenciasWidget?.()); return; }
+  if (modulo === 'reparto')   { _lazy('reparto.js',   () => renderRepartoModule?.());  return; }
 }
 
 // ── AREXNav (status bar sync) ────────────────────────────

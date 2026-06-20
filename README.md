@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v120)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v121)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -21,7 +21,7 @@ arex/
 ├── style.css           → Diseño futurista / estética Stark Industries / JARVIS
 ├── app.js              → Motor principal: IA, voz, comandos, tareas, recordatorios, dashboard, canvas
 ├── jarvis.js           → Navegación entre módulos del dock
-├── orb.js              → Orbe 3D WebGL Mark III: GLSL shaders (Fresnel rim, wave displacement, energy bands); fallback 2D canvas
+├── orb.js              → Neural Mesh Orb Mark IV: Canvas 2D, 100 nodos Fibonacci, K=5 aristas vecinas, 160 chispas world-space; estados reactivos (default/speaking/thinking/listening/searching)
 ├── finanzas.js         → Lógica del módulo financiero
 ├── finanzas-data.js    → Datos financieros + funciones de cálculo
 ├── finanzas.css        → Estilos del módulo financiero
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v83 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v121 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -98,11 +98,9 @@ arex/
 | Tavily Search API | Búsqueda web en tiempo real |
 | Web Speech API | Reconocimiento de voz (input), modo continuo, comandos en Visión |
 | SpeechSynthesis API | Síntesis de voz — AREX habla y saluda proactivamente |
-| WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
-| Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
+| Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, Neural Mesh Orb |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| Neural Orb Engine v2 | Canvas 2D cerebros holográficos: Fibonacci nodes, synapse pulses, rim lighting, specular highlights |
-| PWA + Service Worker v65 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v121 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |

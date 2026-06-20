@@ -20,6 +20,7 @@
   let _canvas  = null;
   let _ctx     = null;
   let _alive   = false;
+  let _rafId   = null;
   let _state   = 'idle';
   let _angleY  = 0;
   let _angleX  = 0.30;
@@ -283,19 +284,19 @@
       ctx.strokeStyle = _c(0.25 * (1 - phase2) * breathe); ctx.lineWidth = 0.8; ctx.stroke();
     }
 
-    requestAnimationFrame(_draw);
+    _rafId = requestAnimationFrame(_draw);
   }
 
   /* ─── Public API ───────────────────────────────────────────── */
   window.VisionOrb = {
     init(canvas) {
+      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
       _canvas = canvas;
       _ctx    = canvas.getContext('2d');
       _alive  = true;
       _build();
-      // seed initial pulses
       for (let i = 0; i < 3; i++) _spawnPulse();
-      requestAnimationFrame(_draw);
+      _rafId = requestAnimationFrame(_draw);
     },
 
     setState(state) {
@@ -310,6 +311,7 @@
 
     destroy() {
       _alive = false;
+      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
       if (_ctx && _canvas) _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
       _canvas = null; _ctx = null;
     },
