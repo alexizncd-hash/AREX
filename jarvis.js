@@ -83,12 +83,13 @@ const AREXNav = {
   },
 
   _ensureInicio() {
-    // Make sure #module-inicio is visible and others are not drawer-open
     const inicio = document.getElementById('module-inicio');
     if (inicio) inicio.classList.add('active');
     document.querySelectorAll('.module-panel:not(#module-inicio)').forEach(p => {
       p.classList.remove('active', 'drawer-open');
     });
+    // Render dashboard content after app.js functions are guaranteed loaded
+    setTimeout(() => { if (typeof renderDashboard === 'function') renderDashboard(); }, 80);
   },
 
   actualizarEstadoSistema(modulo) {

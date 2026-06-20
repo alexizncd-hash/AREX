@@ -1702,14 +1702,13 @@ function renderDashboard() {
   const firstName    = (window._arexUser?.displayName || 'Alexiz').split(' ')[0];
 
   el.innerHTML = `
-    <!-- Hero (transparent — reactor visible behind) -->
+    <!-- Hero (transparent — orb visible behind through dash-content) -->
     <div class="inicio-hero">
       <div class="inicio-state-lbl" id="inicio-state-lbl">EN ESPERA</div>
       <div class="inicio-welcome">
         Sistemas en línea. Soy <strong>AREX</strong>.<br>
         Listo para asistirte, ${firstName}.
       </div>
-      <div class="inicio-tap-hint">▸ TOCA EL REACTOR ◂</div>
     </div>
 
     <!-- Centro cards -->
@@ -1721,7 +1720,7 @@ function renderDashboard() {
       </div>
 
       <div class="inicio-grid">
-        <div class="inicio-card cap" onclick="abrirCentro('capital');cambiarModulo('finanzas')">
+        <div class="inicio-card cap" onclick="abrirCentro('capital')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">💰</span>
@@ -1730,7 +1729,7 @@ function renderDashboard() {
           <div class="ic-stat">${margenStr} margen</div>
         </div>
 
-        <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
+        <div class="inicio-card imp" onclick="abrirCentro('impulso')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🎯</span>
@@ -1739,7 +1738,7 @@ function renderDashboard() {
           <div class="ic-stat">${pendTotal} tarea${pendTotal!==1?'s':''}${urgentes?` · ⚠ ${urgentes}`:''}</div>
         </div>
 
-        <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
+        <div class="inicio-card men" onclick="abrirCentro('mente')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🧠</span>
@@ -1748,7 +1747,7 @@ function renderDashboard() {
           <div class="ic-stat">${notas} nota${notas!==1?'s':''} · ${proyectos} proy.</div>
         </div>
 
-        <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
+        <div class="inicio-card con" onclick="abrirCentro('control')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">⚙️</span>
@@ -1757,7 +1756,7 @@ function renderDashboard() {
           <div class="ic-stat">${groqOk?'IA ✓':'IA ✗'} · ${fbOk?'DB ✓':'DB ✗'} · ${gemOk?'VIS ✓':'VIS —'}</div>
         </div>
 
-        <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
+        <div class="inicio-card chat ic-full" onclick="cambiarModulo('chat')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico ic-ico-lg">💬</span>
