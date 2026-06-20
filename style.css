@@ -402,31 +402,15 @@ main {
 
 .orb {
   position:relative; width:80px; height:80px; border-radius:50%;
-  border:2px solid var(--cyan);
-  background:#000d1a;
+  border:none;
+  background:transparent;
   display:flex; align-items:center; justify-content:center;
-  cursor:pointer; transition:box-shadow 0.3s;
-  overflow:hidden;
-  box-shadow:0 0 28px var(--cyan-pulse), 0 0 60px rgba(34,211,238,0.12), inset 0 0 26px rgba(34,211,238,0.12);
+  cursor:pointer; transition:none;
+  overflow:visible;
+  box-shadow:none;
 }
-.orb-core {
-  width:24px; height:24px; border-radius:50%;
-  background:var(--cyan); box-shadow:0 0 16px var(--cyan), 0 0 32px var(--cyan), 0 0 48px rgba(34,211,238,0.4);
-  animation:breathe 2.2s ease-in-out infinite;
-}
-@keyframes breathe { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(0.82);opacity:0.65;} }
-
-.orb.speaking .orb-core { animation:speak-pulse 0.28s ease-in-out infinite; background:#fff; }
-.orb.speaking { box-shadow:0 0 44px var(--cyan-pulse),0 0 70px rgba(34,211,238,0.25),inset 0 0 34px rgba(34,211,238,0.18); }
-@keyframes speak-pulse { 0%,100%{transform:scale(1);}50%{transform:scale(1.35);} }
-
-.orb.listening { box-shadow:0 0 30px rgba(52,255,195,0.4),inset 0 0 22px rgba(52,255,195,0.1); border-color:var(--green); }
-.orb.listening .orb-core { background:var(--green); box-shadow:0 0 12px var(--green); }
-
-.orb.thinking .orb-core { animation:think 0.6s ease-in-out infinite; }
-@keyframes think { 0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(0.9) rotate(180deg);} }
-
-.orb.searching .orb-core { animation:spin 0.5s linear infinite; background:var(--orange); box-shadow:0 0 12px var(--orange); }
+/* .orb-core is removed by orb.js at runtime — kept here as no-op fallback */
+.orb-core { display:none; }
 
 /* ── Modo AR — anillos orbitales ───────────────────── */
 @keyframes ar-ring-cw  { to { transform: rotate(360deg);  } }

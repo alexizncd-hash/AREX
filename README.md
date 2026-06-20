@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v119)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v120)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -341,6 +341,16 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v120 — Neural Mesh Orb (MARK IV)
+
+- `orb.js` completamente reescrito: WebGL reemplazado por canvas 2D con malla neural 3D
+- 100 nodos en distribución Fibonacci esférica + K=5 aristas nearest-neighbor
+- Nube de 160 partículas-chispa en espacio-mundo que vuelan hacia afuera (drift ligero hacia arriba)
+- Respiración orgánica por nodo con fase aleatoria (effecto no-esférico / cerebro)
+- Canvas 2.8× el tamaño del elemento orbe — la nube de partículas desborda naturalmente
+- Todos los estados mantenidos: default/speaking/thinking/listening/searching con velocidad y densidad reactiva
+- CSS `.orb` limpiado: sin borde, sin fondo, `overflow:visible` — el canvas maneja toda la visual
 
 ### v119 — Mapa táctico HUD + Rutas OSRM por carreteras + Finanzas subnav fix
 
