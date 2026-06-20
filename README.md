@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v116)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v117)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -341,6 +341,29 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v117 — Liquid Glass System: superficies de vidrio líquido + GPU ×6 más eficiente
+
+**`style.css`** (nueva sección v117 — unlayered, gana sobre todo)
+- Variables blur reducidas: `--blur-sm: 3px` (era 10), `--blur-md: 6px` (era 18), `--blur-lg: 10px` (era 26)
+- GPU: área de muestreo por compositing layer cae de π·26² ≈ 2,123 px² → π·10² ≈ 314 px² (×6.7 menos por panel)
+- Sistema de tokens Liquid Glass: `--lg-specular-top/left`, `--lg-refract-iron`, `--lg-shadow-depth`
+- Capa de "atmósfera ambiental" en `body::after`: 2 radial-gradients cálidos (iron/cyan) que dan profundidad sin blur adicional
+- **13 superficies** rediseñadas con Liquid Glass CSS (cero JS, cero canvas extra):
+  - `.module-panel` — vidrio con borde especular superior + refracción iron inferior
+  - `.hud-panel` — glass ligero (blur-sm), highlight blanco en borde top
+  - `.dhud-panel` — dashboard cards con hover suave (border + glow transition)
+  - `header` — glass horizontal, highlight interior superior + refracción iron inferior
+  - `.sidebar` — glass lateral, micro-specular izquierdo
+  - `#dock` — glass inferior, border-top especular
+  - `.modal-box` — única superficie con blur real generoso (14px) ya que es transitoria y única
+  - `.bg-container` — search overlay con blur 16px (también transitorio)
+  - `.input-wrap/.input-row` — glass mínimo en input area
+  - `.metric-card`, `.nota-card`, `.tarea-item`, `.inicio-card` — cards con borde especular sin backdrop-filter
+  - `.pomo-widget` — glass suave
+
+**`app.js`**
+- `applyPerformanceProfile()` simplificado: low-end setea todo a 0px (el Liquid Glass visual vía borders/shadows sigue activo); mid/high ya no necesita override (defaults 3/6/10 son eficientes)
 
 ### v116 — CSS @layer Architecture: eliminación estructural de !important
 

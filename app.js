@@ -5519,21 +5519,17 @@ window.renderExchangeWidget = renderExchangeWidget;
 
 /* ── Performance profile: reduce blur on low-end devices ── */
 (function applyPerformanceProfile() {
-  const cores  = navigator.hardwareConcurrency || 4;
-  const mem    = navigator.deviceMemory || 4;        // GB, Chrome only
-  const isLow  = cores <= 4 || mem <= 2;
-  const isMid  = !isLow && (cores <= 6 || mem <= 4);
-  const root   = document.documentElement.style;
+  const cores = navigator.hardwareConcurrency || 4;
+  const mem   = navigator.deviceMemory || 4;   // GB, Chrome only
+  const isLow = cores <= 4 || mem <= 2;
+  const root  = document.documentElement.style;
   if (isLow) {
+    // Low-end: sin blur — Liquid Glass visual vía borders/shadows únicamente
     root.setProperty('--blur-sm', '0px');
     root.setProperty('--blur-md', '0px');
-    root.setProperty('--blur-lg', '4px');
-  } else if (isMid) {
-    root.setProperty('--blur-sm', '6px');
-    root.setProperty('--blur-md', '12px');
-    root.setProperty('--blur-lg', '18px');
+    root.setProperty('--blur-lg', '0px');
   }
-  // High-end: CSS defaults apply (--blur-sm:10, --blur-md:18, --blur-lg:26)
+  // Mid/High: defaults v117 (3/6/10px) son ya eficientes — no override necesario
 })();
 
 /* ── Campo de estrellas (fondo negro con partículas) ── */
