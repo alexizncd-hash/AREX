@@ -116,7 +116,16 @@ function _createRepMap(container) {
           maxzoom: 19,
         }
       },
-      layers: [{ id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.88 } }]
+      layers: [{
+        id: 'base', type: 'raster', source: 'base',
+        paint: {
+          'raster-opacity': 0.90,
+          'raster-hue-rotate': 160,
+          'raster-saturation': -0.55,
+          'raster-brightness-max': 0.52,
+          'raster-contrast': 0.15,
+        }
+      }]
     },
     center:    [-102.5, 23.6],
     zoom:      5,
@@ -155,39 +164,86 @@ function _addRepRouteLayer() {
   _repMap.addLayer({
     id: 'rep-glow', type: 'line', source: 'rep-route',
     filter: ['==', '$type', 'LineString'],
-    paint: { 'line-color': '#00ff88', 'line-width': 10, 'line-opacity': 0.12, 'line-blur': 5 }
+    paint: { 'line-color': '#ff6a00', 'line-width': 12, 'line-opacity': 0.18, 'line-blur': 6 }
   });
   // Main route line
   _repMap.addLayer({
     id: 'rep-line', type: 'line', source: 'rep-route',
     filter: ['==', '$type', 'LineString'],
-    paint: { 'line-color': '#00ff88', 'line-width': 2.5, 'line-opacity': 0.90, 'line-dasharray': [3, 2] }
+    paint: { 'line-color': '#ff8c00', 'line-width': 3, 'line-opacity': 0.92, 'line-dasharray': [4, 2] }
   });
   // Waypoint halos
   _repMap.addLayer({
     id: 'rep-wp-halo', type: 'circle', source: 'rep-route',
     filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
-    paint: { 'circle-radius': 14, 'circle-color': '#00ff88', 'circle-opacity': 0.10 }
+    paint: { 'circle-radius': 16, 'circle-color': '#f5a623', 'circle-opacity': 0.14 }
   });
   // Waypoint dots
   _repMap.addLayer({
     id: 'rep-wp-dot', type: 'circle', source: 'rep-route',
     filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
-    paint: { 'circle-radius': 6, 'circle-color': '#00ff88', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-opacity': 0.95 }
+    paint: { 'circle-radius': 7, 'circle-color': '#f5a623', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff8', 'circle-opacity': 0.96 }
   });
 }
+
+let _osrmDebounce = null;
 
 function _syncRepRoute() {
   const src = _repMap?.getSource('rep-route');
   if (!src) return;
-  const feats = [];
-  _repWaypoints.forEach((wp, i) => {
-    feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: wp }, properties: { type: 'wp', index: i + 1 } });
-  });
+
+  // Draw waypoint dots immediately
+  const feats = _repWaypoints.map((wp, i) => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: wp },
+    properties: { type: 'wp', index: i + 1 }
+  }));
+
+  // Show straight placeholder while waiting for OSRM
   if (_repWaypoints.length >= 2) {
     feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: _repWaypoints }, properties: {} });
   }
   src.setData({ type: 'FeatureCollection', features: feats });
+
+  // Debounce OSRM road-snap
+  clearTimeout(_osrmDebounce);
+  if (_repWaypoints.length >= 2) {
+    _osrmDebounce = setTimeout(() => _fetchOSRMRoute(src), 800);
+  }
+}
+
+async function _fetchOSRMRoute(src) {
+  if (_repWaypoints.length < 2) return;
+  try {
+    const coords = _repWaypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?geometries=geojson&overview=full`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    const geometry = d.routes?.[0]?.geometry;
+    if (!geometry) return;
+
+    // Replace straight line with road-snapped route
+    const currentSrc = _repMap?.getSource('rep-route');
+    if (!currentSrc) return;
+    const feats = _repWaypoints.map((wp, i) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: wp },
+      properties: { type: 'wp', index: i + 1 }
+    }));
+    feats.push({ type: 'Feature', geometry, properties: {} });
+    currentSrc.setData({ type: 'FeatureCollection', features: feats });
+
+    // Update distance in info strip if element exists
+    const dist = d.routes[0]?.distance;
+    const dur  = d.routes[0]?.duration;
+    const wpEl = document.getElementById('rep-wp-count');
+    if (wpEl && dist) {
+      const km = (dist / 1000).toFixed(1);
+      const min = Math.round(dur / 60);
+      wpEl.textContent = `${_repWaypoints.length} · ${km}km · ~${min}min`;
+    }
+  } catch { /* OSRM unavailable — straight-line placeholder remains */ }
 }
 
 function _onRepMapClick(e) {
@@ -362,6 +418,7 @@ window.repDelWp = function (i) {
 
 window.repClearRoute = function () {
   _repWaypoints = [];
+  clearTimeout(_osrmDebounce);
   _syncRepRoute();
   _renderWpList();
   _updateWpCount();

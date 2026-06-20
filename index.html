@@ -677,11 +677,11 @@
 
   <!-- Sub-navegación -->
   <div class="finanzas-subnav">
-    <button class="subnav-btn active" data-view="dashboard">Dashboard</button>
-    <button class="subnav-btn" data-view="recordatorios">Recordatorios</button>
-    <button class="subnav-btn" data-view="calculadora">Calculadora</button>
-    <button class="subnav-btn" data-view="editar">Editar datos</button>
-    <button class="subnav-btn subnav-ia" id="btn-analizar-ia">Analizar con IA</button>
+    <button class="subnav-btn active" data-view="dashboard" onclick="FinanzasModule.cambiarVista('dashboard')">Dashboard</button>
+    <button class="subnav-btn" data-view="recordatorios" onclick="FinanzasModule.cambiarVista('recordatorios')">Recordatorios</button>
+    <button class="subnav-btn" data-view="calculadora" onclick="FinanzasModule.cambiarVista('calculadora')">Calculadora</button>
+    <button class="subnav-btn" data-view="editar" onclick="FinanzasModule.cambiarVista('editar')">Editar datos</button>
+    <button class="subnav-btn subnav-ia" id="btn-analizar-ia" onclick="FinanzasModule.analizarConIA()">Analizar con IA</button>
   </div>
 
   <!-- Vista: Dashboard -->

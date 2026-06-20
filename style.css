@@ -8378,12 +8378,22 @@ header {
   display: flex;
   position: fixed; inset: 0; z-index: 150;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;             /* permite scroll del contenido del drawer */
+  -webkit-overflow-scrolling: touch;
   transform: translateY(100vh);
   visibility: hidden;
   pointer-events: none;
   transition: transform 0.38s cubic-bezier(0.32,0.72,0,1),
               visibility 0s linear 0.38s;
+}
+
+/* Subnavs dentro de drawers: sticker debajo del drawer-handle (~50px) */
+.module-panel.drawer-open .finanzas-subnav,
+.module-panel.drawer-open .neg-tab-bar,
+.module-panel.drawer-open .gastos-subnav,
+.module-panel.drawer-open .subnav {
+  top: 50px;
 }
 
 /* ── Estado abierto ──────────────────────────────────────── */

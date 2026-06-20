@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v118)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v119)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -341,6 +341,19 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v119 — Mapa táctico HUD + Rutas OSRM por carreteras + Finanzas subnav fix
+
+**Módulo Reparto:**
+- Mapa con filtro táctico HUD: `raster-hue-rotate: 160`, `raster-saturation: -0.55`, `raster-brightness-max: 0.52` — estética hierro oscuro con tono naranja
+- Rutas snapeadas a carreteras reales usando OSRM (`router.project-osrm.org`) — no más líneas rectas
+- Mientras carga OSRM (800ms debounce), muestra línea recta de placeholder y luego la reemplaza con la ruta por calles
+- Muestra distancia en km y tiempo estimado en el chip de puntos al calcular ruta
+- Colores cambiados de verde (`#00ff88`) a naranja hierro (`#ff6a00` / `#ff8c00`) y dorado (`#f5a623`) para waypoints — coherente con paleta Iron Man
+
+**Módulo Finanzas:**
+- Subnav tabs ahora tienen `onclick` directo a `FinanzasModule.cambiarVista()` — soluciona el bug donde Recordatorios, Calculadora y Editar datos no respondían al tap
+- Botón "Analizar con IA" también con onclick directo a `FinanzasModule.analizarConIA()`
 
 ### v118 — Drawer Architecture: INICIO permanente + módulos como bottom-sheet overlays
 

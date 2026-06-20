@@ -7,7 +7,8 @@
 
 /* ── Paneles de módulos ────────────────────────────────────── */
 
-.module-panel:not(.active) {
+/* drawer-open panels handled by style.css v118 — don't hide them */
+.module-panel:not(.active):not(.drawer-open) {
   display: none;
 }
 
@@ -19,8 +20,10 @@ main#module-chat.module-panel.active {
 }
 
 /* El panel de finanzas usa block con scroll propio */
-#module-finanzas.module-panel.active {
-  display: block;
+#module-finanzas.module-panel.active,
+#module-finanzas.module-panel.drawer-open {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -28,8 +31,6 @@ main#module-chat.module-panel.active {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   width: 100%;
-  max-width: 960px;
-  align-self: center;
   position: relative;
   z-index: 10;
 }
