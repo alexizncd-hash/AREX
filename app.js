@@ -1774,6 +1774,20 @@ function renderDashboard() {
         <span class="isys-item"><i class="isys-dot ${fbOk?'ok':'warn'}"></i>FIREBASE <b class="${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</b></span>
         <span class="isys-item"><i class="isys-dot ok"></i>AREX <b class="ok">ACTIVO</b></span>
       </div>
+
+      <!-- Acciones rápidas -->
+      <div class="qa-section">
+        <div class="inicio-sec">
+          <span class="inicio-sec-lbl">Acciones rápidas</span>
+          <span class="inicio-sec-ln"></span>
+        </div>
+        <div class="qa-grid">
+          <button class="qa-btn" onclick="arexOpenSpotify()"><span class="qa-ico">🎵</span><span class="qa-lbl">MÚSICA</span></button>
+          <button class="qa-btn" onclick="arexOpenYouTube()"><span class="qa-ico">▶</span><span class="qa-lbl">VIDEO</span></button>
+          <button class="qa-btn" onclick="arexOpenCrear()"><span class="qa-ico">✦</span><span class="qa-lbl">CREAR</span></button>
+          <button class="qa-btn" onclick="arexOpenBuscar()"><span class="qa-ico">⌕</span><span class="qa-lbl">BUSCAR</span></button>
+        </div>
+      </div>
     </div>
     <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
   `;
@@ -5582,6 +5596,109 @@ window.renderExchangeWidget = renderExchangeWidget;
   draw();
   window.addEventListener('resize', resize);
 })();
+
+/* ── Quick Actions ──────────────────────────────────── */
+function _qaModal(html) {
+  let ov = document.getElementById('qa-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'qa-overlay';
+    ov.className = 'qa-overlay';
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = html;
+  return ov;
+}
+
+function arexOpenSpotify() {
+  _qaModal(`
+    <div class="qa-modal">
+      <div class="qa-modal-title">🎵 MÚSICA</div>
+      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
+      <button class="qa-modal-btn" onclick="window.open('https://open.spotify.com/','_blank');document.getElementById('qa-overlay').remove()">ABRIR SPOTIFY</button>
+      <button class="qa-modal-btn" onclick="window.open('https://music.youtube.com/','_blank');document.getElementById('qa-overlay').remove()">ABRIR YOUTUBE MUSIC</button>
+    </div>
+  `);
+}
+
+function arexOpenYouTube() {
+  const ov = _qaModal(`
+    <div class="qa-modal">
+      <div class="qa-modal-title">▶ VIDEO</div>
+      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
+      <input type="text" id="qa-yt-input" placeholder="URL de YouTube o término de búsqueda..."/>
+      <button class="qa-modal-btn" onclick="arexYTLoad()">CARGAR VIDEO</button>
+      <div id="qa-yt-player"></div>
+    </div>
+  `);
+  setTimeout(() => ov.querySelector('#qa-yt-input')?.focus(), 60);
+}
+
+function arexYTLoad() {
+  const input = document.getElementById('qa-yt-input');
+  if (!input?.value.trim()) return;
+  const val = input.value.trim();
+  const m = val.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^&?#\s]{11})/);
+  const player = document.getElementById('qa-yt-player');
+  if (m) {
+    player.innerHTML = `<div style="position:relative;padding-bottom:56.25%;height:0;margin-top:12px;border-radius:8px;overflow:hidden;">
+      <iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1"
+        style="position:absolute;inset:0;width:100%;height:100%;border:none;"
+        allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+        allowfullscreen></iframe></div>`;
+  } else {
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(val)}`, '_blank');
+  }
+}
+
+function arexOpenCrear() {
+  const ov = _qaModal(`
+    <div class="qa-modal">
+      <div class="qa-modal-title">✦ CREAR IMAGEN</div>
+      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
+      <input type="text" id="qa-crear-input" placeholder="Describe la imagen que quieres crear..."/>
+      <button class="qa-modal-btn" onclick="arexGenerarImagen()">GENERAR IMAGEN</button>
+      <div id="qa-crear-result"></div>
+    </div>
+  `);
+  setTimeout(() => ov.querySelector('#qa-crear-input')?.focus(), 60);
+}
+
+function arexGenerarImagen() {
+  const input = document.getElementById('qa-crear-input');
+  const prompt = input?.value.trim();
+  if (!prompt) return;
+  const result = document.getElementById('qa-crear-result');
+  result.innerHTML = '<div class="qa-status">GENERANDO IMAGEN...</div>';
+  const seed = Math.floor(Math.random() * 99999);
+  const img = new Image();
+  img.onload = () => {
+    result.innerHTML = '';
+    img.style.cssText = 'width:100%;border-radius:8px;margin-top:12px;border:1px solid rgba(34,211,238,0.2);display:block;';
+    result.appendChild(img);
+  };
+  img.onerror = () => { result.innerHTML = '<div class="qa-status">Error al generar. Intenta con otra descripción.</div>'; };
+  img.src = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&model=flux&nologo=true&seed=${seed}`;
+}
+
+function arexOpenBuscar() {
+  DRAWER.close();
+  if (!searchOn && window.AREX_CONFIG?.tavilyKey) {
+    searchOn = true;
+    btnSearch?.classList.add('active');
+    localStorage.setItem('arex_searchOn', '1');
+    if (typeof updateSidebarModes === 'function') updateSidebarModes();
+  }
+  setTimeout(() => document.getElementById('txt')?.focus(), 380);
+}
+
+window.arexOpenSpotify   = arexOpenSpotify;
+window.arexOpenYouTube   = arexOpenYouTube;
+window.arexYTLoad        = arexYTLoad;
+window.arexOpenCrear     = arexOpenCrear;
+window.arexGenerarImagen = arexGenerarImagen;
+window.arexOpenBuscar    = arexOpenBuscar;
 
 /* ── Boot animation: letras una por una ─────────────── */
 (function bootLetterAnim() {
