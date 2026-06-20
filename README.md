@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v117)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v118)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -341,6 +341,18 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v118 — Drawer Architecture: INICIO permanente + módulos como bottom-sheet overlays
+
+**Arquitectura de navegación completamente rediseñada:**
+- `#module-inicio` es ahora la base permanente (`position:fixed; z-index:1`) — nunca se oculta
+- Todos los demás módulos (CAPITAL, IMPULSO, MENTE, CONTROL y sus sub-módulos) abren como bottom-sheet overlays animados (`position:fixed; z-index:150; transform:translateY(100vh)` por defecto)
+- Animación de entrada: slide-up con `cubic-bezier(0.32,0.72,0,1)` en 380ms
+- Backdrop semitransparente (`#drawer-backdrop`, z-index:148) aparece entre INICIO y el drawer abierto; tap en él cierra el drawer
+- Cada drawer inyecta automáticamente un `.drawer-handle` sticky en su parte superior con: botón `⌂` para volver a INICIO, label del grupo (CAPITAL / IMPULSO / MENTE / CONTROL), y tabs de sub-módulos para cambio instantáneo sin animación
+- Cambio de tab dentro de un mismo grupo (ej. FINANZAS → GASTOS dentro de CAPITAL) es instantáneo — el drawer permanece abierto
+- Se elimina `#center-tabs` fijo (reemplazado por el drawer handle integrado)
+- `jarvis.js` reescrito como `AREX Navegación v118` con objetos `DRAWER` y `AREXNav` limpios
 
 ### v117 — Liquid Glass System: superficies de vidrio líquido + GPU ×6 más eficiente
 

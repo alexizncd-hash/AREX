@@ -8341,3 +8341,138 @@ header {
     inset 0 1px 0 rgba(255,255,255,0.09),
     0 0 30px rgba(255,106,0,0.12);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   AREX — Drawer Architecture  (v118)
+   INICIO siempre visible · Módulos como overlays animados
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Backdrop ────────────────────────────────────────────── */
+#drawer-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 148;
+  background: rgba(0,4,12,0.60);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#drawer-backdrop.active {
+  opacity: 1;
+}
+
+/* ── INICIO: siempre visible como base ───────────────────── */
+#module-inicio {
+  display: flex;
+  position: fixed; inset: 0; z-index: 1;
+  overflow-y: auto;
+  transform: none;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Todos los otros módulos: drawers off-screen ─────────── */
+.module-panel:not(#module-inicio) {
+  display: flex;
+  position: fixed; inset: 0; z-index: 150;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(100vh);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.38s cubic-bezier(0.32,0.72,0,1),
+              visibility 0s linear 0.38s;
+}
+
+/* ── Estado abierto ──────────────────────────────────────── */
+.module-panel.drawer-open {
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 0.38s cubic-bezier(0.32,0.72,0,1),
+              visibility 0s linear 0s;
+}
+
+/* ── Drawer handle (barra top con botón back + tabs) ─────── */
+.drawer-handle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 9px;
+  background: rgba(1,4,13,0.94);
+  border-bottom: 1px solid rgba(255,106,0,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06),
+              0 1px 12px rgba(0,0,0,0.4);
+  position: sticky; top: 0; z-index: 5;
+}
+
+.drawer-back-btn {
+  flex-shrink: 0;
+  background: rgba(255,106,0,0.07);
+  border: 1px solid rgba(255,106,0,0.24);
+  border-top-color: rgba(255,255,255,0.13);
+  border-radius: 5px;
+  color: var(--iron);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  width: 34px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  transition: background 0.18s, border-color 0.18s;
+}
+.drawer-back-btn:hover {
+  background: rgba(255,106,0,0.16);
+  border-color: var(--iron);
+}
+
+.drawer-centro-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.40);
+  flex-shrink: 0;
+}
+
+.drawer-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.drawer-tabs::-webkit-scrollbar { display: none; }
+
+.drawer-tab {
+  flex-shrink: 0;
+  background: rgba(255,106,0,0.04);
+  border: 1px solid rgba(255,106,0,0.18);
+  border-top-color: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  color: rgba(255,106,0,0.50);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s;
+}
+.drawer-tab.active,
+.drawer-tab:hover {
+  background: rgba(255,106,0,0.12);
+  border-color: var(--iron);
+  border-top-color: rgba(255,255,255,0.16);
+  color: var(--iron);
+}
+.drawer-tab.active {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.09),
+              0 0 8px rgba(255,106,0,0.10);
+}
+
+/* ── Hide old center-tabs (replaced by drawer-handle) ────── */
+#center-tabs { display: none !important; }
