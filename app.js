@@ -5735,14 +5735,14 @@ function arexGenerarImagen() {
 }
 
 function arexOpenBuscar() {
-  DRAWER.close();
   if (!searchOn && window.AREX_CONFIG?.tavilyKey) {
     searchOn = true;
     btnSearch?.classList.add('active');
     localStorage.setItem('arex_searchOn', '1');
     if (typeof updateSidebarModes === 'function') updateSidebarModes();
   }
-  setTimeout(() => document.getElementById('txt')?.focus(), 380);
+  window.cambiarModulo('chat');
+  setTimeout(() => document.getElementById('txt')?.focus(), 420);
 }
 
 window.arexOpenSpotify   = arexOpenSpotify;

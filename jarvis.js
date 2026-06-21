@@ -167,9 +167,11 @@ const DRAWER = {
           // Tab switch: no closing animation
           prev.style.transition = 'none';
           prev.classList.remove('drawer-open');
+          prev.style.cssText = '';
           requestAnimationFrame(() => { prev.style.transition = ''; });
         } else {
           prev.classList.remove('drawer-open');
+          prev.style.cssText = '';
         }
       }
     }
@@ -183,13 +185,25 @@ const DRAWER = {
     // Inject handle
     this._renderHandle(panel, modulo, centro);
 
-    // Open — sin rAF para garantizar ejecución inmediata en iOS Safari
+    // Open — inline styles as nuclear option: override ANY cached CSS conflict
+    const OPEN_STYLES =
+      'position:fixed!important;inset:0!important;z-index:250!important;' +
+      'display:flex!important;flex-direction:column!important;' +
+      'overflow-x:hidden!important;overflow-y:auto!important;' +
+      '-webkit-overflow-scrolling:touch!important;' +
+      'background:#010b18!important;' +
+      'padding-bottom:env(safe-area-inset-bottom,0px)!important;' +
+      'visibility:visible!important;pointer-events:auto!important;' +
+      'transform:translateY(0)!important;';
+
     if (sameCentro || instant) {
-      panel.style.transition = 'none';
+      // Tab switch / instant: no animation
       panel.classList.add('drawer-open');
-      requestAnimationFrame(() => { panel.style.transition = ''; });
+      panel.style.cssText = OPEN_STYLES + 'transition:none!important;';
+      requestAnimationFrame(() => { panel.style.removeProperty('transition'); });
     } else {
       panel.classList.add('drawer-open');
+      panel.style.cssText = OPEN_STYLES;
     }
 
     // Backdrop
@@ -212,7 +226,10 @@ const DRAWER = {
   close() {
     if (_drawerCurrent) {
       const panel = document.getElementById(`module-${_drawerCurrent}`);
-      if (panel) panel.classList.remove('drawer-open');
+      if (panel) {
+        panel.style.cssText = '';  // Clear inline styles → CSS handles close animation
+        panel.classList.remove('drawer-open');
+      }
       _drawerCurrent = null;
       _drawerCentro  = null;
     }
