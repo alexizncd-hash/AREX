@@ -181,13 +181,13 @@ const DRAWER = {
     // Inject handle
     this._renderHandle(panel, modulo, centro);
 
-    // Open
+    // Open — sin rAF para garantizar ejecución inmediata en iOS Safari
     if (sameCentro || instant) {
       panel.style.transition = 'none';
       panel.classList.add('drawer-open');
       requestAnimationFrame(() => { panel.style.transition = ''; });
     } else {
-      requestAnimationFrame(() => panel.classList.add('drawer-open'));
+      panel.classList.add('drawer-open');
     }
 
     // Backdrop

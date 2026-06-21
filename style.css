@@ -8369,6 +8369,7 @@ header {
   overflow-x: hidden;
   overflow-y: auto;             /* permite scroll del contenido del drawer */
   -webkit-overflow-scrolling: touch;
+  background: #010b18;          /* fondo sólido — panel no puede ser transparente */
   transform: translateY(100vh);
   visibility: hidden;
   pointer-events: none;
