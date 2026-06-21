@@ -7610,26 +7610,10 @@ main#module-chat.module-panel.active { display: flex; }
   transition: all .2s;
 }
 
-/* ── INICIO orb wrapper (neural mesh orb behind dash-content) ── */
-.inicio-orb-wrap {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 52vh;
-  height: 52dvh;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.inicio-orb-wrap .orb-ring {
-  position: absolute;
-}
-
 /* 8. INICIO hero & cards */
 .inicio-hero {
-  min-height: 52vh;
-  min-height: 52dvh;
+  min-height: 48vh;
+  min-height: 48dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -7670,6 +7654,7 @@ main#module-chat.module-panel.active { display: flex; }
   padding: 16px 15px;
   cursor: pointer;
   overflow: hidden;
+  touch-action: manipulation;
   background: linear-gradient(155deg, rgba(20,55,80,.60), rgba(14,40,60,.50));
   border: 1px solid rgba(80,200,245,.28);
   border-top-color: rgba(140,225,255,.36);
@@ -8366,7 +8351,7 @@ header {
 #module-inicio {
   display: flex;
   position: fixed; inset: 0; z-index: 1;
-  overflow-y: auto;
+  overflow: hidden;
   transform: none;
   visibility: visible;
   opacity: 1;
@@ -8504,6 +8489,7 @@ header {
   transition: all 0.2s ease;
   position: relative; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .qa-btn:hover, .qa-btn:active {
   border-color: rgba(34,211,238,0.55);
