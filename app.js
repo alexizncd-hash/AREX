@@ -5011,14 +5011,16 @@ if (loadConfig()) {
   showSetup();
 }
 
-// Extender AREXNav.cambiarModulo para mostrar/ocultar FAB de análisis
+// Extender window.cambiarModulo y AREXNav.cambiarModulo para FAB de análisis
 (function() {
-  const _orig = AREXNav.cambiarModulo.bind(AREXNav);
-  AREXNav.cambiarModulo = function(mod) {
+  const _orig = window.cambiarModulo;
+  const _extended = function(mod) {
     _orig(mod);
     const fab = document.getElementById('fab-analizar');
     if (fab) fab.style.display = (mod !== 'chat' && mod !== 'inicio') ? 'flex' : 'none';
   };
+  window.cambiarModulo = _extended;
+  AREXNav.cambiarModulo = _extended;
 })();
 
 // ── BRIEFING DIARIO ───────────────────────────────────────────────────────────

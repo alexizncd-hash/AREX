@@ -63,6 +63,8 @@ function _renderModulo(modulo) {
 const AREXNav = {
   moduloActual: 'inicio',
 
+  cambiarModulo(mod) { window.cambiarModulo(mod); },
+
   init() {
     // Ensure INICIO is the starting state
     this._ensureInicio();

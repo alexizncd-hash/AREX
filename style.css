@@ -8338,7 +8338,7 @@ header {
 /* ── Backdrop ────────────────────────────────────────────── */
 #drawer-backdrop {
   display: none;
-  position: fixed; inset: 0; z-index: 148;
+  position: fixed; inset: 0; z-index: 245;
   background: rgba(0,4,12,0.60);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
@@ -8366,15 +8366,16 @@ header {
    de :not() tiene especificidad (1,1,0) y sobrescribiría .drawer-open (0,2,0) */
 .module-panel:not(.is-home) {
   display: flex;
-  position: fixed; inset: 0; z-index: 150;
+  position: fixed; inset: 0; z-index: 250;
   flex-direction: column;
   overflow-x: hidden;
-  overflow-y: auto;             /* permite scroll del contenido del drawer */
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  background: #010b18;          /* fondo sólido — panel no puede ser transparente */
+  background: #010b18;
   transform: translateY(100vh);
   visibility: hidden;
   pointer-events: none;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   transition: transform 0.38s cubic-bezier(0.32,0.72,0,1),
               visibility 0s linear 0.38s;
 }
