@@ -19,9 +19,18 @@ main#module-chat.module-panel.active {
   min-height: 0;
 }
 
-/* El panel de finanzas usa block con scroll propio */
-#module-finanzas.module-panel.active,
+/* Panel finanzas en drawer (position/z-index los controla style.css) */
 #module-finanzas.module-panel.drawer-open {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Panel finanzas en sistema antiguo de .active */
+#module-finanzas.module-panel.active {
   display: flex;
   flex-direction: column;
   flex: 1;
