@@ -1792,6 +1792,17 @@ function renderDashboard() {
   `;
   // Fetch live exchange rate (async, non-blocking)
   if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
+
+  // Wire up cards via JS listeners (belt-and-suspenders for iOS onclick reliability)
+  el.querySelector('.inicio-card.cap')?.addEventListener('click', () => window.abrirCentro('capital'));
+  el.querySelector('.inicio-card.imp')?.addEventListener('click', () => window.abrirCentro('impulso'));
+  el.querySelector('.inicio-card.men')?.addEventListener('click', () => window.abrirCentro('mente'));
+  el.querySelector('.inicio-card.con')?.addEventListener('click', () => window.abrirCentro('control'));
+  el.querySelector('.inicio-card.chat')?.addEventListener('click', () => window.cambiarModulo('chat'));
+  el.querySelector('[onclick="arexOpenSpotify()"]')?.addEventListener('click', () => window.arexOpenSpotify?.());
+  el.querySelector('[onclick="arexOpenYouTube()"]')?.addEventListener('click', () => window.arexOpenYouTube?.());
+  el.querySelector('[onclick="arexOpenCrear()"]')?.addEventListener('click', () => window.arexOpenCrear?.());
+  el.querySelector('[onclick="arexOpenBuscar()"]')?.addEventListener('click', () => window.arexOpenBuscar?.());
 }
 
 function renderSessionsList() {

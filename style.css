@@ -7552,10 +7552,12 @@ main#module-chat.module-panel.active { display: flex; }
   height: 100%;
   display: block;
   will-change: transform;
+  pointer-events: none;
 }
 #module-inicio #dash-content {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
   z-index: 2;
   overflow-y: auto;
   overflow-x: hidden;
@@ -8350,6 +8352,7 @@ header {
 /* ── INICIO: siempre visible como base ───────────────────── */
 #module-inicio {
   display: flex;
+  flex-direction: column;
   position: fixed; inset: 0; z-index: 1;
   overflow: hidden;
   transform: none;
