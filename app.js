@@ -64,6 +64,46 @@ function setupSaveHandler() {
   });
 }
 
+/* ── Transferencia de configuración entre dispositivos/navegadores ── */
+function copiarCodigoConfig() {
+  const raw = localStorage.getItem('arex_config');
+  if (!raw) return;
+  const code = btoa(unescape(encodeURIComponent(raw)));
+  const note = document.getElementById('cfg-export-note');
+  navigator.clipboard?.writeText(code).then(() => {
+    if (note) { note.style.display = 'block'; note.textContent = '✓ Código copiado al portapapeles. Pégalo en la pantalla de configuración del otro dispositivo/navegador.'; }
+  }).catch(() => {
+    if (note) { note.style.display = 'block'; note.textContent = 'Copia manualmente: ' + code; }
+  });
+}
+
+function importarCodigoConfig() {
+  const textarea = document.getElementById('cfg-import-code');
+  const code = textarea?.value?.trim();
+  if (!code) return;
+  try {
+    const json  = decodeURIComponent(escape(atob(code)));
+    const cfg   = JSON.parse(json);
+    if (!cfg.groqKey) throw new Error('invalid');
+    const fb    = cfg.firebase || {};
+    document.getElementById('cfg-groq').value       = cfg.groqKey    || '';
+    document.getElementById('cfg-tavily').value     = cfg.tavilyKey  || '';
+    document.getElementById('cfg-gemini').value     = cfg.geminiKey  || '';
+    document.getElementById('cfg-owm').value        = cfg.owmKey     || '';
+    document.getElementById('cfg-fb-key').value     = fb.apiKey           || '';
+    document.getElementById('cfg-fb-domain').value  = fb.authDomain       || '';
+    document.getElementById('cfg-fb-project').value = fb.projectId        || '';
+    document.getElementById('cfg-fb-bucket').value  = fb.storageBucket    || '';
+    document.getElementById('cfg-fb-sender').value  = fb.messagingSenderId|| '';
+    document.getElementById('cfg-fb-app').value     = fb.appId            || '';
+    document.getElementById('cfg-fb-vapid').value   = fb.vapidKey         || '';
+    document.getElementById('cfg-save').click();
+  } catch(_) {
+    const ta = document.getElementById('cfg-import-code');
+    if (ta) { ta.style.borderColor = '#ff4444'; ta.placeholder = 'Código inválido — intenta de nuevo'; }
+  }
+}
+
 /* ── Atajos personalizados ──────────────────────────── */
 const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy'];
 

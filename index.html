@@ -39,10 +39,21 @@
 </div>
 
 <!-- ── Setup screen (primera vez sin config.js) ── -->
-<div id="setup-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;background:#020c14;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1rem;display:flex;">
+<div id="setup-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;background:#020c14;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1rem;display:flex;overflow-y:auto;">
   <div style="font-size:28px;font-weight:bold;color:#00d4ff;letter-spacing:8px;">AREX</div>
   <div style="font-size:10px;color:#4a7a96;letter-spacing:3px;margin-bottom:0.5rem;">CONFIGURACIÓN INICIAL</div>
   <div style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:0.7rem;">
+
+    <!-- Transferencia desde otra sesión -->
+    <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+      <div style="font-size:9px;color:#22d3ee;letter-spacing:2px;">¿YA TIENES AREX INSTALADO?</div>
+      <div style="font-size:11px;color:#4a7a96;line-height:1.5;">En la app instalada escribe <code style="color:#22d3ee;background:rgba(34,211,238,0.1);padding:1px 5px;border-radius:3px;">/config</code> → toca <strong style="color:#fff;">COPIAR CÓDIGO</strong> → pégalo aquí:</div>
+      <textarea id="cfg-import-code" rows="3" placeholder="Pega aquí el código de transferencia..." style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,212,255,0.25);border-radius:4px;color:#e8f4ff;font-family:monospace;font-size:11px;padding:8px;resize:none;width:100%;box-sizing:border-box;"></textarea>
+      <button onclick="importarCodigoConfig()" style="background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.4);color:#22d3ee;font-family:monospace;font-size:10px;letter-spacing:2px;padding:8px;cursor:pointer;border-radius:3px;">IMPORTAR Y CONTINUAR</button>
+    </div>
+
+    <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;text-align:center;">— O INGRESA TUS CLAVES MANUALMENTE —</div>
+
     <input id="cfg-groq"    class="cfg-input" placeholder="Groq API Key (requerido)  gsk_..." type="password"/>
     <input id="cfg-tavily"  class="cfg-input" placeholder="Tavily API Key (opcional)  tvly-..." type="password"/>
     <input id="cfg-gemini"  class="cfg-input" placeholder="Gemini API Key (opcional)  AIza..." type="password"/>
@@ -314,6 +325,9 @@
         <input id="cfg2-fb-sender"  class="cfg-input" placeholder="Firebase messagingSenderId"/>
         <input id="cfg2-fb-app"     class="cfg-input" placeholder="Firebase appId"/>
         <input id="cfg2-fb-vapid"   class="cfg-input" placeholder="Firebase VAPID Key (push notifications)"/>
+        <div style="font-size:9px;color:#22d3ee;letter-spacing:2px;margin-top:8px;">TRANSFERIR A OTRO DISPOSITIVO / NAVEGADOR</div>
+        <button onclick="copiarCodigoConfig()" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.4);color:#22d3ee;font-family:monospace;font-size:10px;letter-spacing:2px;padding:9px 12px;cursor:pointer;border-radius:3px;width:100%;">📋 COPIAR CÓDIGO DE ACCESO</button>
+        <div id="cfg-export-note" style="font-size:10px;color:#4a7a96;display:none;word-break:break-all;background:rgba(0,0,0,0.3);border-radius:4px;padding:8px;"></div>
         <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">BACKUP DE DATOS</div>
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <button onclick="exportarBackup()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;">⬇ EXPORTAR TODO</button>
