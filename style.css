@@ -8362,7 +8362,9 @@ header {
 }
 
 /* ── Todos los otros módulos: drawers off-screen ─────────── */
-.module-panel:not(#module-inicio) {
+/* NOTA: usar :not(.is-home) en lugar de :not(#module-inicio) — el ID dentro
+   de :not() tiene especificidad (1,1,0) y sobrescribiría .drawer-open (0,2,0) */
+.module-panel:not(.is-home) {
   display: flex;
   position: fixed; inset: 0; z-index: 150;
   flex-direction: column;
