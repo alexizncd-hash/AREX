@@ -45,6 +45,8 @@ function _renderModulo(modulo) {
   if (modulo === 'inicio')    { if (typeof renderDashboard === 'function') renderDashboard(); return; }
   if (modulo === 'finanzas')  { if (window.FinanzasModule?.renderDashboard) window.FinanzasModule.renderDashboard(); return; }
   if (modulo === 'notas')     { if (typeof renderNotas === 'function') renderNotas(); return; }
+  if (modulo === 'tareas')    { if (typeof renderTareas === 'function') renderTareas(); return; }
+  if (modulo === 'chat')      { return; } // app.js maneja el chat directamente
 
   const _lazy = (src, fn) => _lazyLoad(src).then(() => { if (typeof fn === 'function') fn(); });
 
@@ -163,15 +165,16 @@ const DRAWER = {
     if (prevModule && prevModule !== modulo) {
       const prev = document.getElementById(`module-${prevModule}`);
       if (prev) {
+        const _clearStyles = (el) => ['position','inset','z-index','display','flex-direction',
+          'overflow-x','overflow-y','-webkit-overflow-scrolling','background','padding-bottom',
+          'visibility','pointer-events','transform','transition'].forEach(p => el.style.removeProperty(p));
         if (sameCentro) {
-          // Tab switch: no closing animation
-          prev.style.transition = 'none';
+          // Tab switch: instant, sin animación de cierre
+          _clearStyles(prev);
           prev.classList.remove('drawer-open');
-          prev.style.cssText = '';
-          requestAnimationFrame(() => { prev.style.transition = ''; });
         } else {
+          _clearStyles(prev);
           prev.classList.remove('drawer-open');
-          prev.style.cssText = '';
         }
       }
     }
@@ -185,25 +188,33 @@ const DRAWER = {
     // Inject handle
     this._renderHandle(panel, modulo, centro);
 
-    // Open — inline styles as nuclear option: override ANY cached CSS conflict
-    const OPEN_STYLES =
-      'position:fixed!important;inset:0!important;z-index:250!important;' +
-      'display:flex!important;flex-direction:column!important;' +
-      'overflow-x:hidden!important;overflow-y:auto!important;' +
-      '-webkit-overflow-scrolling:touch!important;' +
-      'background:#010b18!important;' +
-      'padding-bottom:env(safe-area-inset-bottom,0px)!important;' +
-      'visibility:visible!important;pointer-events:auto!important;' +
-      'transform:translateY(0)!important;';
+    // Open — setProperty('important') es la API CSSOM correcta para iOS Safari
+    const _forceOpen = (el, noAnim) => {
+      const P = (k, v) => el.style.setProperty(k, v, 'important');
+      P('position',                   'fixed');
+      P('inset',                      '0');
+      P('z-index',                    '250');
+      P('display',                    'flex');
+      P('flex-direction',             'column');
+      P('overflow-x',                 'hidden');
+      P('overflow-y',                 'auto');
+      P('-webkit-overflow-scrolling', 'touch');
+      P('background',                 '#010b18');
+      P('padding-bottom',             'env(safe-area-inset-bottom,0px)');
+      P('visibility',                 'visible');
+      P('pointer-events',             'auto');
+      P('transform',                  'translateY(0)');
+      if (noAnim) P('transition', 'none');
+    };
 
     if (sameCentro || instant) {
       // Tab switch / instant: no animation
       panel.classList.add('drawer-open');
-      panel.style.cssText = OPEN_STYLES + 'transition:none!important;';
+      _forceOpen(panel, true);
       requestAnimationFrame(() => { panel.style.removeProperty('transition'); });
     } else {
       panel.classList.add('drawer-open');
-      panel.style.cssText = OPEN_STYLES;
+      _forceOpen(panel, false);
     }
 
     // Backdrop
@@ -227,7 +238,10 @@ const DRAWER = {
     if (_drawerCurrent) {
       const panel = document.getElementById(`module-${_drawerCurrent}`);
       if (panel) {
-        panel.style.cssText = '';  // Clear inline styles → CSS handles close animation
+        // Remove forced-open inline styles so CSS transition can animate close
+        ['position','inset','z-index','display','flex-direction','overflow-x','overflow-y',
+         '-webkit-overflow-scrolling','background','padding-bottom','visibility',
+         'pointer-events','transform','transition'].forEach(p => panel.style.removeProperty(p));
         panel.classList.remove('drawer-open');
       }
       _drawerCurrent = null;

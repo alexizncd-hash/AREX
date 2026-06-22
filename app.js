@@ -5745,12 +5745,14 @@ function arexOpenBuscar() {
   setTimeout(() => document.getElementById('txt')?.focus(), 420);
 }
 
-window.arexOpenSpotify   = arexOpenSpotify;
-window.arexOpenYouTube   = arexOpenYouTube;
-window.arexYTLoad        = arexYTLoad;
-window.arexOpenCrear     = arexOpenCrear;
-window.arexGenerarImagen = arexGenerarImagen;
-window.arexOpenBuscar    = arexOpenBuscar;
+window.arexOpenSpotify      = arexOpenSpotify;
+window.arexOpenYouTube      = arexOpenYouTube;
+window.arexYTLoad           = arexYTLoad;
+window.arexOpenCrear        = arexOpenCrear;
+window.arexGenerarImagen    = arexGenerarImagen;
+window.arexOpenBuscar       = arexOpenBuscar;
+window.copiarCodigoConfig   = copiarCodigoConfig;
+window.importarCodigoConfig = importarCodigoConfig;
 
 /* ── Boot animation: letras una por una ─────────────── */
 (function bootLetterAnim() {
