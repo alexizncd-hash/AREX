@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v138)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v139)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,25 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v139 — Correcciones de módulos lazy-loaded: drawer-handle, active check, fondo INICIO
+
+**`agenda.js`**
+- Corregido check incorrecto `classList.contains('active')` → ahora siempre intenta render (el módulo solo se llama desde `DRAWER.open()`)
+- `renderAgendaModule()` ahora preserva el `.drawer-handle` antes de regenerar `el.innerHTML` para que el botón ⌂ y los tabs del drawer no se borren
+
+**`habitos.js`**
+- Misma corrección de check `active` y preservación del `.drawer-handle` en cada ciclo de re-render (el módulo se llama recursivamente al agregar/togglear hábitos)
+
+**`proyectos.js`**
+- `renderProyectosModule()` preserva el `.drawer-handle` antes de `panel.innerHTML = ...` para que el botón ⌂ de regreso no desaparezca
+
+**`style.css`**
+- `#module-inicio` ahora tiene `background: #01060d` — el área negra en la parte superior ya no se ve (el canvas de reactor3d tiene fondo transparente en las zonas sin dibujo)
+- `.module-panel.drawer-open .finanzas-subnav`: `flex-wrap: wrap` y `overflow-x: visible` para evitar el problema de scroll horizontal en iOS Safari que bloqueaba los tabs Recordatorios y Calculadora
+
+**`sw.js`**
+- Versión bumped a `v139` / cache `arex-v139`
 
 ### v120 — Neural Mesh Orb (MARK IV)
 

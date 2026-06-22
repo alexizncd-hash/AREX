@@ -148,8 +148,9 @@ let _habFormOpen = false;
 
 function renderHabitosModule() {
   const el = document.getElementById('module-habitos');
-  if (!el || !el.classList.contains('active')) return;
+  if (!el) return;
 
+  const handle = el.querySelector('.drawer-handle');
   const habitos = getHabitos();
   const hoy = _habHoy();
 
@@ -221,6 +222,8 @@ function renderHabitosModule() {
         ${cardsHtml}
       </div>
     </div>`;
+
+  if (handle) el.prepend(handle);
 
   /* ── Wire events ── */
   el.querySelector('#hab-btn-nuevo')?.addEventListener('click', () => {

@@ -12,7 +12,8 @@ function logBitacora(modulo, accion) {
   localStorage.setItem(BITACORA_KEY, JSON.stringify(arr));
   // Re-render log if control module is visible
   const logEl = document.getElementById('ctrl-log-body');
-  if (logEl && document.getElementById('module-control')?.classList.contains('active')) {
+  const ctrlPanel = document.getElementById('module-control');
+  if (logEl && (ctrlPanel?.classList.contains('active') || ctrlPanel?.classList.contains('drawer-open'))) {
     _renderLog(logEl);
   }
 }
@@ -693,7 +694,7 @@ function renderControlModule() {
     clearInterval(window._ctrlTelTimer);
     window._ctrlTelTimer = setInterval(() => {
       const t = document.getElementById('ctrl-tel-body');
-      if (t && document.getElementById('module-control')?.classList.contains('active')) _renderTelemetria(t);
+      if (t && (document.getElementById('module-control')?.classList.contains('active') || document.getElementById('module-control')?.classList.contains('drawer-open'))) _renderTelemetria(t);
       else clearInterval(window._ctrlTelTimer);
     }, 5000);
   } else if (_ctrlView === 'bitacora') {

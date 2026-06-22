@@ -70,6 +70,7 @@ function renderProyectosModule() {
   const panel = document.getElementById('module-proyectos');
   if (!panel) return;
 
+  const handle = panel.querySelector('.drawer-handle');
   const proyectos = getProyectos();
   const enCurso    = proyectos.filter(p => p.estado !== 'completado');
   const completados = proyectos.filter(p => p.estado === 'completado');
@@ -109,6 +110,8 @@ function renderProyectosModule() {
         </div>` : ''}
     </div>
   `;
+
+  if (handle) panel.prepend(handle);
 
   // Related tasks
   _loadRelatedData();

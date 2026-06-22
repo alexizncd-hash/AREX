@@ -69,8 +69,9 @@ let _agOffset  = 0;         // weeks or months offset from today
 
 function renderAgendaModule() {
   const el = document.getElementById('module-agenda');
-  if (!el || !el.classList.contains('active')) return;
+  if (!el) return;
 
+  const handle = el.querySelector('.drawer-handle');
   const events = _agGetEvents();
   const today  = _agToday();
 
@@ -93,6 +94,8 @@ function renderAgendaModule() {
       </div>
       <div class="ag-body" id="ag-body"></div>
     </div>`;
+
+  if (handle) el.prepend(handle);
 
   // Wire navigation
   el.querySelector('[data-av="semana"]').addEventListener('click', () => { _agView = 'semana'; _agOffset = 0; renderAgendaModule(); });

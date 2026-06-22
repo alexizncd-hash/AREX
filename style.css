@@ -8360,6 +8360,7 @@ header {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
+  background: #01060d;
 }
 
 /* ── Todos los otros módulos: drawers off-screen ─────────── */
@@ -8387,6 +8388,14 @@ header {
 .module-panel.drawer-open .gastos-subnav,
 .module-panel.drawer-open .subnav {
   top: 50px;
+}
+
+/* Finanzas subnav en drawer: wrap para evitar scroll horizontal en iOS */
+.module-panel.drawer-open .finanzas-subnav {
+  flex-wrap: wrap !important;
+  overflow-x: visible !important;
+  padding: 8px 12px !important;
+  gap: 6px !important;
 }
 
 /* ── Estado abierto ──────────────────────────────────────── */
