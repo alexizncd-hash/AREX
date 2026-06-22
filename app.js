@@ -4226,7 +4226,29 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
+  setTimeout(() => window.location.reload(), 1200);
 });
+
+function abrirConfig() {
+  const cfg = window.AREX_CONFIG || {};
+  const fb  = cfg.firebase || {};
+  document.getElementById('cfg2-groq').value        = cfg.groqKey            || '';
+  document.getElementById('cfg2-tavily').value      = cfg.tavilyKey          || '';
+  document.getElementById('cfg2-gemini').value      = cfg.geminiKey          || '';
+  document.getElementById('cfg2-owm').value         = cfg.owmKey             || '';
+  document.getElementById('cfg2-fb-key').value      = fb.apiKey              || '';
+  document.getElementById('cfg2-fb-domain').value   = fb.authDomain          || '';
+  document.getElementById('cfg2-fb-project').value  = fb.projectId           || '';
+  document.getElementById('cfg2-fb-bucket').value   = fb.storageBucket       || '';
+  document.getElementById('cfg2-fb-sender').value   = fb.messagingSenderId   || '';
+  document.getElementById('cfg2-fb-app').value      = fb.appId               || '';
+  document.getElementById('cfg2-fb-vapid').value    = fb.vapidKey            || '';
+  document.getElementById('cfg2-ok').style.display    = 'none';
+  document.getElementById('cfg2-error').style.display = 'none';
+  if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
+  document.getElementById('modal-config').classList.remove('hidden');
+}
+window.abrirConfig = abrirConfig;
 
 // Búsqueda global — Ctrl+K / Esc
 document.addEventListener('keydown', e => {
