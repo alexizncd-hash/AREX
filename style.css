@@ -7480,8 +7480,9 @@ body::after {
   z-index: 9400;
 }
 
-/* 4. Module panel display */
-.module-panel { display: none; }
+/* 4. Module panel display — v138: display:none eliminado.
+   Los paneles se ocultan con transform:translateY(100vh) + visibility:hidden
+   (sistema drawer). display:none aquí conflictuaba con esas reglas. */
 .module-panel.active {
   display: block;
   position: relative;
@@ -8561,14 +8562,16 @@ header {
   text-align: center; padding: 14px 0;
 }
 
-/* ── v137: Fix workspace stacking context — the grid-breathe animation
-   creates an isolated stacking context for #workspace, causing #drawer-backdrop
-   (appended to body at z-index:245) to paint ABOVE module panels (z-index:250
-   within workspace). Fix: give workspace an explicit z-index so its stacking
-   context paints at 300 in root — above the backdrop (245). ── */
+/* ── v138: Eliminar animación de opacidad en #workspace.
+   grid-breathe animaba opacity (0.65), lo que en iOS Safari crea un
+   contexto de apilamiento aislado. Esto hacía que z-index:250 de los
+   drawers quedara encerrado en ese contexto, por debajo del backdrop
+   (z-index:245 en root). Sin la animación, no hay contexto aislado.
+   El z-index:300 se mantiene como protección extra. ── */
 #workspace {
   position: relative !important;
   z-index: 300 !important;
+  animation: none !important;
 }
 
 /* ── v137: Guarantee drawer panels are visible regardless of stacking quirks ── */
