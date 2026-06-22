@@ -500,9 +500,22 @@ function _isMobile() {
 // app.js es module, las funciones no son globales)
 function _setupLoginButton() {
   const btn = document.getElementById('btn-google-signin');
-  if (!btn) return;
-  btn.onclick = null; // remover posible inline handler residual
-  btn.addEventListener('click', _doGoogleSignIn);
+  if (btn) {
+    btn.onclick = null;
+    btn.addEventListener('click', _doGoogleSignIn);
+  }
+  const skip = document.getElementById('btn-skip-login');
+  if (skip) {
+    skip.addEventListener('click', () => {
+      // Usar AREX sin Firebase sync — todo funciona con localStorage
+      const uid = localStorage.getItem('arex_offline_uid') || ('local-' + Date.now());
+      localStorage.setItem('arex_offline_uid', uid);
+      window._arexUid  = uid;
+      window._arexUser = { uid, displayName: 'Alexiz', email: '', photoURL: null };
+      _hideLoginOverlay();
+      _initUserSession().catch(e => console.warn('AREX skip-login session:', e));
+    });
+  }
 }
 
 async function _doGoogleSignIn() {
