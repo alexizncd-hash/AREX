@@ -4639,14 +4639,23 @@ async function boot() {
   document.addEventListener('keydown',     _loadVisualEngines, { once: true });
   setTimeout(_loadVisualEngines, 4000); // fallback si no hay interacción
 
-  // Fade boot screen — but only fully hide once auth state is resolved.
-  // Prevents the gap where main app is visible between boot and login overlay.
-  await new Promise(r => setTimeout(r, 400));
-  bootScreen.style.transition = 'opacity 0.6s';
+  // Pre-cargar uid cacheado para no esperar a Firebase en el loop de abajo
+  if (!window._arexUid) {
+    const cachedUid  = localStorage.getItem('arex_offline_uid');
+    const cachedName = localStorage.getItem('arex_offline_name') || 'Alexiz';
+    if (cachedUid) {
+      window._arexUid  = cachedUid;
+      window._arexUser = { uid: cachedUid, displayName: cachedName, email: '', photoURL: null };
+    }
+  }
+
+  // Fade boot screen — reducido para arranque más rápido
+  await new Promise(r => setTimeout(r, 150));
+  bootScreen.style.transition = 'opacity 0.3s';
   bootScreen.style.opacity = '0';
-  await new Promise(r => setTimeout(r, 600));
-  // Wait until either authenticated or login overlay is showing (max 2.5s)
-  for (let i = 0; i < 25; i++) {
+  await new Promise(r => setTimeout(r, 300));
+  // Wait until either authenticated or login overlay is showing (max 1s)
+  for (let i = 0; i < 10; i++) {
     if (window._arexUid) break;
     const lo = document.getElementById('login-overlay');
     if (lo && lo.style.display !== 'none') break;

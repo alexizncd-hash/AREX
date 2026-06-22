@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v139)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v140)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,21 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v140 — Fix área negra INICIO (especificidad CSS) + arranque más rápido
+
+**`style.css`**
+- `#module-inicio` v138/v139 block ahora usa `!important` en todas sus propiedades clave (`position: fixed !important`, `inset: 0 !important`, `display: flex !important`, etc.)
+- **Causa raíz resuelta**: la regla legacy `#module-inicio.module-panel.active { position: relative }` (especificidad 0,2,0) sobrescribía `position: fixed` (0,1,0) porque ambas estaban fuera del `@layer`; con `!important` la regla v138 gana sin importar especificidad
+- Añadido `flex: unset !important`, `max-width: unset !important`, `align-self: unset !important` para cancelar las propiedades de layout del bloque legacy que ponían INICIO dentro del flujo normal del workspace
+
+**`app.js`**
+- `boot()` pre-carga `window._arexUid` desde `localStorage.getItem('arex_offline_uid')` antes del fade — el loop de espera rompe inmediatamente si hay sesión cacheada, ahorrando hasta 2,500ms en cada arranque
+- Delay cosmético reducido: 400ms → 150ms (initial) + 600ms → 300ms (fade) = 550ms ahorrados
+- Loop de espera de `_arexUid` reducido: máx 2,500ms → máx 1,000ms (suficiente para Firebase fresh login)
+
+**`sw.js`**
+- Versión bumped a `v140` / cache `arex-v140`
 
 ### v139 — Correcciones de módulos lazy-loaded: drawer-handle, active check, fondo INICIO
 

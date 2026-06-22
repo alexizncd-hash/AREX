@@ -8351,16 +8351,23 @@ header {
 }
 
 /* ── INICIO: siempre visible como base ───────────────────── */
+/* !important necesario: la regla #module-inicio.active (especificidad 0,2,0)
+   en el bloque legacy de arriba sobrescribiría position:fixed sin !important */
 #module-inicio {
-  display: flex;
-  flex-direction: column;
-  position: fixed; inset: 0; z-index: 1;
-  overflow: hidden;
-  transform: none;
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  background: #01060d;
+  display: flex !important;
+  flex-direction: column !important;
+  position: fixed !important; inset: 0 !important; z-index: 1 !important;
+  overflow: hidden !important;
+  transform: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  background: #01060d !important;
+  flex: unset !important;
+  max-width: unset !important;
+  align-self: unset !important;
+  width: 100vw !important;
+  height: 100vh !important;
 }
 
 /* ── Todos los otros módulos: drawers off-screen ─────────── */
