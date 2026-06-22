@@ -416,7 +416,7 @@ async function initFirebase() {
        limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-       getRedirectResult, onAuthStateChanged, signOut }
+       getRedirectResult, onAuthStateChanged, signInAnonymously, signOut }
       = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
     const fbApp = initializeApp(fbConfig);
     db = getFirestore(fbApp);
@@ -451,7 +451,6 @@ async function initFirebase() {
         }
       } else {
         // Primera vez: Firebase puede tardar hasta ~1s en restaurar sesión desde IndexedDB.
-        // El boot screen cubre este período; no mostrar login todavía.
         if (_firstAuthCheck) {
           _firstAuthCheck = false;
           await new Promise(r => setTimeout(r, 1000));
@@ -459,13 +458,22 @@ async function initFirebase() {
         }
         const cachedUid = localStorage.getItem('arex_offline_uid');
         if (cachedUid && !navigator.onLine) {
+          // Sin red: usar uid cacheado
           window._arexUid  = cachedUid;
-          window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
+          window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Alexiz', email: '', photoURL: null };
           _hideLoginOverlay();
           try { await _initUserSession(); } catch(e) { console.error('AREX offline session:', e); }
         } else {
-          if (cachedUid) localStorage.removeItem('arex_offline_uid');
-          _showLoginOverlay();
+          // Sin sesión activa: sign-in anónimo automático (como v82).
+          // Google Sign-In es opcional y se puede hacer desde configuración.
+          try {
+            await signInAnonymously(auth);
+            // onAuthStateChanged disparará de nuevo con el usuario anónimo
+          } catch(e) {
+            // Si el sign-in anónimo falla (sin red, etc.), mostrar login como último recurso
+            console.warn('AREX: signInAnonymously falló, mostrando login:', e.code);
+            _showLoginOverlay();
+          }
         }
       }
     });
