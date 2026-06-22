@@ -127,7 +127,9 @@ const DRAWER = {
       bd = document.createElement('div');
       bd.id = 'drawer-backdrop';
       bd.addEventListener('click', () => DRAWER.close());
-      document.body.appendChild(bd);
+      // Must be inside #workspace (same stacking context as module panels)
+      // so z-index:245 backdrop < z-index:250 drawer panel works correctly.
+      (document.getElementById('workspace') || document.body).appendChild(bd);
     }
     return bd;
   },

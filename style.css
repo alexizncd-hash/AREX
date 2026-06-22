@@ -8560,3 +8560,31 @@ header {
   font-size: 10px; color: #456b80; letter-spacing: 2px;
   text-align: center; padding: 14px 0;
 }
+
+/* ── v137: Fix workspace stacking context — the grid-breathe animation
+   creates an isolated stacking context for #workspace, causing #drawer-backdrop
+   (appended to body at z-index:245) to paint ABOVE module panels (z-index:250
+   within workspace). Fix: give workspace an explicit z-index so its stacking
+   context paints at 300 in root — above the backdrop (245). ── */
+#workspace {
+  position: relative !important;
+  z-index: 300 !important;
+}
+
+/* ── v137: Guarantee drawer panels are visible regardless of stacking quirks ── */
+.module-panel.drawer-open {
+  display: flex !important;
+  flex-direction: column !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 250 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  background: #010b18 !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+  transition: none !important;
+}
