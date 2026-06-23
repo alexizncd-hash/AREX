@@ -19,10 +19,14 @@ const PROJ_ESTADO_LABELS = {
 
 function proyectoCrear(nombre, descripcion = '', fechaLimite = '') {
   if (!nombre.trim()) return null;
+  if (fechaLimite) {
+    const d = new Date(fechaLimite + 'T00:00:00'); const y = d.getFullYear();
+    if (isNaN(d.getTime()) || y < 2020 || y > 2040) fechaLimite = '';
+  }
   const p = {
     id:          String(Date.now()),
-    nombre:      nombre.trim(),
-    descripcion: descripcion.trim(),
+    nombre:      nombre.trim().slice(0, 120),
+    descripcion: descripcion.trim().slice(0, 300),
     estado:      'activo',
     fechaLimite: fechaLimite,
     creadoEn:    Date.now(),

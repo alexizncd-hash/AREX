@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v141)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v142)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,22 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v142 — Calidad alta: _h() sanitización, _debounce(), DocumentFragment, validación fechas
+
+**`app.js`**
+- Nueva función `_h(s)` al tope del archivo: escapa `& < >` para uso en innerHTML — reemplaza 22 instancias del patrón manual `.replace(/&/g,'&amp;').replace(/</g,'&lt;')...` dispersas en el código
+- Nueva función `_debounce(fn, ms)` al tope: debounce genérico reutilizable — reemplaza el patrón manual `let tt; clearTimeout(tt); tt = setTimeout(...)` en las notas
+- `addTarea()`: valida que la fecha sea real y esté entre 2020–2040 antes de guardar; trunca texto a 500 caracteres máximo
+
+**`finanzas.js`**
+- `renderTarjetas()` y `renderGraficaGastos()`: usan `DocumentFragment` para acumular los elementos y hacer un solo `appendChild` al contenedor → reduce reflows de N a 1 por render
+
+**`proyectos.js`**
+- `proyectoCrear()`: valida fecha límite (rango 2020–2040), trunca nombre a 120 chars y descripción a 300 chars
+
+**`sw.js`**
+- Versión bumped a `v142` / cache `arex-v142`
 
 ### v141 — Fixes críticos: memory leaks, token truncation, retry Groq
 

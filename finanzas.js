@@ -91,6 +91,7 @@ const FinanzasModule = {
 
     const tarjetasOrdenadas = [...getFinanzasData().tarjetas].sort((a, b) => a.prioridad - b.prioridad);
 
+    const frag1 = document.createDocumentFragment();
     tarjetasOrdenadas.forEach(tarjeta => {
       const porcentajeUso   = tarjeta.limite > 0 ? ((tarjeta.saldo / tarjeta.limite) * 100).toFixed(1) : '0.0';
       const prioridadTexto  = tarjeta.prioridad === 1 ? 'URGENTE' : tarjeta.prioridad === 2 ? 'ALTA' : 'MEDIA';
@@ -137,8 +138,9 @@ const FinanzasModule = {
             ${tarjeta.notas.map(n => `<div class="nota">• ${n}</div>`).join('')}
           </div>` : ''}
       `;
-      container.appendChild(card);
+      frag1.appendChild(card);
     });
+    container.appendChild(frag1);
     } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderTarjetas: ' + e.message); }
   },
 
@@ -152,6 +154,7 @@ const FinanzasModule = {
     const totalGastos = calcularGastosTotal();
     const ingreso = getFinanzasData().config.ingresoMensual;
 
+    const frag2 = document.createDocumentFragment();
     gastosOrdenados.forEach(gasto => {
       const pctGastos  = totalGastos > 0 ? ((gasto.monto / totalGastos) * 100).toFixed(1) : '0.0';
       const pctIngreso = ingreso > 0 ? ((gasto.monto / ingreso) * 100).toFixed(1) : '—';
@@ -173,8 +176,9 @@ const FinanzasModule = {
           <span class="gasto-ingreso-pct">${pctIngreso}% del ingreso</span>
         </div>
       `;
-      container.appendChild(bar);
+      frag2.appendChild(bar);
     });
+    container.appendChild(frag2);
     } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos renderGraficaGastos: ' + e.message); }
   },
 

@@ -15,6 +15,12 @@ function _safeJSON(str, fallback) {
   try { return JSON.parse(str) ?? fallback; } catch { return fallback; }
 }
 
+/* ── Utilidades globales ─────────────────────────────── */
+// Escapa caracteres HTML peligrosos en texto que va a innerHTML
+function _h(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Debounce genérico: retorna una función que retrasa fn ms milisegundos
+function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
 function loadConfig() {
   if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
   const saved = localStorage.getItem('arex_config');
@@ -129,10 +135,10 @@ function renderAtajosList() {
     el.innerHTML = `
       <div class="atajo-header">
         <code class="atajo-cmd">/${a.name}</code>
-        ${a.desc ? `<span class="atajo-desc-label">${a.desc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>` : '<span class="atajo-desc-label"></span>'}
+        ${a.desc ? `<span class="atajo-desc-label">${_h(a.desc)}</span>` : '<span class="atajo-desc-label"></span>'}
         <button class="atajo-del" title="Eliminar">✕</button>
       </div>
-      <div class="atajo-prompt-preview">${preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      <div class="atajo-prompt-preview">${_h(preview)}</div>
     `;
     el.querySelector('.atajo-del').onclick = () => {
       const current = loadAtalos();
@@ -945,7 +951,7 @@ if (typeof marked !== 'undefined') {
 }
 function renderMarkdown(text) {
   if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    return _h(text).replace(/\n/g,'<br>');
   }
   return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR:['target','rel','class'] });
 }
@@ -1209,8 +1215,12 @@ function sortPending(arr) {
 
 function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   if (!text.trim()) return;
+  if (fecha) {
+    const d = new Date(fecha + 'T00:00:00'); const y = d.getFullYear();
+    if (isNaN(d.getTime()) || y < 2020 || y > 2040) fecha = '';
+  }
   const arr = getTareas();
-  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
+  const t = { id: String(Date.now()), text: text.trim().slice(0, 500), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
   if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
@@ -1368,7 +1378,7 @@ function renderTareas() {
     const _innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
       <div class="tarea-content">
-        <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+        <span class="tarea-text">${_h(t.text)}</span>
         <div class="tarea-meta">
           ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
           ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
@@ -1386,7 +1396,7 @@ function renderTareas() {
     const subListHtml = subs.length ? `<div class="tarea-subs-list">${subs.map(s => `
       <div class="tarea-sub-item${s.done ? ' sub-done' : ''}">
         <button class="tarea-sub-toggle" data-pid="${t.id}" data-sid="${s.id}">${s.done ? '✓' : ''}</button>
-        <span class="tarea-sub-text">${s.text.replace(/</g,'&lt;')}</span>
+        <span class="tarea-sub-text">${_h(s.text)}</span>
         <button class="tarea-sub-del" data-pid="${t.id}" data-sid="${s.id}">✕</button>
       </div>`).join('')}</div>` : '';
     const subAddHtml = !t.done ? `<div class="tarea-sub-add-row">
@@ -1535,7 +1545,7 @@ function renderNotas() {
   notas.sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt));
 
   if (!notas.length) {
-    const safeQ = q.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeQ = _h(q);
     el.innerHTML = `<div class="notas-empty">${q ? `Sin resultados para "${safeQ}"` : 'Sin notas — toca + NUEVA para crear una'}</div>`;
     return;
   }
@@ -1553,7 +1563,7 @@ function renderNotas() {
           <button class="nota-del-btn">✕</button>
         </div>
       </div>
-      <textarea class="nota-cuerpo" placeholder="Escribe aquí...">${n.cuerpo.replace(/</g,'&lt;')}</textarea>
+      <textarea class="nota-cuerpo" placeholder="Escribe aquí...">${_h(n.cuerpo)}</textarea>
       <div class="nota-footer">
         <div class="nota-colors">
           ${['','amber','emerald','rose'].map(c =>
@@ -1566,12 +1576,12 @@ function renderNotas() {
       </div>`;
 
     const ti = card.querySelector('.nota-titulo');
-    let tt; ti.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => updateNota(n.id, { titulo: ti.value }), 700); });
+    ti.addEventListener('input', _debounce(() => updateNota(n.id, { titulo: ti.value }), 700));
 
     const ta = card.querySelector('.nota-cuerpo');
-    let ct; ta.addEventListener('input', () => {
-      clearTimeout(ct);
-      ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700);
+    const _updateCuerpo = _debounce(() => updateNota(n.id, { cuerpo: ta.value }), 700);
+    ta.addEventListener('input', () => {
+      _updateCuerpo();
       const wc = card.querySelector('.nota-wc');
       if (wc) wc.textContent = ta.value.trim() ? ta.value.trim().split(/\s+/).length + ' pal' : '';
     });
@@ -1616,8 +1626,8 @@ function renderNotasWidget() {
   el.style.display = '';
   el.querySelector('.dash-notas-body').innerHTML = pinned.map(n => `
     <div class="dash-nota-item" onclick="AREXNav.cambiarModulo('notas')">
-      ${n.titulo ? `<div class="dash-nota-titulo">${n.titulo.replace(/</g,'&lt;')}</div>` : ''}
-      ${n.cuerpo ? `<div class="dash-nota-cuerpo">${n.cuerpo.replace(/</g,'&lt;').slice(0, 80)}${n.cuerpo.length > 80 ? '…' : ''}</div>` : ''}
+      ${n.titulo ? `<div class="dash-nota-titulo">${_h(n.titulo)}</div>` : ''}
+      ${n.cuerpo ? `<div class="dash-nota-cuerpo">${_h(n.cuerpo).slice(0, 80)}${n.cuerpo.length > 80 ? '…' : ''}</div>` : ''}
     </div>`).join('');
 }
 
@@ -1694,7 +1704,7 @@ function _renderCalDay(tareas, dateStr) {
   el.innerHTML = `<div class="cdt-title">${label.toUpperCase()}</div>` +
     tareas.map(t => `<div class="cdt-item${t.done?' done':''}">
       <span class="cdt-dot prio-${t.prioridad||'media'}"></span>
-      <span class="cdt-text">${t.text.replace(/</g,'&lt;')}</span>
+      <span class="cdt-text">${_h(t.text)}</span>
       ${t.done ? '<span class="cdt-badge">✓</span>' : ''}
     </div>`).join('');
 }
@@ -1879,8 +1889,8 @@ function renderSessionsList() {
   container.innerHTML = sessions.map(s => `
     <div class="session-item${s.id === currentSid ? ' active' : ''}" data-sid="${s.id}">
       <div class="session-info">
-        <div class="session-name">${s.name.replace(/</g,'&lt;')}</div>
-        <div class="session-preview">${(s.preview||'—').replace(/</g,'&lt;').slice(0,50)}</div>
+        <div class="session-name">${_h(s.name)}</div>
+        <div class="session-preview">${_h(s.preview||'—').slice(0,50)}</div>
       </div>
       <button class="session-del" data-del="${s.id}" title="Eliminar">✕</button>
     </div>`).join('');
@@ -2132,7 +2142,7 @@ function _showQuickReplies(replyText) {
   const matched = _QUICK_RULES.find(r => r.re.test(lower));
   const chips = matched ? matched.chips : _GENERIC_CHIPS;
   el.innerHTML = chips.map(c =>
-    `<button class="quick-chip">${c.replace(/</g,'&lt;')}</button>`
+    `<button class="quick-chip">${_h(c)}</button>`
   ).join('');
   el.querySelectorAll('.quick-chip').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2153,7 +2163,7 @@ function addMsg(role, text, sources) {
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
   const contentHTML = role === 'user'
-    ? text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+    ? _h(text).replace(/\n/g,'<br>')
     : renderMarkdown(text);
   let srcHTML = '';
   if (sources?.length) {
@@ -2315,7 +2325,7 @@ async function ejecutarAcciones(rawText, wrap) {
     const el = document.createElement('div');
     el.className = 'accion-pills';
     el.innerHTML = pills.map(p =>
-      `<span class="apill ${p.cls}">${p.icon} <span>${p.label.replace(/</g,'&lt;').slice(0,60)}</span></span>`
+      `<span class="apill ${p.cls}">${p.icon} <span>${_h(p.label).slice(0,60)}</span></span>`
     ).join('');
     wrap.appendChild(el);
   }
@@ -3012,7 +3022,7 @@ async function handleURL(url) {
     updateMemMetric();
 
     hideThinking();
-    const safeTitle = extracted.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeTitle = _h(extracted.title);
     const srcHTML = `<div class="sources">FUENTE: <a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
@@ -3081,7 +3091,7 @@ async function handleMultipleURLs(urls, question) {
 
     hideThinking();
     const srcHTML = `<div class="sources">FUENTES: ${valid.map((r, i) =>
-      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${r.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a>`
+      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${_h(r.title)}</a>`
     ).join(' · ')}</div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
@@ -3143,7 +3153,7 @@ async function handleFile(file) {
 
   // Mostrar burbuja de archivo
   document.querySelector('.welcome')?.remove();
-  const safeName = file.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safeName = _h(file.name);
   const wrap = document.createElement('div');
   wrap.className = 'msg user file';
   wrap.innerHTML = `<span class="who">TÚ</span><div class="bubble">📎 ${safeName}</div>`;
@@ -3443,7 +3453,7 @@ function renderNote(id, text, ts, category = 'General') {
   const el = document.createElement('div');
   el.className = 'note-item'; el.dataset.id = id;
   const time = new Date(ts).toLocaleDateString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-  const safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safeText = _h(text);
   el.innerHTML = `
     <div class="note-header">
       <span class="note-cat note-cat-${category.toLowerCase()}">${category}</span>
@@ -3606,7 +3616,7 @@ function _buildRecHtml() {
   const mkItem = (r, cls, icon, label) => `
     <div class="rec-item ${cls}">
       <span class="rec-icon">${icon}</span>
-      <span class="rec-msg">${r.msg.replace(/</g,'&lt;')}</span>
+      <span class="rec-msg">${_h(r.msg)}</span>
       <span class="rec-cd"${cls==='rec-activo' ? ` data-de="${r.disparaEn}"` : ''}>${label}</span>
       <button class="rec-dismiss" data-id="${r.id}" title="Eliminar">✕</button>
     </div>`;
@@ -3865,7 +3875,7 @@ async function handleCommand(cmd) {
         entries.forEach((e, i) => {
           const el = document.createElement('div');
           el.className = 'memoria-item';
-          el.innerHTML = `<span class="memoria-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><button class="memoria-del" data-i="${i}">✕</button>`;
+          el.innerHTML = `<span class="memoria-text">${_h(e.text)}</span><button class="memoria-del" data-i="${i}">✕</button>`;
           el.querySelector('.memoria-del').onclick = () => {
             const cur = loadMemoria(); cur.splice(i, 1); saveMemoria(cur);
             handleCommand('/memoria');
@@ -5507,7 +5517,7 @@ function renderBusquedaGlobal(q) {
 
   const safeRe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const hl = t => t.replace(new RegExp(safeRe, 'gi'), m => `<mark class="bg-hl">${m}</mark>`);
-  const safe = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const safe = s => _h(s);
   const fmtP = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
   let html = '';
