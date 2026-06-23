@@ -1053,7 +1053,8 @@ function tickClock() {
   const n = new Date(), p = v => String(v).padStart(2,'0');
   clockEl.textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
 }
-setInterval(tickClock, 1000);
+if (window._clockTimer) clearInterval(window._clockTimer);
+window._clockTimer = setInterval(tickClock, 1000);
 tickClock();
 
 /* ── Sesiones múltiples ─────────────────────────────── */
@@ -2035,6 +2036,9 @@ window.renderHudPanels = renderHudPanels;
 
 /* ── Matrix code rain ───────────────────────────────── */
 function initMatrixRain() {
+  (window._matrixTimers || []).forEach(clearInterval);
+  window._matrixTimers = [];
+
   const FRAGS = ['def','if','else','return','const','let','class','=>','{}','[]','()',
     'true','false','null','async','await','for','while','try','catch','new',
     'import','export','fn','var','===','&&','||','0x','str','int','arr',
@@ -2066,7 +2070,7 @@ function initMatrixRain() {
         }
       });
     }
-    setInterval(tick, 90);
+    window._matrixTimers.push(setInterval(tick, 90));
   });
 }
 
@@ -3230,7 +3234,7 @@ async function callBrain(tipo, mensajes, opts = {}) {
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
   const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
-  let messages = [...history];
+  let messages = history.slice(-28); // truncar: máx 28 mensajes para no superar token limit
 
   if (webCtx) {
     const last = messages[messages.length - 1];
@@ -3243,23 +3247,38 @@ async function callGroq(webCtx) {
     };
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 4096 : 2048,
-      messages: [{ role:'system', content: systemPrompt }, ...messages] })
-  });
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
-  const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('Respuesta inválida de API');
-  return content;
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500));
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
+        body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 4096 : 2048,
+          messages: [{ role:'system', content: systemPrompt }, ...messages] })
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(()=>({}));
+        const err = new Error(`${res.status} — ${e?.error?.message||'Error de API'}`);
+        if (res.status === 401 || res.status === 400) throw err;
+        lastErr = err; continue;
+      }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) throw new Error('Respuesta inválida de API');
+      return content;
+    } catch(e) {
+      if (e.message?.includes('401') || e.message?.includes('400')) throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr;
 }
 
 /* ── Llamada a Groq (streaming) ─────────────────────── */
 async function callGroqStream(webCtx, onChunk) {
   const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
-  let messages = [...history];
+  let messages = history.slice(-28); // truncar: máx 28 mensajes para no superar token limit
 
   if (webCtx) {
     const last = messages[messages.length - 1];
@@ -3267,37 +3286,52 @@ async function callGroqStream(webCtx, onChunk) {
     messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: examMode ? 4096 : 2048,
-      stream: true,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages]
-    })
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500));
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: examMode ? 4096 : 2048,
+          stream: true,
+          messages: [{ role: 'system', content: systemPrompt }, ...messages]
+        })
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        const err = new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`);
+        if (res.status === 401 || res.status === 400) throw err;
+        lastErr = err; continue;
+      }
 
-  const reader  = res.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '';
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    for (const line of chunk.split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      const raw = line.slice(6).trim();
-      if (raw === '[DONE]') return full;
-      try {
-        const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
-        if (delta) { full += delta; onChunk(full); }
-      } catch {}
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') return full;
+          try {
+            const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
+            if (delta) { full += delta; onChunk(full); }
+          } catch {}
+        }
+      }
+      return full;
+    } catch(e) {
+      if (e.message?.includes('401') || e.message?.includes('400')) throw e;
+      lastErr = e;
     }
   }
-  return full;
+  throw lastErr;
 }
 
 /* ── Llamada a Groq (visión) ────────────────────────── */

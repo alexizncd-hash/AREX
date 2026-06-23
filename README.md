@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v140)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v141)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,17 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v141 — Fixes críticos: memory leaks, token truncation, retry Groq
+
+**`app.js`**
+- `setInterval(tickClock, 1000)` ahora guarda su ref en `window._clockTimer` y limpia antes de crear — evita intervals apilados si el módulo se reinicia
+- `initMatrixRain()` guarda los dos intervals del canvas en `window._matrixTimers[]` y los limpia en llamadas sucesivas — evita canvas colgados en memoria
+- `callGroq()` y `callGroqStream()`: el historial se trunca a los últimos **28 mensajes** antes de enviarlo a Groq — evita errores silenciosos por exceder el token limit en conversaciones largas
+- `callGroq()` y `callGroqStream()`: retry automático de **3 intentos** con backoff exponencial (0s / 1.5s / 3s) en errores de red o rate-limit (5xx, 429); no reintenta en errores de autenticación (401) ni de request (400)
+
+**`sw.js`**
+- Versión bumped a `v141` / cache `arex-v141`
 
 ### v140 — Fix área negra INICIO (especificidad CSS) + arranque más rápido
 
