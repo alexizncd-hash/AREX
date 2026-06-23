@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v142)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v143)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,19 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v143 — Rendimiento, sincronización y bugs de UI: urgencia memoizada, sessions Firebase, rate-limit, fuente Orbitron
+
+**`app.js`**
+- `urgenciaTarea()` ahora usa un `Map` con clave `id|fecha` como caché diaria — se invalida automáticamente al cambiar de día; elimina 3–5 cálculos redundantes por tarea en cada `renderTareas()`, `sortPending()` y render del dashboard
+- `saveCurrentSession()` ahora llama a `arexSyncData('arex_sessions')` tras guardar — el historial de sesiones de chat se sincroniza a Firebase y es visible desde cualquier dispositivo
+- `handleSend()` añade rate-limit de 500ms (`_lastSendAt`) para evitar doble-envío por tap rápido o Enter doble en móvil
+
+**`finanzas.css`**
+- Reemplazadas 4 instancias de `font-family: 'Orbitron'` (fuente nunca cargada → fallback a serif) con `'Rajdhani'`, que sí está en el @import de Google Fonts — elimina el bug visual de tipografía rota en tarjetas y métricas de finanzas
+
+**`sw.js`**
+- Versión bumped a `v143` / cache `arex-v143`
 
 ### v142 — Calidad alta: _h() sanitización, _debounce(), DocumentFragment, validación fechas
 

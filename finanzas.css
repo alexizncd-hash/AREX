@@ -270,7 +270,7 @@ main#module-chat.module-panel.active {
   font-size: 0.7rem;
   color: #22d3ee;
   margin: 1.5rem 0 1rem;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 4px;
@@ -349,14 +349,14 @@ main#module-chat.module-panel.active {
   color: #4a7a96;
   text-transform: uppercase;
   letter-spacing: 3px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Rajdhani', sans-serif;
 }
 
 .metric-value {
   font-size: 1.85rem;
   color: #22d3ee;
   font-weight: 700;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Rajdhani', sans-serif;
   line-height: 1.1;
   letter-spacing: -1px;
 }
@@ -410,7 +410,7 @@ main#module-chat.module-panel.active {
   font-size: 0.9rem;
   color: #22d3ee;
   margin: 0 0 0.2rem;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
   letter-spacing: 1px;
 }

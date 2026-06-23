@@ -1098,6 +1098,7 @@ function saveCurrentSession() {
     sessions.unshift({ id: sid, name, preview, created: now, updated: now, messages: [...history] });
   }
   saveSessions(sessions);
+  if (typeof arexSyncData === 'function') arexSyncData('arex_sessions');
   renderSessionsList();
   updateDockSessionName();
   if (history.length >= 6) {
@@ -1187,17 +1188,28 @@ function deleteSession(sid) {
 function getTareas() { return _safeJSON(localStorage.getItem('arex_tareas'), []); }
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
+const _urgMap = new Map();
+let   _urgDay = '';
 function urgenciaTarea(t) {
   if (!t.fecha) return null;
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const today = hoy.toISOString().slice(0, 10);
+  if (today !== _urgDay) { _urgMap.clear(); _urgDay = today; }
+  const key = t.id + '|' + t.fecha;
+  if (_urgMap.has(key)) return _urgMap.get(key);
   const vence = new Date(t.fecha + 'T00:00:00');
   const dias = Math.round((vence - hoy) / 86400000);
-  if (dias < 0)  return { cls: 'urg-vencida',  icon: '🔴', txt: `Venció hace ${-dias}d` };
-  if (dias === 0) return { cls: 'urg-hoy',      icon: '🔴', txt: 'Vence HOY' };
-  if (dias <= 2)  return { cls: 'urg-pronto',   icon: '🟠', txt: `${dias}d` };
-  if (dias <= 7)  return { cls: 'urg-semana',   icon: '🟡', txt: `${dias}d` };
-  const d = new Date(t.fecha + 'T00:00:00');
-  return { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
+  let res;
+  if (dias < 0)   res = { cls: 'urg-vencida', icon: '🔴', txt: `Venció hace ${-dias}d` };
+  else if (dias === 0) res = { cls: 'urg-hoy',    icon: '🔴', txt: 'Vence HOY' };
+  else if (dias <= 2)  res = { cls: 'urg-pronto', icon: '🟠', txt: `${dias}d` };
+  else if (dias <= 7)  res = { cls: 'urg-semana', icon: '🟡', txt: `${dias}d` };
+  else {
+    const d = new Date(t.fecha + 'T00:00:00');
+    res = { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
+  }
+  _urgMap.set(key, res);
+  return res;
 }
 
 function sortPending(arr) {
@@ -3989,10 +4001,14 @@ function updateCtxSuggestions() {
 }
 
 /* ── Flujo principal ────────────────────────────────── */
+let _lastSendAt = 0;
 async function handleSend() {
   if (isBusy) return;
   const msg = txt.value.trim();
   if (!msg) return;
+  const now = Date.now();
+  if (now - _lastSendAt < 500) return; // rate-limit: evitar doble-envío por tap rápido
+  _lastSendAt = now;
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
