@@ -785,6 +785,7 @@ async function pullAllModuleData() {
     'arex_proyectos','arex_evidencias','arex_notas',
     'arex_finanzas','arex_finanzas_overrides',
     'arex_reparto_routes','arex_personas','arex_gesture_map',
+    'arex_sessions',
   ];
   let synced = 0;
   for (const key of keys) {

@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v143)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v144)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,23 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v144 — Limpieza de código: sync sessions bidireccional, eliminación de funciones duplicadas, exports muertos
+
+**`app.js`**
+- `pullAllModuleData()`: añadida `'arex_sessions'` al array de keys — las sesiones de chat ahora se sincronizan en **ambas** direcciones con Firebase (ya se empujaban desde v143; ahora también se jalan al arrancar)
+
+**`proyectos.js`**
+- `_safe()` ahora delega a la función global `_h()` — elimina la copia local duplicada de la lógica de escape HTML
+
+**`search.js`**
+- `_hi()` ahora usa `_h()` en vez de `_esc()` local; `_esc()` eliminada — era una copia exacta de `_h()`
+
+**`finanzas-data.js`**
+- Eliminados los `window.` exports de `calcularIngresoReal`, `calcularGastosPers` y `calcularPorcentajeGastos` — confirmado que ningún otro archivo las invoca; se mantienen como funciones internas para uso de `calcularMargenReal`
+
+**`sw.js`**
+- Versión bumped a `v144` / cache `arex-v144`
 
 ### v143 — Rendimiento, sincronización y bugs de UI: urgencia memoizada, sessions Firebase, rate-limit, fuente Orbitron
 

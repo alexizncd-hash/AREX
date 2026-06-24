@@ -205,7 +205,7 @@ function _getNotasProyecto(nombre) {
 const PROJ_COLORS = ['#22d3ee','#34ffc3','#ff9900','#c77dff','#ff6b6b','#4ecdc4','#ffd93d','#6bcb77'];
 let _colorIdx = 0;
 function _nextColor() { return PROJ_COLORS[(_colorIdx++) % PROJ_COLORS.length]; }
-function _safe(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _safe(s) { return _h(s); }
 
 /* ─── Exports ─────────────────────────────────────────── */
 window.renderProyectosModule = renderProyectosModule;

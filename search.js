@@ -147,11 +147,10 @@ function _doSearch(query) {
 }
 
 function _hi(text, q) {
-  const safe = _esc(text);
+  const safe = _h(text);
   const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   return safe.replace(re, '<mark>$1</mark>');
 }
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ── Keyboard navigation ───────────────────────────────── */
 document.addEventListener('keydown', e => {
