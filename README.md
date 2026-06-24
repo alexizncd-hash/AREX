@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v146)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v147)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,21 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v147 — Fix crítico: pestaña AGENTES en Mission Control en blanco (neural-orb.js faltante)
+
+**`neural-orb.js`** _(archivo nuevo)_
+- Añadido al repositorio: Motor de orbes neurales holográficos estilo JARVIS — esferas 3D con 40 nodos Fibonacci, aristas, pulsos sinápticos, glow, rim lighting, specular highlight, anillos de actividad. Clases: `NeuralOrb` + `initNeuralOrbs` / `setNeuralOrbState` globales. Era cargado dinámicamente por `control.js` pero el archivo no existía en el directorio principal, causando que `_renderAgentes()` nunca se ejecutara y la pestaña AGENTES apareciera completamente vacía.
+
+**`control.js`**
+- Añadido `onerror` fallback al `<script>` que carga `neural-orb.js` — si el archivo falla al cargar (red cortada, error HTTP), los agentes se renderizan de todas formas sin los orbes animados en lugar de quedar en blanco.
+
+**`control.css`**
+- Añadidos todos los estilos para las cards de orbes: `.agent-orb-wrap`, `.neural-orb-canvas` (90×90 CSS px), `.agent-orb-name`, `.agent-orb-desc`, `.agent-orb-status.online/standby`, `.agent-orb-last`, `.agent-run-btn` — sin estos estilos las cards existían en el DOM pero eran invisibles.
+
+**`sw.js`**
+- `neural-orb.js` añadido a la lista `SHELL` del caché del Service Worker — garantiza que esté disponible offline
+- Versión bumped a `v147` / cache `arex-v147`
 
 ### v146 — Google Sign-In accesible desde /config + indicador de cuenta
 

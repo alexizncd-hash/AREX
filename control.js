@@ -706,7 +706,8 @@ function renderControlModule() {
       if (typeof window.initNeuralOrbs !== 'function') {
         const _s = document.createElement('script');
         _s.src = './neural-orb.js';
-        _s.onload = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
+        _s.onload  = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
+        _s.onerror = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
         document.body.appendChild(_s);
       } else {
         _renderAgentes(ag);
