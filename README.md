@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v144)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v145)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,16 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v145 — Fix crítico: pestañas de Finanzas bloqueadas (cambiarVista undefined crash)
+
+**`finanzas.js`**
+- `setupEventListeners()`: añadido guard `if (!vista) return` en el listener de `.subnav-btn` — el botón "Analizar con IA" no tiene `data-view`, por lo que anteriormente llamaba `cambiarVista(undefined)`, que eliminaba el `active` de **todos** los `finanzas-view` (ocultando el contenido del módulo) y después crasheaba con `TypeError: Cannot read properties of null ('classList')`. Resultado: el módulo quedaba en blanco y parecía que los botones no respondían.
+- `cambiarVista()`: añadido null guard antes de `classList.add('active')` — previene cualquier crash si el `id="view-${vista}"` no existiera.
+- `window.FinanzasModule = FinanzasModule` movido **antes** de `init()` — si `init()` lanza un error de runtime, el módulo ya está accesible globalmente y los `onclick` del HTML siguen funcionando.
+
+**`sw.js`**
+- Versión bumped a `v145` / cache `arex-v145`
 
 ### v144 — Limpieza de código: sync sessions bidireccional, eliminación de funciones duplicadas, exports muertos
 

@@ -18,6 +18,7 @@ const FinanzasModule = {
     document.querySelectorAll('.subnav-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const vista = e.currentTarget.dataset.view;
+        if (!vista) return; // botones sin data-view (ej. Analizar con IA) usan su propio onclick
         this.cambiarVista(vista);
       });
     });
@@ -54,7 +55,9 @@ const FinanzasModule = {
       btn.classList.toggle('active', btn.dataset.view === vista);
     });
     document.querySelectorAll('.finanzas-view').forEach(v => v.classList.remove('active'));
-    document.getElementById(`view-${vista}`).classList.add('active');
+    const _viewEl = document.getElementById(`view-${vista}`);
+    if (!_viewEl) return;
+    _viewEl.classList.add('active');
     this.vistaActual = vista;
 
     if (vista === 'dashboard')        this.renderDashboard();
@@ -639,9 +642,9 @@ Dame: 1) Diagnóstico honesto de mi situación 2) Plan de acción para los próx
   }
 };
 
+window.FinanzasModule = FinanzasModule; // registrar antes de init() por si init lanza error
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => FinanzasModule.init());
 } else {
   FinanzasModule.init();
 }
-window.FinanzasModule = FinanzasModule;
