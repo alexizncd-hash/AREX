@@ -150,7 +150,7 @@ function _renderTelemetria(el) {
             <div class="diag-log-row">
               <span class="diag-log-ts">${_fmt(e.ts)}</span>
               <span class="diag-log-mod ${e.modulo}">${e.modulo.slice(0,5).toUpperCase()}</span>
-              <span class="diag-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;').slice(0,26)}</span>
+              <span class="diag-log-txt">${_h(String(e.accion)).slice(0,26)}</span>
             </div>`).join('') : '<div class="diag-empty">Sin actividad reciente</div>'}
         </div>
       </div>
@@ -168,7 +168,7 @@ function _renderLog(el) {
     `<div class="ctrl-log-entry">
       <span class="ctrl-log-ts">${_fmt(e.ts)}</span>
       <span class="ctrl-log-mod ${e.modulo}">${e.modulo.toUpperCase()}</span>
-      <span class="ctrl-log-txt">${String(e.accion).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+      <span class="ctrl-log-txt">${_h(String(e.accion))}</span>
     </div>`
   ).join('');
 }

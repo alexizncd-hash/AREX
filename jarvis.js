@@ -83,7 +83,6 @@ const AREXNav = {
         }
       });
     });
-    console.log('🤖 AREX Navegación v118 iniciada — Drawer Architecture');
   },
 
   _ensureInicio() {

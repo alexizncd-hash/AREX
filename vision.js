@@ -869,8 +869,7 @@ function _showResult(label, text, thumb, mode = '') {
     if (thumb) { img.src = thumb; img.style.display = 'block'; }
     else        { img.src = '';   img.style.display = 'none'; }
   }
-  const html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const html = _h(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
   if (body) body.innerHTML = html;

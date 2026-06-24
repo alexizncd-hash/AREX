@@ -117,8 +117,6 @@ function renderProyectosModule() {
 
   if (handle) panel.prepend(handle);
 
-  // Related tasks
-  _loadRelatedData();
 }
 
 function _renderCard(p) {
@@ -175,8 +173,6 @@ function _renderCard(p) {
     </div>
   `;
 }
-
-function _loadRelatedData() { /* counts are loaded inline via helpers */ }
 
 function _getTareasProyecto(nombre) {
   try {

@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v150)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v151)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,26 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v151 — Limpieza final: console.log, escape inline, código muerto
+
+**`jarvis.js`**
+- Eliminado `console.log('🤖 AREX Navegación v118...')` — debug de versión antigua sin valor en producción.
+
+**`app.js`**
+- Eliminado `console.log` del callback `.then()` de `getRedirectResult`. El callback solo contenía ese log, así que se eliminó el `.then()` completo — la autenticación sigue funcionando vía `onAuthStateChanged`.
+
+**`control.js`**
+- Líneas 153 y 171: reemplazados 2 patrones inline `.replace(/&/g,'&amp;').replace(/</g,'&lt;')` con `_h()` global — era la última duplicación de escape HTML en el proyecto.
+
+**`vision.js`**
+- `_h()` reemplaza las dos primeras cadenas `.replace()` en el mini-renderer de resultados de IA (línea 873); las sustituciones de Markdown (`**bold**` → `<strong>`) y newlines (`\n` → `<br>`) se conservan.
+
+**`proyectos.js`**
+- Eliminados la llamada `_loadRelatedData()` (línea 121) y su definición vacía `function _loadRelatedData() { /* ... */ }` (línea 179) — función stub cuya lógica ya estaba implementada inline mediante helpers; nunca tuvo cuerpo real.
+
+**`sw.js`**
+- Versión bumped a `v151` / cache `arex-v151`
 
 ### v150 — Hotfix: módulo Reparto roto por escHTML eliminado en v148
 

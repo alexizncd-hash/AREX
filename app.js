@@ -442,9 +442,7 @@ async function initFirebase() {
     window._arexAuth = auth;
 
     // Procesar redirect pendiente (por si venía de una sesión anterior con redirect)
-    getRedirectResult(auth).then(result => {
-      if (result?.user) console.log('AREX: redirect result ok —', result.user.email);
-    }).catch(e => {
+    getRedirectResult(auth).catch(e => {
       if (e.code !== 'auth/no-current-user')
         console.warn('AREX getRedirectResult:', e.code, e.message);
     });
