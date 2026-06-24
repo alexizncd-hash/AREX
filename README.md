@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v149)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v150)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v136 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v149 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -100,7 +100,7 @@ arex/
 | SpeechSynthesis API | Síntesis de voz — AREX habla y saluda proactivamente |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, Neural Mesh Orb |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v136 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v149 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -339,6 +339,17 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v150 — Hotfix: módulo Reparto roto por escHTML eliminado en v148
+
+**`reparto.js`**
+- `escHTML(` reemplazado con `_h(` (4 ocurrencias) — en v148 se eliminó `escHTML` de `negocio.js` sin notar que `reparto.js` lo usaba como global compartida. Esto causaba `ReferenceError: escHTML is not defined` al renderizar los marcadores del mapa y la lista de sucursales.
+
+**`README.md`**
+- Corregidas 2 referencias obsoletas a "Service Worker v136" → v150 (en la tabla de archivos y en la tabla de tecnologías).
+
+**`sw.js`**
+- Versión bumped a `v150` / cache `arex-v150`
 
 ### v149 — Fix: AREX ya no alucina capacidades que no tiene
 

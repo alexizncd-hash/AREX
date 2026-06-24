@@ -264,11 +264,11 @@ function _addRepSucursalesMarkers() {
     if (!suc.lat || !suc.lng) return;
     const el = document.createElement('div');
     el.className = 'rep-suc-marker';
-    el.innerHTML = `<div class="rep-suc-pin"></div><div class="rep-suc-tag">${escHTML(suc.nombre)}</div>`;
+    el.innerHTML = `<div class="rep-suc-pin"></div><div class="rep-suc-tag">${_h(suc.nombre)}</div>`;
 
     const popup = new maplibregl.Popup({ offset: 28, className: 'rep-popup' }).setHTML(`
       <div class="rep-popup-body">
-        <div class="rep-popup-name">${escHTML(suc.nombre)}</div>
+        <div class="rep-popup-name">${_h(suc.nombre)}</div>
         <div class="rep-popup-coords">${Number(suc.lat).toFixed(5)}, ${Number(suc.lng).toFixed(5)}</div>
         <div class="rep-popup-state">${suc.activa !== false ? '● ACTIVA' : '○ PAUSADA'}</div>
         <button class="rep-popup-btn" onclick="repAddWpSuc(${suc.lat},${suc.lng},'${escAttr(suc.nombre)}')">+ AGREGAR A RUTA</button>
@@ -349,7 +349,7 @@ function _renderSucList() {
     return `<div class="rep-suc-row">
       <div class="rep-suc-dot ${ok ? 'ok' : 'warn'}"></div>
       <div class="rep-suc-info">
-        <div class="rep-suc-name">${escHTML(s.nombre)}</div>
+        <div class="rep-suc-name">${_h(s.nombre)}</div>
         <div class="rep-suc-coord">${ok ? `${Number(s.lat).toFixed(4)}, ${Number(s.lng).toFixed(4)}` : 'Sin coordenadas'}</div>
       </div>
       <div class="rep-suc-acts">${ok
@@ -380,7 +380,7 @@ function _renderSavedList() {
   el.innerHTML = rutas.map((r, i) => `
     <div class="rep-saved-row">
       <div class="rep-saved-info">
-        <div class="rep-saved-name">${escHTML(r.nombre)}</div>
+        <div class="rep-saved-name">${_h(r.nombre)}</div>
         <div class="rep-saved-meta">${r.waypoints.length} puntos · ${new Date(r.ts).toLocaleDateString('es-MX')}</div>
       </div>
       <div class="rep-suc-acts">
