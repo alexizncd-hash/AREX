@@ -14,7 +14,6 @@ const METAS_CATS = {
 };
 
 // ── Helpers de escape ───────────────────────────────
-const _escH = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const _escA = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Persistencia ────────────────────────────────────
@@ -109,7 +108,7 @@ function renderMetasActivas() {
 
     const valLabel = m.tipo === 'porcentaje'
       ? `${m.valorActual}% / 100%`
-      : `${m.valorActual}${m.unidad ? ' ' + _escH(m.unidad) : ''} / ${m.valorObjetivo}${m.unidad ? ' ' + _escH(m.unidad) : ''}`;
+      : `${m.valorActual}${m.unidad ? ' ' + _h(m.unidad) : ''} / ${m.valorObjetivo}${m.unidad ? ' ' + _h(m.unidad) : ''}`;
 
     const doneBtn = lograda
       ? `<button class="meta-btn-done" onclick="metaCompletar('${_escA(m.id)}')">&#10003; LOGRADA</button>`
@@ -123,15 +122,15 @@ function renderMetasActivas() {
       <div class="meta-card" id="meta-card-${_escA(m.id)}">
         <div class="meta-header">
           <div>
-            <span class="meta-cat-badge" style="color:${cat.c};border-color:${cat.c};">${_escH(cat.l.toUpperCase())}</span>
-            <div class="meta-titulo">${_escH(m.titulo)}</div>
+            <span class="meta-cat-badge" style="color:${cat.c};border-color:${cat.c};">${_h(cat.l.toUpperCase())}</span>
+            <div class="meta-titulo">${_h(m.titulo)}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;">
             <button class="neg-edit" onclick="metaEditar('${_escA(m.id)}')">✎</button>
             <button class="neg-del" onclick="metaEliminar('${_escA(m.id)}')">&#x2715;</button>
           </div>
         </div>
-        ${m.descripcion ? `<div class="meta-desc">${_escH(m.descripcion)}</div>` : ''}
+        ${m.descripcion ? `<div class="meta-desc">${_h(m.descripcion)}</div>` : ''}
         <div class="meta-progress-row">
           <div class="meta-track">
             <div class="meta-fill" style="width:${pct}%;background:${cat.c};"></div>
@@ -160,7 +159,7 @@ function renderMetasActivas() {
           const hitosHtml = hitos.length ? `<div class="meta-hitos-list">${hitos.map(h => `
             <div class="meta-hito${h.completado ? ' hito-done' : ''}">
               <button class="hito-toggle" onclick="toggleHito('${_escA(m.id)}','${_escA(h.id)}')">${h.completado ? '✓' : ''}</button>
-              <span class="hito-text">${_escH(h.texto)}</span>
+              <span class="hito-text">${_h(h.texto)}</span>
               <button class="hito-del" onclick="deleteHito('${_escA(m.id)}','${_escA(h.id)}')">✕</button>
             </div>`).join('')}</div>` : '';
           const progHito = hitos.length ? `<span class="meta-hito-count">${hitosDoneN}/${hitos.length} hitos</span>` : '';
@@ -256,8 +255,8 @@ function renderMetasCompletadas() {
       <div class="meta-card meta-done">
         <div class="meta-header">
           <div>
-            <span class="meta-cat-badge" style="color:${cat.c};border-color:${cat.c};">${_escH(cat.l.toUpperCase())}</span>
-            <div class="meta-titulo">${_escH(m.titulo)}</div>
+            <span class="meta-cat-badge" style="color:${cat.c};border-color:${cat.c};">${_h(cat.l.toUpperCase())}</span>
+            <div class="meta-titulo">${_h(m.titulo)}</div>
           </div>
           <button class="neg-del" onclick="metaEliminar('${_escA(m.id)}')">&#x2715;</button>
         </div>

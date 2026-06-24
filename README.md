@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v147)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v148)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,17 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v148 — Limpieza: funciones de escape duplicadas + setInterval sin referencia
+
+**`habitos.js`**, **`metas.js`**, **`agenda.js`**, **`gastos.js`**, **`negocio.js`**, **`evidencias.js`**
+- Eliminadas 6 funciones/definiciones locales de escape HTML (`_habEsc`, `_escH`, `_agEsc`, `_escHTML`, `escHTML`, inline en evidencias) — todas eran copias exactas de la función global `_h()` ya definida en `app.js`. Sustituidas por `_h()` en todos sus usos (texto de contenido). Las funciones de escape de **atributos** (`_escAttr`, `escAttr`, `_escA`) se conservan porque escapan comillas adicionales que `_h()` no cubre.
+
+**`holo.js`**
+- `setInterval(update, 12000)` ahora guarda su ID en `window._holoUpdateTimer` — permite cancelarlo si fuera necesario; antes la referencia se perdía y no había forma de detener el timer.
+
+**`sw.js`**
+- Versión bumped a `v148` / cache `arex-v148`
 
 ### v147 — Fix crítico: pestaña AGENTES en Mission Control en blanco (neural-orb.js faltante)
 

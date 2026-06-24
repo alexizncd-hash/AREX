@@ -212,7 +212,7 @@ function _agEventChip(ev) {
   const prioMap = { alta:'!', media:'', baja:'' };
   return `<div class="ag-chip ag-chip-${ev.color}" data-evtype="${ev.type}" data-evid="${ev.id}" title="${ev.title}">
     <span class="ag-chip-ico">${icons[ev.type]||'•'}</span>
-    <span class="ag-chip-txt">${_agEsc((ev.title||'').slice(0,28))}${(ev.title||'').length>28?'…':''}</span>
+    <span class="ag-chip-txt">${_h((ev.title||'').slice(0,28))}${(ev.title||'').length>28?'…':''}</span>
     ${ev.hora ? `<span class="ag-chip-time">${ev.hora}</span>` : ''}
     ${ev.prioridad==='alta' ? '<span class="ag-chip-prio">!</span>' : ''}
     ${ev.repetir && ev.repetir!=='ninguna' ? '<span class="ag-chip-rep">↻</span>' : ''}
@@ -224,14 +224,13 @@ function _agEventRow(ev) {
   return `<div class="ag-ev-row ag-ev-row-${ev.color}" data-evtype="${ev.type}" data-evid="${ev.id}">
     <span class="ag-ev-ico">${icons[ev.type]||'•'}</span>
     <div class="ag-ev-info">
-      <span class="ag-ev-title">${_agEsc(ev.title)}</span>
+      <span class="ag-ev-title">${_h(ev.title)}</span>
       ${ev.hora ? `<span class="ag-ev-time">${ev.hora}</span>` : ''}
       ${ev.progreso !== undefined ? `<span class="ag-ev-prog">${ev.progreso}%</span>` : ''}
     </div>
   </div>`;
 }
 
-function _agEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 
 /* ─── Click handlers ─────────────────────────────────────── */
 function _agAttachEvHandlers(body) {

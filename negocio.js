@@ -48,7 +48,6 @@ const $DATE = d => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', mon
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const inicioMes = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
 const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const escHTML = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Navegación de vistas ────────────────────────────
 function switchNegocioView(view) {
@@ -302,7 +301,7 @@ function renderNegVentas() {
             const s = data.sucursales.find(s => s.id === v.sucursalId);
             return `<div class="neg-list-item" data-venta-id="${v.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${escHTML(s ? s.nombre : 'Sin sucursal')}</span>
+                <span class="neg-li-name">${_h(s ? s.nombre : 'Sin sucursal')}</span>
                 <span class="neg-profit">${$MXN(v.total)}</span>
               </div>
               <div class="neg-li-bot">
@@ -445,7 +444,7 @@ function renderNegInventario() {
               </div>
               <div class="neg-li-bot">
                 <span>${$DATE(h.fecha)}</span>
-                ${h.nota ? `<span>${escHTML(h.nota)}</span>` : ''}
+                ${h.nota ? `<span>${_h(h.nota)}</span>` : ''}
                 ${h.id ? `<button class="neg-del" onclick="negEliminarHistorial('${h.id}')">✕</button>` : ''}
               </div>
             </div>`).join('')}
@@ -526,12 +525,12 @@ function renderNegSucursales() {
             const ml  = vm.reduce((a, v) => a + v.cantidad, 0);
             return `<div class="neg-list-item ${!s.activa ? 'neg-inactive' : ''}" data-suc-id="${s.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${escHTML(s.nombre)}</span>
+                <span class="neg-li-name">${_h(s.nombre)}</span>
                 <span class="neg-badge ${s.activa ? '' : 'neg-badge-off'}">${s.activa ? 'ACTIVA' : 'PAUSADA'}</span>
               </div>
               <div class="neg-li-bot">
                 <span>${ml} ML · ${$MXN(tot)} este mes</span>
-                ${s.contacto ? `<span>${escHTML(s.contacto)}</span>` : ''}
+                ${s.contacto ? `<span>${_h(s.contacto)}</span>` : ''}
                 <button class="neg-edit" onclick="negEditarSucursal('${s.id}')">editar</button>
                 <button class="neg-del"  onclick="negToggleSucursal('${s.id}')" style="color:var(--text-muted)">${s.activa ? 'pausar' : 'activar'}</button>
                 <button class="neg-del"  onclick="negEliminarSucursal('${s.id}')">✕</button>
@@ -635,7 +634,7 @@ function renderNegGastos() {
           ${data.gastos.slice().reverse().map(g => `
             <div class="neg-list-item" data-gasto-id="${g.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${escHTML(g.concepto)}</span>
+                <span class="neg-li-name">${_h(g.concepto)}</span>
                 <span class="neg-loss">${$MXN(g.monto)}</span>
               </div>
               <div class="neg-li-bot">

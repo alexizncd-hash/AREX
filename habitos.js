@@ -17,9 +17,6 @@ function _habHoy() {
   return _habFecha(new Date());
 }
 
-function _habEsc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 /* ─── Persistencia ─────────────────────────────────────────────── */
 function getHabitos() {
@@ -133,7 +130,7 @@ const HAB_CAT_LABELS = {
 
 function _habCatBadge(cat) {
   const label = HAB_CAT_LABELS[cat] || cat;
-  return `<span class="hab-cat-badge hab-cat-${_habEsc(cat)}">${_habEsc(label)}</span>`;
+  return `<span class="hab-cat-badge hab-cat-${_h(cat)}">${_h(label)}</span>`;
 }
 
 /* ─── Frecuencia label ─────────────────────────────────────────── */
@@ -188,23 +185,23 @@ function renderHabitosModule() {
         const dots    = _habWeekDots(hab);
         const frecLbl = HAB_FREC_LABELS[hab.frecuencia] || hab.frecuencia;
         return `
-        <div class="hab-card" data-habid="${_habEsc(hab.id)}">
-          <span class="hab-emoji">${_habEsc(hab.emoji)}</span>
+        <div class="hab-card" data-habid="${_h(hab.id)}">
+          <span class="hab-emoji">${_h(hab.emoji)}</span>
           <div class="hab-info">
             <div class="hab-name-row">
-              <span class="hab-name">${_habEsc(hab.nombre)}</span>
+              <span class="hab-name">${_h(hab.nombre)}</span>
               ${_habCatBadge(hab.categoria)}
-              <span class="hab-frec-badge">${_habEsc(frecLbl)}</span>
+              <span class="hab-frec-badge">${_h(frecLbl)}</span>
             </div>
             <div class="hab-dots" aria-label="Semana actual">${dots}</div>
           </div>
           ${streak > 0 ? `<span class="hab-streak">🔥 ${streak} ${streak === 1 ? 'día' : 'días'}</span>` : ''}
           <button class="hab-toggle${done ? ' hab-toggle-done' : ''}"
-                  data-action="toggle" data-habid="${_habEsc(hab.id)}"
+                  data-action="toggle" data-habid="${_h(hab.id)}"
                   title="${done ? 'Marcar como pendiente' : 'Marcar como hecho hoy'}">
             ${done ? '✓' : ''}
           </button>
-          <button class="hab-btn-del" data-action="delete" data-habid="${_habEsc(hab.id)}" title="Eliminar hábito">✕</button>
+          <button class="hab-btn-del" data-action="delete" data-habid="${_h(hab.id)}" title="Eliminar hábito">✕</button>
         </div>`;
       }).join('');
 

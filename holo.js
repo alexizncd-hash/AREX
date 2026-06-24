@@ -303,7 +303,7 @@
 
     setTimeout(update, 1400);
     window.addEventListener('resize', () => setTimeout(update, 150));
-    setInterval(update, 12000);
+    window._holoUpdateTimer = setInterval(update, 12000);
   }
 
   /* ── 8. ORB CLICK — MULTI-RIPPLE ────────────────────────── */

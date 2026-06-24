@@ -70,8 +70,8 @@ function renderEvidenciasWidget() {
 
   const cardsHTML = searchHTML + arr.slice(0, 20).map(ev => {
     const t = EV_TIPOS[ev.tipo] || EV_TIPOS.general;
-    const safeT = ev.titulo?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || 'Sin título';
-    const safeB = ev.contenido?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*/g,'') || '';
+    const safeT = _h(ev.titulo || 'Sin título');
+    const safeB = _h(ev.contenido || '').replace(/\*\*/g,'');
     const isLong = (ev.contenido || '').length > 180;
     return `<div class="ev-card" style="--ev-color:${t.color}" data-ev-id="${ev.id}">
       <div class="ev-card-head">

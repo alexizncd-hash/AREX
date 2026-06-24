@@ -24,7 +24,6 @@ let _gpAnio  = new Date().getFullYear();
 const _$MXN    = n => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const _todayISO = () => new Date().toISOString().slice(0, 10);
 const _escAttr  = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const _escHTML  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 const _MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -264,7 +263,7 @@ function renderGpHistorial() {
           return `
             <div class="neg-list-item" data-gp-id="${g.id}">
               <div class="neg-li-top">
-                <span class="neg-li-name">${cat.e} ${_escHTML(g.descripcion || cat.l)}</span>
+                <span class="neg-li-name">${cat.e} ${_h(g.descripcion || cat.l)}</span>
                 <span class="neg-loss">${_$MXN(g.monto)}</span>
               </div>
               <div class="neg-li-bot">
