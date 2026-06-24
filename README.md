@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v148)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v149)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,16 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v149 — Fix: AREX ya no alucina capacidades que no tiene
+
+**`app.js`** — `buildSystemBase()`
+- Añadida sección **LÍMITES REALES** al system prompt, entre `ÁREAS DE EXPERTISE` y `REGLAS`, aplicada a **todos** los perfiles (AREX y VIERNES). El modelo ya tenía tono "JARVIS omnipotente" pero ningún límite declarado, por lo que extrapolaba capacidades ficticias (modelos 3D, renders, control de hardware, etc.).
+- El bloque deja explícito qué SÍ puede (ver/describir imágenes compartidas) y qué NO puede (generar imágenes/3D/video, controlar dispositivos, llamadas, apps externas, internet sin Tavily).
+- Incluye instrucción directa: ante algo imposible, decirlo con claridad y ofrecer la alternativa real. Usa `${owner}` para que aplique correctamente a cualquier perfil.
+
+**`sw.js`**
+- Versión bumped a `v149` / cache `arex-v149`
 
 ### v148 — Limpieza: funciones de escape duplicadas + setInterval sin referencia
 
