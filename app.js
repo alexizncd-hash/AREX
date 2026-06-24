@@ -4328,6 +4328,14 @@ function abrirConfig() {
   document.getElementById('cfg2-ok').style.display    = 'none';
   document.getElementById('cfg2-error').style.display = 'none';
   if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
+  const accountEl = document.getElementById('cfg-account-status');
+  if (accountEl) {
+    const u = window._arexUser;
+    if (u?.email) accountEl.textContent = `✓ Google: ${u.email}`;
+    else if (u?.uid?.startsWith('local-')) accountEl.textContent = 'Sin cuenta — datos solo en este dispositivo';
+    else if (u?.uid) accountEl.textContent = `Anónimo (${u.uid.slice(0,8)}...) — sin sync Google`;
+    else accountEl.textContent = 'Sin sesión activa';
+  }
   document.getElementById('modal-config').classList.remove('hidden');
 }
 window.abrirConfig = abrirConfig;

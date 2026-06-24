@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v145)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v146)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,17 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v146 — Google Sign-In accesible desde /config + indicador de cuenta
+
+**`index.html`**
+- Modal `/config`: añadida sección **CUENTA** con indicador de estado de sesión (`cfg-account-status`) + dos botones: **▲ VINCULAR GOOGLE** (`_doGoogleSignIn`) y **✕ CERRAR SESIÓN** (`_arexSignOut`) — antes no había forma de conectar una cuenta Google si el app ya estaba "logueado" de forma anónima o con caché local
+
+**`app.js`**
+- `abrirConfig()`: actualiza `cfg-account-status` al abrir el modal — muestra si la sesión es Google (con email), anónima (con uid parcial), solo local, o sin sesión activa
+
+**`sw.js`**
+- Versión bumped a `v146` / cache `arex-v146`
 
 ### v145 — Fix crítico: pestañas de Finanzas bloqueadas (cambiarVista undefined crash)
 

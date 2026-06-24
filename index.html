@@ -340,6 +340,12 @@
           <button onclick="requestNotifPermission()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;white-space:nowrap;">ACTIVAR</button>
           <span id="notif-status" style="font-size:10px;letter-spacing:1.5px;color:#4a7a96;">—</span>
         </div>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:8px;">CUENTA</div>
+        <div id="cfg-account-status" style="font-size:10px;color:#4a7a96;letter-spacing:1px;padding:6px 0;">—</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button onclick="window._doGoogleSignIn?.()" style="background:rgba(34,211,238,0.07);border:1px solid rgba(34,211,238,0.35);color:#22d3ee;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;border-radius:3px;white-space:nowrap;">▲ VINCULAR GOOGLE</button>
+          <button onclick="window._arexSignOut?.()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 14px;cursor:pointer;border-radius:3px;white-space:nowrap;">✕ CERRAR SESIÓN</button>
+        </div>
         <button id="cfg2-save" style="margin-top:0.5rem;background:transparent;border:1px solid #00d4ff;color:#00d4ff;font-family:monospace;font-size:12px;letter-spacing:3px;padding:10px;cursor:pointer;border-radius:2px;">GUARDAR</button>
         <div id="cfg2-ok"    style="font-size:11px;color:#00d4ff;text-align:center;display:none;letter-spacing:1px;">CONFIGURACIÓN GUARDADA. RECARGA LA PÁGINA.</div>
         <div id="cfg2-error" style="font-size:11px;color:#ff4444;text-align:center;display:none;">La Groq API Key es requerida.</div>
