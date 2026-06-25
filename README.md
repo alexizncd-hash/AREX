@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v151)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v152)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -339,6 +339,20 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v152 — Fix: setup screen bloquea app cuando iOS borra localStorage
+
+**Causa**: Safari / iOS borra periódicamente el `localStorage` de sitios no frecuentes (ITP). Al desaparecer `arex_config`, `loadConfig()` retornaba `false` y mostraba la pantalla de setup — bloqueando el acceso al app aunque todos los datos de módulos (tareas, finanzas, etc.) seguían intactos.
+
+**`app.js`** — `loadConfig()`
+- Si `arex_config` no existe pero hay otras claves `arex_*` en localStorage (datos de módulos = usuario de retorno), ahora carga el app con `AREX_CONFIG = {}` en lugar de mostrar el setup. El usuario no pierde acceso a sus datos.
+- Establece `window._arexConfigMissing = true` como bandera post-boot.
+
+**`app.js`** — `boot()`
+- Al terminar el arranque, si `_arexConfigMissing` es true, muestra un mensaje en el chat explicando que la API key no se encontró y cómo reconfigurarla con `/config`. No interrumpe el flujo normal del app.
+
+**`sw.js`**
+- Versión bumped a `v152` / cache `arex-v152`
 
 ### v151 — Limpieza final: console.log, escape inline, código muerto
 

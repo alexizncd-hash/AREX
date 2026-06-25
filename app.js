@@ -29,6 +29,14 @@ function loadConfig() {
     if (parsed) { window.AREX_CONFIG = parsed; return true; }
     localStorage.removeItem('arex_config'); // corrupted — purge to unblock boot
   }
+  // Usuario de retorno: tiene datos de módulos pero iOS/Safari borró arex_config.
+  // Cargar sin config — puede reconfigurar keys desde /config sin perder sus datos.
+  const hasData = Object.keys(localStorage).some(k => k.startsWith('arex_'));
+  if (hasData) {
+    window.AREX_CONFIG = {};
+    window._arexConfigMissing = true; // bandera para aviso post-boot
+    return true;
+  }
   return false;
 }
 
@@ -4739,7 +4747,14 @@ async function boot() {
   }
   bootScreen.style.display = 'none';
   txt?.focus();
-  setTimeout(() => generarBriefing(), 800);
+  if (window._arexConfigMissing) {
+    setTimeout(() => addMsg('arex',
+      '⚠ No encontré tu API key (probablemente el navegador limpió el almacenamiento). ' +
+      'Los módulos funcionan con normalidad, pero el chat con IA no está disponible hasta que reconfigures tu Groq key. ' +
+      'Escribe `/config` para hacerlo ahora.'), 600);
+  } else {
+    setTimeout(() => generarBriefing(), 800);
+  }
 }
 
 // ── CLIMA ─────────────────────────────────────────────────────────────────
