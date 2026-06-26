@@ -7,7 +7,7 @@
 let initializeApp, getFirestore, collection, addDoc, getDocs,
     query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot,
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-    getRedirectResult, onAuthStateChanged, signOut;
+    getRedirectResult, onAuthStateChanged, signInAnonymously, signOut;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
@@ -503,7 +503,10 @@ async function initFirebase() {
     // Cablear el botón de login vía event listener
     // (app.js es type="module" → las funciones no son globales → onclick inline falla)
     _setupLoginButton();
-  } catch(e) { console.warn('Firebase init:', e); }
+  } catch(e) {
+    console.warn('Firebase init:', e);
+    window._arexFbError = e.message || String(e);
+  }
 }
 
 // Arranca la sesión del usuario: perfil → migración → sync → datos

@@ -99,8 +99,9 @@ function _renderTelemetria(el) {
         <div class="diag-quad-body">
           <div class="diag-row">
             <span class="diag-k">FIREBASE DB</span>
-            <span class="diag-v ${t.fbStatus==='CONECTADO'?'ok':'warn'}">${t.fbStatus==='CONECTADO'?'⬤ ENLAZADO':'⬤ OFFLINE'}</span>
+            <span class="diag-v ${t.fbStatus==='CONECTADO'?'ok':'warn'}" title="${window._arexFbError||''}">${t.fbStatus==='CONECTADO'?'⬤ ENLAZADO':window.AREX_CONFIG?.firebase?.apiKey?'⬤ ERROR INIT':'⬤ SIN CONFIG'}</span>
           </div>
+          ${t.fbStatus!=='CONECTADO'?`<div class="diag-row"><span class="diag-k" style="opacity:.5">${window._arexFbError?window._arexFbError.slice(0,32):'Configura en /config'}</span><button onclick="abrirConfig()" style="font-size:8px;background:transparent;border:1px solid #ff9900;color:#ff9900;padding:1px 6px;cursor:pointer;font-family:var(--font)">CONFIG</button></div>`:''}
           <div class="diag-row">
             <span class="diag-k">SERVICE WORKER</span>
             <span class="diag-v ok">${swVer} ⬤ ACTIVO</span>
