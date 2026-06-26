@@ -15,13 +15,7 @@ const FinanzasModule = {
   },
 
   setupEventListeners() {
-    document.querySelectorAll('.subnav-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const vista = e.currentTarget.dataset.view;
-        if (!vista) return; // botones sin data-view (ej. Analizar con IA) usan su propio onclick
-        this.cambiarVista(vista);
-      });
-    });
+    // .subnav-btn ya tienen onclick inline en el HTML → no duplicar el listener aquí
 
     const slider = document.getElementById('pago-extra-slider');
     if (slider) {
@@ -47,7 +41,7 @@ const FinanzasModule = {
       this.renderEditor();
       this.actualizarMetricas();
     });
-    document.getElementById('btn-analizar-ia')?.addEventListener('click', () => this.analizarConIA());
+    // btn-analizar-ia ya tiene onclick inline en el HTML
   },
 
   cambiarVista(vista) {
@@ -330,7 +324,7 @@ const FinanzasModule = {
     try {
     const simulacion  = simularLiquidacion(this.pagoExtraActual, this.estrategiaActual);
     const simAlt      = simularLiquidacion(this.pagoExtraActual,
-      this.estrategiaActual === 'avalancha' ? 'bola_de_nieve' : 'avalancha');
+      this.estrategiaActual === 'avalancha' ? 'bola-nieve' : 'avalancha');
 
     document.getElementById('resultado-meses').textContent = `${simulacion.meses} meses`;
 
