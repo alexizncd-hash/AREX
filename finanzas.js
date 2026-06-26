@@ -366,6 +366,7 @@ const FinanzasModule = {
 
     this.renderOrdenLiquidacion(simulacion.tarjetas);
     this.renderGraficaProyeccion(simulacion.proyeccion);
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error datos actualizarCalculadora: ' + e.message); }
   },
 
   renderOrdenLiquidacion(tarjetas) {

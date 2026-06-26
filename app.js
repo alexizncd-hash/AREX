@@ -18,6 +18,7 @@ function _safeJSON(str, fallback) {
 /* ── Utilidades globales ─────────────────────────────── */
 // Escapa caracteres HTML peligrosos en texto que va a innerHTML
 function _h(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window._h = _h;
 // Debounce genérico: retorna una función que retrasa fn ms milisegundos
 function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
