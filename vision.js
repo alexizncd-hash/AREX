@@ -103,8 +103,10 @@ function _updateVisionHudData() {
     const timeEl = document.getElementById('vis-dr-time');
     if (timeEl) timeEl.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
     const tasks  = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    const pend   = tasks.filter(t => !t.done);
+    const venc   = pend.filter(t => t.fecha && new Date(t.fecha) < now).length;
     const taskEl = document.getElementById('vis-dr-tasks');
-    if (taskEl) taskEl.textContent = `${tasks.filter(t => !t.done).length} tareas`;
+    if (taskEl) taskEl.textContent = `${pend.length} tareas`;
     const metas  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
     const metEl  = document.getElementById('vis-dr-metas');
     if (metEl) metEl.textContent = `${metas.filter(m => !m.completada).length} metas`;
@@ -112,7 +114,36 @@ function _updateVisionHudData() {
     const saldo  = fd.saldoCuenta ?? fd.ingresoMensual ?? null;
     const finEl  = document.getElementById('vis-dr-fin');
     if (finEl) finEl.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
+    // Corner widgets
+    const cwTasks = document.getElementById('vis-cw-tasks');
+    if (cwTasks) cwTasks.innerHTML = `<span>${pend.length} pend.${venc ? ` · <span style="color:#ff6655">${venc} venc.</span>` : ''}</span>`;
+    const cwFin = document.getElementById('vis-cw-fin');
+    if (cwFin) cwFin.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
   } catch {}
+}
+
+/* ─── Radial Menu ─────────────────────────────────────── */
+window._toggleRadial = function() {
+  const rm = document.getElementById('vis-radial');
+  if (!rm) return;
+  const isOpen = rm.classList.contains('vr-open');
+  if (isOpen) { _closeRadialEl(rm); } else { _openRadialEl(rm); }
+};
+window._closeRadial = function() {
+  _closeRadialEl(document.getElementById('vis-radial'));
+};
+function _openRadialEl(rm) {
+  if (!rm) return;
+  rm.classList.add('vr-open');
+  rm.setAttribute('aria-hidden', 'false');
+  _jarvisSound('action');
+  document.getElementById('vis-radial-btn')?.classList.add('on');
+}
+function _closeRadialEl(rm) {
+  if (!rm) return;
+  rm.classList.remove('vr-open');
+  rm.setAttribute('aria-hidden', 'true');
+  document.getElementById('vis-radial-btn')?.classList.remove('on');
 }
 
 /* ─── Personas conocidas ──────────────────────────────── */
@@ -585,6 +616,42 @@ function _buildPanel() {
       </div>
     </div>
 
+    <!-- CORNER DATA WIDGETS -->
+    <div class="vp-corner-widget vp-cw-bl" id="vis-cw-bl">
+      <div class="vp-cw-label">TAREAS</div>
+      <div class="vp-cw-val" id="vis-cw-tasks">···</div>
+    </div>
+    <div class="vp-corner-widget vp-cw-br" id="vis-cw-br">
+      <div class="vp-cw-label">FINANZAS</div>
+      <div class="vp-cw-val" id="vis-cw-fin">···</div>
+    </div>
+
+    <!-- RADIAL ACTION MENU -->
+    <div class="vp-radial-menu" id="vis-radial" aria-hidden="true">
+      <button class="vp-radial-close" onclick="window._closeRadial()">✕</button>
+      <div class="vp-radial-ring">
+        <button class="vp-radial-btn" style="--i:0" onclick="captureAndAnalyze('describe');window._closeRadial()">
+          <span class="vp-rb-ico">👁</span><span class="vp-rb-lbl">VER</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:1" onclick="captureAndAnalyze('product');window._closeRadial()">
+          <span class="vp-rb-ico">🔍</span><span class="vp-rb-lbl">OBJETO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:2" onclick="captureAndAnalyze('text');window._closeRadial()">
+          <span class="vp-rb-ico">📄</span><span class="vp-rb-lbl">TEXTO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:3" onclick="captureAndAnalyze('recibo');window._closeRadial()">
+          <span class="vp-rb-ico">🧾</span><span class="vp-rb-lbl">RECIBO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:4" onclick="captureAndAnalyze('scene');window._closeRadial()">
+          <span class="vp-rb-ico">🌐</span><span class="vp-rb-lbl">ESCENA</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:5" onclick="window._toggleWorkspace();window._closeRadial()">
+          <span class="vp-rb-ico">▦</span><span class="vp-rb-lbl">PANEL</span>
+        </button>
+      </div>
+      <div class="vp-radial-center">AREX</div>
+    </div>
+
     <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
@@ -608,8 +675,8 @@ function _buildPanel() {
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
         <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
       </button>
-      <button class="vp-action-btn" onclick="window._toggleWorkspace()">
-        <span class="vp-btn-ico">▦</span><span class="vp-btn-lbl">PANEL</span>
+      <button class="vp-action-btn vp-radial-trigger" id="vis-radial-btn" onclick="window._toggleRadial()">
+        <span class="vp-btn-ico">⊕</span><span class="vp-btn-lbl">MENÚ</span>
       </button>
     </div>
   `;
@@ -2158,10 +2225,13 @@ function _doPinchClick(data) {
   const rect = canvas.getBoundingClientRect();
   const sx = rect.left + data.x * rect.width;
   const sy = rect.top  + data.y * rect.height;
-  // Temporarily disable canvas pointer events so elementFromPoint works
-  canvas.style.pointerEvents = 'auto';
+  // Canvas already has pointer-events:none from CSS — elementFromPoint looks through it
+  // Temporarily hide tap-canvas too so pinch can reach buttons underneath
+  const tapCv = document.getElementById('vis-tap-canvas');
+  const prevPE = tapCv?.style.pointerEvents;
+  if (tapCv) tapCv.style.pointerEvents = 'none';
   const el = document.elementFromPoint(sx, sy);
-  canvas.style.pointerEvents = 'none';
+  if (tapCv) tapCv.style.pointerEvents = prevPE || '';
   if (el && el.tagName !== 'CANVAS' && el.tagName !== 'VIDEO' && el !== _panel) {
     el.click();
     _gestureFlash('🤏 TAP', '#00ffaa');

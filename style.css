@@ -583,7 +583,7 @@ main {
 
 /* Top HUD bar */
 .vp-hud-top {
-  position:relative; z-index:3;
+  position:relative; z-index:40;
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 16px;
   padding-top:calc(14px + env(safe-area-inset-top));
@@ -636,7 +636,7 @@ main {
 
 /* Bottom action bar */
 .vp-hud-bottom {
-  position:absolute; bottom:0; left:0; right:0; z-index:3;
+  position:absolute; bottom:0; left:0; right:0; z-index:40;
   display:flex; justify-content:center; gap:10px;
   padding:16px;
   padding-bottom:calc(20px + env(safe-area-inset-bottom));
@@ -4525,6 +4525,118 @@ footer {
   cursor: crosshair;
   touch-action: manipulation;
 }
+
+/* ── Corner Data Widgets ──────────────────────────────── */
+.vp-corner-widget {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  font-family: var(--font);
+  font-size: 8px;
+  letter-spacing: 1px;
+  line-height: 1.5;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(0,5,16,0.55);
+  border: 1px solid rgba(34,211,238,0.12);
+  color: rgba(34,211,238,0.55);
+  backdrop-filter: blur(4px);
+}
+.vp-cw-label {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: rgba(34,211,238,0.35);
+  margin-bottom: 2px;
+}
+.vp-cw-val {
+  font-size: 9px;
+  color: rgba(34,211,238,0.7);
+}
+.vp-cw-bl {
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  left: 12px;
+}
+.vp-cw-br {
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  right: 12px;
+  text-align: right;
+}
+
+/* ── Radial Action Menu ───────────────────────────────── */
+.vp-radial-menu {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.vp-radial-menu.vr-open {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto;
+}
+.vp-radial-ring {
+  position: relative;
+  width: 0; height: 0;
+}
+.vp-radial-btn {
+  position: absolute;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(0,8,24,0.88);
+  border: 1.5px solid rgba(34,211,238,0.55);
+  color: var(--cyan);
+  font-family: var(--font);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  backdrop-filter: blur(8px);
+  /* Positions set via nth-child below */
+  left: -29px; top: -29px;
+}
+.vp-radial-btn:hover, .vp-radial-btn:active {
+  background: rgba(34,211,238,0.18);
+  border-color: var(--cyan);
+  transform: scale(1.12);
+}
+.vp-rb-ico { font-size: 18px; }
+.vp-rb-lbl { font-size: 7px; letter-spacing: 1px; }
+.vp-radial-center {
+  position: absolute;
+  top: -22px; left: -22px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.12);
+  border: 2px solid rgba(34,211,238,0.6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; letter-spacing: 2px; color: var(--cyan);
+  box-shadow: 0 0 20px rgba(34,211,238,0.25);
+}
+.vp-radial-close {
+  position: absolute;
+  top: -55px; left: -16px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,68,85,0.12);
+  border: 1px solid rgba(255,68,85,0.35);
+  color: #ff6677;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.vp-radial-close:hover { background: rgba(255,68,85,0.28); }
+/* 6 radial positions (radius 90px, 60° each, starting top) */
+.vp-radial-btn:nth-child(1) { left:-29px;  top:-119px; } /* 0° = top */
+.vp-radial-btn:nth-child(2) { left:49px;   top:-74px;  } /* 60° */
+.vp-radial-btn:nth-child(3) { left:49px;   top:16px;   } /* 120° */
+.vp-radial-btn:nth-child(4) { left:-29px;  top:61px;   } /* 180° = bottom */
+.vp-radial-btn:nth-child(5) { left:-107px; top:16px;   } /* 240° */
+.vp-radial-btn:nth-child(6) { left:-107px; top:-74px;  } /* 300° */
 
 /* ── Quick Ask Bar ────────────────────────────────────── */
 .vp-ask-bar {
