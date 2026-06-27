@@ -2718,7 +2718,7 @@ async function _analizarConArex(mod) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         max_tokens: 350,
         messages: [
           { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
@@ -3380,7 +3380,7 @@ async function autoSummarize() {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify({
-        model:'llama-3.3-70b-versatile', max_tokens:600,
+        model:'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens:600,
         messages:[{ role:'user', content:
           `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
           `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
@@ -5118,7 +5118,7 @@ async function analizarMetas() {
     }).join('\n');
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:400,
+      body: JSON.stringify({ model:'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens:400,
         messages:[
           {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
           {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
@@ -5217,7 +5217,7 @@ async function generarReporteSemanal() {
     ].filter(Boolean).join('\n');
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:480,
+      body: JSON.stringify({ model:'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens:480,
         messages:[
           {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
           {role:'user', content:`Datos de la semana:\n${contexto}`}

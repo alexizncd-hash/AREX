@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v117)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v160)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v83 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v160 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -88,7 +88,7 @@ arex/
 | Tecnología | Uso |
 |---|---|
 | HTML / CSS / JS puro | Interfaz completa sin frameworks ni bundlers |
-| Groq API — llama-3.3-70b-versatile | Motor de IA principal: chat, razonamiento, briefing |
+| Groq API — llama-4-maverick | Motor de IA principal: chat, razonamiento, briefing |
 | Groq Vision — llama-4-maverick / scout | Análisis de imágenes (Visión y chat; fallback si no hay Gemini) |
 | Gemini 2.5 / 2.0 Flash (Google AI) | Análisis de imágenes con visión mejorada (preferido sobre Groq vision) |
 | MediaPipe Hands (CDN) | Detección de manos en tiempo real para gestos, swipe y pinch |
@@ -101,8 +101,7 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| Neural Orb Engine v2 | Canvas 2D cerebros holográficos: Fibonacci nodes, synapse pulses, rim lighting, specular highlights |
-| PWA + Service Worker v65 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v160 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |

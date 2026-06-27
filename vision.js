@@ -46,6 +46,75 @@ let _askBarVisible = false;
 let _wkOn    = false;
 let _wkModId = 'tareas';
 
+// JARVIS AR extras
+let _hudTimer  = null;
+let _audioCtx  = null;
+
+/* ─── JARVIS Audio FX ─────────────────────────────────── */
+function _jarvisSound(type) {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const t   = ctx.currentTime;
+    if (type === 'scan') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1400, t); o.frequency.linearRampToValueAtTime(600, t + 0.28);
+      g.gain.setValueAtTime(0.12, t); g.gain.linearRampToValueAtTime(0, t + 0.28);
+      o.start(t); o.stop(t + 0.28);
+    } else if (type === 'result') {
+      [800, 1100].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.09, t + i * 0.1); g.gain.linearRampToValueAtTime(0, t + i * 0.1 + 0.14);
+        o.start(t + i * 0.1); o.stop(t + i * 0.1 + 0.14);
+      });
+    } else if (type === 'open') {
+      [440, 660, 880, 1100].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.09, t + i * 0.07); g.gain.linearRampToValueAtTime(0, t + i * 0.07 + 0.14);
+        o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.14);
+      });
+    } else if (type === 'action') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'square'; o.frequency.value = 420;
+      g.gain.setValueAtTime(0.07, t); g.gain.linearRampToValueAtTime(0, t + 0.1);
+      o.start(t); o.stop(t + 0.1);
+    } else if (type === 'error') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sawtooth'; o.frequency.value = 180;
+      g.gain.setValueAtTime(0.09, t); g.gain.linearRampToValueAtTime(0, t + 0.35);
+      o.start(t); o.stop(t + 0.35);
+    }
+  } catch {}
+}
+
+/* ─── Live HUD Data ───────────────────────────────────── */
+function _updateVisionHudData() {
+  if (!_panel) return;
+  try {
+    const now = new Date();
+    const timeEl = document.getElementById('vis-dr-time');
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const tasks  = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    const taskEl = document.getElementById('vis-dr-tasks');
+    if (taskEl) taskEl.textContent = `${tasks.filter(t => !t.done).length} tareas`;
+    const metas  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
+    const metEl  = document.getElementById('vis-dr-metas');
+    if (metEl) metEl.textContent = `${metas.filter(m => !m.completada).length} metas`;
+    const fd     = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || localStorage.getItem('arex_finanzas') || '{}');
+    const saldo  = fd.saldoCuenta ?? fd.ingresoMensual ?? null;
+    const finEl  = document.getElementById('vis-dr-fin');
+    if (finEl) finEl.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
+  } catch {}
+}
+
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
   try { return JSON.parse(localStorage.getItem('arex_personas') || '[]'); } catch { return []; }
@@ -254,7 +323,9 @@ export async function openVision() {
   }
   _buildPanel();
   document.getElementById('btn-vision')?.classList.add('active');
-  setTimeout(() => _visionSpeak('Visión activa. Aquí contigo.'), 900);
+  setTimeout(() => { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); }, 600);
+  _hudTimer = setInterval(_updateVisionHudData, 5000);
+  _updateVisionHudData();
 }
 
 export function closeVision() {
@@ -275,6 +346,8 @@ export function closeVision() {
   clearTimeout(_resultTimer);
   clearInterval(_telTimer);
   _telTimer = null;
+  clearInterval(_hudTimer);
+  _hudTimer = null;
   // Stop gesture engine
   if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
   // Stop voice commands
@@ -366,6 +439,20 @@ function _buildPanel() {
         <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
       </div>
     </div>
+
+    <!-- LIVE DATA RIBBON -->
+    <div class="vp-data-ribbon" id="vis-data-ribbon">
+      <span id="vis-dr-time">--:--</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-tasks">··· tareas</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-metas">··· metas</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-fin">···</span>
+    </div>
+
+    <!-- CINEMATIC SWEEP (enhanced scan overlay) -->
+    <div class="vp-sweep-line" id="vis-sweep"></div>
 
     <!-- LEFT TELEMETRY -->
     <div class="vp-telemetry" id="vis-telemetry">
@@ -645,6 +732,7 @@ function _buildPanel() {
   // Start telemetry ticker
   _telTimer = setInterval(_updateTelemetry, 3000);
   _updateTelemetry();
+  // HUD data is also populated on open (openVision calls _updateVisionHudData)
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
@@ -709,6 +797,11 @@ async function _analyze(mode, extra = '') {
 
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
+  _jarvisSound('scan');
+
+  // Cinematic sweep animation
+  const sweepEl = document.getElementById('vis-sweep');
+  if (sweepEl) { sweepEl.classList.remove('active'); void sweepEl.offsetWidth; sweepEl.classList.add('active'); }
 
   const prompt    = extra || _buildVisionPrompt(mode);
   const geminiKey = window.AREX_CONFIG?.geminiKey;
@@ -875,6 +968,7 @@ function _showResult(label, text, thumb, mode = '') {
     .replace(/\n/g, '<br>');
   if (body) body.innerHTML = html;
   panel.classList.add('visible');
+  _jarvisSound('result');
   clearTimeout(_resultTimer);
   if (!_contOn) _resultTimer = setTimeout(_hideResult, 20000);
   _buildResultActions(mode, text);
@@ -1668,7 +1762,7 @@ async function _freeVoiceQuery(question) {
     if (!reply && groqKey) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 120,
+        body: JSON.stringify({ model: 'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens: 120,
           messages: [{ role: 'user', content: prompt }] })
       });
       const d = await res.json();
@@ -2390,7 +2484,7 @@ async function _wkSendChat() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.groqKey}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         max_tokens: 180,
         messages: [
           { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Estás en modo Visión AR. Responde en 1-2 oraciones naturales y directas. Sin bullets, sin markdown.' },

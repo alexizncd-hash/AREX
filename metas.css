@@ -193,3 +193,91 @@
 @media (max-width: 400px) {
   .meta-card { padding: 0.75rem 0.85rem; }
 }
+
+/* ── Hitos (milestones) ── */
+.meta-hitos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.meta-hito-count {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+.meta-hitos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meta-hito {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(34,211,238,0.04);
+  border: 1px solid rgba(34,211,238,0.08);
+  transition: background 0.15s;
+}
+.meta-hito.hito-done {
+  opacity: 0.55;
+}
+.meta-hito.hito-done .hito-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.hito-toggle {
+  min-width: 18px; height: 18px;
+  border: 1px solid rgba(34,211,238,0.4);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cyan);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.hito-toggle:hover { background: rgba(34,211,238,0.15); }
+.meta-hito.hito-done .hito-toggle {
+  background: rgba(52,255,195,0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+.hito-text {
+  flex: 1;
+  font-size: 10px;
+  color: var(--text-main);
+  word-break: break-word;
+}
+.hito-del {
+  background: transparent;
+  border: none;
+  color: rgba(255,68,85,0.4);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.hito-del:hover { color: #ff4455; }
+.meta-hito-add-row {
+  margin-top: 2px;
+}
+.meta-hito-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(34,211,238,0.15);
+  color: var(--text-main);
+  font-family: var(--font);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 4px 2px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.meta-hito-input:focus { border-color: rgba(34,211,238,0.4); }
+.meta-hito-input::placeholder { color: var(--text-muted); }
