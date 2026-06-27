@@ -3239,12 +3239,12 @@ async function handleFile(file) {
 }
 
 // ── callBrain: router de cerebros IA ─────────────────────
-// CORE  → llama-3.3-70b-versatile  (razonamiento, chat principal)
-// RAPIDO→ llama-3.1-8b-instant     (tareas simples, rapidez)
+// CORE  → llama-4-maverick  (razonamiento, chat principal)
+// RAPIDO→ llama-4-scout     (tareas simples, rapidez)
 async function callBrain(tipo, mensajes, opts = {}) {
   const modelos = {
-    core:   'llama-3.3-70b-versatile',
-    rapido: 'llama-3.1-8b-instant',
+    core:   'meta-llama/llama-4-maverick-17b-128e-instruct',
+    rapido: 'meta-llama/llama-4-scout-17b-16e-instruct',
   };
   const modelo = modelos[tipo] || modelos.core;
   const body = {
@@ -3296,7 +3296,7 @@ async function callGroq(webCtx) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-        body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 4096 : 2048,
+        body: JSON.stringify({ model:'meta-llama/llama-4-maverick-17b-128e-instruct', max_tokens: examMode ? 4096 : 2048,
           messages: [{ role:'system', content: systemPrompt }, ...messages] })
       });
       if (!res.ok) {
@@ -3336,7 +3336,7 @@ async function callGroqStream(webCtx, onChunk) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           max_tokens: examMode ? 4096 : 2048,
           stream: true,
           messages: [{ role: 'system', content: systemPrompt }, ...messages]

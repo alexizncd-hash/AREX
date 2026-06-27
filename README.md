@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v155)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v156)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v155 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v156 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -339,6 +339,26 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v156 — Upgrade modelos IA: Llama 3.3 → Llama 4 en chat principal y agentes
+
+**`app.js`**
+- `callBrain()`: modelo `core` actualizado de `llama-3.3-70b-versatile` → `meta-llama/llama-4-maverick-17b-128e-instruct`; modelo `rapido` de `llama-3.1-8b-instant` → `meta-llama/llama-4-scout-17b-16e-instruct`
+- `callGroq()`: modelo actualizado a `meta-llama/llama-4-maverick-17b-128e-instruct`
+- `callGroqStream()`: modelo actualizado a `meta-llama/llama-4-maverick-17b-128e-instruct`
+
+**`control.js`**
+- Resumen de notas en Mission Control: `llama-3.3-70b-versatile` → `meta-llama/llama-4-scout-17b-16e-instruct`
+
+**Estrategia de modelos post-actualización:**
+- Chat / razonamiento (JARVIS, agentes): **Llama 4 Maverick** (128 expertos, mayor calidad)
+- Tareas rápidas / resúmenes: **Llama 4 Scout** (16 expertos, mayor velocidad)
+- Visión Groq: ya usaba Llama 4 Scout/Maverick desde v147 ✅
+- Gemini: ya en `gemini-2.5-flash` ✅
+- Tavily: API de búsqueda sin versión de modelo, sin cambios
+
+**`sw.js`**
+- Versión bumped a `v156` / cache `arex-v156`
 
 ### v152 — Fix: setup screen bloquea app cuando iOS borra localStorage
 
