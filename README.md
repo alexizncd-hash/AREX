@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v157)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v158)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v157 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v158 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -339,6 +339,15 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v158 — Fix: confirmación de borrado (doble tap) ya no se interrumpe por re-render
+
+**`app.js`**
+- `renderTareas()`: guard al inicio — si hay un botón `.tarea-del.confirming` activo (usuario en medio del doble-tap de confirmación), el re-render se pospone hasta que el estado expire. Evita que Firebase sync o cualquier otro trigger resetee el "?" a "✕" antes de que el usuario pueda confirmar.
+- `renderNotas()`: mismo guard con `.nota-del-btn.confirming`. La ventana de confirmación (2.5s) ya no se interrumpe.
+
+**`sw.js`**
+- Versión bumped a `v158` / cache `arex-v158`
 
 ### v157 — Optimización de arranque: imports Firebase paralelos + sync 17x más rápido
 

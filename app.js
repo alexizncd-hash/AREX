@@ -1396,6 +1396,7 @@ function setTareasFilter(f) {
 window.setTareasFilter = setTareasFilter;
 
 function renderTareas() {
+  if (document.querySelector('.tarea-del.confirming')) return;
   const all = getTareas();
   let pending = sortPending(all.filter(t => !t.done));
   if (_tareasFilter === 'hoy') {
@@ -1576,6 +1577,7 @@ function deleteNota(id) {
 }
 
 function renderNotas() {
+  if (document.querySelector('.nota-del-btn.confirming')) return;
   const el = document.getElementById('notas-list');
   if (!el) return;
   const q = (document.getElementById('notas-search')?.value || '').toLowerCase().trim();
