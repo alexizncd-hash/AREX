@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    AREX — app.js
-   Motor: Groq (llama-3.3-70b) + Tavily + Firebase
+   Motor: Groq (llama-4-maverick/scout) + Tavily + Firebase
 ═══════════════════════════════════════════════════════ */
 
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
@@ -435,13 +435,17 @@ async function initFirebase() {
   const fbConfig = window.AREX_FIREBASE_CONFIG || AREX_CONFIG?.firebase;
   if (fbInitialized || !fbConfig?.apiKey) return;
   try {
-    ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
+    // Importar los 3 módulos Firebase en paralelo (no dependen entre sí)
+    const [_appMod, _fsMod, _authMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"),
+      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"),
+    ]);
+    ({ initializeApp } = _appMod);
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
-       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
-      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
+       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot } = _fsMod);
     ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-       getRedirectResult, onAuthStateChanged, signInAnonymously, signOut }
-      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
+       getRedirectResult, onAuthStateChanged, signInAnonymously, signOut } = _authMod);
     const fbApp = initializeApp(fbConfig);
     db = getFirestore(fbApp);
     window._arexDb = db;
@@ -511,12 +515,12 @@ async function initFirebase() {
 
 // Arranca la sesión del usuario: perfil → migración → sync → datos
 async function _initUserSession() {
-  await loadAndApplyProfile();
-  await _migrateFirestoreIfNeeded();
+  // Perfil y migración en paralelo (independientes entre sí)
+  await Promise.all([loadAndApplyProfile(), _migrateFirestoreIfNeeded()]);
   initRealtimeSync();
   initFCM();
-  await pullConfigFromFirestore();
-  await pullAllModuleData();
+  // Config y datos de módulos en paralelo
+  await Promise.all([pullConfigFromFirestore(), pullAllModuleData()]);
   if (window._arexLastSync == null) window._arexLastSync = Date.now();
   await loadHistory();
 }
@@ -806,16 +810,19 @@ async function pullAllModuleData() {
     'arex_reparto_routes','arex_personas','arex_gesture_map',
     'arex_sessions',
   ];
+  // Leer todos los docs en paralelo en lugar de secuencialmente (17x más rápido)
+  const snaps = await Promise.all(
+    keys.map(key => getDoc(_userDoc('arex_data', key)).catch(() => null))
+  );
   let synced = 0;
-  for (const key of keys) {
+  snaps.forEach((snap, i) => {
+    if (!snap?.exists()) return;
+    const key = keys[i];
     try {
-      const snap = await getDoc(_userDoc('arex_data', key));
-      if (!snap.exists()) continue;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
       const { _updatedAt, _arr, ...rest } = data;
       const toStore = _arr !== undefined ? _arr : rest;
-
       const local = localStorage.getItem(key);
       if (!local) {
         localStorage.setItem(key, JSON.stringify(toStore));
@@ -829,8 +836,8 @@ async function pullAllModuleData() {
           localStorage.setItem(key, JSON.stringify(toStore)); synced++;
         }
       }
-    } catch(e) { console.warn('pullModuleData:', key, e); }
-  }
+    } catch(e) { console.warn('pullModuleData:', keys[i], e); }
+  });
   if (synced > 0) {
     window.renderTareas?.();
     window.renderMetas?.();

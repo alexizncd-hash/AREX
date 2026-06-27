@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v156)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v157)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v156 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v157 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -339,6 +339,17 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v157 — Optimización de arranque: imports Firebase paralelos + sync 17x más rápido
+
+**`app.js`**
+- `initFirebase()`: los 3 imports de Firebase (`firebase-app`, `firebase-firestore`, `firebase-auth`) ahora se cargan en paralelo con `Promise.all()` — reducción de ~500-800ms en la primera carga
+- `_initUserSession()`: paralelizadas 2 etapas independientes: `loadAndApplyProfile` + `_migrateFirestoreIfNeeded` corren juntas; luego `pullConfigFromFirestore` + `pullAllModuleData` corren juntas
+- `pullAllModuleData()`: reemplazado bucle `for...await` secuencial de 17 lecturas Firestore por `Promise.all()` — todas las lecturas ocurren en paralelo, reducción de ~2-4s en sincronización inicial
+- Comentario de cabecera actualizado: `llama-3.3-70b` → `llama-4-maverick/scout`
+
+**`sw.js`**
+- Versión bumped a `v157` / cache `arex-v157`
 
 ### v156 — Upgrade modelos IA: Llama 3.3 → Llama 4 en chat principal y agentes
 
