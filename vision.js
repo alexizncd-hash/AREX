@@ -44,7 +44,7 @@ let _askBarVisible = false;
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
-let _wkModId = 'tareas';
+let _wkModId = localStorage.getItem('arex_vision_wkmod') || 'tareas';
 
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
@@ -575,6 +575,7 @@ function _buildPanel() {
     document.querySelectorAll('.vis-wk-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     _wkModId = btn.dataset.wkmod;
+    localStorage.setItem('arex_vision_wkmod', _wkModId);
     document.getElementById('vis-wk-lbl').textContent = btn.dataset.wkmod.toUpperCase();
     _wkRender();
   });
@@ -629,18 +630,24 @@ function _buildPanel() {
   document.getElementById('vis-ask-send').addEventListener('click', _sendAskBar);
   document.getElementById('vis-ask-input').addEventListener('keydown', e => { if (e.key === 'Enter') _sendAskBar(); });
 
-  // Init 3-D Vision Orb
-  const orbCv = document.getElementById('vis-orb-canvas');
-  if (orbCv && window.VisionOrb) {
-    const dpr = devicePixelRatio || 1;
-    const sz  = 88;
-    orbCv.width  = sz * dpr;
-    orbCv.height = sz * dpr;
-    orbCv.style.width  = sz + 'px';
-    orbCv.style.height = sz + 'px';
-    orbCv.getContext('2d').scale(dpr, dpr);
-    window.VisionOrb.init(orbCv);
-  }
+  // Init 3-D Vision Orb — retry hasta que vision-orb.js termine de parsear
+  const _initOrb = () => {
+    const orbCv = document.getElementById('vis-orb-canvas');
+    if (!orbCv) return;
+    if (window.VisionOrb) {
+      const dpr = devicePixelRatio || 1;
+      const sz  = 88;
+      orbCv.width  = sz * dpr;
+      orbCv.height = sz * dpr;
+      orbCv.style.width  = sz + 'px';
+      orbCv.style.height = sz + 'px';
+      orbCv.getContext('2d').scale(dpr, dpr);
+      window.VisionOrb.init(orbCv);
+    } else {
+      setTimeout(_initOrb, 400);
+    }
+  };
+  _initOrb();
 
   // Start telemetry ticker
   _telTimer = setInterval(_updateTelemetry, 3000);
@@ -2253,7 +2260,7 @@ function _wkContent(id) {
     }
 
     case 'finanzas': {
-      const fd = JSON.parse(localStorage.getItem('arex_finanzas') || '{}');
+      const fd = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || localStorage.getItem('arex_finanzas') || '{}');
       const ing = fd.ingresoMensual || 0;
       const deu = (fd.deudas||[]).reduce((s,d)=>s+(d.saldo||0),0);
       const prx = (fd.deudas||[]).filter(d=>{

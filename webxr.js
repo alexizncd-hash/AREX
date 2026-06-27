@@ -170,49 +170,69 @@ function _refreshAll() {
 
 const _fmt = n => `$${Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
 
+// Lee localStorage de forma segura
+function _lsJSON(key, def = []) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null') ?? def; } catch { return def; }
+}
+
 function _getData(id) {
   try {
     if (id === 'finanzas') {
-      const rows = [];
+      // Prioridad: función del módulo (si ya fue visitado) → localStorage overrides → localStorage base
       if (typeof window.getFinanzasData === 'function') {
-        const d = window.getFinanzasData();
-        rows.push(['Ingreso mensual',  _fmt(d.config?.ingresoMensual || 0)]);
-        if (typeof window.calcularDeudaTotal === 'function') rows.push(['Deuda total',   _fmt(window.calcularDeudaTotal())]);
-        if (typeof window.calcularMargen     === 'function') rows.push(['Margen libre',  _fmt(window.calcularMargen())]);
+        const d    = window.getFinanzasData();
+        const rows = [['Ingreso mensual', _fmt(d.config?.ingresoMensual || 0)]];
+        if (typeof window.calcularDeudaTotal   === 'function') rows.push(['Deuda total',  _fmt(window.calcularDeudaTotal())]);
+        if (typeof window.calcularMargen       === 'function') rows.push(['Margen libre', _fmt(window.calcularMargen())]);
         if (typeof window.obtenerProximosPagos === 'function') {
           const p = window.obtenerProximosPagos(7);
           if (p.length) rows.push(['Próximo pago', `${p[0].tarjeta} — ${p[0].diasRestantes}d`]);
         }
+        return rows;
       }
+      // Fallback directo a localStorage (funciona sin cargar el módulo)
+      const fd = _lsJSON('arex_finanzas_overrides', null) || _lsJSON('arex_finanzas', null);
+      if (!fd) return [['Sin datos', 'Configura Finanzas']];
+      const rows = [];
+      const ing = fd.ingresoMensual || fd.config?.ingresoMensual || 0;
+      if (ing) rows.push(['Ingreso mensual', _fmt(ing)]);
+      const tarjetas = fd.tarjetas || fd.deudas || [];
+      const deuda = tarjetas.reduce((s, t) => s + (t.saldo || 0), 0);
+      if (deuda) rows.push(['Deuda total', _fmt(deuda)]);
+      const hoy = new Date().toISOString().slice(0, 10);
+      const prox = tarjetas.filter(t => t.fechaPago && t.fechaPago >= hoy).sort((a,b) => a.fechaPago > b.fechaPago ? 1 : -1);
+      if (prox.length) rows.push(['Próximo pago', `${(prox[0].nombre||prox[0].tarjeta||'').slice(0,14)} ${prox[0].fechaPago||''}`]);
       return rows.length ? rows : [['Sin datos', 'Configura Finanzas']];
     }
 
     if (id === 'tareas') {
-      if (typeof window.getTareas !== 'function') return [['Sin datos', '']];
-      const hoy  = new Date().toISOString().slice(0, 10);
-      const pend = window.getTareas().filter(t => !t.done);
-      const urg  = pend.filter(t => t.fecha && t.fecha <= hoy);
-      const src  = urg.length ? urg : pend;
+      // Lee localStorage directamente — no requiere que tareas.js esté cargado
+      const tareas = _lsJSON('arex_tareas');
+      const hoy    = new Date().toISOString().slice(0, 10);
+      const pend   = tareas.filter(t => !t.done);
+      const urg    = pend.filter(t => t.fecha && t.fecha <= hoy);
+      const src    = urg.length ? urg : pend;
       if (!src.length) return [['Estado', 'Todo al día ✓']];
-      return src.slice(0, 5).map(t => [urg.includes(t) ? '⚠ URGENTE' : (t.fecha || 'pendiente'), t.text.slice(0, 30)]);
+      return src.slice(0, 5).map(t => [urg.includes(t) ? '⚠ URGENTE' : (t.fecha || 'pendiente'), (t.text || '').slice(0, 30)]);
     }
 
     if (id === 'metas') {
-      if (typeof window.getMetas !== 'function') return [['Sin datos', '']];
-      const activas = window.getMetas().filter(m => !m.completada);
+      // Lee localStorage directamente — no requiere que metas.js esté cargado
+      const metas   = _lsJSON('arex_metas');
+      const activas = metas.filter(m => !m.completada);
       if (!activas.length) return [['Sin metas activas', '']];
       return activas.slice(0, 5).map(m => [
         m.progreso != null ? `${m.progreso}%` : 'meta',
-        m.titulo.slice(0, 30)
+        (m.titulo || m.texto || 'Meta').slice(0, 30)
       ]);
     }
 
     if (id === 'chat') {
       const hist = typeof window._arexHistory === 'function' ? window._arexHistory() : [];
-      if (!hist.length) return [['Listo', 'Di "AREX" + comando'], ['Tip', 'Modo AR activo en sidebar']];
+      if (!hist.length) return [['Listo', 'Di "AREX" + comando'], ['Tip', 'Modo AR activo']];
       return hist.slice(-4).reverse().map(m => [
         m.role === 'user' ? 'TÚ' : 'AREX',
-        m.content.replace(/\*\*/g, '').slice(0, 34)
+        (m.content || '').replace(/\*\*/g, '').slice(0, 34)
       ]);
     }
   } catch (e) { console.warn('AREX WebXR _getData:', e); }

@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v158)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v159)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v158 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v159 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -339,6 +339,25 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v159 — Fix: paneles WebXR y Workspace con datos reales; VisionOrb race condition
+
+**`webxr.js`** — `_getData()` reescrita
+- Ya no depende de `window.getMetas`, `window.getFinanzasData`, `window.getTareas` (que solo existen si el módulo fue visitado previamente)
+- Todos los paneles AR leen directo de localStorage: `arex_tareas`, `arex_metas`, `arex_finanzas_overrides`/`arex_finanzas`, historial de chat vía `window._arexHistory`
+- Panel FINANZAS: muestra ingreso mensual, deuda total y próximo pago desde localStorage
+- Panel TAREAS: muestra tareas urgentes/pendientes ordenadas por vencimiento
+- Panel METAS: muestra metas activas con % de progreso
+- Panel CHAT: últimos 4 mensajes del historial
+- Añadida función helper `_lsJSON()` para lectura segura de localStorage
+
+**`vision.js`**
+- Workspace tab persistente: `_wkModId` ahora se guarda en `localStorage('arex_vision_wkmod')` y se restaura al reabrir Vision — ya no vuelve a "tareas" en cada apertura
+- Workspace Finanzas: corregida lectura de datos — ahora usa `arex_finanzas_overrides` (datos actuales) con fallback a `arex_finanzas`; antes siempre aparecía vacío
+- VisionOrb race condition: reemplazado init de una sola vez por función `_initOrb()` con retry cada 400ms hasta que `vision-orb.js` termine de parsear; el orbe ya no queda negro si vision.js carga antes que vision-orb.js
+
+**`sw.js`**
+- Versión bumped a `v159` / cache `arex-v159`
 
 ### v158 — Fix: confirmación de borrado (doble tap) ya no se interrumpe por re-render
 
