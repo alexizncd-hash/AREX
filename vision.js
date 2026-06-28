@@ -951,27 +951,32 @@ async function _callGemini(frame, prompt, key) {
 }
 
 async function _callGroq(frame, prompt, key, fast = false) {
-  const model = fast
-    ? 'llama-3.2-11b-vision-preview'   // rápido, soporta imágenes en Groq
-    : 'llama-3.2-11b-vision-preview';  // mismo modelo, estable y disponible
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      max_tokens: fast ? 220 : 800,
-      messages: [{ role: 'user', content: [
-        { type: 'image_url', image_url: { url: frame } },
-        { type: 'text', text: prompt }
-      ]}]
-    })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Groq ${res.status}: ${err?.error?.message || res.statusText}`);
+  const models = [
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.2-11b-vision-preview',
+  ];
+  for (const model of models) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: fast ? 220 : 800,
+        messages: [{ role: 'user', content: [
+          { type: 'image_url', image_url: { url: frame } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+    if (res.status === 404) continue;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Groq ${res.status}: ${err?.error?.message || res.statusText}`);
+    }
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || 'Sin respuesta de Groq.';
   }
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || 'Sin respuesta de Groq.';
+  throw new Error('Sin modelo Groq disponible para visión.');
 }
 
 function _withTimeout(promise, ms) {

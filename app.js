@@ -2714,18 +2714,13 @@ async function _analizarConArex(mod) {
   showThinking();
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 350,
-        messages: [
-          { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
-          { role: 'user', content: ctx }
-        ]
-      })
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens: 350,
+      messages: [
+        { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
+        { role: 'user', content: ctx }
+      ]
+    }, AREX_CONFIG.groqKey);
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content || '';
@@ -3107,10 +3102,35 @@ async function handleFile(file) {
   }
 }
 
+/* ── Groq Model Fallback System ──────────────────────────
+   Intenta el mejor modelo disponible; si Groq devuelve 404
+   (sin acceso o preview) baja automáticamente al siguiente.
+   El estado se guarda en sesión — no vuelve a intentar un
+   modelo que ya falló hasta que el usuario recarga la app.
+─────────────────────────────────────────────────────── */
+const _GROQ_MODELS = {
+  chat:   ['meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile'],
+  fast:   ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.3-70b-versatile'],
+  vision: ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.2-11b-vision-preview'],
+};
+const _groqBad = new Set(); // modelos con 404 en esta sesión
+
+async function _groqFetch(tier, bodyWithoutModel, key) {
+  const list = _GROQ_MODELS[tier] || _GROQ_MODELS.chat;
+  for (const model of list) {
+    if (_groqBad.has(model)) continue;
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ ...bodyWithoutModel, model }),
+    });
+    if (res.status === 404) { _groqBad.add(model); continue; }
+    return res; // OK o error manejado por el caller
+  }
+  throw new Error('Ningún modelo Groq disponible. Verifica tu API key.');
+}
+
 // ── callBrain: router de cerebros IA ─────────────────────
-// CORE   → llama-3.3-70b-versatile    (chat principal, razonamiento)
-// RAPIDO → llama-3.1-8b-instant       (tareas simples, rapidez)
-// VISION → llama-3.2-11b-vision-preview (análisis de imágenes)
 async function callBrain(tipo, mensajes, opts = {}) {
   const modelos = {
     core:   'llama-3.3-70b-versatile',
@@ -3150,22 +3170,15 @@ async function callGroq(webCtx) {
 
   if (webCtx) {
     const last = messages[messages.length - 1];
-    const webSection = webCtx.answer
-      ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n`
-      : '';
-    messages[messages.length - 1] = {
-      ...last,
-      content: `${webSection}[PREGUNTA]\n${last.content}`
-    };
+    const webSection = webCtx.answer ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n` : '';
+    messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens: examMode ? 4096 : 2048,
-      messages: [{ role:'system', content: systemPrompt }, ...messages] })
-  });
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
+  const res = await _groqFetch('chat', {
+    max_tokens: examMode ? 4096 : 2048,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+  }, AREX_CONFIG.groqKey);
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error('Respuesta inválida de API');
@@ -3183,16 +3196,11 @@ async function callGroqStream(webCtx, onChunk) {
     messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: examMode ? 4096 : 2048,
-      stream: true,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages]
-    })
-  });
+  const res = await _groqFetch('chat', {
+    max_tokens: examMode ? 4096 : 2048,
+    stream: true,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+  }, AREX_CONFIG.groqKey);
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
 
   const reader  = res.body.getReader();
@@ -3222,17 +3230,13 @@ async function analyzeImage(dataURL, question) {
   if (AREX_CONFIG?.geminiKey) {
     try { return await _analyzeWithGemini(dataURL, question); } catch { /* fall through */ }
   }
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({
-      model:'llama-3.2-11b-vision-preview', max_tokens:1000,
-      messages:[{ role:'user', content:[
-        { type:'image_url', image_url:{ url: dataURL } },
-        { type:'text', text: question }
-      ]}]
-    })
-  });
+  const res = await _groqFetch('vision', {
+    max_tokens:1000,
+    messages:[{ role:'user', content:[
+      { type:'image_url', image_url:{ url: dataURL } },
+      { type:'text', text: question }
+    ]}]
+  }, AREX_CONFIG.groqKey);
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
@@ -3377,20 +3381,16 @@ async function autoSummarize() {
   const toCompress = history.slice(0, -15);
   const toKeep     = history.slice(-15);
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model:'llama-3.3-70b-versatile', max_tokens:600,
-        messages:[{ role:'user', content:
-          `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
-          `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
-          `Sé específico y conserva información técnica relevante:\n\n${
-            toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
-          }`
-        }]
-      })
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:600,
+      messages:[{ role:'user', content:
+        `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
+        `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
+        `Sé específico y conserva información técnica relevante:\n\n${
+          toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
+        }`
+      }]
+    }, AREX_CONFIG.groqKey);
     if (!res.ok) return;
     const data = await res.json();
     const summary = data?.choices?.[0]?.message?.content;
@@ -5117,14 +5117,13 @@ async function analizarMetas() {
       const deadline = m.fechaLimite ? ` · vence ${m.fechaLimite}` : '';
       return `- ${m.titulo||m.nombre}: ${pct}${deadline}`;
     }).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:400,
-        messages:[
-          {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
-          {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
-        ]})
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:400,
+      messages:[
+        {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
+        {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
+      ]
+    }, AREX_CONFIG.groqKey);
     hideThinking();
     if (!res.ok) { addMsg('arex','Error al analizar.'); return; }
     const data = await res.json();
@@ -5216,14 +5215,13 @@ async function generarReporteSemanal() {
       `Metas: ${metasStr}`,
       habitosStr ? `Hábitos: ${habitosStr}` : '',
     ].filter(Boolean).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:480,
-        messages:[
-          {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
-          {role:'user', content:`Datos de la semana:\n${contexto}`}
-        ]})
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:480,
+      messages:[
+        {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
+        {role:'user', content:`Datos de la semana:\n${contexto}`}
+      ]
+    }, AREX_CONFIG.groqKey);
     hideThinking();
     if (!res.ok) { addMsg('arex','Error generando reporte.'); return; }
     const data = await res.json();
