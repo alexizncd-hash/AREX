@@ -1,26 +1,19 @@
 /* ═══════════════════════════════════════════════════════
    AREX — app.js
-   Motor: Groq (llama-4-maverick/scout) + Tavily + Firebase
+   Motor: Groq (llama-3.3-70b) + Tavily + Firebase
 ═══════════════════════════════════════════════════════ */
 
 /* ── Firebase — cargado dinámicamente para no bloquear el boot ── */
 let initializeApp, getFirestore, collection, addDoc, getDocs,
     query, orderBy, limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot,
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-    getRedirectResult, onAuthStateChanged, signInAnonymously, signOut;
+    getRedirectResult, onAuthStateChanged, signOut;
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
 function _safeJSON(str, fallback) {
   try { return JSON.parse(str) ?? fallback; } catch { return fallback; }
 }
-
-/* ── Utilidades globales ─────────────────────────────── */
-// Escapa caracteres HTML peligrosos en texto que va a innerHTML
-function _h(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-window._h = _h;
-// Debounce genérico: retorna una función que retrasa fn ms milisegundos
-function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 function loadConfig() {
   if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
@@ -29,14 +22,6 @@ function loadConfig() {
     const parsed = _safeJSON(saved, null);
     if (parsed) { window.AREX_CONFIG = parsed; return true; }
     localStorage.removeItem('arex_config'); // corrupted — purge to unblock boot
-  }
-  // Usuario de retorno: tiene datos de módulos pero iOS/Safari borró arex_config.
-  // Cargar sin config — puede reconfigurar keys desde /config sin perder sus datos.
-  const hasData = Object.keys(localStorage).some(k => k.startsWith('arex_'));
-  if (hasData) {
-    window.AREX_CONFIG = {};
-    window._arexConfigMissing = true; // bandera para aviso post-boot
-    return true;
   }
   return false;
 }
@@ -79,46 +64,6 @@ function setupSaveHandler() {
   });
 }
 
-/* ── Transferencia de configuración entre dispositivos/navegadores ── */
-function copiarCodigoConfig() {
-  const raw = localStorage.getItem('arex_config');
-  if (!raw) return;
-  const code = btoa(unescape(encodeURIComponent(raw)));
-  const note = document.getElementById('cfg-export-note');
-  navigator.clipboard?.writeText(code).then(() => {
-    if (note) { note.style.display = 'block'; note.textContent = '✓ Código copiado al portapapeles. Pégalo en la pantalla de configuración del otro dispositivo/navegador.'; }
-  }).catch(() => {
-    if (note) { note.style.display = 'block'; note.textContent = 'Copia manualmente: ' + code; }
-  });
-}
-
-function importarCodigoConfig() {
-  const textarea = document.getElementById('cfg-import-code');
-  const code = textarea?.value?.trim();
-  if (!code) return;
-  try {
-    const json  = decodeURIComponent(escape(atob(code)));
-    const cfg   = JSON.parse(json);
-    if (!cfg.groqKey) throw new Error('invalid');
-    const fb    = cfg.firebase || {};
-    document.getElementById('cfg-groq').value       = cfg.groqKey    || '';
-    document.getElementById('cfg-tavily').value     = cfg.tavilyKey  || '';
-    document.getElementById('cfg-gemini').value     = cfg.geminiKey  || '';
-    document.getElementById('cfg-owm').value        = cfg.owmKey     || '';
-    document.getElementById('cfg-fb-key').value     = fb.apiKey           || '';
-    document.getElementById('cfg-fb-domain').value  = fb.authDomain       || '';
-    document.getElementById('cfg-fb-project').value = fb.projectId        || '';
-    document.getElementById('cfg-fb-bucket').value  = fb.storageBucket    || '';
-    document.getElementById('cfg-fb-sender').value  = fb.messagingSenderId|| '';
-    document.getElementById('cfg-fb-app').value     = fb.appId            || '';
-    document.getElementById('cfg-fb-vapid').value   = fb.vapidKey         || '';
-    document.getElementById('cfg-save').click();
-  } catch(_) {
-    const ta = document.getElementById('cfg-import-code');
-    if (ta) { ta.style.borderColor = '#ff4444'; ta.placeholder = 'Código inválido — intenta de nuevo'; }
-  }
-}
-
 /* ── Atajos personalizados ──────────────────────────── */
 const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy'];
 
@@ -144,10 +89,10 @@ function renderAtajosList() {
     el.innerHTML = `
       <div class="atajo-header">
         <code class="atajo-cmd">/${a.name}</code>
-        ${a.desc ? `<span class="atajo-desc-label">${_h(a.desc)}</span>` : '<span class="atajo-desc-label"></span>'}
+        ${a.desc ? `<span class="atajo-desc-label">${a.desc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>` : '<span class="atajo-desc-label"></span>'}
         <button class="atajo-del" title="Eliminar">✕</button>
       </div>
-      <div class="atajo-prompt-preview">${_h(preview)}</div>
+      <div class="atajo-prompt-preview">${preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
     `;
     el.querySelector('.atajo-del').onclick = () => {
       const current = loadAtalos();
@@ -312,15 +257,6 @@ MÓDULOS DEL SISTEMA (puedes referirte a ellos):
 9. ANÁLISIS Y DECISIONES: pros/contras, escenarios, riesgos.
 10. CONOCIMIENTO GENERAL: responde con precisión cualquier tema.
 
-LÍMITES REALES (sé honesto, nunca prometas lo que no puedes hacer):
-- Puedes VER y describir imágenes que ${owner} comparte (vía el módulo de visión): identificar objetos, leer texto, dar consejos. Eso es todo lo que puedes hacer con imágenes.
-- NO puedes generar ni crear imágenes, fotos, modelos 3D, renders, planos ni videos. NO puedes editar ni modificar imágenes.
-- NO puedes controlar dispositivos físicos, electrodomésticos, cámaras externas ni hardware del hogar.
-- NO puedes hacer llamadas telefónicas, enviar mensajes a terceros ni acceder a apps externas no integradas en el sistema.
-- NO tienes acceso a internet en tiempo real salvo cuando la búsqueda web (Tavily) esté explícitamente activada.
-- Si te piden algo que no puedes hacer: dilo con claridad y sin rodeos, y ofrece lo que SÍ puedes hacer en su lugar. Es mejor decir "eso no lo puedo hacer, pero puedo ayudarte con X" que prometer algo imposible.
-- NUNCA inventes datos, cifras, capacidades ni resultados. La confianza de ${owner} se basa en tu honestidad.
-
 REGLAS:
 - Responde SIEMPRE en español.
 - 3-5 líneas por defecto. Expándete si ${owner} pide más detalle.
@@ -435,17 +371,13 @@ async function initFirebase() {
   const fbConfig = window.AREX_FIREBASE_CONFIG || AREX_CONFIG?.firebase;
   if (fbInitialized || !fbConfig?.apiKey) return;
   try {
-    // Importar los 3 módulos Firebase en paralelo (no dependen entre sí)
-    const [_appMod, _fsMod, _authMod] = await Promise.all([
-      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"),
-      import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"),
-    ]);
-    ({ initializeApp } = _appMod);
+    ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
     ({ getFirestore, collection, addDoc, getDocs, query, orderBy,
-       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot } = _fsMod);
+       limit, deleteDoc, doc, setDoc, getDoc, increment, onSnapshot }
+      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js"));
     ({ getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-       getRedirectResult, onAuthStateChanged, signInAnonymously, signOut } = _authMod);
+       getRedirectResult, onAuthStateChanged, signOut }
+      = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js"));
     const fbApp = initializeApp(fbConfig);
     db = getFirestore(fbApp);
     window._arexDb = db;
@@ -455,7 +387,9 @@ async function initFirebase() {
     window._arexAuth = auth;
 
     // Procesar redirect pendiente (por si venía de una sesión anterior con redirect)
-    getRedirectResult(auth).catch(e => {
+    getRedirectResult(auth).then(result => {
+      if (result?.user) console.log('AREX: redirect result ok —', result.user.email);
+    }).catch(e => {
       if (e.code !== 'auth/no-current-user')
         console.warn('AREX getRedirectResult:', e.code, e.message);
     });
@@ -477,6 +411,7 @@ async function initFirebase() {
         }
       } else {
         // Primera vez: Firebase puede tardar hasta ~1s en restaurar sesión desde IndexedDB.
+        // El boot screen cubre este período; no mostrar login todavía.
         if (_firstAuthCheck) {
           _firstAuthCheck = false;
           await new Promise(r => setTimeout(r, 1000));
@@ -484,22 +419,13 @@ async function initFirebase() {
         }
         const cachedUid = localStorage.getItem('arex_offline_uid');
         if (cachedUid && !navigator.onLine) {
-          // Sin red: usar uid cacheado
           window._arexUid  = cachedUid;
-          window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Alexiz', email: '', photoURL: null };
+          window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
           _hideLoginOverlay();
           try { await _initUserSession(); } catch(e) { console.error('AREX offline session:', e); }
         } else {
-          // Sin sesión activa: sign-in anónimo automático (como v82).
-          // Google Sign-In es opcional y se puede hacer desde configuración.
-          try {
-            await signInAnonymously(auth);
-            // onAuthStateChanged disparará de nuevo con el usuario anónimo
-          } catch(e) {
-            // Si el sign-in anónimo falla (sin red, etc.), mostrar login como último recurso
-            console.warn('AREX: signInAnonymously falló, mostrando login:', e.code);
-            _showLoginOverlay();
-          }
+          if (cachedUid) localStorage.removeItem('arex_offline_uid');
+          _showLoginOverlay();
         }
       }
     });
@@ -507,20 +433,17 @@ async function initFirebase() {
     // Cablear el botón de login vía event listener
     // (app.js es type="module" → las funciones no son globales → onclick inline falla)
     _setupLoginButton();
-  } catch(e) {
-    console.warn('Firebase init:', e);
-    window._arexFbError = e.message || String(e);
-  }
+  } catch(e) { console.warn('Firebase init:', e); }
 }
 
 // Arranca la sesión del usuario: perfil → migración → sync → datos
 async function _initUserSession() {
-  // Perfil y migración en paralelo (independientes entre sí)
-  await Promise.all([loadAndApplyProfile(), _migrateFirestoreIfNeeded()]);
+  await loadAndApplyProfile();
+  await _migrateFirestoreIfNeeded();
   initRealtimeSync();
   initFCM();
-  // Config y datos de módulos en paralelo
-  await Promise.all([pullConfigFromFirestore(), pullAllModuleData()]);
+  await pullConfigFromFirestore();
+  await pullAllModuleData();
   if (window._arexLastSync == null) window._arexLastSync = Date.now();
   await loadHistory();
 }
@@ -537,22 +460,9 @@ function _isMobile() {
 // app.js es module, las funciones no son globales)
 function _setupLoginButton() {
   const btn = document.getElementById('btn-google-signin');
-  if (btn) {
-    btn.onclick = null;
-    btn.addEventListener('click', _doGoogleSignIn);
-  }
-  const skip = document.getElementById('btn-skip-login');
-  if (skip) {
-    skip.addEventListener('click', () => {
-      // Usar AREX sin Firebase sync — todo funciona con localStorage
-      const uid = localStorage.getItem('arex_offline_uid') || ('local-' + Date.now());
-      localStorage.setItem('arex_offline_uid', uid);
-      window._arexUid  = uid;
-      window._arexUser = { uid, displayName: 'Alexiz', email: '', photoURL: null };
-      _hideLoginOverlay();
-      _initUserSession().catch(e => console.warn('AREX skip-login session:', e));
-    });
-  }
+  if (!btn) return;
+  btn.onclick = null; // remover posible inline handler residual
+  btn.addEventListener('click', _doGoogleSignIn);
 }
 
 async function _doGoogleSignIn() {
@@ -808,21 +718,17 @@ async function pullAllModuleData() {
     'arex_proyectos','arex_evidencias','arex_notas',
     'arex_finanzas','arex_finanzas_overrides',
     'arex_reparto_routes','arex_personas','arex_gesture_map',
-    'arex_sessions',
   ];
-  // Leer todos los docs en paralelo en lugar de secuencialmente (17x más rápido)
-  const snaps = await Promise.all(
-    keys.map(key => getDoc(_userDoc('arex_data', key)).catch(() => null))
-  );
   let synced = 0;
-  snaps.forEach((snap, i) => {
-    if (!snap?.exists()) return;
-    const key = keys[i];
+  for (const key of keys) {
     try {
+      const snap = await getDoc(_userDoc('arex_data', key));
+      if (!snap.exists()) continue;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
       const { _updatedAt, _arr, ...rest } = data;
       const toStore = _arr !== undefined ? _arr : rest;
+
       const local = localStorage.getItem(key);
       if (!local) {
         localStorage.setItem(key, JSON.stringify(toStore));
@@ -836,8 +742,8 @@ async function pullAllModuleData() {
           localStorage.setItem(key, JSON.stringify(toStore)); synced++;
         }
       }
-    } catch(e) { console.warn('pullModuleData:', keys[i], e); }
-  });
+    } catch(e) { console.warn('pullModuleData:', key, e); }
+  }
   if (synced > 0) {
     window.renderTareas?.();
     window.renderMetas?.();
@@ -978,7 +884,7 @@ if (typeof marked !== 'undefined') {
 }
 function renderMarkdown(text) {
   if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
-    return _h(text).replace(/\n/g,'<br>');
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   }
   return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR:['target','rel','class'] });
 }
@@ -1086,8 +992,7 @@ function tickClock() {
   const n = new Date(), p = v => String(v).padStart(2,'0');
   clockEl.textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
 }
-if (window._clockTimer) clearInterval(window._clockTimer);
-window._clockTimer = setInterval(tickClock, 1000);
+setInterval(tickClock, 1000);
 tickClock();
 
 /* ── Sesiones múltiples ─────────────────────────────── */
@@ -1125,7 +1030,6 @@ function saveCurrentSession() {
     sessions.unshift({ id: sid, name, preview, created: now, updated: now, messages: [...history] });
   }
   saveSessions(sessions);
-  if (typeof arexSyncData === 'function') arexSyncData('arex_sessions');
   renderSessionsList();
   updateDockSessionName();
   if (history.length >= 6) {
@@ -1215,28 +1119,17 @@ function deleteSession(sid) {
 function getTareas() { return _safeJSON(localStorage.getItem('arex_tareas'), []); }
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
-const _urgMap = new Map();
-let   _urgDay = '';
 function urgenciaTarea(t) {
   if (!t.fecha) return null;
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const today = hoy.toISOString().slice(0, 10);
-  if (today !== _urgDay) { _urgMap.clear(); _urgDay = today; }
-  const key = t.id + '|' + t.fecha;
-  if (_urgMap.has(key)) return _urgMap.get(key);
   const vence = new Date(t.fecha + 'T00:00:00');
   const dias = Math.round((vence - hoy) / 86400000);
-  let res;
-  if (dias < 0)   res = { cls: 'urg-vencida', icon: '🔴', txt: `Venció hace ${-dias}d` };
-  else if (dias === 0) res = { cls: 'urg-hoy',    icon: '🔴', txt: 'Vence HOY' };
-  else if (dias <= 2)  res = { cls: 'urg-pronto', icon: '🟠', txt: `${dias}d` };
-  else if (dias <= 7)  res = { cls: 'urg-semana', icon: '🟡', txt: `${dias}d` };
-  else {
-    const d = new Date(t.fecha + 'T00:00:00');
-    res = { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
-  }
-  _urgMap.set(key, res);
-  return res;
+  if (dias < 0)  return { cls: 'urg-vencida',  icon: '🔴', txt: `Venció hace ${-dias}d` };
+  if (dias === 0) return { cls: 'urg-hoy',      icon: '🔴', txt: 'Vence HOY' };
+  if (dias <= 2)  return { cls: 'urg-pronto',   icon: '🟠', txt: `${dias}d` };
+  if (dias <= 7)  return { cls: 'urg-semana',   icon: '🟡', txt: `${dias}d` };
+  const d = new Date(t.fecha + 'T00:00:00');
+  return { cls: 'urg-normal', icon: '📅', txt: d.toLocaleDateString('es-MX', { day:'numeric', month:'short' }) };
 }
 
 function sortPending(arr) {
@@ -1254,12 +1147,8 @@ function sortPending(arr) {
 
 function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   if (!text.trim()) return;
-  if (fecha) {
-    const d = new Date(fecha + 'T00:00:00'); const y = d.getFullYear();
-    if (isNaN(d.getTime()) || y < 2020 || y > 2040) fecha = '';
-  }
   const arr = getTareas();
-  const t = { id: String(Date.now()), text: text.trim().slice(0, 500), done: false, created: Date.now(), fecha, prioridad, repetir };
+  const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
   if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
@@ -1396,7 +1285,6 @@ function setTareasFilter(f) {
 window.setTareasFilter = setTareasFilter;
 
 function renderTareas() {
-  if (document.querySelector('.tarea-del.confirming')) return;
   const all = getTareas();
   let pending = sortPending(all.filter(t => !t.done));
   if (_tareasFilter === 'hoy') {
@@ -1418,7 +1306,7 @@ function renderTareas() {
     const _innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
       <div class="tarea-content">
-        <span class="tarea-text">${_h(t.text)}</span>
+        <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
         <div class="tarea-meta">
           ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
           ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
@@ -1436,7 +1324,7 @@ function renderTareas() {
     const subListHtml = subs.length ? `<div class="tarea-subs-list">${subs.map(s => `
       <div class="tarea-sub-item${s.done ? ' sub-done' : ''}">
         <button class="tarea-sub-toggle" data-pid="${t.id}" data-sid="${s.id}">${s.done ? '✓' : ''}</button>
-        <span class="tarea-sub-text">${_h(s.text)}</span>
+        <span class="tarea-sub-text">${s.text.replace(/</g,'&lt;')}</span>
         <button class="tarea-sub-del" data-pid="${t.id}" data-sid="${s.id}">✕</button>
       </div>`).join('')}</div>` : '';
     const subAddHtml = !t.done ? `<div class="tarea-sub-add-row">
@@ -1577,7 +1465,6 @@ function deleteNota(id) {
 }
 
 function renderNotas() {
-  if (document.querySelector('.nota-del-btn.confirming')) return;
   const el = document.getElementById('notas-list');
   if (!el) return;
   const q = (document.getElementById('notas-search')?.value || '').toLowerCase().trim();
@@ -1586,7 +1473,7 @@ function renderNotas() {
   notas.sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt));
 
   if (!notas.length) {
-    const safeQ = _h(q);
+    const safeQ = q.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     el.innerHTML = `<div class="notas-empty">${q ? `Sin resultados para "${safeQ}"` : 'Sin notas — toca + NUEVA para crear una'}</div>`;
     return;
   }
@@ -1604,7 +1491,7 @@ function renderNotas() {
           <button class="nota-del-btn">✕</button>
         </div>
       </div>
-      <textarea class="nota-cuerpo" placeholder="Escribe aquí...">${_h(n.cuerpo)}</textarea>
+      <textarea class="nota-cuerpo" placeholder="Escribe aquí...">${n.cuerpo.replace(/</g,'&lt;')}</textarea>
       <div class="nota-footer">
         <div class="nota-colors">
           ${['','amber','emerald','rose'].map(c =>
@@ -1617,12 +1504,12 @@ function renderNotas() {
       </div>`;
 
     const ti = card.querySelector('.nota-titulo');
-    ti.addEventListener('input', _debounce(() => updateNota(n.id, { titulo: ti.value }), 700));
+    let tt; ti.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => updateNota(n.id, { titulo: ti.value }), 700); });
 
     const ta = card.querySelector('.nota-cuerpo');
-    const _updateCuerpo = _debounce(() => updateNota(n.id, { cuerpo: ta.value }), 700);
-    ta.addEventListener('input', () => {
-      _updateCuerpo();
+    let ct; ta.addEventListener('input', () => {
+      clearTimeout(ct);
+      ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700);
       const wc = card.querySelector('.nota-wc');
       if (wc) wc.textContent = ta.value.trim() ? ta.value.trim().split(/\s+/).length + ' pal' : '';
     });
@@ -1667,8 +1554,8 @@ function renderNotasWidget() {
   el.style.display = '';
   el.querySelector('.dash-notas-body').innerHTML = pinned.map(n => `
     <div class="dash-nota-item" onclick="AREXNav.cambiarModulo('notas')">
-      ${n.titulo ? `<div class="dash-nota-titulo">${_h(n.titulo)}</div>` : ''}
-      ${n.cuerpo ? `<div class="dash-nota-cuerpo">${_h(n.cuerpo).slice(0, 80)}${n.cuerpo.length > 80 ? '…' : ''}</div>` : ''}
+      ${n.titulo ? `<div class="dash-nota-titulo">${n.titulo.replace(/</g,'&lt;')}</div>` : ''}
+      ${n.cuerpo ? `<div class="dash-nota-cuerpo">${n.cuerpo.replace(/</g,'&lt;').slice(0, 80)}${n.cuerpo.length > 80 ? '…' : ''}</div>` : ''}
     </div>`).join('');
 }
 
@@ -1745,7 +1632,7 @@ function _renderCalDay(tareas, dateStr) {
   el.innerHTML = `<div class="cdt-title">${label.toUpperCase()}</div>` +
     tareas.map(t => `<div class="cdt-item${t.done?' done':''}">
       <span class="cdt-dot prio-${t.prioridad||'media'}"></span>
-      <span class="cdt-text">${_h(t.text)}</span>
+      <span class="cdt-text">${t.text.replace(/</g,'&lt;')}</span>
       ${t.done ? '<span class="cdt-badge">✓</span>' : ''}
     </div>`).join('');
 }
@@ -1815,13 +1702,14 @@ function renderDashboard() {
   const firstName    = (window._arexUser?.displayName || 'Alexiz').split(' ')[0];
 
   el.innerHTML = `
-    <!-- Hero (transparent — orb visible behind through dash-content) -->
+    <!-- Hero (transparent — reactor visible behind) -->
     <div class="inicio-hero">
       <div class="inicio-state-lbl" id="inicio-state-lbl">EN ESPERA</div>
       <div class="inicio-welcome">
         Sistemas en línea. Soy <strong>AREX</strong>.<br>
         Listo para asistirte, ${firstName}.
       </div>
+      <div class="inicio-tap-hint">▸ TOCA EL REACTOR ◂</div>
     </div>
 
     <!-- Centro cards -->
@@ -1833,7 +1721,7 @@ function renderDashboard() {
       </div>
 
       <div class="inicio-grid">
-        <div class="inicio-card cap" onclick="abrirCentro('capital')">
+        <div class="inicio-card cap" onclick="abrirCentro('capital');cambiarModulo('finanzas')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">💰</span>
@@ -1842,7 +1730,7 @@ function renderDashboard() {
           <div class="ic-stat">${margenStr} margen</div>
         </div>
 
-        <div class="inicio-card imp" onclick="abrirCentro('impulso')">
+        <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🎯</span>
@@ -1851,7 +1739,7 @@ function renderDashboard() {
           <div class="ic-stat">${pendTotal} tarea${pendTotal!==1?'s':''}${urgentes?` · ⚠ ${urgentes}`:''}</div>
         </div>
 
-        <div class="inicio-card men" onclick="abrirCentro('mente')">
+        <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🧠</span>
@@ -1860,7 +1748,7 @@ function renderDashboard() {
           <div class="ic-stat">${notas} nota${notas!==1?'s':''} · ${proyectos} proy.</div>
         </div>
 
-        <div class="inicio-card con" onclick="abrirCentro('control')">
+        <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">⚙️</span>
@@ -1869,7 +1757,7 @@ function renderDashboard() {
           <div class="ic-stat">${groqOk?'IA ✓':'IA ✗'} · ${fbOk?'DB ✓':'DB ✗'} · ${gemOk?'VIS ✓':'VIS —'}</div>
         </div>
 
-        <div class="inicio-card chat ic-full" onclick="cambiarModulo('chat')">
+        <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
           <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico ic-ico-lg">💬</span>
@@ -1886,36 +1774,11 @@ function renderDashboard() {
         <span class="isys-item"><i class="isys-dot ${fbOk?'ok':'warn'}"></i>FIREBASE <b class="${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</b></span>
         <span class="isys-item"><i class="isys-dot ok"></i>AREX <b class="ok">ACTIVO</b></span>
       </div>
-
-      <!-- Acciones rápidas -->
-      <div class="qa-section">
-        <div class="inicio-sec">
-          <span class="inicio-sec-lbl">Acciones rápidas</span>
-          <span class="inicio-sec-ln"></span>
-        </div>
-        <div class="qa-grid">
-          <button class="qa-btn" onclick="arexOpenSpotify()"><span class="qa-ico">🎵</span><span class="qa-lbl">MÚSICA</span></button>
-          <button class="qa-btn" onclick="arexOpenYouTube()"><span class="qa-ico">▶</span><span class="qa-lbl">VIDEO</span></button>
-          <button class="qa-btn" onclick="arexOpenCrear()"><span class="qa-ico">✦</span><span class="qa-lbl">CREAR</span></button>
-          <button class="qa-btn" onclick="arexOpenBuscar()"><span class="qa-ico">⌕</span><span class="qa-lbl">BUSCAR</span></button>
-        </div>
-      </div>
     </div>
     <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
   `;
   // Fetch live exchange rate (async, non-blocking)
   if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
-
-  // Wire up cards via JS listeners (belt-and-suspenders for iOS onclick reliability)
-  el.querySelector('.inicio-card.cap')?.addEventListener('click', () => window.abrirCentro('capital'));
-  el.querySelector('.inicio-card.imp')?.addEventListener('click', () => window.abrirCentro('impulso'));
-  el.querySelector('.inicio-card.men')?.addEventListener('click', () => window.abrirCentro('mente'));
-  el.querySelector('.inicio-card.con')?.addEventListener('click', () => window.abrirCentro('control'));
-  el.querySelector('.inicio-card.chat')?.addEventListener('click', () => window.cambiarModulo('chat'));
-  el.querySelector('[onclick="arexOpenSpotify()"]')?.addEventListener('click', () => window.arexOpenSpotify?.());
-  el.querySelector('[onclick="arexOpenYouTube()"]')?.addEventListener('click', () => window.arexOpenYouTube?.());
-  el.querySelector('[onclick="arexOpenCrear()"]')?.addEventListener('click', () => window.arexOpenCrear?.());
-  el.querySelector('[onclick="arexOpenBuscar()"]')?.addEventListener('click', () => window.arexOpenBuscar?.());
 }
 
 function renderSessionsList() {
@@ -1930,8 +1793,8 @@ function renderSessionsList() {
   container.innerHTML = sessions.map(s => `
     <div class="session-item${s.id === currentSid ? ' active' : ''}" data-sid="${s.id}">
       <div class="session-info">
-        <div class="session-name">${_h(s.name)}</div>
-        <div class="session-preview">${_h(s.preview||'—').slice(0,50)}</div>
+        <div class="session-name">${s.name.replace(/</g,'&lt;')}</div>
+        <div class="session-preview">${(s.preview||'—').replace(/</g,'&lt;').slice(0,50)}</div>
       </div>
       <button class="session-del" data-del="${s.id}" title="Eliminar">✕</button>
     </div>`).join('');
@@ -2087,9 +1950,6 @@ window.renderHudPanels = renderHudPanels;
 
 /* ── Matrix code rain ───────────────────────────────── */
 function initMatrixRain() {
-  (window._matrixTimers || []).forEach(clearInterval);
-  window._matrixTimers = [];
-
   const FRAGS = ['def','if','else','return','const','let','class','=>','{}','[]','()',
     'true','false','null','async','await','for','while','try','catch','new',
     'import','export','fn','var','===','&&','||','0x','str','int','arr',
@@ -2121,7 +1981,7 @@ function initMatrixRain() {
         }
       });
     }
-    window._matrixTimers.push(setInterval(tick, 90));
+    setInterval(tick, 90);
   });
 }
 
@@ -2183,7 +2043,7 @@ function _showQuickReplies(replyText) {
   const matched = _QUICK_RULES.find(r => r.re.test(lower));
   const chips = matched ? matched.chips : _GENERIC_CHIPS;
   el.innerHTML = chips.map(c =>
-    `<button class="quick-chip">${_h(c)}</button>`
+    `<button class="quick-chip">${c.replace(/</g,'&lt;')}</button>`
   ).join('');
   el.querySelectorAll('.quick-chip').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2204,7 +2064,7 @@ function addMsg(role, text, sources) {
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
   const contentHTML = role === 'user'
-    ? _h(text).replace(/\n/g,'<br>')
+    ? text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
     : renderMarkdown(text);
   let srcHTML = '';
   if (sources?.length) {
@@ -2366,7 +2226,7 @@ async function ejecutarAcciones(rawText, wrap) {
     const el = document.createElement('div');
     el.className = 'accion-pills';
     el.innerHTML = pills.map(p =>
-      `<span class="apill ${p.cls}">${p.icon} <span>${_h(p.label).slice(0,60)}</span></span>`
+      `<span class="apill ${p.cls}">${p.icon} <span>${p.label.replace(/</g,'&lt;').slice(0,60)}</span></span>`
     ).join('');
     wrap.appendChild(el);
   }
@@ -2854,18 +2714,13 @@ async function _analizarConArex(mod) {
   showThinking();
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 350,
-        messages: [
-          { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
-          { role: 'user', content: ctx }
-        ]
-      })
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens: 350,
+      messages: [
+        { role: 'system', content: `Eres AREX, el sistema personal de Alexiz. ${instruccion} Habla de forma natural y directa. Solo usa datos exactos del contexto — no inventes ni supongas cifras.` },
+        { role: 'user', content: ctx }
+      ]
+    }, AREX_CONFIG.groqKey);
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const reply = data?.choices?.[0]?.message?.content || '';
@@ -3063,7 +2918,7 @@ async function handleURL(url) {
     updateMemMetric();
 
     hideThinking();
-    const safeTitle = _h(extracted.title);
+    const safeTitle = extracted.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const srcHTML = `<div class="sources">FUENTE: <a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
@@ -3132,7 +2987,7 @@ async function handleMultipleURLs(urls, question) {
 
     hideThinking();
     const srcHTML = `<div class="sources">FUENTES: ${valid.map((r, i) =>
-      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${_h(r.title)}</a>`
+      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${r.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a>`
     ).join(' · ')}</div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
@@ -3194,7 +3049,7 @@ async function handleFile(file) {
 
   // Mostrar burbuja de archivo
   document.querySelector('.welcome')?.remove();
-  const safeName = _h(file.name);
+  const safeName = file.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const wrap = document.createElement('div');
   wrap.className = 'msg user file';
   wrap.innerHTML = `<span class="who">TÚ</span><div class="bubble">📎 ${safeName}</div>`;
@@ -3247,13 +3102,39 @@ async function handleFile(file) {
   }
 }
 
+/* ── Groq Model Fallback System ──────────────────────────
+   Intenta el mejor modelo disponible; si Groq devuelve 404
+   (sin acceso o preview) baja automáticamente al siguiente.
+   El estado se guarda en sesión — no vuelve a intentar un
+   modelo que ya falló hasta que el usuario recarga la app.
+─────────────────────────────────────────────────────── */
+const _GROQ_MODELS = {
+  chat:   ['meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile'],
+  fast:   ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.3-70b-versatile'],
+  vision: ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.2-11b-vision-preview'],
+};
+const _groqBad = new Set(); // modelos con 404 en esta sesión
+
+async function _groqFetch(tier, bodyWithoutModel, key) {
+  const list = _GROQ_MODELS[tier] || _GROQ_MODELS.chat;
+  for (const model of list) {
+    if (_groqBad.has(model)) continue;
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ ...bodyWithoutModel, model }),
+    });
+    if (res.status === 404) { _groqBad.add(model); continue; }
+    return res; // OK o error manejado por el caller
+  }
+  throw new Error('Ningún modelo Groq disponible. Verifica tu API key.');
+}
+
 // ── callBrain: router de cerebros IA ─────────────────────
-// CORE  → llama-4-maverick  (razonamiento, chat principal)
-// RAPIDO→ llama-4-scout     (tareas simples, rapidez)
 async function callBrain(tipo, mensajes, opts = {}) {
   const modelos = {
-    core:   'meta-llama/llama-4-maverick-17b-128e-instruct',
-    rapido: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    core:   'llama-3.3-70b-versatile',
+    rapido: 'llama-3.1-8b-instant',
   };
   const modelo = modelos[tipo] || modelos.core;
   const body = {
@@ -3285,51 +3166,7 @@ async function callBrain(tipo, mensajes, opts = {}) {
 /* ── Llamada a Groq (texto) ─────────────────────────── */
 async function callGroq(webCtx) {
   const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
-  let messages = history.slice(-28); // truncar: máx 28 mensajes para no superar token limit
-
-  if (webCtx) {
-    const last = messages[messages.length - 1];
-    const webSection = webCtx.answer
-      ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n`
-      : '';
-    messages[messages.length - 1] = {
-      ...last,
-      content: `${webSection}[PREGUNTA]\n${last.content}`
-    };
-  }
-
-  let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500));
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-        body: JSON.stringify({ model:'meta-llama/llama-4-maverick-17b-128e-instruct', max_tokens: examMode ? 4096 : 2048,
-          messages: [{ role:'system', content: systemPrompt }, ...messages] })
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(()=>({}));
-        const err = new Error(`${res.status} — ${e?.error?.message||'Error de API'}`);
-        if (res.status === 401 || res.status === 400) throw err;
-        lastErr = err; continue;
-      }
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (!content) throw new Error('Respuesta inválida de API');
-      return content;
-    } catch(e) {
-      if (e.message?.includes('401') || e.message?.includes('400')) throw e;
-      lastErr = e;
-    }
-  }
-  throw lastErr;
-}
-
-/* ── Llamada a Groq (streaming) ─────────────────────── */
-async function callGroqStream(webCtx, onChunk) {
-  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
-  let messages = history.slice(-28); // truncar: máx 28 mensajes para no superar token limit
+  let messages = [...history];
 
   if (webCtx) {
     const last = messages[messages.length - 1];
@@ -3337,52 +3174,54 @@ async function callGroqStream(webCtx, onChunk) {
     messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
   }
 
-  let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1500));
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-          max_tokens: examMode ? 4096 : 2048,
-          stream: true,
-          messages: [{ role: 'system', content: systemPrompt }, ...messages]
-        })
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        const err = new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`);
-        if (res.status === 401 || res.status === 400) throw err;
-        lastErr = err; continue;
-      }
+  const res = await _groqFetch('chat', {
+    max_tokens: examMode ? 4096 : 2048,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+  }, AREX_CONFIG.groqKey);
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Respuesta inválida de API');
+  return content;
+}
 
-      const reader  = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = '';
+/* ── Llamada a Groq (streaming) ─────────────────────── */
+async function callGroqStream(webCtx, onChunk) {
+  const systemPrompt = buildSystemBase() + (examMode ? EXAM_ADDON : '') + buildContextSection() + buildMemoriaSection() + buildSessionMemorySection() + buildModuleContext();
+  let messages = [...history];
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (raw === '[DONE]') return full;
-          try {
-            const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
-            if (delta) { full += delta; onChunk(full); }
-          } catch {}
-        }
-      }
-      return full;
-    } catch(e) {
-      if (e.message?.includes('401') || e.message?.includes('400')) throw e;
-      lastErr = e;
+  if (webCtx) {
+    const last = messages[messages.length - 1];
+    const webSection = webCtx.answer ? `[CONTEXTO WEB]\n${webCtx.answer}\n\n` : '';
+    messages[messages.length - 1] = { ...last, content: `${webSection}[PREGUNTA]\n${last.content}` };
+  }
+
+  const res = await _groqFetch('chat', {
+    max_tokens: examMode ? 4096 : 2048,
+    stream: true,
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+  }, AREX_CONFIG.groqKey);
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(`${res.status} — ${e?.error?.message || 'Error de API'}`); }
+
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') return full;
+      try {
+        const delta = JSON.parse(raw).choices?.[0]?.delta?.content || '';
+        if (delta) { full += delta; onChunk(full); }
+      } catch {}
     }
   }
-  throw lastErr;
+  return full;
 }
 
 /* ── Llamada a Groq (visión) ────────────────────────── */
@@ -3391,17 +3230,13 @@ async function analyzeImage(dataURL, question) {
   if (AREX_CONFIG?.geminiKey) {
     try { return await _analyzeWithGemini(dataURL, question); } catch { /* fall through */ }
   }
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-    body: JSON.stringify({
-      model:'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens:1000,
-      messages:[{ role:'user', content:[
-        { type:'image_url', image_url:{ url: dataURL } },
-        { type:'text', text: question }
-      ]}]
-    })
-  });
+  const res = await _groqFetch('vision', {
+    max_tokens:1000,
+    messages:[{ role:'user', content:[
+      { type:'image_url', image_url:{ url: dataURL } },
+      { type:'text', text: question }
+    ]}]
+  }, AREX_CONFIG.groqKey);
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`${res.status} — ${e?.error?.message||'Error de API'}`); }
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
@@ -3494,7 +3329,7 @@ function renderNote(id, text, ts, category = 'General') {
   const el = document.createElement('div');
   el.className = 'note-item'; el.dataset.id = id;
   const time = new Date(ts).toLocaleDateString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-  const safeText = _h(text);
+  const safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   el.innerHTML = `
     <div class="note-header">
       <span class="note-cat note-cat-${category.toLowerCase()}">${category}</span>
@@ -3546,20 +3381,16 @@ async function autoSummarize() {
   const toCompress = history.slice(0, -15);
   const toKeep     = history.slice(-15);
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify({
-        model:'llama-3.3-70b-versatile', max_tokens:600,
-        messages:[{ role:'user', content:
-          `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
-          `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
-          `Sé específico y conserva información técnica relevante:\n\n${
-            toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
-          }`
-        }]
-      })
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:600,
+      messages:[{ role:'user', content:
+        `Eres un asistente de memoria. Resume esta conversación en puntos clave detallados ` +
+        `(decisiones tomadas, temas discutidos, código generado, datos importantes). ` +
+        `Sé específico y conserva información técnica relevante:\n\n${
+          toCompress.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
+        }`
+      }]
+    }, AREX_CONFIG.groqKey);
     if (!res.ok) return;
     const data = await res.json();
     const summary = data?.choices?.[0]?.message?.content;
@@ -3657,7 +3488,7 @@ function _buildRecHtml() {
   const mkItem = (r, cls, icon, label) => `
     <div class="rec-item ${cls}">
       <span class="rec-icon">${icon}</span>
-      <span class="rec-msg">${_h(r.msg)}</span>
+      <span class="rec-msg">${r.msg.replace(/</g,'&lt;')}</span>
       <span class="rec-cd"${cls==='rec-activo' ? ` data-de="${r.disparaEn}"` : ''}>${label}</span>
       <button class="rec-dismiss" data-id="${r.id}" title="Eliminar">✕</button>
     </div>`;
@@ -3916,7 +3747,7 @@ async function handleCommand(cmd) {
         entries.forEach((e, i) => {
           const el = document.createElement('div');
           el.className = 'memoria-item';
-          el.innerHTML = `<span class="memoria-text">${_h(e.text)}</span><button class="memoria-del" data-i="${i}">✕</button>`;
+          el.innerHTML = `<span class="memoria-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><button class="memoria-del" data-i="${i}">✕</button>`;
           el.querySelector('.memoria-del').onclick = () => {
             const cur = loadMemoria(); cur.splice(i, 1); saveMemoria(cur);
             handleCommand('/memoria');
@@ -4030,14 +3861,10 @@ function updateCtxSuggestions() {
 }
 
 /* ── Flujo principal ────────────────────────────────── */
-let _lastSendAt = 0;
 async function handleSend() {
   if (isBusy) return;
   const msg = txt.value.trim();
   if (!msg) return;
-  const now = Date.now();
-  if (now - _lastSendAt < 500) return; // rate-limit: evitar doble-envío por tap rápido
-  _lastSendAt = now;
   txt.value = '';
 
   if (msg.startsWith('/')) { await handleCommand(msg); return; }
@@ -4336,37 +4163,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
-  setTimeout(() => window.location.reload(), 1200);
 });
-
-function abrirConfig() {
-  const cfg = window.AREX_CONFIG || {};
-  const fb  = cfg.firebase || {};
-  document.getElementById('cfg2-groq').value        = cfg.groqKey            || '';
-  document.getElementById('cfg2-tavily').value      = cfg.tavilyKey          || '';
-  document.getElementById('cfg2-gemini').value      = cfg.geminiKey          || '';
-  document.getElementById('cfg2-owm').value         = cfg.owmKey             || '';
-  document.getElementById('cfg2-fb-key').value      = fb.apiKey              || '';
-  document.getElementById('cfg2-fb-domain').value   = fb.authDomain          || '';
-  document.getElementById('cfg2-fb-project').value  = fb.projectId           || '';
-  document.getElementById('cfg2-fb-bucket').value   = fb.storageBucket       || '';
-  document.getElementById('cfg2-fb-sender').value   = fb.messagingSenderId   || '';
-  document.getElementById('cfg2-fb-app').value      = fb.appId               || '';
-  document.getElementById('cfg2-fb-vapid').value    = fb.vapidKey            || '';
-  document.getElementById('cfg2-ok').style.display    = 'none';
-  document.getElementById('cfg2-error').style.display = 'none';
-  if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
-  const accountEl = document.getElementById('cfg-account-status');
-  if (accountEl) {
-    const u = window._arexUser;
-    if (u?.email) accountEl.textContent = `✓ Google: ${u.email}`;
-    else if (u?.uid?.startsWith('local-')) accountEl.textContent = 'Sin cuenta — datos solo en este dispositivo';
-    else if (u?.uid) accountEl.textContent = `Anónimo (${u.uid.slice(0,8)}...) — sin sync Google`;
-    else accountEl.textContent = 'Sin sesión activa';
-  }
-  document.getElementById('modal-config').classList.remove('hidden');
-}
-window.abrirConfig = abrirConfig;
 
 // Búsqueda global — Ctrl+K / Esc
 document.addEventListener('keydown', e => {
@@ -4736,23 +4533,14 @@ async function boot() {
   document.addEventListener('keydown',     _loadVisualEngines, { once: true });
   setTimeout(_loadVisualEngines, 4000); // fallback si no hay interacción
 
-  // Pre-cargar uid cacheado para no esperar a Firebase en el loop de abajo
-  if (!window._arexUid) {
-    const cachedUid  = localStorage.getItem('arex_offline_uid');
-    const cachedName = localStorage.getItem('arex_offline_name') || 'Alexiz';
-    if (cachedUid) {
-      window._arexUid  = cachedUid;
-      window._arexUser = { uid: cachedUid, displayName: cachedName, email: '', photoURL: null };
-    }
-  }
-
-  // Fade boot screen — reducido para arranque más rápido
-  await new Promise(r => setTimeout(r, 150));
-  bootScreen.style.transition = 'opacity 0.3s';
+  // Fade boot screen — but only fully hide once auth state is resolved.
+  // Prevents the gap where main app is visible between boot and login overlay.
+  await new Promise(r => setTimeout(r, 400));
+  bootScreen.style.transition = 'opacity 0.6s';
   bootScreen.style.opacity = '0';
-  await new Promise(r => setTimeout(r, 300));
-  // Wait until either authenticated or login overlay is showing (max 1s)
-  for (let i = 0; i < 10; i++) {
+  await new Promise(r => setTimeout(r, 600));
+  // Wait until either authenticated or login overlay is showing (max 2.5s)
+  for (let i = 0; i < 25; i++) {
     if (window._arexUid) break;
     const lo = document.getElementById('login-overlay');
     if (lo && lo.style.display !== 'none') break;
@@ -4760,14 +4548,7 @@ async function boot() {
   }
   bootScreen.style.display = 'none';
   txt?.focus();
-  if (window._arexConfigMissing) {
-    setTimeout(() => addMsg('arex',
-      '⚠ No encontré tu API key (probablemente el navegador limpió el almacenamiento). ' +
-      'Los módulos funcionan con normalidad, pero el chat con IA no está disponible hasta que reconfigures tu Groq key. ' +
-      'Escribe `/config` para hacerlo ahora.'), 600);
-  } else {
-    setTimeout(() => generarBriefing(), 800);
-  }
+  setTimeout(() => generarBriefing(), 800);
 }
 
 // ── CLIMA ─────────────────────────────────────────────────────────────────
@@ -5207,16 +4988,14 @@ if (loadConfig()) {
   showSetup();
 }
 
-// Extender window.cambiarModulo y AREXNav.cambiarModulo para FAB de análisis
+// Extender AREXNav.cambiarModulo para mostrar/ocultar FAB de análisis
 (function() {
-  const _orig = window.cambiarModulo;
-  const _extended = function(mod) {
+  const _orig = AREXNav.cambiarModulo.bind(AREXNav);
+  AREXNav.cambiarModulo = function(mod) {
     _orig(mod);
     const fab = document.getElementById('fab-analizar');
     if (fab) fab.style.display = (mod !== 'chat' && mod !== 'inicio') ? 'flex' : 'none';
   };
-  window.cambiarModulo = _extended;
-  AREXNav.cambiarModulo = _extended;
 })();
 
 // ── BRIEFING DIARIO ───────────────────────────────────────────────────────────
@@ -5338,14 +5117,13 @@ async function analizarMetas() {
       const deadline = m.fechaLimite ? ` · vence ${m.fechaLimite}` : '';
       return `- ${m.titulo||m.nombre}: ${pct}${deadline}`;
     }).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:400,
-        messages:[
-          {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
-          {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
-        ]})
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:400,
+      messages:[
+        {role:'system', content:'Eres AREX, coach personal de Alexiz. Analiza sus metas y da orientación motivadora y práctica en español.'},
+        {role:'user', content:`Metas activas:\n${resumen}\n\nEvalúa: progreso general, metas en riesgo, y 2-3 acciones concretas para esta semana.`}
+      ]
+    }, AREX_CONFIG.groqKey);
     hideThinking();
     if (!res.ok) { addMsg('arex','Error al analizar.'); return; }
     const data = await res.json();
@@ -5437,14 +5215,13 @@ async function generarReporteSemanal() {
       `Metas: ${metasStr}`,
       habitosStr ? `Hábitos: ${habitosStr}` : '',
     ].filter(Boolean).join('\n');
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${AREX_CONFIG.groqKey}`},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', max_tokens:480,
-        messages:[
-          {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
-          {role:'user', content:`Datos de la semana:\n${contexto}`}
-        ]})
-    });
+    const res = await _groqFetch('fast', {
+      max_tokens:480,
+      messages:[
+        {role:'system', content:'Eres AREX, asistente personal de Alexiz. Genera un reporte semanal motivador en español: evaluación del progreso, logros destacados, y 2-3 objetivos para la próxima semana. Usa markdown.'},
+        {role:'user', content:`Datos de la semana:\n${contexto}`}
+      ]
+    }, AREX_CONFIG.groqKey);
     hideThinking();
     if (!res.ok) { addMsg('arex','Error generando reporte.'); return; }
     const data = await res.json();
@@ -5577,7 +5354,7 @@ function renderBusquedaGlobal(q) {
 
   const safeRe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const hl = t => t.replace(new RegExp(safeRe, 'gi'), m => `<mark class="bg-hl">${m}</mark>`);
-  const safe = s => _h(s);
+  const safe = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const fmtP = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
   let html = '';
@@ -5804,111 +5581,6 @@ window.renderExchangeWidget = renderExchangeWidget;
   draw();
   window.addEventListener('resize', resize);
 })();
-
-/* ── Quick Actions ──────────────────────────────────── */
-function _qaModal(html) {
-  let ov = document.getElementById('qa-overlay');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'qa-overlay';
-    ov.className = 'qa-overlay';
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-  }
-  ov.innerHTML = html;
-  return ov;
-}
-
-function arexOpenSpotify() {
-  _qaModal(`
-    <div class="qa-modal">
-      <div class="qa-modal-title">🎵 MÚSICA</div>
-      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
-      <button class="qa-modal-btn" onclick="window.open('https://open.spotify.com/','_blank');document.getElementById('qa-overlay').remove()">ABRIR SPOTIFY</button>
-      <button class="qa-modal-btn" onclick="window.open('https://music.youtube.com/','_blank');document.getElementById('qa-overlay').remove()">ABRIR YOUTUBE MUSIC</button>
-    </div>
-  `);
-}
-
-function arexOpenYouTube() {
-  const ov = _qaModal(`
-    <div class="qa-modal">
-      <div class="qa-modal-title">▶ VIDEO</div>
-      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
-      <input type="text" id="qa-yt-input" placeholder="URL de YouTube o término de búsqueda..."/>
-      <button class="qa-modal-btn" onclick="arexYTLoad()">CARGAR VIDEO</button>
-      <div id="qa-yt-player"></div>
-    </div>
-  `);
-  setTimeout(() => ov.querySelector('#qa-yt-input')?.focus(), 60);
-}
-
-function arexYTLoad() {
-  const input = document.getElementById('qa-yt-input');
-  if (!input?.value.trim()) return;
-  const val = input.value.trim();
-  const m = val.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^&?#\s]{11})/);
-  const player = document.getElementById('qa-yt-player');
-  if (m) {
-    player.innerHTML = `<div style="position:relative;padding-bottom:56.25%;height:0;margin-top:12px;border-radius:8px;overflow:hidden;">
-      <iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1"
-        style="position:absolute;inset:0;width:100%;height:100%;border:none;"
-        allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
-        allowfullscreen></iframe></div>`;
-  } else {
-    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(val)}`, '_blank');
-  }
-}
-
-function arexOpenCrear() {
-  const ov = _qaModal(`
-    <div class="qa-modal">
-      <div class="qa-modal-title">✦ CREAR IMAGEN</div>
-      <button class="qa-modal-close" onclick="document.getElementById('qa-overlay').remove()">✕</button>
-      <input type="text" id="qa-crear-input" placeholder="Describe la imagen que quieres crear..."/>
-      <button class="qa-modal-btn" onclick="arexGenerarImagen()">GENERAR IMAGEN</button>
-      <div id="qa-crear-result"></div>
-    </div>
-  `);
-  setTimeout(() => ov.querySelector('#qa-crear-input')?.focus(), 60);
-}
-
-function arexGenerarImagen() {
-  const input = document.getElementById('qa-crear-input');
-  const prompt = input?.value.trim();
-  if (!prompt) return;
-  const result = document.getElementById('qa-crear-result');
-  result.innerHTML = '<div class="qa-status">GENERANDO IMAGEN...</div>';
-  const seed = Math.floor(Math.random() * 99999);
-  const img = new Image();
-  img.onload = () => {
-    result.innerHTML = '';
-    img.style.cssText = 'width:100%;border-radius:8px;margin-top:12px;border:1px solid rgba(34,211,238,0.2);display:block;';
-    result.appendChild(img);
-  };
-  img.onerror = () => { result.innerHTML = '<div class="qa-status">Error al generar. Intenta con otra descripción.</div>'; };
-  img.src = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&model=flux&nologo=true&seed=${seed}`;
-}
-
-function arexOpenBuscar() {
-  if (!searchOn && window.AREX_CONFIG?.tavilyKey) {
-    searchOn = true;
-    btnSearch?.classList.add('active');
-    localStorage.setItem('arex_searchOn', '1');
-    if (typeof updateSidebarModes === 'function') updateSidebarModes();
-  }
-  window.cambiarModulo('chat');
-  setTimeout(() => document.getElementById('txt')?.focus(), 420);
-}
-
-window.arexOpenSpotify      = arexOpenSpotify;
-window.arexOpenYouTube      = arexOpenYouTube;
-window.arexYTLoad           = arexYTLoad;
-window.arexOpenCrear        = arexOpenCrear;
-window.arexGenerarImagen    = arexGenerarImagen;
-window.arexOpenBuscar       = arexOpenBuscar;
-window.copiarCodigoConfig   = copiarCodigoConfig;
-window.importarCodigoConfig = importarCodigoConfig;
 
 /* ── Boot animation: letras una por una ─────────────── */
 (function bootLetterAnim() {

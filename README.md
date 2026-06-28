@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v159)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v163)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -21,7 +21,7 @@ arex/
 ├── style.css           → Diseño futurista / estética Stark Industries / JARVIS
 ├── app.js              → Motor principal: IA, voz, comandos, tareas, recordatorios, dashboard, canvas
 ├── jarvis.js           → Navegación entre módulos del dock
-├── orb.js              → Neural Mesh Orb Mark IV: Canvas 2D, 100 nodos Fibonacci, K=5 aristas vecinas, 160 chispas world-space; estados reactivos (default/speaking/thinking/listening/searching)
+├── orb.js              → Orbe 3D WebGL Mark III: GLSL shaders (Fresnel rim, wave displacement, energy bands); fallback 2D canvas
 ├── finanzas.js         → Lógica del módulo financiero
 ├── finanzas-data.js    → Datos financieros + funciones de cálculo
 ├── finanzas.css        → Estilos del módulo financiero
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v159 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v163 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -88,8 +88,8 @@ arex/
 | Tecnología | Uso |
 |---|---|
 | HTML / CSS / JS puro | Interfaz completa sin frameworks ni bundlers |
-| Groq API — llama-3.3-70b-versatile | Motor de IA principal: chat, razonamiento, briefing |
-| Groq Vision — llama-4-maverick / scout | Análisis de imágenes (Visión y chat; fallback si no hay Gemini) |
+| Groq API — llama-4-maverick (fallback llama-3.3-70b) | Motor de IA principal: intenta llama-4 primero, cae automáticamente a llama-3.3 si el key no tiene acceso |
+| Groq Vision — llama-4-scout (fallback llama-3.2-11b-vision) | Análisis de imágenes en el modo Visión: intenta llama-4 scout primero, fallback a llama-3.2 vision |
 | Gemini 2.5 / 2.0 Flash (Google AI) | Análisis de imágenes con visión mejorada (preferido sobre Groq vision) |
 | MediaPipe Hands (CDN) | Detección de manos en tiempo real para gestos, swipe y pinch |
 | DeviceOrientation / Pointer | Parallax holográfico con profundidad (giroscopio en móvil) |
@@ -98,9 +98,10 @@ arex/
 | Tavily Search API | Búsqueda web en tiempo real |
 | Web Speech API | Reconocimiento de voz (input), modo continuo, comandos en Visión |
 | SpeechSynthesis API | Síntesis de voz — AREX habla y saluda proactivamente |
-| Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, Neural Mesh Orb |
+| WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
+| Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v149 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v163 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
@@ -339,293 +340,6 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
-
-### v159 — Fix: paneles WebXR y Workspace con datos reales; VisionOrb race condition
-
-**`webxr.js`** — `_getData()` reescrita
-- Ya no depende de `window.getMetas`, `window.getFinanzasData`, `window.getTareas` (que solo existen si el módulo fue visitado previamente)
-- Todos los paneles AR leen directo de localStorage: `arex_tareas`, `arex_metas`, `arex_finanzas_overrides`/`arex_finanzas`, historial de chat vía `window._arexHistory`
-- Panel FINANZAS: muestra ingreso mensual, deuda total y próximo pago desde localStorage
-- Panel TAREAS: muestra tareas urgentes/pendientes ordenadas por vencimiento
-- Panel METAS: muestra metas activas con % de progreso
-- Panel CHAT: últimos 4 mensajes del historial
-- Añadida función helper `_lsJSON()` para lectura segura de localStorage
-
-**`vision.js`**
-- Workspace tab persistente: `_wkModId` ahora se guarda en `localStorage('arex_vision_wkmod')` y se restaura al reabrir Vision — ya no vuelve a "tareas" en cada apertura
-- Workspace Finanzas: corregida lectura de datos — ahora usa `arex_finanzas_overrides` (datos actuales) con fallback a `arex_finanzas`; antes siempre aparecía vacío
-- VisionOrb race condition: reemplazado init de una sola vez por función `_initOrb()` con retry cada 400ms hasta que `vision-orb.js` termine de parsear; el orbe ya no queda negro si vision.js carga antes que vision-orb.js
-
-**`sw.js`**
-- Versión bumped a `v159` / cache `arex-v159`
-
-### v158 — Fix: confirmación de borrado (doble tap) ya no se interrumpe por re-render
-
-**`app.js`**
-- `renderTareas()`: guard al inicio — si hay un botón `.tarea-del.confirming` activo (usuario en medio del doble-tap de confirmación), el re-render se pospone hasta que el estado expire. Evita que Firebase sync o cualquier otro trigger resetee el "?" a "✕" antes de que el usuario pueda confirmar.
-- `renderNotas()`: mismo guard con `.nota-del-btn.confirming`. La ventana de confirmación (2.5s) ya no se interrumpe.
-
-**`sw.js`**
-- Versión bumped a `v158` / cache `arex-v158`
-
-### v157 — Optimización de arranque: imports Firebase paralelos + sync 17x más rápido
-
-**`app.js`**
-- `initFirebase()`: los 3 imports de Firebase (`firebase-app`, `firebase-firestore`, `firebase-auth`) ahora se cargan en paralelo con `Promise.all()` — reducción de ~500-800ms en la primera carga
-- `_initUserSession()`: paralelizadas 2 etapas independientes: `loadAndApplyProfile` + `_migrateFirestoreIfNeeded` corren juntas; luego `pullConfigFromFirestore` + `pullAllModuleData` corren juntas
-- `pullAllModuleData()`: reemplazado bucle `for...await` secuencial de 17 lecturas Firestore por `Promise.all()` — todas las lecturas ocurren en paralelo, reducción de ~2-4s en sincronización inicial
-- Comentario de cabecera actualizado: `llama-3.3-70b` → `llama-4-maverick/scout`
-
-**`sw.js`**
-- Versión bumped a `v157` / cache `arex-v157`
-
-### v156 — Upgrade modelos IA: Llama 3.3 → Llama 4 en chat principal y agentes
-
-**`app.js`**
-- `callBrain()`: modelo `core` actualizado de `llama-3.3-70b-versatile` → `meta-llama/llama-4-maverick-17b-128e-instruct`; modelo `rapido` de `llama-3.1-8b-instant` → `meta-llama/llama-4-scout-17b-16e-instruct`
-- `callGroq()`: modelo actualizado a `meta-llama/llama-4-maverick-17b-128e-instruct`
-- `callGroqStream()`: modelo actualizado a `meta-llama/llama-4-maverick-17b-128e-instruct`
-
-**`control.js`**
-- Resumen de notas en Mission Control: `llama-3.3-70b-versatile` → `meta-llama/llama-4-scout-17b-16e-instruct`
-
-**Estrategia de modelos post-actualización:**
-- Chat / razonamiento (JARVIS, agentes): **Llama 4 Maverick** (128 expertos, mayor calidad)
-- Tareas rápidas / resúmenes: **Llama 4 Scout** (16 expertos, mayor velocidad)
-- Visión Groq: ya usaba Llama 4 Scout/Maverick desde v147 ✅
-- Gemini: ya en `gemini-2.5-flash` ✅
-- Tavily: API de búsqueda sin versión de modelo, sin cambios
-
-**`sw.js`**
-- Versión bumped a `v156` / cache `arex-v156`
-
-### v152 — Fix: setup screen bloquea app cuando iOS borra localStorage
-
-**Causa**: Safari / iOS borra periódicamente el `localStorage` de sitios no frecuentes (ITP). Al desaparecer `arex_config`, `loadConfig()` retornaba `false` y mostraba la pantalla de setup — bloqueando el acceso al app aunque todos los datos de módulos (tareas, finanzas, etc.) seguían intactos.
-
-**`app.js`** — `loadConfig()`
-- Si `arex_config` no existe pero hay otras claves `arex_*` en localStorage (datos de módulos = usuario de retorno), ahora carga el app con `AREX_CONFIG = {}` en lugar de mostrar el setup. El usuario no pierde acceso a sus datos.
-- Establece `window._arexConfigMissing = true` como bandera post-boot.
-
-**`app.js`** — `boot()`
-- Al terminar el arranque, si `_arexConfigMissing` es true, muestra un mensaje en el chat explicando que la API key no se encontró y cómo reconfigurarla con `/config`. No interrumpe el flujo normal del app.
-
-**`sw.js`**
-- Versión bumped a `v152` / cache `arex-v152`
-
-### v151 — Limpieza final: console.log, escape inline, código muerto
-
-**`jarvis.js`**
-- Eliminado `console.log('🤖 AREX Navegación v118...')` — debug de versión antigua sin valor en producción.
-
-**`app.js`**
-- Eliminado `console.log` del callback `.then()` de `getRedirectResult`. El callback solo contenía ese log, así que se eliminó el `.then()` completo — la autenticación sigue funcionando vía `onAuthStateChanged`.
-
-**`control.js`**
-- Líneas 153 y 171: reemplazados 2 patrones inline `.replace(/&/g,'&amp;').replace(/</g,'&lt;')` con `_h()` global — era la última duplicación de escape HTML en el proyecto.
-
-**`vision.js`**
-- `_h()` reemplaza las dos primeras cadenas `.replace()` en el mini-renderer de resultados de IA (línea 873); las sustituciones de Markdown (`**bold**` → `<strong>`) y newlines (`\n` → `<br>`) se conservan.
-
-**`proyectos.js`**
-- Eliminados la llamada `_loadRelatedData()` (línea 121) y su definición vacía `function _loadRelatedData() { /* ... */ }` (línea 179) — función stub cuya lógica ya estaba implementada inline mediante helpers; nunca tuvo cuerpo real.
-
-**`sw.js`**
-- Versión bumped a `v151` / cache `arex-v151`
-
-### v150 — Hotfix: módulo Reparto roto por escHTML eliminado en v148
-
-**`reparto.js`**
-- `escHTML(` reemplazado con `_h(` (4 ocurrencias) — en v148 se eliminó `escHTML` de `negocio.js` sin notar que `reparto.js` lo usaba como global compartida. Esto causaba `ReferenceError: escHTML is not defined` al renderizar los marcadores del mapa y la lista de sucursales.
-
-**`README.md`**
-- Corregidas 2 referencias obsoletas a "Service Worker v136" → v150 (en la tabla de archivos y en la tabla de tecnologías).
-
-**`sw.js`**
-- Versión bumped a `v150` / cache `arex-v150`
-
-### v149 — Fix: AREX ya no alucina capacidades que no tiene
-
-**`app.js`** — `buildSystemBase()`
-- Añadida sección **LÍMITES REALES** al system prompt, entre `ÁREAS DE EXPERTISE` y `REGLAS`, aplicada a **todos** los perfiles (AREX y VIERNES). El modelo ya tenía tono "JARVIS omnipotente" pero ningún límite declarado, por lo que extrapolaba capacidades ficticias (modelos 3D, renders, control de hardware, etc.).
-- El bloque deja explícito qué SÍ puede (ver/describir imágenes compartidas) y qué NO puede (generar imágenes/3D/video, controlar dispositivos, llamadas, apps externas, internet sin Tavily).
-- Incluye instrucción directa: ante algo imposible, decirlo con claridad y ofrecer la alternativa real. Usa `${owner}` para que aplique correctamente a cualquier perfil.
-
-**`sw.js`**
-- Versión bumped a `v149` / cache `arex-v149`
-
-### v148 — Limpieza: funciones de escape duplicadas + setInterval sin referencia
-
-**`habitos.js`**, **`metas.js`**, **`agenda.js`**, **`gastos.js`**, **`negocio.js`**, **`evidencias.js`**
-- Eliminadas 6 funciones/definiciones locales de escape HTML (`_habEsc`, `_escH`, `_agEsc`, `_escHTML`, `escHTML`, inline en evidencias) — todas eran copias exactas de la función global `_h()` ya definida en `app.js`. Sustituidas por `_h()` en todos sus usos (texto de contenido). Las funciones de escape de **atributos** (`_escAttr`, `escAttr`, `_escA`) se conservan porque escapan comillas adicionales que `_h()` no cubre.
-
-**`holo.js`**
-- `setInterval(update, 12000)` ahora guarda su ID en `window._holoUpdateTimer` — permite cancelarlo si fuera necesario; antes la referencia se perdía y no había forma de detener el timer.
-
-**`sw.js`**
-- Versión bumped a `v148` / cache `arex-v148`
-
-### v147 — Fix crítico: pestaña AGENTES en Mission Control en blanco (neural-orb.js faltante)
-
-**`neural-orb.js`** _(archivo nuevo)_
-- Añadido al repositorio: Motor de orbes neurales holográficos estilo JARVIS — esferas 3D con 40 nodos Fibonacci, aristas, pulsos sinápticos, glow, rim lighting, specular highlight, anillos de actividad. Clases: `NeuralOrb` + `initNeuralOrbs` / `setNeuralOrbState` globales. Era cargado dinámicamente por `control.js` pero el archivo no existía en el directorio principal, causando que `_renderAgentes()` nunca se ejecutara y la pestaña AGENTES apareciera completamente vacía.
-
-**`control.js`**
-- Añadido `onerror` fallback al `<script>` que carga `neural-orb.js` — si el archivo falla al cargar (red cortada, error HTTP), los agentes se renderizan de todas formas sin los orbes animados en lugar de quedar en blanco.
-
-**`control.css`**
-- Añadidos todos los estilos para las cards de orbes: `.agent-orb-wrap`, `.neural-orb-canvas` (90×90 CSS px), `.agent-orb-name`, `.agent-orb-desc`, `.agent-orb-status.online/standby`, `.agent-orb-last`, `.agent-run-btn` — sin estos estilos las cards existían en el DOM pero eran invisibles.
-
-**`sw.js`**
-- `neural-orb.js` añadido a la lista `SHELL` del caché del Service Worker — garantiza que esté disponible offline
-- Versión bumped a `v147` / cache `arex-v147`
-
-### v146 — Google Sign-In accesible desde /config + indicador de cuenta
-
-**`index.html`**
-- Modal `/config`: añadida sección **CUENTA** con indicador de estado de sesión (`cfg-account-status`) + dos botones: **▲ VINCULAR GOOGLE** (`_doGoogleSignIn`) y **✕ CERRAR SESIÓN** (`_arexSignOut`) — antes no había forma de conectar una cuenta Google si el app ya estaba "logueado" de forma anónima o con caché local
-
-**`app.js`**
-- `abrirConfig()`: actualiza `cfg-account-status` al abrir el modal — muestra si la sesión es Google (con email), anónima (con uid parcial), solo local, o sin sesión activa
-
-**`sw.js`**
-- Versión bumped a `v146` / cache `arex-v146`
-
-### v145 — Fix crítico: pestañas de Finanzas bloqueadas (cambiarVista undefined crash)
-
-**`finanzas.js`**
-- `setupEventListeners()`: añadido guard `if (!vista) return` en el listener de `.subnav-btn` — el botón "Analizar con IA" no tiene `data-view`, por lo que anteriormente llamaba `cambiarVista(undefined)`, que eliminaba el `active` de **todos** los `finanzas-view` (ocultando el contenido del módulo) y después crasheaba con `TypeError: Cannot read properties of null ('classList')`. Resultado: el módulo quedaba en blanco y parecía que los botones no respondían.
-- `cambiarVista()`: añadido null guard antes de `classList.add('active')` — previene cualquier crash si el `id="view-${vista}"` no existiera.
-- `window.FinanzasModule = FinanzasModule` movido **antes** de `init()` — si `init()` lanza un error de runtime, el módulo ya está accesible globalmente y los `onclick` del HTML siguen funcionando.
-
-**`sw.js`**
-- Versión bumped a `v145` / cache `arex-v145`
-
-### v144 — Limpieza de código: sync sessions bidireccional, eliminación de funciones duplicadas, exports muertos
-
-**`app.js`**
-- `pullAllModuleData()`: añadida `'arex_sessions'` al array de keys — las sesiones de chat ahora se sincronizan en **ambas** direcciones con Firebase (ya se empujaban desde v143; ahora también se jalan al arrancar)
-
-**`proyectos.js`**
-- `_safe()` ahora delega a la función global `_h()` — elimina la copia local duplicada de la lógica de escape HTML
-
-**`search.js`**
-- `_hi()` ahora usa `_h()` en vez de `_esc()` local; `_esc()` eliminada — era una copia exacta de `_h()`
-
-**`finanzas-data.js`**
-- Eliminados los `window.` exports de `calcularIngresoReal`, `calcularGastosPers` y `calcularPorcentajeGastos` — confirmado que ningún otro archivo las invoca; se mantienen como funciones internas para uso de `calcularMargenReal`
-
-**`sw.js`**
-- Versión bumped a `v144` / cache `arex-v144`
-
-### v143 — Rendimiento, sincronización y bugs de UI: urgencia memoizada, sessions Firebase, rate-limit, fuente Orbitron
-
-**`app.js`**
-- `urgenciaTarea()` ahora usa un `Map` con clave `id|fecha` como caché diaria — se invalida automáticamente al cambiar de día; elimina 3–5 cálculos redundantes por tarea en cada `renderTareas()`, `sortPending()` y render del dashboard
-- `saveCurrentSession()` ahora llama a `arexSyncData('arex_sessions')` tras guardar — el historial de sesiones de chat se sincroniza a Firebase y es visible desde cualquier dispositivo
-- `handleSend()` añade rate-limit de 500ms (`_lastSendAt`) para evitar doble-envío por tap rápido o Enter doble en móvil
-
-**`finanzas.css`**
-- Reemplazadas 4 instancias de `font-family: 'Orbitron'` (fuente nunca cargada → fallback a serif) con `'Rajdhani'`, que sí está en el @import de Google Fonts — elimina el bug visual de tipografía rota en tarjetas y métricas de finanzas
-
-**`sw.js`**
-- Versión bumped a `v143` / cache `arex-v143`
-
-### v142 — Calidad alta: _h() sanitización, _debounce(), DocumentFragment, validación fechas
-
-**`app.js`**
-- Nueva función `_h(s)` al tope del archivo: escapa `& < >` para uso en innerHTML — reemplaza 22 instancias del patrón manual `.replace(/&/g,'&amp;').replace(/</g,'&lt;')...` dispersas en el código
-- Nueva función `_debounce(fn, ms)` al tope: debounce genérico reutilizable — reemplaza el patrón manual `let tt; clearTimeout(tt); tt = setTimeout(...)` en las notas
-- `addTarea()`: valida que la fecha sea real y esté entre 2020–2040 antes de guardar; trunca texto a 500 caracteres máximo
-
-**`finanzas.js`**
-- `renderTarjetas()` y `renderGraficaGastos()`: usan `DocumentFragment` para acumular los elementos y hacer un solo `appendChild` al contenedor → reduce reflows de N a 1 por render
-
-**`proyectos.js`**
-- `proyectoCrear()`: valida fecha límite (rango 2020–2040), trunca nombre a 120 chars y descripción a 300 chars
-
-**`sw.js`**
-- Versión bumped a `v142` / cache `arex-v142`
-
-### v141 — Fixes críticos: memory leaks, token truncation, retry Groq
-
-**`app.js`**
-- `setInterval(tickClock, 1000)` ahora guarda su ref en `window._clockTimer` y limpia antes de crear — evita intervals apilados si el módulo se reinicia
-- `initMatrixRain()` guarda los dos intervals del canvas en `window._matrixTimers[]` y los limpia en llamadas sucesivas — evita canvas colgados en memoria
-- `callGroq()` y `callGroqStream()`: el historial se trunca a los últimos **28 mensajes** antes de enviarlo a Groq — evita errores silenciosos por exceder el token limit en conversaciones largas
-- `callGroq()` y `callGroqStream()`: retry automático de **3 intentos** con backoff exponencial (0s / 1.5s / 3s) en errores de red o rate-limit (5xx, 429); no reintenta en errores de autenticación (401) ni de request (400)
-
-**`sw.js`**
-- Versión bumped a `v141` / cache `arex-v141`
-
-### v140 — Fix área negra INICIO (especificidad CSS) + arranque más rápido
-
-**`style.css`**
-- `#module-inicio` v138/v139 block ahora usa `!important` en todas sus propiedades clave (`position: fixed !important`, `inset: 0 !important`, `display: flex !important`, etc.)
-- **Causa raíz resuelta**: la regla legacy `#module-inicio.module-panel.active { position: relative }` (especificidad 0,2,0) sobrescribía `position: fixed` (0,1,0) porque ambas estaban fuera del `@layer`; con `!important` la regla v138 gana sin importar especificidad
-- Añadido `flex: unset !important`, `max-width: unset !important`, `align-self: unset !important` para cancelar las propiedades de layout del bloque legacy que ponían INICIO dentro del flujo normal del workspace
-
-**`app.js`**
-- `boot()` pre-carga `window._arexUid` desde `localStorage.getItem('arex_offline_uid')` antes del fade — el loop de espera rompe inmediatamente si hay sesión cacheada, ahorrando hasta 2,500ms en cada arranque
-- Delay cosmético reducido: 400ms → 150ms (initial) + 600ms → 300ms (fade) = 550ms ahorrados
-- Loop de espera de `_arexUid` reducido: máx 2,500ms → máx 1,000ms (suficiente para Firebase fresh login)
-
-**`sw.js`**
-- Versión bumped a `v140` / cache `arex-v140`
-
-### v139 — Correcciones de módulos lazy-loaded: drawer-handle, active check, fondo INICIO
-
-**`agenda.js`**
-- Corregido check incorrecto `classList.contains('active')` → ahora siempre intenta render (el módulo solo se llama desde `DRAWER.open()`)
-- `renderAgendaModule()` ahora preserva el `.drawer-handle` antes de regenerar `el.innerHTML` para que el botón ⌂ y los tabs del drawer no se borren
-
-**`habitos.js`**
-- Misma corrección de check `active` y preservación del `.drawer-handle` en cada ciclo de re-render (el módulo se llama recursivamente al agregar/togglear hábitos)
-
-**`proyectos.js`**
-- `renderProyectosModule()` preserva el `.drawer-handle` antes de `panel.innerHTML = ...` para que el botón ⌂ de regreso no desaparezca
-
-**`style.css`**
-- `#module-inicio` ahora tiene `background: #01060d` — el área negra en la parte superior ya no se ve (el canvas de reactor3d tiene fondo transparente en las zonas sin dibujo)
-- `.module-panel.drawer-open .finanzas-subnav`: `flex-wrap: wrap` y `overflow-x: visible` para evitar el problema de scroll horizontal en iOS Safari que bloqueaba los tabs Recordatorios y Calculadora
-
-**`sw.js`**
-- Versión bumped a `v139` / cache `arex-v139`
-
-### v120 — Neural Mesh Orb (MARK IV)
-
-- `orb.js` completamente reescrito: WebGL reemplazado por canvas 2D con malla neural 3D
-- 100 nodos en distribución Fibonacci esférica + K=5 aristas nearest-neighbor
-- Nube de 160 partículas-chispa en espacio-mundo que vuelan hacia afuera (drift ligero hacia arriba)
-- Respiración orgánica por nodo con fase aleatoria (effecto no-esférico / cerebro)
-- Canvas 2.8× el tamaño del elemento orbe — la nube de partículas desborda naturalmente
-- Todos los estados mantenidos: default/speaking/thinking/listening/searching con velocidad y densidad reactiva
-- CSS `.orb` limpiado: sin borde, sin fondo, `overflow:visible` — el canvas maneja toda la visual
-
-### v119 — Mapa táctico HUD + Rutas OSRM por carreteras + Finanzas subnav fix
-
-**Módulo Reparto:**
-- Mapa con filtro táctico HUD: `raster-hue-rotate: 160`, `raster-saturation: -0.55`, `raster-brightness-max: 0.52` — estética hierro oscuro con tono naranja
-- Rutas snapeadas a carreteras reales usando OSRM (`router.project-osrm.org`) — no más líneas rectas
-- Mientras carga OSRM (800ms debounce), muestra línea recta de placeholder y luego la reemplaza con la ruta por calles
-- Muestra distancia en km y tiempo estimado en el chip de puntos al calcular ruta
-- Colores cambiados de verde (`#00ff88`) a naranja hierro (`#ff6a00` / `#ff8c00`) y dorado (`#f5a623`) para waypoints — coherente con paleta Iron Man
-
-**Módulo Finanzas:**
-- Subnav tabs ahora tienen `onclick` directo a `FinanzasModule.cambiarVista()` — soluciona el bug donde Recordatorios, Calculadora y Editar datos no respondían al tap
-- Botón "Analizar con IA" también con onclick directo a `FinanzasModule.analizarConIA()`
-
-### v118 — Drawer Architecture: INICIO permanente + módulos como bottom-sheet overlays
-
-**Arquitectura de navegación completamente rediseñada:**
-- `#module-inicio` es ahora la base permanente (`position:fixed; z-index:1`) — nunca se oculta
-- Todos los demás módulos (CAPITAL, IMPULSO, MENTE, CONTROL y sus sub-módulos) abren como bottom-sheet overlays animados (`position:fixed; z-index:150; transform:translateY(100vh)` por defecto)
-- Animación de entrada: slide-up con `cubic-bezier(0.32,0.72,0,1)` en 380ms
-- Backdrop semitransparente (`#drawer-backdrop`, z-index:148) aparece entre INICIO y el drawer abierto; tap en él cierra el drawer
-- Cada drawer inyecta automáticamente un `.drawer-handle` sticky en su parte superior con: botón `⌂` para volver a INICIO, label del grupo (CAPITAL / IMPULSO / MENTE / CONTROL), y tabs de sub-módulos para cambio instantáneo sin animación
-- Cambio de tab dentro de un mismo grupo (ej. FINANZAS → GASTOS dentro de CAPITAL) es instantáneo — el drawer permanece abierto
-- Se elimina `#center-tabs` fijo (reemplazado por el drawer handle integrado)
-- `jarvis.js` reescrito como `AREX Navegación v118` con objetos `DRAWER` y `AREXNav` limpios
 
 ### v117 — Liquid Glass System: superficies de vidrio líquido + GPU ×6 más eficiente
 

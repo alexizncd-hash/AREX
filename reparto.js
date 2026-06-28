@@ -447,11 +447,13 @@ window.repLoadRuta = function (i) {
   _renderWpList();
   _updateWpCount();
   if (_repMap && _repWaypoints.length) {
-    const bounds = _repWaypoints.reduce(
-      (b, wp) => { b.extend(wp); return b; },
-      new maplibregl.LngLatBounds(_repWaypoints[0], _repWaypoints[0])
-    );
-    _repMap.fitBounds(bounds, { padding: 60, pitch: 45, duration: 1400 });
+    try {
+      const bounds = _repWaypoints.reduce(
+        (b, wp) => { b.extend(wp); return b; },
+        new maplibregl.LngLatBounds(_repWaypoints[0], _repWaypoints[0])
+      );
+      _repMap.fitBounds(bounds, { padding: 60, pitch: 45, duration: 1400 });
+    } catch (_) {}
   }
 };
 

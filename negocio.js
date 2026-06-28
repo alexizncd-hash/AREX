@@ -246,7 +246,7 @@ function negExportarMes() {
   const totalGastos = gastosMes.reduce((a, g) => a + g.monto, 0);
   const ganancia    = totalVentas - totalGastos;
   const totalVentasAnt = ventasAnt.reduce((a, v) => a + v.total, 0);
-  const gananciaAnt    = ventasAnt.reduce((a, v) => a + v.total, 0) - gastosAnt.reduce((a, g) => a + g.monto, 0);
+  const gananciaAnt    = totalVentasAnt - gastosAnt.reduce((a, g) => a + g.monto, 0);
 
   const pct = totalVentasAnt > 0 ? (((totalVentas - totalVentasAnt) / totalVentasAnt) * 100).toFixed(1) : 'N/A';
 

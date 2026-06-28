@@ -46,6 +46,106 @@ let _askBarVisible = false;
 let _wkOn    = false;
 let _wkModId = localStorage.getItem('arex_vision_wkmod') || 'tareas';
 
+// JARVIS AR extras
+let _hudTimer  = null;
+let _audioCtx  = null;
+
+/* ─── JARVIS Audio FX ─────────────────────────────────── */
+function _jarvisSound(type) {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const t   = ctx.currentTime;
+    if (type === 'scan') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1400, t); o.frequency.linearRampToValueAtTime(600, t + 0.28);
+      g.gain.setValueAtTime(0.12, t); g.gain.linearRampToValueAtTime(0, t + 0.28);
+      o.start(t); o.stop(t + 0.28);
+    } else if (type === 'result') {
+      [800, 1100].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.09, t + i * 0.1); g.gain.linearRampToValueAtTime(0, t + i * 0.1 + 0.14);
+        o.start(t + i * 0.1); o.stop(t + i * 0.1 + 0.14);
+      });
+    } else if (type === 'open') {
+      [440, 660, 880, 1100].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.09, t + i * 0.07); g.gain.linearRampToValueAtTime(0, t + i * 0.07 + 0.14);
+        o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.14);
+      });
+    } else if (type === 'action') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'square'; o.frequency.value = 420;
+      g.gain.setValueAtTime(0.07, t); g.gain.linearRampToValueAtTime(0, t + 0.1);
+      o.start(t); o.stop(t + 0.1);
+    } else if (type === 'error') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sawtooth'; o.frequency.value = 180;
+      g.gain.setValueAtTime(0.09, t); g.gain.linearRampToValueAtTime(0, t + 0.35);
+      o.start(t); o.stop(t + 0.35);
+    }
+  } catch {}
+}
+
+/* ─── Live HUD Data ───────────────────────────────────── */
+function _updateVisionHudData() {
+  if (!_panel) return;
+  try {
+    const now = new Date();
+    const timeEl = document.getElementById('vis-dr-time');
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const tasks  = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
+    const pend   = tasks.filter(t => !t.done);
+    const venc   = pend.filter(t => t.fecha && new Date(t.fecha) < now).length;
+    const taskEl = document.getElementById('vis-dr-tasks');
+    if (taskEl) taskEl.textContent = `${pend.length} tareas`;
+    const metas  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
+    const metEl  = document.getElementById('vis-dr-metas');
+    if (metEl) metEl.textContent = `${metas.filter(m => !m.completada).length} metas`;
+    const fd     = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || localStorage.getItem('arex_finanzas') || '{}');
+    const saldo  = fd.saldoCuenta ?? fd.ingresoMensual ?? null;
+    const finEl  = document.getElementById('vis-dr-fin');
+    if (finEl) finEl.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
+    // Corner widgets
+    const cwTasks = document.getElementById('vis-cw-tasks');
+    if (cwTasks) cwTasks.innerHTML = `<span>${pend.length} pend.${venc ? ` · <span style="color:#ff6655">${venc} venc.</span>` : ''}</span>`;
+    const cwFin = document.getElementById('vis-cw-fin');
+    if (cwFin) cwFin.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
+  } catch {}
+}
+
+/* ─── Radial Menu ─────────────────────────────────────── */
+window._toggleRadial = function() {
+  const rm = document.getElementById('vis-radial');
+  if (!rm) return;
+  const isOpen = rm.classList.contains('vr-open');
+  if (isOpen) { _closeRadialEl(rm); } else { _openRadialEl(rm); }
+};
+window._closeRadial = function() {
+  _closeRadialEl(document.getElementById('vis-radial'));
+};
+function _openRadialEl(rm) {
+  if (!rm) return;
+  rm.classList.add('vr-open');
+  rm.setAttribute('aria-hidden', 'false');
+  _jarvisSound('action');
+  document.getElementById('vis-radial-btn')?.classList.add('on');
+}
+function _closeRadialEl(rm) {
+  if (!rm) return;
+  rm.classList.remove('vr-open');
+  rm.setAttribute('aria-hidden', 'true');
+  document.getElementById('vis-radial-btn')?.classList.remove('on');
+}
+
 /* ─── Personas conocidas ──────────────────────────────── */
 function _loadPersonas() {
   try { return JSON.parse(localStorage.getItem('arex_personas') || '[]'); } catch { return []; }
@@ -254,7 +354,9 @@ export async function openVision() {
   }
   _buildPanel();
   document.getElementById('btn-vision')?.classList.add('active');
-  setTimeout(() => _visionSpeak('Visión activa. Aquí contigo.'), 900);
+  setTimeout(() => { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); }, 600);
+  _hudTimer = setInterval(_updateVisionHudData, 5000);
+  _updateVisionHudData();
 }
 
 export function closeVision() {
@@ -275,6 +377,8 @@ export function closeVision() {
   clearTimeout(_resultTimer);
   clearInterval(_telTimer);
   _telTimer = null;
+  clearInterval(_hudTimer);
+  _hudTimer = null;
   // Stop gesture engine
   if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
   // Stop voice commands
@@ -366,6 +470,20 @@ function _buildPanel() {
         <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
       </div>
     </div>
+
+    <!-- LIVE DATA RIBBON -->
+    <div class="vp-data-ribbon" id="vis-data-ribbon">
+      <span id="vis-dr-time">--:--</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-tasks">··· tareas</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-metas">··· metas</span>
+      <span class="vp-dr-sep">·</span>
+      <span id="vis-dr-fin">···</span>
+    </div>
+
+    <!-- CINEMATIC SWEEP (enhanced scan overlay) -->
+    <div class="vp-sweep-line" id="vis-sweep"></div>
 
     <!-- LEFT TELEMETRY -->
     <div class="vp-telemetry" id="vis-telemetry">
@@ -498,6 +616,42 @@ function _buildPanel() {
       </div>
     </div>
 
+    <!-- CORNER DATA WIDGETS -->
+    <div class="vp-corner-widget vp-cw-bl" id="vis-cw-bl">
+      <div class="vp-cw-label">TAREAS</div>
+      <div class="vp-cw-val" id="vis-cw-tasks">···</div>
+    </div>
+    <div class="vp-corner-widget vp-cw-br" id="vis-cw-br">
+      <div class="vp-cw-label">FINANZAS</div>
+      <div class="vp-cw-val" id="vis-cw-fin">···</div>
+    </div>
+
+    <!-- RADIAL ACTION MENU -->
+    <div class="vp-radial-menu" id="vis-radial" aria-hidden="true">
+      <button class="vp-radial-close" onclick="window._closeRadial()">✕</button>
+      <div class="vp-radial-ring">
+        <button class="vp-radial-btn" style="--i:0" onclick="captureAndAnalyze('describe');window._closeRadial()">
+          <span class="vp-rb-ico">👁</span><span class="vp-rb-lbl">VER</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:1" onclick="captureAndAnalyze('product');window._closeRadial()">
+          <span class="vp-rb-ico">🔍</span><span class="vp-rb-lbl">OBJETO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:2" onclick="captureAndAnalyze('text');window._closeRadial()">
+          <span class="vp-rb-ico">📄</span><span class="vp-rb-lbl">TEXTO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:3" onclick="captureAndAnalyze('recibo');window._closeRadial()">
+          <span class="vp-rb-ico">🧾</span><span class="vp-rb-lbl">RECIBO</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:4" onclick="captureAndAnalyze('scene');window._closeRadial()">
+          <span class="vp-rb-ico">🌐</span><span class="vp-rb-lbl">ESCENA</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:5" onclick="window._toggleWorkspace();window._closeRadial()">
+          <span class="vp-rb-ico">▦</span><span class="vp-rb-lbl">PANEL</span>
+        </button>
+      </div>
+      <div class="vp-radial-center">AREX</div>
+    </div>
+
     <!-- BOTTOM ACTION BUTTONS -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
@@ -521,8 +675,8 @@ function _buildPanel() {
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
         <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
       </button>
-      <button class="vp-action-btn" onclick="window._toggleWorkspace()">
-        <span class="vp-btn-ico">▦</span><span class="vp-btn-lbl">PANEL</span>
+      <button class="vp-action-btn vp-radial-trigger" id="vis-radial-btn" onclick="window._toggleRadial()">
+        <span class="vp-btn-ico">⊕</span><span class="vp-btn-lbl">MENÚ</span>
       </button>
     </div>
   `;
@@ -652,6 +806,7 @@ function _buildPanel() {
   // Start telemetry ticker
   _telTimer = setInterval(_updateTelemetry, 3000);
   _updateTelemetry();
+  // HUD data is also populated on open (openVision calls _updateVisionHudData)
 }
 
 /* ─── Frame Capture ───────────────────────────────────── */
@@ -716,6 +871,11 @@ async function _analyze(mode, extra = '') {
 
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
+  _jarvisSound('scan');
+
+  // Cinematic sweep animation
+  const sweepEl = document.getElementById('vis-sweep');
+  if (sweepEl) { sweepEl.classList.remove('active'); void sweepEl.offsetWidth; sweepEl.classList.add('active'); }
 
   const prompt    = extra || _buildVisionPrompt(mode);
   const geminiKey = window.AREX_CONFIG?.geminiKey;
@@ -798,27 +958,32 @@ async function _callGemini(frame, prompt, key) {
 }
 
 async function _callGroq(frame, prompt, key, fast = false) {
-  const model = fast
-    ? 'meta-llama/llama-4-scout-17b-16e-instruct'   // más rápido para AUTO
-    : 'meta-llama/llama-4-maverick-17b-128e-instruct';
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      max_tokens: fast ? 220 : 800,
-      messages: [{ role: 'user', content: [
-        { type: 'image_url', image_url: { url: frame } },
-        { type: 'text', text: prompt }
-      ]}]
-    })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Groq ${res.status}: ${err?.error?.message || res.statusText}`);
+  const models = [
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.2-11b-vision-preview',
+  ];
+  for (const model of models) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: fast ? 220 : 800,
+        messages: [{ role: 'user', content: [
+          { type: 'image_url', image_url: { url: frame } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+    if (res.status === 404) continue;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Groq ${res.status}: ${err?.error?.message || res.statusText}`);
+    }
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || 'Sin respuesta de Groq.';
   }
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || 'Sin respuesta de Groq.';
+  throw new Error('Sin modelo Groq disponible para visión.');
 }
 
 function _withTimeout(promise, ms) {
@@ -881,6 +1046,7 @@ function _showResult(label, text, thumb, mode = '') {
     .replace(/\n/g, '<br>');
   if (body) body.innerHTML = html;
   panel.classList.add('visible');
+  _jarvisSound('result');
   clearTimeout(_resultTimer);
   if (!_contOn) _resultTimer = setTimeout(_hideResult, 20000);
   _buildResultActions(mode, text);
@@ -1141,7 +1307,7 @@ async function _analyzeCont() {
     const gemKey  = window.AREX_CONFIG?.geminiKey;
     let reply;
     if (groqKey) {
-      // fast=true → scout + 220 tokens: respuesta en ~2s vs ~6s con maverick
+      // fast=true → llama-3.2-11b-vision: respuesta rápida para modo AUTO
       try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch { /**/ }
     }
     if (!reply && gemKey) {
@@ -2070,10 +2236,13 @@ function _doPinchClick(data) {
   const rect = canvas.getBoundingClientRect();
   const sx = rect.left + data.x * rect.width;
   const sy = rect.top  + data.y * rect.height;
-  // Temporarily disable canvas pointer events so elementFromPoint works
-  canvas.style.pointerEvents = 'auto';
+  // Canvas already has pointer-events:none from CSS — elementFromPoint looks through it
+  // Temporarily hide tap-canvas too so pinch can reach buttons underneath
+  const tapCv = document.getElementById('vis-tap-canvas');
+  const prevPE = tapCv?.style.pointerEvents;
+  if (tapCv) tapCv.style.pointerEvents = 'none';
   const el = document.elementFromPoint(sx, sy);
-  canvas.style.pointerEvents = 'none';
+  if (tapCv) tapCv.style.pointerEvents = prevPE || '';
   if (el && el.tagName !== 'CANVAS' && el.tagName !== 'VIDEO' && el !== _panel) {
     el.click();
     _gestureFlash('🤏 TAP', '#00ffaa');

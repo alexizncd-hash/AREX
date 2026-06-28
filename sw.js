@@ -1,34 +1,42 @@
-const CACHE   = 'arex-v159';
-const VERSION = 'v159';
+const CACHE   = 'arex-v163';
+const VERSION = 'v163';
 const SHELL = [
   './index.html',
   './style.css',
   './app.js',
   './firebase-config.js',
   './jarvis.js',
-  './orb.js',
-  './finanzas-data.js',
   './finanzas.js',
   './finanzas.css',
+  './finanzas-data.js',
+  './negocio.js',
+  './negocio.css',
+  './gastos.js',
+  './gastos.css',
+  './metas.js',
+  './metas.css',
+  './webxr.js',
+  './proyectos.js',
+  './proyectos.css',
+  './evidencias.js',
+  './evidencias.css',
+  './control.js',
+  './control.css',
+  './reparto.js',
+  './reparto.css',
+  './agenda.js',
+  './agenda.css',
+  './habitos.js',
+  './habitos.css',
   './search.js',
   './search.css',
+  './orb.js',
   './reactor3d.js',
   './reactor3d.css',
   './manifest.json',
   './icon.svg',
-  // Module JS + CSS — lazy-loaded by jarvis.js, but pre-cached so offline works:
-  './negocio.js',   './negocio.css',
-  './gastos.js',    './gastos.css',
-  './metas.js',     './metas.css',
-  './proyectos.js', './proyectos.css',
-  './evidencias.js','./evidencias.css',
-  './control.js',   './control.css',
-  './neural-orb.js',
-  './reparto.js',   './reparto.css',
-  './agenda.js',    './agenda.css',
-  './habitos.js',   './habitos.css',
-  // On-demand only (not pre-cached):
-  // vision.js, vision-orb.js, holo.js, parallax.js, gesture.js, webxr.js
+  // Lazy-loaded on demand (not in initial shell):
+  // reparto.js, vision.js, vision-orb.js, holo.js, parallax.js, gesture.js, neural-orb.js
 ];
 
 self.addEventListener('install', e => {
@@ -57,6 +65,7 @@ self.addEventListener('fetch', e => {
       url.includes('frankfurter') || url.includes('er-api.com') ||
       url.includes('openweathermap.org') || url.includes('googleapis.com')) return;
 
+  // Network-first para todo el shell — siempre archivos frescos cuando hay internet
   const isShell = SHELL.some(f => url.endsWith(f.replace('./', '/'))) ||
                   url.endsWith('/') || url.endsWith('/AREX/') || url.includes('index.html');
 
@@ -71,6 +80,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // Cache-first para recursos externos (highlight.js, fuentes, etc.)
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
@@ -80,15 +90,17 @@ self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch {}
   const notif = data.notification || data;
-  e.waitUntil(self.registration.showNotification(notif.title || 'AREX', {
-    body:      notif.body || '',
-    icon:      './icon.svg',
-    badge:     './icon.svg',
-    vibrate:   [200, 100, 200],
-    data:      data.data || {},
-    tag:       'arex-push',
-    renotify:  true,
-  }));
+  const title = notif.title || 'AREX';
+  const opts = {
+    body: notif.body || '',
+    icon: './icon.svg',
+    badge: './icon.svg',
+    vibrate: [200, 100, 200],
+    data: data.data || {},
+    tag: 'arex-push',
+    renotify: true,
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
 });
 
 self.addEventListener('notificationclick', e => {
