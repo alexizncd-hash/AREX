@@ -952,8 +952,8 @@ async function _callGemini(frame, prompt, key) {
 
 async function _callGroq(frame, prompt, key, fast = false) {
   const model = fast
-    ? 'meta-llama/llama-4-scout-17b-16e-instruct'   // más rápido para AUTO
-    : 'meta-llama/llama-4-maverick-17b-128e-instruct';
+    ? 'llama-3.2-11b-vision-preview'   // rápido, soporta imágenes en Groq
+    : 'llama-3.2-11b-vision-preview';  // mismo modelo, estable y disponible
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -1296,7 +1296,7 @@ async function _analyzeCont() {
     const gemKey  = window.AREX_CONFIG?.geminiKey;
     let reply;
     if (groqKey) {
-      // fast=true → scout + 220 tokens: respuesta en ~2s vs ~6s con maverick
+      // fast=true → llama-3.2-11b-vision: respuesta rápida para modo AUTO
       try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch { /**/ }
     }
     if (!reply && gemKey) {
@@ -1829,7 +1829,7 @@ async function _freeVoiceQuery(question) {
     if (!reply && groqKey) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-        body: JSON.stringify({ model: 'meta-llama/llama-4-scout-17b-16e-instruct', max_tokens: 120,
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 120,
           messages: [{ role: 'user', content: prompt }] })
       });
       const d = await res.json();
@@ -2554,7 +2554,7 @@ async function _wkSendChat() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.groqKey}` },
       body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        model: 'llama-3.3-70b-versatile',
         max_tokens: 180,
         messages: [
           { role: 'system', content: 'Eres AREX, asistente personal de Alexiz. Estás en modo Visión AR. Responde en 1-2 oraciones naturales y directas. Sin bullets, sin markdown.' },

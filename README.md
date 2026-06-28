@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v161)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v162)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v161 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v162 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -88,8 +88,8 @@ arex/
 | Tecnología | Uso |
 |---|---|
 | HTML / CSS / JS puro | Interfaz completa sin frameworks ni bundlers |
-| Groq API — llama-4-maverick | Motor de IA principal: chat, razonamiento, briefing |
-| Groq Vision — llama-4-maverick / scout | Análisis de imágenes (Visión y chat; fallback si no hay Gemini) |
+| Groq API — llama-3.3-70b-versatile | Motor de IA principal: chat, razonamiento, briefing |
+| Groq Vision — llama-3.2-11b-vision-preview | Análisis de imágenes en el modo Visión (fallback si no hay Gemini) |
 | Gemini 2.5 / 2.0 Flash (Google AI) | Análisis de imágenes con visión mejorada (preferido sobre Groq vision) |
 | MediaPipe Hands (CDN) | Detección de manos en tiempo real para gestos, swipe y pinch |
 | DeviceOrientation / Pointer | Parallax holográfico con profundidad (giroscopio en móvil) |
