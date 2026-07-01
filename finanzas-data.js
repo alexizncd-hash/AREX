@@ -9,7 +9,7 @@ const FINANZAS_DATA = {
   config: {
     ingresoMensual: 11250,
     ingresoDiario: 375,
-    fechaActualizacion: '2026-05-12',
+    fechaActualizacion: '2026-07-01',
     usuario: 'Alexiz Noe Cejudo Duarte'
   },
 
@@ -20,13 +20,13 @@ const FINANZAS_DATA = {
       nombre: 'Plata Card',
       banco: 'Banco Plata',
       numero: '****9892',
-      saldo: 1939,
+      saldo: 2564.19,
       limite: 2000,
-      disponible: 61,
+      disponible: 0,
       tasaAnual: 119.90,
       cat: 228.07,
-      interesMensual: 201,
-      pagoMinimo: 300,
+      interesMensual: 256,
+      pagoMinimo: 650,
       pagoMSI: 0,
       fechaCorte: 8,
       fechaLimite: 8,
@@ -49,13 +49,13 @@ const FINANZAS_DATA = {
       id: 'bbva-crea',
       nombre: 'BBVA Crea',
       banco: 'BBVA',
-      numero: '****xxxx',
-      saldo: 1404,
+      numero: '****5537',
+      saldo: 2502.97,
       limite: 4600,
-      disponible: 3196,
-      tasaAnual: 68.33,
-      cat: 113.3,
-      interesMensual: 90,
+      disponible: 2097.03,
+      tasaAnual: 67.53,
+      cat: 112.4,
+      interesMensual: 141,
       pagoMinimo: 363,
       pagoMSI: 0,
       fechaCorte: 1,
@@ -77,14 +77,14 @@ const FINANZAS_DATA = {
       nombre: 'BBVA Oro/Gold',
       banco: 'BBVA',
       numero: '****1672',
-      saldo: 33984,
+      saldo: 48552.24,
       limite: 49000,
-      disponible: 15015,
-      tasaAnual: 48.76,
-      cat: 54.1,
-      interesMensual: 1188,
-      pagoMinimo: 1970,
-      pagoMSI: 1723,
+      disponible: 447.76,
+      tasaAnual: 48.55,
+      cat: 59.2,
+      interesMensual: 1963,
+      pagoMinimo: 3552,
+      pagoMSI: 2106.66,
       fechaCorte: 1,
       fechaLimite: 21,
       mesLimiteSiguiente: false,
@@ -93,10 +93,12 @@ const FINANZAS_DATA = {
       clabe: '012975673291910459',
       notas: [
         'Tarjeta compartida con padre',
-        'MacStore termina jun-2026 (2 pagos)',
-        'Al terminar MSI libera $1,723/mes',
+        'MacStore: pago 15/18 — 3 pagos restantes a $1,723, termina ago-2026',
+        'Admin tarjeta titular: $1,151 en 3 MSI a $383.66 — pago 1/3',
+        'Al terminar MSI libera ~$2,107/mes',
         'NUNCA disposiciones efectivo',
-        'Coordinar uso con padre'
+        'Coordinar uso con padre',
+        'ALERTA: 1 pago vencido — comisión cobranza $490+IVA pendiente'
       ],
       comprasMSI: [
         {
@@ -104,13 +106,23 @@ const FINANZAS_DATA = {
           montoOriginal: 30999,
           plazo: 18,
           pagoMensual: 1723,
+          pagosRestantes: 3,
+          fechaTermino: '2026-08-21'
+        },
+        {
+          comercio: 'Admin tarjeta titular',
+          montoOriginal: 1151,
+          plazo: 3,
+          pagoMensual: 383.66,
           pagosRestantes: 2,
-          fechaTermino: '2026-06-21'
+          fechaTermino: '2026-08-21'
         }
       ],
       alertas: {
         compartida: true,
-        disposicionesEfectivoProhibidas: true
+        disposicionesEfectivoProhibidas: true,
+        pagoVencido: true,
+        comisionCobranza: 490
       }
     }
   ],
@@ -120,7 +132,7 @@ const FINANZAS_DATA = {
     {
       id: 'tarjetas',
       categoria: 'Tarjetas (mínimos)',
-      monto: 4356,
+      monto: 6672,
       tipo: 'deuda',
       esencial: true,
       color: '#ef4444',
@@ -292,9 +304,9 @@ const FINANZAS_DATA = {
       accion: 'Activar apartados BBVA',
       pasos: [
         'App BBVA → Apartados',
-        'Plata Card: $300+',
+        'Plata Card: $650',
         'BBVA Crea: $363',
-        'BBVA Oro: $3,693',
+        'BBVA Oro: $5,659 (mín + MSI)',
         'Gasolina: $300/semana',
         'Escuela: $2,500'
       ],
