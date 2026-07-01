@@ -969,3 +969,265 @@ main#module-chat.module-panel.active {
   .resultados-grid     { grid-template-columns: 1fr; }
   .finanzas-subnav     { padding: 0.6rem 1rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CALCULADORA INTEGRADA
+   ═══════════════════════════════════════════════════════════ */
+
+.calc-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 1.2rem;
+}
+.calc-tabs::-webkit-scrollbar { display: none; }
+
+.calc-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  background: rgba(0, 198, 255, 0.04);
+  border: 1px solid rgba(0, 198, 255, 0.12);
+  color: #4a7a96;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.calc-tab:hover  { border-color: rgba(0,198,255,0.35); color: #00c6ff; }
+.calc-tab.active {
+  background: rgba(0, 198, 255, 0.1);
+  border-color: rgba(0, 198, 255, 0.45);
+  color: #00c6ff;
+}
+
+.calc-panel         { display: none; }
+.calc-panel.active  { display: block; }
+
+/* ── Pantalla calculadora básica ── */
+.calc-display {
+  background: rgba(0, 8, 18, 0.7);
+  border: 1px solid rgba(0, 198, 255, 0.1);
+  border-radius: 6px;
+  padding: 14px 16px 10px;
+  text-align: right;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.calc-expr {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #4a7a96;
+  letter-spacing: 1px;
+  min-height: 16px;
+  word-break: break-all;
+}
+.calc-num {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  color: #e0f4ff;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  word-break: break-all;
+}
+
+/* ── Grid de botones ── */
+.calc-btns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cb {
+  height: 62px;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 600;
+  background: rgba(10, 24, 40, 0.95);
+  border: 1px solid rgba(0, 198, 255, 0.09);
+  color: #c8e8f8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.08s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.cb:hover  { background: rgba(0, 198, 255, 0.07); }
+.cb:active { transform: scale(0.93); }
+
+.cb-fn {
+  background: rgba(0, 198, 255, 0.07);
+  color: #00c6ff;
+  font-size: 14px;
+}
+.cb-fn:hover { background: rgba(0, 198, 255, 0.14); }
+
+.cb-op {
+  background: rgba(255, 106, 0, 0.1);
+  color: #ff8c38;
+  border-color: rgba(255, 106, 0, 0.18);
+  font-size: 20px;
+}
+.cb-op:hover      { background: rgba(255, 106, 0, 0.18); }
+.cb-op.active-op  {
+  background: rgba(255, 106, 0, 0.28);
+  border-color: rgba(255, 106, 0, 0.5);
+  color: #ff6a00;
+}
+
+.cb-eq {
+  background: rgba(255, 106, 0, 0.2);
+  color: #ff6a00;
+  border-color: rgba(255, 106, 0, 0.35);
+  font-size: 22px;
+}
+.cb-eq:hover { background: rgba(255, 106, 0, 0.32); }
+
+.cb-wide {
+  grid-column: span 2;
+  text-align: left;
+  padding-left: 22px;
+}
+
+/* ── Formularios financieros ── */
+.calc-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: #00c6ff;
+  margin: 0 0 1rem;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 198, 255, 0.14);
+}
+.calc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cf-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.cf-row-full {
+  grid-template-columns: 1fr 1fr;
+}
+.cf-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #4a7a96;
+}
+.cf-input {
+  width: 88px;
+  padding: 7px 8px;
+  background: rgba(0, 8, 18, 0.8);
+  border: 1px solid rgba(0, 198, 255, 0.18);
+  border-radius: 4px;
+  color: #e0f4ff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+.cf-input::-webkit-outer-spin-button,
+.cf-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.cf-input:focus { outline: none; border-color: rgba(0, 198, 255, 0.55); }
+.cf-select { width: 100%; text-align: left; grid-column: span 2; }
+.cf-unit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #4a7a96;
+  letter-spacing: 0.5px;
+  min-width: 36px;
+}
+.cf-divider {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #4a7a96;
+  border-top: 1px solid rgba(0, 198, 255, 0.07);
+  padding-top: 8px;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.cf-btn {
+  width: 100%;
+  padding: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  background: rgba(0, 198, 255, 0.08);
+  border: 1px solid rgba(0, 198, 255, 0.28);
+  color: #00c6ff;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: all 0.15s;
+}
+.cf-btn:hover { background: rgba(0, 198, 255, 0.16); border-color: rgba(0, 198, 255, 0.55); }
+
+/* ── Resultados ── */
+.calc-results { display: flex; flex-direction: column; gap: 10px; }
+
+.cr-block {
+  background: rgba(0, 8, 18, 0.55);
+  border: 1px solid rgba(0, 198, 255, 0.09);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.cr-block.cr-highlight {
+  border-color: rgba(0, 198, 255, 0.28);
+  background: rgba(0, 198, 255, 0.03);
+}
+.cr-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  color: #4a7a96;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 198, 255, 0.07);
+}
+.cr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.cr-row span   { color: #4a7a96; }
+.cr-row strong { color: #c8e8f8; }
+.cr-row.cr-total {
+  margin-top: 5px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(0, 198, 255, 0.1);
+  font-size: 12px;
+}
+.cr-pos  { color: #34ffc3 !important; }
+.cr-neg  { color: #ff4444 !important; }
+.cr-big  { font-size: 17px !important; }
+.cr-error {
+  color: #ff6644;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 14px 0;
+}
+
+@media (max-width: 600px) {
+  .calc-num   { font-size: 28px; }
+  .cb         { height: 56px; font-size: 17px; }
+  .cb-eq      { font-size: 20px; }
+  .cf-input   { width: 72px; font-size: 12px; }
+}

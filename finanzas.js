@@ -317,7 +317,328 @@ const FinanzasModule = {
   // ── CALCULADORA ────────────────────────────────────────
 
   renderCalculadora() {
-    this.actualizarCalculadora();
+    this._initTarjetasCalc();
+    this._initFrijolCalc();
+  },
+
+  calcTab(tab) {
+    document.querySelectorAll('.calc-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.cpanel === tab));
+    document.querySelectorAll('.calc-panel').forEach(p =>
+      p.classList.toggle('active', p.id === `cpanel-${tab}`));
+    if (tab === 'simulador') this.actualizarCalculadora();
+    if (tab === 'frijol')    this._initFrijolCalc();
+    if (tab === 'tarjetas')  this._initTarjetasCalc();
+  },
+
+  // ── Calculadora básica ─────────────────────────────────
+  _cState: { prev: 0, op: '', curr: '0', justOp: false, justEq: false },
+
+  _cNum(n) {
+    const s = this._cState;
+    if (s.justEq) {
+      s.curr = n; s.justEq = false; s.prev = 0; s.op = '';
+      const el = document.getElementById('calc-expr');
+      if (el) el.textContent = '';
+    } else if (s.justOp) {
+      s.curr = n; s.justOp = false;
+    } else {
+      s.curr = (s.curr === '0') ? n : (s.curr.length < 12 ? s.curr + n : s.curr);
+    }
+    const el = document.getElementById('calc-num');
+    if (el) el.textContent = s.curr;
+  },
+
+  _cDot() {
+    const s = this._cState;
+    if (s.justOp || s.justEq) { s.curr = '0.'; s.justOp = false; s.justEq = false; }
+    else if (!s.curr.includes('.')) s.curr += '.';
+    const el = document.getElementById('calc-num');
+    if (el) el.textContent = s.curr;
+  },
+
+  _cAC() {
+    this._cState = { prev: 0, op: '', curr: '0', justOp: false, justEq: false };
+    document.querySelectorAll('.cb-op').forEach(b => b.classList.remove('active-op'));
+    const ne = document.getElementById('calc-num');
+    const ee = document.getElementById('calc-expr');
+    if (ne) ne.textContent = '0';
+    if (ee) ee.textContent = '';
+  },
+
+  _cSign() {
+    const s = this._cState;
+    const v = parseFloat(s.curr);
+    if (isNaN(v) || v === 0) return;
+    s.curr = String(-v);
+    const el = document.getElementById('calc-num');
+    if (el) el.textContent = s.curr;
+  },
+
+  _cPct() {
+    const s = this._cState;
+    const v = parseFloat(s.curr);
+    if (isNaN(v)) return;
+    let res;
+    if (s.op && s.prev !== 0) res = _cRound(s.prev * v / 100);
+    else                       res = _cRound(v / 100);
+    s.curr = String(res);
+    const el = document.getElementById('calc-num');
+    if (el) el.textContent = s.curr;
+  },
+
+  _cOp(op) {
+    const s = this._cState;
+    if (s.op && !s.justOp) {
+      const a = s.prev, b = parseFloat(s.curr);
+      let res = _cCalc(a, s.op, b);
+      if (res !== null) s.curr = String(res);
+    }
+    s.prev = parseFloat(s.curr);
+    s.op = op;
+    s.justOp = true;
+    s.justEq = false;
+    document.querySelectorAll('.cb-op').forEach(b =>
+      b.classList.toggle('active-op', b.dataset.op === op));
+    const ee = document.getElementById('calc-expr');
+    const ne = document.getElementById('calc-num');
+    if (ee) ee.textContent = `${s.prev} ${op}`;
+    if (ne) ne.textContent = s.curr;
+  },
+
+  _cEq() {
+    const s = this._cState;
+    if (!s.op) return;
+    const a = s.prev, b = parseFloat(s.curr);
+    const res = _cCalc(a, s.op, b);
+    const ee = document.getElementById('calc-expr');
+    const ne = document.getElementById('calc-num');
+    document.querySelectorAll('.cb-op').forEach(b => b.classList.remove('active-op'));
+    if (res === null) {
+      s.curr = 'Error'; s.op = ''; s.justEq = true;
+      if (ee) ee.textContent = '';
+    } else {
+      if (ee) ee.textContent = `${a} ${s.op} ${b} =`;
+      s.curr = String(res); s.op = ''; s.prev = 0; s.justEq = true;
+    }
+    s.justOp = false;
+    if (ne) ne.textContent = s.curr;
+  },
+
+  // ── Frijol ────────────────────────────────────────────
+  _initFrijolCalc() {
+    try {
+      const cfg = typeof getNegocioData === 'function' ? getNegocioData().config : {};
+      const set = (id, v) => { const el = document.getElementById(id); if (el && !el.value) el.value = v; };
+      set('cf-precio',      cfg.precioVenta  ?? 12);
+      set('cf-costo-kg',    cfg.costoKg      ?? 30);
+      set('cf-rendimiento', cfg.rendimiento  ?? 1.8);
+      set('cf-empaque',     cfg.costoEmpaque ?? 0.5);
+    } catch {}
+  },
+
+  _calcFrijol() {
+    const g  = id => parseFloat(document.getElementById(id)?.value) || 0;
+    const precio   = g('cf-precio');
+    const costoKg  = g('cf-costo-kg');
+    const rendim   = g('cf-rendimiento') || 1.8;
+    const empaque  = g('cf-empaque');
+    const mlV      = g('cf-ml');
+    const kgC      = g('cf-kg');
+    const out      = document.getElementById('cr-frijol');
+    if (!out) return;
+    if (!precio || !costoKg) {
+      out.innerHTML = '<p class="cr-error">Ingresa precio de venta y costo por kg</p>'; return;
+    }
+    const R  = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
+    const $  = v => formatearMoneda(v);
+    const costoML      = R(costoKg / rendim + empaque);
+    const gananciaPML  = R(precio - costoML);
+    const margenPML    = precio > 0 ? R(gananciaPML / precio * 100, 1) : 0;
+    const ingresoPkg   = R(rendim * precio);
+    const costoPkg     = R(costoKg + rendim * empaque);
+    const gananciaPkg  = R(ingresoPkg - costoPkg);
+    const margenPkg    = ingresoPkg > 0 ? R(gananciaPkg / ingresoPkg * 100, 1) : 0;
+
+    let html = `
+      <div class="cr-block">
+        <div class="cr-title">Por kg comprado · Datos del negocio</div>
+        <div class="cr-row"><span>ML que produce 1 kg</span><strong>${rendim} ML</strong></div>
+        <div class="cr-row"><span>Ingreso bruto / kg</span><strong>${$(ingresoPkg)}</strong></div>
+        <div class="cr-row"><span>Costo total / kg</span><strong class="cr-neg">${$(costoPkg)}</strong></div>
+        <div class="cr-row cr-total"><span>Ganancia / kg</span><strong class="${gananciaPkg >= 0 ? 'cr-pos' : 'cr-neg'}">${$(gananciaPkg)}</strong></div>
+        <div class="cr-row"><span>Margen</span><strong>${margenPkg}%</strong></div>
+      </div>
+      <div class="cr-block">
+        <div class="cr-title">Por medio litro vendido</div>
+        <div class="cr-row"><span>Precio venta</span><strong>${$(precio)}</strong></div>
+        <div class="cr-row"><span>Costo frijol</span><strong class="cr-neg">${$(R(costoKg / rendim))}</strong></div>
+        <div class="cr-row"><span>Costo empaque</span><strong class="cr-neg">${$(empaque)}</strong></div>
+        <div class="cr-row cr-total"><span>Ganancia / ML</span><strong class="${gananciaPML >= 0 ? 'cr-pos' : 'cr-neg'}">${$(gananciaPML)}</strong></div>
+        <div class="cr-row"><span>Margen</span><strong>${margenPML}%</strong></div>
+      </div>`;
+
+    if (mlV > 0) {
+      const kgNec   = R(mlV / rendim);
+      const inv     = R(kgNec * costoKg + mlV * empaque);
+      const ingreso = R(mlV * precio);
+      const gan     = R(ingreso - inv);
+      const eq      = precio > 0 ? R(inv / precio, 1) : 0;
+      html += `
+      <div class="cr-block cr-highlight">
+        <div class="cr-title">Escenario: vender ${mlV} ML</div>
+        <div class="cr-row"><span>Kg necesarios</span><strong>${kgNec} kg</strong></div>
+        <div class="cr-row"><span>Inversión</span><strong class="cr-neg">${$(inv)}</strong></div>
+        <div class="cr-row"><span>Ingreso total</span><strong>${$(ingreso)}</strong></div>
+        <div class="cr-row cr-total"><span>GANANCIA NETA</span><strong class="${gan >= 0 ? 'cr-pos cr-big' : 'cr-neg cr-big'}">${$(gan)}</strong></div>
+        <div class="cr-row"><span>Punto de equilibrio</span><strong>${eq} ML</strong></div>
+      </div>`;
+    }
+
+    if (kgC > 0) {
+      const mlTotal = R(kgC * rendim);
+      const inv     = R(kgC * costoKg + mlTotal * empaque);
+      const ingMax  = R(mlTotal * precio);
+      const ganMax  = R(ingMax - inv);
+      const eq      = precio > 0 ? R(inv / precio, 1) : 0;
+      html += `
+      <div class="cr-block cr-highlight">
+        <div class="cr-title">Escenario: comprar ${kgC} kg</div>
+        <div class="cr-row"><span>ML que obtienes</span><strong>${mlTotal} ML</strong></div>
+        <div class="cr-row"><span>Inversión total</span><strong class="cr-neg">${$(inv)}</strong></div>
+        <div class="cr-row"><span>Ingreso máximo</span><strong>${$(ingMax)}</strong></div>
+        <div class="cr-row cr-total"><span>GANANCIA MÁX</span><strong class="${ganMax >= 0 ? 'cr-pos cr-big' : 'cr-neg cr-big'}">${$(ganMax)}</strong></div>
+        <div class="cr-row"><span>Punto de equilibrio</span><strong>${eq} ML</strong></div>
+      </div>`;
+    }
+
+    out.innerHTML = html;
+  },
+
+  // ── Tarjetas ──────────────────────────────────────────
+  _initTarjetasCalc() {
+    try {
+      const sel = document.getElementById('ct-tarjeta');
+      if (!sel || sel.options.length > 1) return;
+      getFinanzasData().tarjetas.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id;
+        o.textContent = `${t.nombre}  —  ${t.tasaAnual}% anual`;
+        o.dataset.tasa   = t.tasaAnual;
+        o.dataset.saldo  = t.saldo;
+        o.dataset.minimo = t.pagoMinimo;
+        sel.appendChild(o);
+      });
+    } catch {}
+  },
+
+  _onCardChange() {
+    const sel = document.getElementById('ct-tarjeta');
+    const opt = sel?.selectedOptions?.[0];
+    if (!opt?.dataset?.tasa) return;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('ct-tasa',   opt.dataset.tasa);
+    set('ct-monto',  opt.dataset.saldo);
+    set('ct-minimo', opt.dataset.minimo);
+  },
+
+  _calcTarjeta() {
+    const g      = id => parseFloat(document.getElementById(id)?.value) || 0;
+    const tasa   = g('ct-tasa');
+    const monto  = g('ct-monto');
+    const minimo = g('ct-minimo');
+    const meses  = parseInt(document.getElementById('ct-meses')?.value) || 0;
+    const out    = document.getElementById('cr-tarjeta');
+    if (!out) return;
+    if (!monto) { out.innerHTML = '<p class="cr-error">Ingresa el monto o saldo</p>'; return; }
+    const R    = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
+    const $    = v => formatearMoneda(v);
+    const rMes = tasa / 100 / 12;
+
+    let html = '';
+
+    if (meses > 0) {
+      const saldoFinal  = R(monto * Math.pow(1 + rMes, meses));
+      const interesComp = R(saldoFinal - monto);
+      html += `
+      <div class="cr-block">
+        <div class="cr-title">${$(monto)} · ${tasa}% anual · ${meses} meses sin pagar</div>
+        <div class="cr-row"><span>Tasa mensual</span><strong>${R(rMes * 100, 4)}%</strong></div>
+        <div class="cr-row"><span>Interés acumulado</span><strong class="cr-neg">${$(interesComp)}</strong></div>
+        <div class="cr-row cr-total"><span>Saldo final</span><strong class="cr-neg cr-big">${$(saldoFinal)}</strong></div>
+      </div>`;
+    }
+
+    if (minimo > 0) {
+      let saldo = monto, totalPagado = 0, totalInt = 0, mes = 0;
+      while (saldo > 0.01 && mes < 360) {
+        const intMes = R(saldo * rMes);
+        saldo  = R(saldo + intMes);
+        const pago = Math.min(minimo, saldo);
+        saldo  = R(saldo - pago);
+        totalPagado = R(totalPagado + pago);
+        totalInt    = R(totalInt + intMes);
+        mes++;
+      }
+      const fechaLib = new Date();
+      fechaLib.setMonth(fechaLib.getMonth() + mes);
+      html += `
+      <div class="cr-block cr-highlight">
+        <div class="cr-title">Pagando ${$(minimo)}/mes hasta liquidar</div>
+        <div class="cr-row"><span>Meses para liquidar</span><strong>${mes} meses</strong></div>
+        <div class="cr-row"><span>Total intereses pagados</span><strong class="cr-neg">${$(totalInt)}</strong></div>
+        <div class="cr-row cr-total"><span>Total pagado</span><strong>${$(totalPagado)}</strong></div>
+        <div class="cr-row"><span>Fecha libre</span><strong>${fechaLib.toLocaleDateString('es-MX',{month:'short',year:'numeric'})}</strong></div>
+      </div>`;
+    }
+
+    if (!html) html = '<p class="cr-error">Ingresa meses o pago mínimo para simular</p>';
+    out.innerHTML = html;
+  },
+
+  // ── Préstamo ──────────────────────────────────────────
+  _calcPrestamo() {
+    const g       = id => parseFloat(document.getElementById(id)?.value) || 0;
+    const capital = g('cp-capital');
+    const tasa    = g('cp-tasa');
+    const plazo   = parseInt(document.getElementById('cp-plazo')?.value) || 0;
+    const out     = document.getElementById('cr-prestamo');
+    if (!out) return;
+    if (!capital || !plazo) { out.innerHTML = '<p class="cr-error">Ingresa capital y plazo</p>'; return; }
+    const R  = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
+    const $  = v => formatearMoneda(v);
+    let cuota, totalPagar, totalInt;
+    if (tasa === 0) {
+      cuota      = R(capital / plazo);
+      totalPagar = capital;
+      totalInt   = 0;
+    } else {
+      const rMes   = tasa / 100 / 12;
+      const factor = Math.pow(1 + rMes, plazo);
+      cuota      = R(capital * (rMes * factor) / (factor - 1));
+      totalPagar = R(cuota * plazo);
+      totalInt   = R(totalPagar - capital);
+    }
+    const fechaFin = new Date();
+    fechaFin.setMonth(fechaFin.getMonth() + plazo);
+    let html = `
+      <div class="cr-block">
+        <div class="cr-title">${tasa === 0 ? 'MSI — Sin intereses' : `Préstamo ${tasa}% anual · ${plazo} meses`}</div>
+        <div class="cr-row cr-total"><span>Cuota mensual</span><strong class="cr-big">${$(cuota)}</strong></div>
+        <div class="cr-row"><span>Total a pagar</span><strong>${$(totalPagar)}</strong></div>
+        <div class="cr-row"><span>Total intereses</span><strong class="${totalInt > 0 ? 'cr-neg' : ''}">${$(totalInt)}</strong></div>
+        <div class="cr-row"><span>Termina</span><strong>${fechaFin.toLocaleDateString('es-MX',{month:'long',year:'numeric'})}</strong></div>
+      </div>`;
+    if (tasa > 0) {
+      const cuotaMSI = R(capital / plazo);
+      html += `
+      <div class="cr-block cr-highlight">
+        <div class="cr-title">vs MSI (0% interés)</div>
+        <div class="cr-row"><span>Cuota MSI equivalente</span><strong>${$(cuotaMSI)}</strong></div>
+        <div class="cr-row cr-total"><span>Ahorro si fuera MSI</span><strong class="cr-pos">${$(totalInt)}</strong></div>
+      </div>`;
+    }
+    out.innerHTML = html;
   },
 
   actualizarCalculadora() {
@@ -636,6 +957,18 @@ Dame: 1) Diagnóstico honesto de mi situación 2) Plan de acción para los próx
     }
   }
 };
+
+// Helpers precisión para la calculadora básica
+function _cRound(v) { return Math.round(v * 1e10) / 1e10; }
+function _cCalc(a, op, b) {
+  let r;
+  if (op === '+') r = a + b;
+  else if (op === '−') r = a - b;
+  else if (op === '×') r = a * b;
+  else if (op === '÷') { if (b === 0) return null; r = a / b; }
+  else return null;
+  return _cRound(r);
+}
 
 window.FinanzasModule = FinanzasModule; // registrar antes de init() por si init lanza error
 if (document.readyState === 'loading') {
