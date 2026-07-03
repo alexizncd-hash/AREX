@@ -4165,6 +4165,39 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   document.getElementById('cfg2-ok').style.display = 'block';
 });
 
+// ── Transferencia de config a otro dispositivo (Quest, tablet, etc.) ──
+// El código es la config completa en base64 — contiene API keys en claro:
+// compartirlo solo por canales privados, nunca publicarlo.
+function copiarCodigoConfig() {
+  const cfg = window.AREX_CONFIG;
+  if (!cfg?.groqKey) { alert('No hay configuración cargada para copiar.'); return; }
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  const done = () => alert('Código copiado. Pégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys — no lo compartas ni lo publiques.');
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(() => prompt('Copia este código manualmente:', code));
+  } else {
+    prompt('Copia este código manualmente:', code);
+  }
+}
+window.copiarCodigoConfig = copiarCodigoConfig;
+
+function importarCodigoConfig() {
+  const raw = document.getElementById('cfg-import-code')?.value.trim();
+  if (!raw) { alert('Pega primero el código de transferencia.'); return; }
+  let cfg;
+  try { cfg = JSON.parse(decodeURIComponent(escape(atob(raw)))); }
+  catch { alert('Código inválido. Verifica que lo copiaste completo desde /config → COPIAR CÓDIGO DE ACCESO.'); return; }
+  if (!cfg?.groqKey) { alert('El código no contiene una Groq API Key válida.'); return; }
+  localStorage.setItem('arex_config', JSON.stringify(cfg));
+  window.AREX_CONFIG = cfg;
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('boot-screen').style.display = 'flex';
+  initFirebase();
+  syncConfigToFirestore();
+  boot();
+}
+window.importarCodigoConfig = importarCodigoConfig;
+
 // Búsqueda global — Ctrl+K / Esc
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); abrirBusqueda(); }
@@ -4968,8 +5001,21 @@ window.refreshWeather = refreshWeather;
 // (app.js es módulo ES6 — sus funciones no son globales por defecto)
 window.renderDashboard = renderDashboard;
 window.getTareas       = getTareas;
+window.getNotas        = getNotas;
 window._arexHistory    = () => history;
 window.loadSession     = loadSession;
+
+// Escape HTML compartido — todos los módulos lazy (negocio, hábitos, reparto,
+// agenda, control, evidencias, proyectos, search) lo usan al renderizar listas
+window._h = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+// getMetas vive en metas.js (lazy) — fallback global para que proyectos.js
+// cuente metas aunque el módulo Metas no se haya abierto aún.
+// Cuando metas.js carga, su declaración global lo reemplaza sin conflicto.
+if (typeof window.getMetas !== 'function') {
+  window.getMetas = () => _safeJSON(localStorage.getItem('arex_metas'), []);
+}
 
 // Actualiza countdowns de recordatorios cada 30 segundos (short-circuit si no hay elementos)
 setInterval(() => {

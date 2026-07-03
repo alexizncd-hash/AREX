@@ -58,7 +58,8 @@ function _renderModulo(modulo) {
   if (modulo === 'agenda')    { _lazy('agenda.js',    () => renderAgendaModule?.());   return; }
   if (modulo === 'habitos')   { _lazy('habitos.js',   () => renderHabitosModule?.());  return; }
   if (modulo === 'evidencias'){ _lazy('evidencias.js',() => renderEvidenciasWidget?.()); return; }
-  if (modulo === 'reparto')   { _lazy('reparto.js',   () => renderRepartoModule?.());  return; }
+  // reparto.js depende de getNegocioData/escAttr (definidos en negocio.js) → cargar negocio primero
+  if (modulo === 'reparto')   { _lazyLoad('negocio.js').then(() => _lazy('reparto.js', () => renderRepartoModule?.())); return; }
 }
 
 // ── AREXNav (status bar sync) ────────────────────────────
