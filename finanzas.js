@@ -77,7 +77,24 @@ const FinanzasModule = {
   renderDashboard() {
     this.renderTarjetas();
     this.renderGraficaGastos();
+    this.renderCalle();
     if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
+  },
+
+  // Producto consignado en tiendas (negocio) — dinero en la calle por realizar
+  renderCalle() {
+    const el = document.getElementById('metric-calle');
+    if (!el || typeof window.arexCalleResumen !== 'function') return;
+    try {
+      const c   = window.arexCalleResumen();
+      const sub = document.getElementById('metric-calle-sub');
+      el.textContent = formatearMoneda(c.valor);
+      if (sub) {
+        sub.textContent = c.totalML > 0
+          ? `${c.totalML} ML en ${c.tiendas} tienda${c.tiendas === 1 ? '' : 's'}${c.resurtir.length ? ` · ⚠ resurtir: ${c.resurtir.join(', ')}` : ''}`
+          : 'Sin consignación activa';
+      }
+    } catch(e) { typeof logBitacora === 'function' && logBitacora('alerta', 'Error renderCalle: ' + e.message); }
   },
 
   renderTarjetas() {

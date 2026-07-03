@@ -266,11 +266,20 @@ function _addRepSucursalesMarkers() {
     el.className = 'rep-suc-marker';
     el.innerHTML = `<div class="rep-suc-pin"></div><div class="rep-suc-tag">${_h(suc.nombre)}</div>`;
 
+    const st     = typeof negTiendaStats === 'function' ? negTiendaStats(suc.id, d) : null;
+    const consig = st?.modo === 'consignacion';
     const popup = new maplibregl.Popup({ offset: 28, className: 'rep-popup' }).setHTML(`
       <div class="rep-popup-body">
         <div class="rep-popup-name">${_h(suc.nombre)}</div>
         <div class="rep-popup-coords">${Number(suc.lat).toFixed(5)}, ${Number(suc.lng).toFixed(5)}</div>
-        <div class="rep-popup-state">${suc.activa !== false ? '● ACTIVA' : '○ PAUSADA'}</div>
+        <div class="rep-popup-state">${suc.activa !== false ? '● ACTIVA' : '○ PAUSADA'} · ${consig ? 'CONSIGNACIÓN' : 'CONTADO'}</div>
+        ${st ? `
+        <div class="rep-popup-stats">
+          ${consig ? `<div class="rep-pop-row"><span>EN TIENDA</span><b class="${st.resurtir ? 'rp-warn' : 'rp-ok'}">${st.existencia} ML${st.resurtir ? ' ⚠ RESURTIR' : ''}</b></div>` : ''}
+          <div class="rep-pop-row"><span>VENDIDO MES</span><b>$${st.vendidoMes.toLocaleString('es-MX')} · ${st.mlMes} ML</b></div>
+          ${consig && st.ultimaEntrega ? `<div class="rep-pop-row"><span>ÚLT. ENTREGA</span><b>${new Date(st.ultimaEntrega.fecha).toLocaleDateString('es-MX', { day:'numeric', month:'short' })} · ${st.ultimaEntrega.cantidadML} ML</b></div>` : ''}
+        </div>` : ''}
+        ${consig ? `<button class="rep-popup-btn" onclick="repEntregaSuc('${suc.id}')">📦 + REGISTRAR ENTREGA</button>` : ''}
         <button class="rep-popup-btn" onclick="repAddWpSuc(${suc.lat},${suc.lng},'${escAttr(suc.nombre)}')">+ AGREGAR A RUTA</button>
       </div>`);
 
@@ -346,11 +355,13 @@ function _renderSucList() {
 
   el.innerHTML = suc.map((s, i) => {
     const ok = !!(s.lat && s.lng);
+    const st = (s.modo === 'consignacion' && typeof negTiendaStats === 'function') ? negTiendaStats(s.id) : null;
     return `<div class="rep-suc-row">
-      <div class="rep-suc-dot ${ok ? 'ok' : 'warn'}"></div>
+      <div class="rep-suc-dot ${st?.resurtir ? 'warn' : ok ? 'ok' : 'warn'}"></div>
       <div class="rep-suc-info">
         <div class="rep-suc-name">${_h(s.nombre)}</div>
         <div class="rep-suc-coord">${ok ? `${Number(s.lat).toFixed(4)}, ${Number(s.lng).toFixed(4)}` : 'Sin coordenadas'}</div>
+        ${st ? `<div class="rep-suc-coord" style="${st.resurtir ? 'color:#ff9900' : 'color:#34ffc3'}">${st.existencia} ML en tienda${st.resurtir ? ' · ⚠ RESURTIR' : ''}</div>` : ''}
       </div>
       <div class="rep-suc-acts">${ok
         ? `<button class="rep-icon-btn" title="Ver en mapa" onclick="repFlyToSuc(${s.lat},${s.lng})">◎</button>
@@ -426,6 +437,16 @@ window.repClearRoute = function () {
 
 window.repFlyToSuc = function (lat, lng) {
   if (_repMap) _repMap.flyTo({ center: [lng, lat], zoom: 16, pitch: 55, duration: 1200 });
+};
+
+// Registrar entrega de consignación directo desde el popup del mapa
+window.repEntregaSuc = function (sucId) {
+  const c = prompt('¿Cuántos medio litros dejaste en esta tienda?');
+  if (!c) return;
+  if (typeof negRegistrarEntrega === 'function' && negRegistrarEntrega(sucId, c)) {
+    _addRepSucursalesMarkers();   // refresca popups con la nueva existencia
+    _renderSucList();
+  }
 };
 
 window.repSaveRoute = function () {

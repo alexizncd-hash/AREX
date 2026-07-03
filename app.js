@@ -314,7 +314,11 @@ function buildModuleContext() {
       const vM  = neg.ventas.filter(v => v.fecha >= im).reduce((a,v)=>a+v.total,0);
       const gM  = neg.gastos.filter(g => g.fecha >= im).reduce((a,g)=>a+g.monto,0);
       const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
-      parts.push(`NEGOCIO (${neg.config.variedad}): ventas_mes=${fmtM(vM)}, gastos_mes=${fmtM(gM)}, ganancia_mes=${fmtM(vM-gM)}, stock=${neg.inventario.stockKg}kg`);
+      let negTxt = `NEGOCIO (${neg.config.variedad}): ventas_mes=${fmtM(vM)}, gastos_mes=${fmtM(gM)}, ganancia_mes=${fmtM(vM-gM)}, stock=${neg.inventario.stockKg}kg`;
+      const calle = arexCalleResumen();
+      if (calle.totalML > 0) negTxt += `, consignado_en_tiendas=${calle.totalML}ML(${fmtM(calle.valor)})`;
+      if (calle.resurtir.length) negTxt += `, tiendas_por_resurtir=[${calle.resurtir.join(', ')}]`;
+      parts.push(negTxt);
     }
   } catch(e) { console.warn('AREX ctx negocio:', e); }
   try {
@@ -5009,6 +5013,34 @@ window.loadSession     = loadSession;
 // agenda, control, evidencias, proyectos, search) lo usan al renderizar listas
 window._h = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
   .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+// Consignación: producto en la calle (lee localStorage directo — funciona
+// aunque negocio.js no esté cargado; lo usan finanzas.js y buildModuleContext)
+function arexCalleResumen() {
+  const empty = { totalML: 0, tiendas: 0, valor: 0, resurtir: [] };
+  try {
+    const neg = _safeJSON(localStorage.getItem('arex_negocio'), null);
+    if (!neg) return empty;
+    const precio = neg.config?.precioVenta || 0;
+    const sucs = (neg.sucursales || []).filter(s => s.modo === 'consignacion' && s.activa !== false);
+    let totalML = 0; const resurtir = [];
+    sucs.forEach(s => {
+      const ent = (neg.entregas || []).filter(e => e.sucursalId === s.id);
+      let exist = 0;
+      if (ent.length) {
+        const primera   = Math.min(...ent.map(e => e.fecha));
+        const entregado = ent.reduce((a, e) => a + e.cantidadML, 0);
+        const vendido   = (neg.ventas || []).filter(v => v.sucursalId === s.id && v.fecha >= primera)
+                                            .reduce((a, v) => a + v.cantidad, 0);
+        exist = Math.max(0, entregado - vendido);
+      }
+      totalML += exist;
+      if (exist < (s.minML ?? 10)) resurtir.push(s.nombre);
+    });
+    return { totalML, tiendas: sucs.length, valor: totalML * precio, resurtir };
+  } catch { return empty; }
+}
+window.arexCalleResumen = arexCalleResumen;
 
 // getMetas vive en metas.js (lazy) — fallback global para que proyectos.js
 // cuente metas aunque el módulo Metas no se haya abierto aún.

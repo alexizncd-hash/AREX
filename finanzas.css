@@ -1231,3 +1231,14 @@ main#module-chat.module-panel.active {
   .cb-eq      { font-size: 20px; }
   .cf-input   { width: 72px; font-size: 12px; }
 }
+
+/* ── Producto en la calle (consignación negocio) ── */
+.metric-card.calle { border-left: 2px solid #34ffc3; }
+.metric-card.calle::before { background: linear-gradient(90deg, transparent, #34ffc3, transparent); }
+.metric-sub {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted, #4a7a96);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}

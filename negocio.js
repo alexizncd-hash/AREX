@@ -20,7 +20,8 @@ function getNegocioData() {
     inventario: { stockKg: 0, historial: [] },
     sucursales: [],
     ventas:     [],
-    gastos:     []
+    gastos:     [],
+    entregas:   []   // consignación: producto dejado en cada tienda
   };
   try {
     const raw = localStorage.getItem(NEGOCIO_KEY);
@@ -31,7 +32,8 @@ function getNegocioData() {
       inventario: { ...defaults.inventario, ...saved.inventario },
       sucursales: saved.sucursales || [],
       ventas:     saved.ventas     || [],
-      gastos:     saved.gastos     || []
+      gastos:     saved.gastos     || [],
+      entregas:   saved.entregas   || []
     };
   } catch { return defaults; }
 }
@@ -39,6 +41,72 @@ function getNegocioData() {
 function saveNegocioData(data) {
   localStorage.setItem(NEGOCIO_KEY, JSON.stringify(data));
   if (typeof arexSyncData === 'function') arexSyncData(NEGOCIO_KEY);
+}
+
+// ── Consignación: estado por tienda ─────────────────
+// existencia = ML entregados − ML vendidos desde la primera entrega
+function negTiendaStats(sucId, data) {
+  const d   = data || getNegocioData();
+  const suc = d.sucursales.find(s => s.id === sucId);
+  const ent = (d.entregas || []).filter(e => e.sucursalId === sucId);
+  const im  = inicioMes();
+  const vMes = d.ventas.filter(v => v.sucursalId === sucId && v.fecha >= im);
+  const stats = {
+    modo:       suc?.modo === 'consignacion' ? 'consignacion' : 'contado',
+    vendidoMes: vMes.reduce((a, v) => a + v.total, 0),
+    mlMes:      vMes.reduce((a, v) => a + v.cantidad, 0),
+    existencia: 0,
+    ultimaEntrega: null,
+    resurtir:   false,
+  };
+  if (ent.length) {
+    const primera   = Math.min(...ent.map(e => e.fecha));
+    const entregado = ent.reduce((a, e) => a + e.cantidadML, 0);
+    const vendido   = d.ventas.filter(v => v.sucursalId === sucId && v.fecha >= primera)
+                              .reduce((a, v) => a + v.cantidad, 0);
+    stats.existencia    = Math.max(0, entregado - vendido);
+    stats.ultimaEntrega = ent.reduce((m, e) => e.fecha > m.fecha ? e : m, ent[0]);
+    stats.resurtir      = stats.modo === 'consignacion' && stats.existencia < (suc?.minML ?? 10);
+  } else {
+    stats.resurtir = stats.modo === 'consignacion';
+  }
+  return stats;
+}
+
+function negRegistrarEntrega(sucId, cantidadML, fechaTs) {
+  const data = getNegocioData();
+  const suc  = data.sucursales.find(s => s.id === sucId);
+  if (!suc) { alert('Sucursal no encontrada'); return false; }
+  const cant = parseInt(cantidadML);
+  if (!cant || cant < 1) { alert('Ingresa una cantidad válida de ML'); return false; }
+  const fecha = fechaTs || Date.now();
+  data.entregas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidadML: cant });
+  // El producto sale del inventario central: ahora está en la tienda
+  const kg = cant / data.config.rendimiento;
+  data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kg);
+  data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg, nota: `Entrega ${cant} ML → ${suc.nombre}` });
+  saveNegocioData(data);
+  logBitacora?.('negocio', `Entrega: ${cant} ML → ${suc.nombre}`);
+  return true;
+}
+
+function negEliminarEntrega(id) {
+  if (!confirm('¿Eliminar esta entrega? El producto regresa a tu inventario central.')) return;
+  const data = getNegocioData();
+  const e = data.entregas.find(x => x.id === id);
+  if (!e) return;
+  data.entregas = data.entregas.filter(x => x.id !== id);
+  const kg = e.cantidadML / data.config.rendimiento;
+  data.inventario.stockKg += kg;
+  data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(), tipo: 'entrada', kg, nota: `Entrega eliminada (${e.cantidadML} ML devueltos)` });
+  saveNegocioData(data);
+  renderNegSucursales();
+}
+
+// Registrar entrega desde la tarjeta de sucursal (lee el input de la card)
+function negEntregaUI(sucId) {
+  const inp = document.getElementById(`neg-ent-${sucId}`);
+  if (negRegistrarEntrega(sucId, inp?.value)) renderNegSucursales();
 }
 
 // ── Formatters ──────────────────────────────────────
@@ -340,10 +408,14 @@ function negRegistrarVenta() {
 
   data.ventas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidad, precioUnitario: precio, total });
 
-  // Descontar inventario automáticamente
-  const kgUsados = cantidad / data.config.rendimiento;
-  data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kgUsados);
-  data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
+  // Consignación: el stock salió del inventario central al registrar la ENTREGA,
+  // la venta solo descuenta existencia de tienda (calculada). Contado: flujo normal.
+  const sucVenta = data.sucursales.find(s => s.id === sucId);
+  if (sucVenta?.modo !== 'consignacion') {
+    const kgUsados = cantidad / data.config.rendimiento;
+    data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kgUsados);
+    data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
+  }
 
   saveNegocioData(data);
   renderNegVentas();
@@ -512,6 +584,10 @@ function renderNegSucursales() {
       <div class="neg-form-title">NUEVO PUNTO DE VENTA</div>
       <input type="text" id="neg-s-nombre"   class="neg-input" placeholder="Nombre del abarrote / tienda" style="width:100%"/>
       <input type="text" id="neg-s-contacto" class="neg-input" placeholder="Contacto (opcional)" style="width:100%;margin-top:0.5rem"/>
+      <select id="neg-s-modo" class="neg-select" style="width:100%;margin-top:0.5rem">
+        <option value="contado">Contado — me pagan al entregar</option>
+        <option value="consignacion">Consignación — dejo producto y cobro después</option>
+      </select>
       <button class="neg-btn-primary" onclick="negAgregarSucursal()">AGREGAR</button>
     </div>
 
@@ -520,21 +596,35 @@ function renderNegSucursales() {
       ? '<div class="neg-empty">Sin puntos de venta registrados.<br>Agrega el primer abarrote donde vendes.</div>'
       : `<div class="neg-list">
           ${data.sucursales.map(s => {
-            const vm  = data.ventas.filter(v => v.sucursalId === s.id && v.fecha >= im);
-            const tot = vm.reduce((a, v) => a + v.total, 0);
-            const ml  = vm.reduce((a, v) => a + v.cantidad, 0);
+            const st  = negTiendaStats(s.id, data);
+            const consig = s.modo === 'consignacion';
+            const ent3 = consig ? (data.entregas || []).filter(e => e.sucursalId === s.id).slice(-3).reverse() : [];
             return `<div class="neg-list-item ${!s.activa ? 'neg-inactive' : ''}" data-suc-id="${s.id}">
               <div class="neg-li-top">
                 <span class="neg-li-name">${_h(s.nombre)}</span>
+                <span class="neg-badge" style="${consig ? 'color:#34ffc3;border-color:rgba(52,255,195,0.35)' : ''}">${consig ? 'CONSIG' : 'CONTADO'}</span>
                 <span class="neg-badge ${s.activa ? '' : 'neg-badge-off'}">${s.activa ? 'ACTIVA' : 'PAUSADA'}</span>
               </div>
               <div class="neg-li-bot">
-                <span>${ml} ML · ${$MXN(tot)} este mes</span>
+                <span>${st.mlMes} ML · ${$MXN(st.vendidoMes)} este mes</span>
                 ${s.contacto ? `<span>${_h(s.contacto)}</span>` : ''}
                 <button class="neg-edit" onclick="negEditarSucursal('${s.id}')">editar</button>
                 <button class="neg-del"  onclick="negToggleSucursal('${s.id}')" style="color:var(--text-muted)">${s.activa ? 'pausar' : 'activar'}</button>
                 <button class="neg-del"  onclick="negEliminarSucursal('${s.id}')">✕</button>
               </div>
+              ${consig ? `
+              <div class="neg-consig">
+                <div class="neg-consig-row">
+                  <span>EN TIENDA: <b class="${st.resurtir ? 'neg-loss' : 'neg-profit'}">${st.existencia} ML</b>${st.resurtir ? ' <span class="neg-loss">⚠ RESURTIR</span>' : ''}</span>
+                  <span>${st.ultimaEntrega ? `Últ. entrega: ${$DATE(st.ultimaEntrega.fecha)} (${st.ultimaEntrega.cantidadML} ML)` : 'Sin entregas aún'}</span>
+                </div>
+                <div class="neg-form-row" style="margin-top:4px">
+                  <input type="number" id="neg-ent-${s.id}" class="neg-input" placeholder="ML a dejar" min="1" step="1"/>
+                  <button class="neg-btn-primary" style="flex:0 0 auto;padding:8px 14px" onclick="negEntregaUI('${s.id}')">+ ENTREGA</button>
+                </div>
+                ${ent3.length ? `<div class="neg-consig-hist">${ent3.map(e =>
+                  `<span class="neg-consig-chip">${$DATE(e.fecha)} · ${e.cantidadML} ML <button class="neg-del" onclick="negEliminarEntrega('${e.id}')">✕</button></span>`).join('')}</div>` : ''}
+              </div>` : ''}
             </div>`;
           }).join('')}
         </div>`}
@@ -546,7 +636,8 @@ function negAgregarSucursal() {
   if (!nombre) { alert('Ingresa el nombre'); return; }
   const data    = getNegocioData();
   const contacto = document.getElementById('neg-s-contacto').value.trim();
-  data.sucursales.push({ id: String(Date.now()), nombre, contacto, activa: true });
+  const modo     = document.getElementById('neg-s-modo')?.value === 'consignacion' ? 'consignacion' : 'contado';
+  data.sucursales.push({ id: String(Date.now()), nombre, contacto, activa: true, modo });
   saveNegocioData(data);
   renderNegSucursales();
 }
@@ -576,6 +667,13 @@ function negEditarSucursal(id) {
   el.innerHTML = `
     <input id="neg-se-nom-${id}"  class="neg-input" value="${escAttr(s.nombre)}"          placeholder="Nombre" style="margin-bottom:0.4rem"/>
     <input id="neg-se-con-${id}"  class="neg-input" value="${escAttr(s.contacto || '')}"  placeholder="Contacto (opcional)" style="margin-bottom:0.4rem"/>
+    <div class="neg-form-row" style="margin-bottom:0.4rem">
+      <select id="neg-se-modo-${id}" class="neg-select">
+        <option value="contado"      ${s.modo !== 'consignacion' ? 'selected' : ''}>Contado</option>
+        <option value="consignacion" ${s.modo === 'consignacion' ? 'selected' : ''}>Consignación</option>
+      </select>
+      <input type="number" id="neg-se-minml-${id}" class="neg-input" value="${s.minML ?? 10}" min="0" step="1" placeholder="Mín. ML antes de alerta" title="Alerta RESURTIR cuando la existencia baje de este valor"/>
+    </div>
     <div class="neg-form-row">
       <button class="neg-btn-primary" onclick="negGuardarEditSucursal('${id}')">GUARDAR</button>
       <button class="neg-btn-primary neg-btn-cancel" onclick="renderNegSucursales()">CANCELAR</button>
@@ -590,6 +688,9 @@ function negGuardarEditSucursal(id) {
   if (s) {
     s.nombre   = nombre;
     s.contacto = document.getElementById(`neg-se-con-${id}`)?.value.trim() || '';
+    s.modo     = document.getElementById(`neg-se-modo-${id}`)?.value === 'consignacion' ? 'consignacion' : 'contado';
+    const minML = parseInt(document.getElementById(`neg-se-minml-${id}`)?.value);
+    if (!isNaN(minML) && minML >= 0) s.minML = minML;
     saveNegocioData(data);
   }
   renderNegSucursales();
@@ -806,6 +907,10 @@ window.negEditarGasto         = negEditarGasto;
 window.negGuardarEditGasto    = negGuardarEditGasto;
 window.negGuardarConfig       = negGuardarConfig;
 window.negExportarMes         = negExportarMes;
+window.negTiendaStats         = negTiendaStats;
+window.negRegistrarEntrega    = negRegistrarEntrega;
+window.negEliminarEntrega     = negEliminarEntrega;
+window.negEntregaUI           = negEntregaUI;
 window.renderNegVentas        = renderNegVentas;
 window.renderNegSucursales    = renderNegSucursales;
 window.renderNegGastos        = renderNegGastos;

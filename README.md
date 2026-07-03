@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v166)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v167)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v166 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v167 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -72,12 +72,12 @@ arex/
 | **FINANZAS** | $ | Tarjetas de crédito, saldos, gráficas de gastos, calculadora de deuda, recordatorios de pago |
 | **TAREAS** | ✓ | Gestión de tareas con prioridad, fecha límite y ordenamiento automático por urgencia |
 | **NOTAS** | ✎ | Notas por categoría (General, Estudio, Ideas, Trabajo, Personal) con búsqueda y sync Firebase |
-| **NEGOCIO** | 🫘 | Gestión del negocio de frijol mayocoba: inventario, ventas por medio litro, sucursales, reparto, gastos, meta mensual, gráfica 7 días |
+| **NEGOCIO** | 🫘 | Gestión del negocio de frijol mayocoba: inventario, ventas por medio litro, sucursales (contado/consignación), entregas por tienda con existencia y alerta de resurtido, gastos, meta mensual, gráfica 7 días |
 | **GASTOS** | 💸 | Gastos personales diarios por categoría con presupuesto mensual y comparativa visual |
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
 | **CTRL** | ⊡ | Mission Control: telemetría del sistema, bitácora de eventos, panel de agentes multi-IA, exportar/importar datos |
-| **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, marcadores de sucursales, rutas guardadas |
+| **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, mini-dashboard por tienda en el popup (existencia, vendido del mes, última entrega, registrar entrega), rutas guardadas |
 | **AGENDA** | 📅 | Calendario semanal/mensual que agrega automáticamente tareas con fecha, recordatorios y metas con deadline |
 | **HÁBITOS** | ◎ | Hábitos diarios con streak counter, mini-calendario de los últimos 7 días y categorías personalizables |
 
@@ -101,7 +101,7 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v166 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v167 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |
