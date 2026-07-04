@@ -116,11 +116,6 @@ function _updateVisionHudData() {
     const saldo  = fd.saldoCuenta ?? fd.ingresoMensual ?? null;
     const finEl  = document.getElementById('vis-dr-fin');
     if (finEl) finEl.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
-    // Corner widgets
-    const cwTasks = document.getElementById('vis-cw-tasks');
-    if (cwTasks) cwTasks.innerHTML = `<span>${pend.length} pend.${venc ? ` · <span style="color:#ff6655">${venc} venc.</span>` : ''}</span>`;
-    const cwFin = document.getElementById('vis-cw-fin');
-    if (cwFin) cwFin.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
   } catch {}
 }
 
@@ -140,12 +135,18 @@ function _openRadialEl(rm) {
   rm.setAttribute('aria-hidden', 'false');
   _jarvisSound('action');
   document.getElementById('vis-radial-btn')?.classList.add('on');
+  // El badge de estado queda justo bajo el centro del radial → ocultarlo
+  // mientras el menú está abierto (si no, los textos se encimaban)
+  const st = document.getElementById('vis-status');
+  if (st) st.style.opacity = '0';
 }
 function _closeRadialEl(rm) {
   if (!rm) return;
   rm.classList.remove('vr-open');
   rm.setAttribute('aria-hidden', 'true');
   document.getElementById('vis-radial-btn')?.classList.remove('on');
+  const st = document.getElementById('vis-status');
+  if (st) st.style.opacity = '';
 }
 
 /* ─── Personas conocidas ──────────────────────────────── */
@@ -360,10 +361,13 @@ export async function openVision() {
   }
   _opening = false;
   _stream = stream;
+  window._arexVisionOpen = true;   // pausa animaciones de fondo (estrellas, matrix, orbe)
   _buildPanel();
   document.getElementById('btn-vision')?.classList.add('active');
   clearTimeout(_greetTimer);
   _greetTimer = setTimeout(() => { if (_panel) { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); } }, 600);
+  // El hint de uso se desvanece solo — no necesita estar permanente sobre los botones
+  setTimeout(() => _panel?.querySelector('.vp-swipe-hint')?.classList.add('vp-hint-fade'), 6000);
   _hudTimer = setInterval(_updateVisionHudData, 5000);
   _updateVisionHudData();
 }
@@ -407,6 +411,7 @@ export function closeVision() {
   }
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
+  window._arexVisionOpen = false;   // reanuda animaciones de fondo
   window.VisionOrb?.destroy();
   _panel?._cleanupResize?.();
   _panel?.remove(); _panel = null;
@@ -633,34 +638,24 @@ function _buildPanel() {
       </div>
     </div>
 
-    <!-- CORNER DATA WIDGETS -->
-    <div class="vp-corner-widget vp-cw-bl" id="vis-cw-bl">
-      <div class="vp-cw-label">TAREAS</div>
-      <div class="vp-cw-val" id="vis-cw-tasks">···</div>
-    </div>
-    <div class="vp-corner-widget vp-cw-br" id="vis-cw-br">
-      <div class="vp-cw-label">FINANZAS</div>
-      <div class="vp-cw-val" id="vis-cw-fin">···</div>
-    </div>
-
     <!-- RADIAL ACTION MENU -->
     <div class="vp-radial-menu" id="vis-radial" aria-hidden="true">
       <button class="vp-radial-close" onclick="window._closeRadial()">✕</button>
       <div class="vp-radial-ring">
-        <button class="vp-radial-btn" style="--i:0" onclick="captureAndAnalyze('describe');window._closeRadial()">
-          <span class="vp-rb-ico">👁</span><span class="vp-rb-lbl">VER</span>
-        </button>
-        <button class="vp-radial-btn" style="--i:1" onclick="captureAndAnalyze('product');window._closeRadial()">
+        <button class="vp-radial-btn" style="--i:0" onclick="captureAndAnalyze('product');window._closeRadial()">
           <span class="vp-rb-ico">🔍</span><span class="vp-rb-lbl">OBJETO</span>
         </button>
-        <button class="vp-radial-btn" style="--i:2" onclick="captureAndAnalyze('text');window._closeRadial()">
+        <button class="vp-radial-btn" style="--i:1" onclick="captureAndAnalyze('text');window._closeRadial()">
           <span class="vp-rb-ico">📄</span><span class="vp-rb-lbl">TEXTO</span>
         </button>
-        <button class="vp-radial-btn" style="--i:3" onclick="captureAndAnalyze('recibo');window._closeRadial()">
+        <button class="vp-radial-btn" style="--i:2" onclick="captureAndAnalyze('recibo');window._closeRadial()">
           <span class="vp-rb-ico">🧾</span><span class="vp-rb-lbl">RECIBO</span>
         </button>
-        <button class="vp-radial-btn" style="--i:4" onclick="captureAndAnalyze('scene');window._closeRadial()">
+        <button class="vp-radial-btn" style="--i:3" onclick="captureAndAnalyze('scene');window._closeRadial()">
           <span class="vp-rb-ico">🌐</span><span class="vp-rb-lbl">ESCENA</span>
+        </button>
+        <button class="vp-radial-btn" style="--i:4" onclick="window._visQR();window._closeRadial()">
+          <span class="vp-rb-ico">🔲</span><span class="vp-rb-lbl">QR</span>
         </button>
         <button class="vp-radial-btn" style="--i:5" onclick="window._toggleWorkspace();window._closeRadial()">
           <span class="vp-rb-ico">▦</span><span class="vp-rb-lbl">PANEL</span>
@@ -669,25 +664,10 @@ function _buildPanel() {
       <div class="vp-radial-center">AREX</div>
     </div>
 
-    <!-- BOTTOM ACTION BUTTONS -->
+    <!-- BOTTOM ACTION BUTTONS — solo 3: los demás modos viven en el menú radial -->
     <div class="vp-hud-bottom">
-      <button class="vp-action-btn" data-mode="describe" onclick="captureAndAnalyze('describe')">
+      <button class="vp-action-btn vp-btn-primary" data-mode="describe" onclick="captureAndAnalyze('describe')">
         <span class="vp-btn-ico">👁</span><span class="vp-btn-lbl">VER</span>
-      </button>
-      <button class="vp-action-btn" data-mode="product" onclick="captureAndAnalyze('product')">
-        <span class="vp-btn-ico">🔍</span><span class="vp-btn-lbl">OBJETO</span>
-      </button>
-      <button class="vp-action-btn" data-mode="text" onclick="captureAndAnalyze('text')">
-        <span class="vp-btn-ico">📄</span><span class="vp-btn-lbl">TEXTO</span>
-      </button>
-      <button class="vp-action-btn" data-mode="recibo" onclick="captureAndAnalyze('recibo')">
-        <span class="vp-btn-ico">🧾</span><span class="vp-btn-lbl">RECIBO</span>
-      </button>
-      <button class="vp-action-btn" data-mode="scene" onclick="captureAndAnalyze('scene')">
-        <span class="vp-btn-ico">🌐</span><span class="vp-btn-lbl">ESCENA</span>
-      </button>
-      <button class="vp-action-btn vp-qr-btn" id="vis-qr">
-        <span class="vp-btn-ico">🔲</span><span class="vp-btn-lbl">QR</span>
       </button>
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
         <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
@@ -714,7 +694,7 @@ function _buildPanel() {
 
   document.getElementById('vis-cont').addEventListener('click', _toggleContinuous);
   document.getElementById('vis-flip').addEventListener('click', _flipCamera);
-  document.getElementById('vis-qr').addEventListener('click', _detectQR);
+  window._visQR = _detectQR;   // QR ahora vive en el menú radial
   document.getElementById('vis-result-close').addEventListener('click', _hideResult);
   document.getElementById('vis-voice').addEventListener('click', _toggleVoice);
   document.getElementById('vis-personas').addEventListener('click', _openPersonasPanel);

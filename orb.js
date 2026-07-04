@@ -130,7 +130,7 @@
 
     function loop() {
       requestAnimationFrame(loop);
-      if (document.hidden || window._orbPaused || !el.offsetWidth) return;
+      if (document.hidden || window._orbPaused || window._arexVisionOpen || !el.offsetWidth) return;
       tick++;
 
       const cfg = CFG[state] || CFG.default;

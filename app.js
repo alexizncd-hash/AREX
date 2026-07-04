@@ -1971,7 +1971,7 @@ function initMatrixRain() {
       frag: FRAGS[Math.floor(Math.random() * FRAGS.length)]
     }));
     function tick() {
-      if (document.hidden) return;
+      if (document.hidden || window._arexVisionOpen) return;
       ctx2.fillStyle = 'rgba(0,0,0,0.04)';
       ctx2.fillRect(0, 0, W, H);
       drops.forEach((d, i) => {
@@ -5653,6 +5653,7 @@ window.renderExchangeWidget = renderExchangeWidget;
   function draw() {
     requestAnimationFrame(draw);
     if (document.hidden) return; // pause when tab not visible
+    if (window._arexVisionOpen) return; // pause behind camera view (GPU relief)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     t += 0.016;
     for (const s of stars) {

@@ -778,8 +778,6 @@ main {
   max-height:50vh;
   display:flex; flex-direction:column;
   padding-bottom:calc(8px + env(safe-area-inset-bottom));
-  backdrop-filter:blur(var(--blur-lg)) saturate(160%);
-  -webkit-backdrop-filter:blur(var(--blur-lg)) saturate(160%);
 }
 .vp-result.visible { transform:translateY(0); }
 
@@ -876,7 +874,6 @@ main {
   transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
   display:flex; flex-direction:column;
   padding-bottom:calc(80px + env(safe-area-inset-bottom));
-  backdrop-filter:blur(var(--blur-sm));
 }
 .vp-personas-panel.visible { transform:translateY(0); }
 
@@ -961,7 +958,7 @@ main {
 /* ─── Telemetry Panel (left HUD) ──────────────────────── */
 .vp-telemetry {
   position:absolute; top:70px; left:12px;
-  background:rgba(0,5,16,0.62); backdrop-filter:blur(var(--blur-sm));
+  background:rgba(0,5,16,0.90);
   border:1px solid rgba(34,211,238,0.18); border-radius:8px;
   padding:8px 10px; min-width:130px; z-index:10;
   pointer-events:none;
@@ -991,7 +988,7 @@ main {
 /* ─── Gesture Guide (right HUD) ───────────────────────── */
 .vp-gest-guide {
   position:absolute; top:70px; right:12px;
-  background:rgba(0,5,16,0.62); backdrop-filter:blur(var(--blur-sm));
+  background:rgba(0,5,16,0.90);
   border:1px solid rgba(34,211,238,0.18); border-radius:8px;
   padding:8px 10px; min-width:110px; z-index:10;
   pointer-events:none; opacity:0; transition:opacity 0.3s;
@@ -1007,7 +1004,7 @@ main {
 /* ─── Voice Command Bar ───────────────────────────────── */
 .vp-voice-bar {
   position:absolute; bottom:70px; left:50%; transform:translateX(-50%);
-  background:rgba(0,5,16,0.70); backdrop-filter:blur(var(--blur-sm));
+  background:rgba(0,5,16,0.92);
   border:1px solid rgba(34,211,238,0.22); border-radius:24px;
   padding:8px 18px; display:flex; align-items:center; gap:10px;
   font-size:9px; letter-spacing:1.5px; color:rgba(34,211,238,0.5);
@@ -1036,7 +1033,7 @@ main {
 /* ─── Module Navigation Grid ──────────────────────────── */
 .vp-module-grid {
   position:absolute; inset:0;
-  background:rgba(0,5,16,0.84); backdrop-filter:blur(var(--blur-md));
+  background:rgba(0,5,16,0.95);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   z-index:20; opacity:0; pointer-events:none; transition:opacity 0.25s;
 }
@@ -4524,7 +4521,6 @@ footer {
   background: rgba(0,5,16,0.55);
   border: 1px solid rgba(34,211,238,0.12);
   color: rgba(34,211,238,0.55);
-  backdrop-filter: blur(4px);
 }
 .vp-cw-label {
   font-size: 7px;
@@ -4578,7 +4574,6 @@ footer {
   align-items: center; justify-content: center;
   gap: 3px;
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
-  backdrop-filter: blur(8px);
   /* Positions set via nth-child below */
   left: -29px; top: -29px;
 }
@@ -4633,8 +4628,6 @@ footer {
   align-items: center;
   gap: 8px;
   background: rgba(0,4,12,0.82);
-  backdrop-filter: blur(var(--blur-md)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(160%);
   border: 1px solid rgba(34,211,238,0.35);
   border-radius: 32px;
   padding: 10px 14px;
@@ -5045,7 +5038,6 @@ textarea:focus {
   background: rgba(0,4,12,0.92);
   border: 1px solid rgba(34,211,238,0.30);
   border-radius: 12px;
-  backdrop-filter: blur(var(--blur-md));
   box-shadow: 0 -4px 30px rgba(34,211,238,0.12), 0 8px 40px rgba(0,0,0,0.6);
   transform: translateY(20px);
   opacity: 0;
@@ -5161,7 +5153,6 @@ textarea:focus {
   background: rgba(0,4,12,0.95);
   border: 1px solid rgba(34,211,238,0.28);
   border-radius: 10px;
-  backdrop-filter: blur(var(--blur-md));
   box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 20px rgba(34,211,238,0.08);
   transform: translateX(20px);
   opacity: 0;
@@ -5576,8 +5567,6 @@ header::after {
   top:0; right:0; bottom:0;
   width:54%;
   background: rgba(0,3,12,0.93);
-  backdrop-filter: blur(var(--blur-lg)) saturate(170%);
-  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(170%);
   border-left: 1px solid rgba(34,211,238,0.28);
   display:none;
   flex-direction:column;
@@ -5868,12 +5857,9 @@ header {
 .vp-telemetry, .vp-gest-guide, .vp-module-hud,
 .vp-result, .vp-gesture-config, .vp-personas-panel,
 .vp-voice-bar {
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
 }
 .vp-hud-top, .vp-hud-bottom {
-  background: rgba(0,4,14,0.52);
-  backdrop-filter: blur(var(--blur-md));
+  background: rgba(0,4,14,0.85);
 }
 #vis-workspace {
   background: rgba(0,4,14,0.68);
@@ -8751,3 +8737,18 @@ header {
   transform: translateY(0) !important;
   transition: none !important;
 }
+
+/* ── Visión v170: limpieza inferior ── */
+/* Hint se desvanece solo a los 6s */
+.vp-swipe-hint { transition: opacity 1.2s ease; }
+.vp-swipe-hint.vp-hint-fade { opacity: 0; pointer-events: none; }
+/* VER como acción principal — más grande y destacado */
+.vp-action-btn.vp-btn-primary {
+  flex: 1.6;
+  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(34, 211, 238, 0.10);
+}
+.vp-action-btn.vp-btn-primary .vp-btn-ico { font-size: 20px; }
+/* Con solo 3 botones, dales aire */
+.vp-hud-bottom { gap: 10px; padding-left: 14px; padding-right: 14px; }
+.vp-hud-bottom .vp-action-btn { flex: 1; }
