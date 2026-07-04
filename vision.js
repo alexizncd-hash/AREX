@@ -41,6 +41,8 @@ let _captureCanvas  = null;   // reused canvas for frame capture (avoids GC pres
 let _tapAnalyzing  = false;
 let _longPressTimer= null;
 let _askBarVisible = false;
+let _opening       = false;   // guard: getUserMedia en curso (evita doble apertura)
+let _greetTimer    = null;    // saludo "Visión activa" — se cancela al cerrar
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -341,20 +343,27 @@ async function _handleTapAnalyze(clientX, clientY) {
 /* ─── Public API ──────────────────────────────────────── */
 export async function openVision() {
   if (_panel) { _panel.style.display = 'flex'; _video?.play(); return; }
+  if (_opening) return;   // doble tap durante getUserMedia → evita doble stream/panel
   if (!navigator.mediaDevices?.getUserMedia) {
     _say('Cámara no disponible en este navegador.'); return;
   }
+  _opening = true;
+  let stream;
   try {
-    _stream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: _facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
     });
   } catch (e) {
+    _opening = false;
     _say(`No se pudo acceder a la cámara.\n\n${e.message}`); return;
   }
+  _opening = false;
+  _stream = stream;
   _buildPanel();
   document.getElementById('btn-vision')?.classList.add('active');
-  setTimeout(() => { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); }, 600);
+  clearTimeout(_greetTimer);
+  _greetTimer = setTimeout(() => { if (_panel) { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); } }, 600);
   _hudTimer = setInterval(_updateVisionHudData, 5000);
   _updateVisionHudData();
 }
@@ -375,13 +384,21 @@ export function closeVision() {
   window.speechSynthesis?.cancel();
   _stopIosKa();
   clearTimeout(_resultTimer);
+  clearTimeout(_greetTimer);
+  clearTimeout(_busyTimer);
+  clearTimeout(_cmdFeedbackT);
+  clearTimeout(_longPressTimer);
   clearInterval(_telTimer);
   _telTimer = null;
   clearInterval(_hudTimer);
   _hudTimer = null;
+  _busy     = false;
+  _busyCont = false;
+  _moduleGridVis = false;
   // Stop gesture engine
   if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
   // Stop voice commands
+  _voiceCmdOn = false;
   _stopVoiceCmd();
   // Restore JARVIS AR mode if we paused it when vision voice started
   if (_contWasPaused) {
@@ -795,7 +812,8 @@ function _buildPanel() {
       orbCv.height = sz * dpr;
       orbCv.style.width  = sz + 'px';
       orbCv.style.height = sz + 'px';
-      orbCv.getContext('2d').scale(dpr, dpr);
+      // NO pre-escalar el contexto: VisionOrb calcula centro/radio con
+      // canvas.width real; con scale(dpr) el orbe queda en la esquina y recortado
       window.VisionOrb.init(orbCv);
     } else {
       setTimeout(_initOrb, 400);
@@ -845,8 +863,9 @@ async function _analyze(mode, extra = '') {
   if (_busy) return;
   _busy = true;
 
-  // Safety: si _analyze se cuelga por cualquier razón, libera _busy a los 35s
-  // Evita que el botón quede permanentemente bloqueado hasta recargar la app
+  // Safety: si _analyze se cuelga por cualquier razón, libera _busy a los 30s.
+  // Debe ser MAYOR que el peor caso real (Groq 14s + fallback Gemini 14s = 28s);
+  // si fuera menor, liberaría _busy con el análisis aún corriendo → dobles análisis
   clearTimeout(_busyTimer);
   _busyTimer = setTimeout(() => {
     _busy = false;
@@ -854,7 +873,7 @@ async function _analyze(mode, extra = '') {
     _setAnalyzing(false, mode);
     _setStatus('LISTO');
     console.warn('AREX Vision: _busy forzado a false por timeout de seguridad');
-  }, 16000);
+  }, 30000);
 
   _setStatus('CAPTURANDO...');
   _setAnalyzing(true, mode);
@@ -1353,10 +1372,14 @@ async function _flipCamera() {
   _stream.getTracks().forEach(t => t.stop());
   _facingMode = _facingMode === 'environment' ? 'user' : 'environment';
   try {
-    _stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: _facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
     });
+    // Si el usuario cerró Visión mientras esperábamos, apagar el stream nuevo
+    // (si no, la cámara queda encendida sin nadie que la detenga)
+    if (!_panel) { stream.getTracks().forEach(t => t.stop()); return; }
+    _stream = stream;
     if (_video) {
       _video.srcObject = _stream;
       _video.play().catch(() => {});
@@ -1396,7 +1419,8 @@ function _setAnalyzing(on, mode) {
 
 /* ─── Voice synthesis + iOS keep-alive ───────────────── */
 function _visionSpeak(text) {
-  if (!_voiceOn || !window.speechSynthesis) return;
+  // No hablar si el panel ya se cerró (análisis que resolvió tarde)
+  if (!_panel || !_voiceOn || !window.speechSynthesis) return;
   window.VisionOrb?.setState('speaking');
 
   const clean = text
@@ -1566,11 +1590,17 @@ function _toggleGesture() {
     if (typeof initGestureEngine === 'function') {
       _startGE();
     } else {
-      const s = document.createElement('script');
-      s.src = './gesture.js';
-      s.onload = _startGE;
-      s.onerror = () => _say('**[Gestos]** Error cargando gesture.js');
-      document.body.appendChild(s);
+      const existing = document.querySelector('script[src="./gesture.js"]');
+      if (existing) {
+        // Ya se está cargando (toque rápido doble) — engancharse a esa carga
+        existing.addEventListener('load', _startGE, { once: true });
+      } else {
+        const s = document.createElement('script');
+        s.src = './gesture.js';
+        s.onload = _startGE;
+        s.onerror = () => { s.remove(); _say('**[Gestos]** Error cargando gesture.js'); };
+        document.body.appendChild(s);
+      }
     }
   } else {
     if (typeof stopGestureEngine === 'function') stopGestureEngine();
@@ -1643,6 +1673,15 @@ function _initVoiceCmd() {
     console.warn('VSR error:', e.error);
     const telVoice = document.getElementById('vis-tel-voice');
     if (telVoice) telVoice.textContent = 'ERR';
+    // Permiso de micrófono negado: apagar voz definitivamente — si no,
+    // onend reintenta start() cada 500ms en bucle infinito
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      _voiceCmdOn = false;
+      document.getElementById('vis-vcmd')?.classList.remove('on');
+      document.getElementById('vis-voice-bar')?.classList.remove('active');
+      _stopVoiceCmd();
+      _say('**[Voz]** Permiso de micrófono denegado. Actívalo en los ajustes del navegador.');
+    }
   };
 
   _vsr.onend = () => {
@@ -1838,11 +1877,11 @@ async function _freeVoiceQuery(question) {
     if (frame && groqKey) { try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch {} }
     if (!reply && frame && gemKey) { try { reply = await _withTimeout(_callGemini(frame, prompt, gemKey), 10000); } catch {} }
     if (!reply && groqKey) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const res = await _withTimeout(fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 120,
           messages: [{ role: 'user', content: prompt }] })
-      });
+      }), 10000);
       const d = await res.json();
       reply = d?.choices?.[0]?.message?.content;
     }

@@ -69,6 +69,11 @@ async function initGestureEngine(videoEl, canvasEl, callback) {
     console.warn('AREX Gesture Engine failed:', e.message);
     window._geLoadingStatus = 'error';
     _ge.active = false;
+    // Cerrar la instancia a medio inicializar — misma fuga que en stop
+    if (_ge.hands) {
+      try { _ge.hands.close(); } catch (_) {}
+      _ge.hands = null;
+    }
     return false;
   }
 }
@@ -77,6 +82,13 @@ function stopGestureEngine() {
   _ge.active = false; _ge.pending = false;
   if (_ge.af) { clearTimeout(_ge.af); _ge.af = null; }
   if (_ge.ctx && _ge.canvas) _ge.ctx.clearRect(0, 0, _ge.canvas.width, _ge.canvas.height);
+  // Liberar MediaPipe: sin esto cada toggle crea una instancia nueva (WASM +
+  // contexto WebGL) y las viejas quedan vivas → en móvil acaba tirando la pestaña
+  if (_ge.hands) {
+    try { _ge.hands.close(); } catch (_) {}
+    _ge.hands = null;
+  }
+  window._geLoadingStatus = 'idle';
 }
 
 /* ─── Frame Loop ──────────────────────────────────────── */
@@ -312,7 +324,9 @@ function _loadScript(src) {
     const s = document.createElement('script');
     s.src = src; s.crossOrigin = 'anonymous';
     s.onload = res;
-    s.onerror = () => rej(new Error(`CDN load failed: ${src}`));
+    // Quitar el tag muerto: si queda en el DOM, el próximo intento lo encuentra,
+    // resuelve al instante sin cargar nada y los gestos quedan rotos hasta recargar
+    s.onerror = () => { s.remove(); rej(new Error(`CDN load failed: ${src}`)); };
     document.head.appendChild(s);
   });
 }

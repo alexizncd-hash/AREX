@@ -260,10 +260,16 @@
     if (_state === 'scanning') {
       const sweep = (_t * 0.04) % (Math.PI * 2);
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
-      const sweepGrad = ctx.createConicalGradient
-        ? ctx.createConicalGradient(cx, cy, sweep)
-        : null;
-      if (!sweepGrad) {
+      if (typeof ctx.createConicGradient === 'function') {
+        // Barrido cónico estilo radar (API real: createConicGradient(ángulo, x, y))
+        const grad = ctx.createConicGradient(sweep, cx, cy);
+        grad.addColorStop(0,    _c(0.40));
+        grad.addColorStop(0.10, _c(0.06));
+        grad.addColorStop(0.18, _c(0));
+        grad.addColorStop(1,    _c(0));
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+      } else {
         // Fallback: line from center
         const lx = cx + Math.cos(sweep) * R, ly = cy + Math.sin(sweep) * R;
         const lg = ctx.createLinearGradient(cx, cy, lx, ly);
