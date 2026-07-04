@@ -3691,22 +3691,7 @@ async function handleCommand(cmd) {
     }
 
     case 'config': {
-      const fb = AREX_CONFIG.firebase || {};
-      document.getElementById('cfg2-groq').value    = AREX_CONFIG.groqKey   || '';
-      document.getElementById('cfg2-tavily').value  = AREX_CONFIG.tavilyKey || '';
-      document.getElementById('cfg2-gemini').value  = AREX_CONFIG.geminiKey || '';
-      document.getElementById('cfg2-owm').value     = AREX_CONFIG.owmKey    || '';
-      document.getElementById('cfg2-fb-key').value     = fb.apiKey            || '';
-      document.getElementById('cfg2-fb-domain').value  = fb.authDomain        || '';
-      document.getElementById('cfg2-fb-project').value = fb.projectId         || '';
-      document.getElementById('cfg2-fb-bucket').value  = fb.storageBucket     || '';
-      document.getElementById('cfg2-fb-sender').value  = fb.messagingSenderId || '';
-      document.getElementById('cfg2-fb-app').value     = fb.appId             || '';
-      document.getElementById('cfg2-fb-vapid').value   = fb.vapidKey          || '';
-      document.getElementById('cfg2-ok').style.display    = 'none';
-      document.getElementById('cfg2-error').style.display = 'none';
-      _updateNotifStatus();
-      modalConfig.classList.remove('hidden');
+      abrirConfig();
       break;
     }
 
@@ -4168,6 +4153,30 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
 });
+
+// ── Modal de ajustes (botón ⚙ del header, /config y Mission Control) ──
+function abrirConfig() {
+  const fb = AREX_CONFIG?.firebase || {};
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('cfg2-groq',       AREX_CONFIG?.groqKey);
+  set('cfg2-tavily',     AREX_CONFIG?.tavilyKey);
+  set('cfg2-gemini',     AREX_CONFIG?.geminiKey);
+  set('cfg2-owm',        AREX_CONFIG?.owmKey);
+  set('cfg2-fb-key',     fb.apiKey);
+  set('cfg2-fb-domain',  fb.authDomain);
+  set('cfg2-fb-project', fb.projectId);
+  set('cfg2-fb-bucket',  fb.storageBucket);
+  set('cfg2-fb-sender',  fb.messagingSenderId);
+  set('cfg2-fb-app',     fb.appId);
+  set('cfg2-fb-vapid',   fb.vapidKey);
+  const ok = document.getElementById('cfg2-ok');
+  const er = document.getElementById('cfg2-error');
+  if (ok) ok.style.display = 'none';
+  if (er) er.style.display = 'none';
+  if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
+  document.getElementById('modal-config')?.classList.remove('hidden');
+}
+window.abrirConfig = abrirConfig;
 
 // ── Transferencia de config a otro dispositivo (Quest, tablet, etc.) ──
 // El código es la config completa en base64 — contiene API keys en claro:
