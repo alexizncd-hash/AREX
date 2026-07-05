@@ -43,6 +43,8 @@ let _longPressTimer= null;
 let _askBarVisible = false;
 let _opening       = false;   // guard: getUserMedia en curso (evita doble apertura)
 let _greetTimer    = null;    // saludo "Visión activa" — se cancela al cerrar
+let _recovering    = false;   // guard: recuperación de stream en curso
+let _recoverTries  = 0;       // reintentos de recuperación (máx 3 seguidos)
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -361,8 +363,11 @@ export async function openVision() {
   }
   _opening = false;
   _stream = stream;
+  _recoverTries = 0;
   window._arexVisionOpen = true;   // pausa animaciones de fondo (estrellas, matrix, orbe)
   _buildPanel();
+  _watchStream(_stream);
+  document.addEventListener('visibilitychange', _onVisResume);
   document.getElementById('btn-vision')?.classList.add('active');
   clearTimeout(_greetTimer);
   _greetTimer = setTimeout(() => { if (_panel) { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); } }, 600);
@@ -409,6 +414,7 @@ export function closeVision() {
     _contWasPaused = false;
     setTimeout(() => { if (!window._arexContModeActive) window.toggleContinuousMode?.(); }, 700);
   }
+  document.removeEventListener('visibilitychange', _onVisResume);
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
   window._arexVisionOpen = false;   // reanuda animaciones de fondo
@@ -1347,6 +1353,56 @@ function _applyMirror() {
 }
 
 /* ─── Camera flip ─────────────────────────────────────── */
+/* ─── Auto-recuperación del stream ────────────────────
+   iOS/Android pueden matar el track de cámara cuando otra cosa toma el
+   hardware de audio/video (típico: el mic del modo AR continuo, una llamada,
+   cambiar de app). Sin esto, la cámara se queda muerta y parece "cerrarse". */
+// Al volver a la app (cambio de app, llamada, bloqueo de pantalla): si el
+// track murió mientras estábamos fuera, recuperarlo; si vive, reanudar video
+function _onVisResume() {
+  if (document.hidden || !_panel) return;
+  const tr = _stream?.getVideoTracks?.()[0];
+  if (!tr || tr.readyState === 'ended' || tr.muted) _recoverStream('visibility');
+  else _video?.play().catch(() => {});
+}
+
+function _watchStream(stream) {
+  const track = stream?.getVideoTracks?.()[0];
+  if (!track) return;
+  track.onended = () => _recoverStream('ended');
+  track.onmute  = () => {
+    // mute puede ser transitorio (el OS pausa un instante) — esperar antes de actuar
+    setTimeout(() => { if (track.muted && _panel) _recoverStream('muted'); }, 1600);
+  };
+}
+
+async function _recoverStream(reason) {
+  if (!_panel || _opening || _recovering) return;
+  if (_recoverTries >= 3) { _setStatus('CÁMARA SUSPENDIDA — TOCA ⟳'); return; }
+  _recovering = true;
+  _recoverTries++;
+  _setStatus('RECUPERANDO CÁMARA...');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: _facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+    if (!_panel) { stream.getTracks().forEach(t => t.stop()); return; }
+    _stream?.getTracks().forEach(t => t.stop());
+    _stream = stream;
+    if (_video) { _video.srcObject = _stream; _video.play().catch(() => {}); }
+    _watchStream(_stream);
+    _setStatus('LISTO');
+    logBitacora?.('vision', `Cámara recuperada (${reason})`);
+    setTimeout(() => { _recoverTries = 0; }, 15000);   // resetear contador si sobrevive
+  } catch (e) {
+    console.warn('AREX Vision: recuperación de cámara falló:', e.message);
+    _setStatus('CÁMARA SUSPENDIDA — TOCA ⟳');
+  } finally {
+    _recovering = false;
+  }
+}
+
 async function _flipCamera() {
   if (!_stream) return;
   _stream.getTracks().forEach(t => t.stop());
@@ -1360,6 +1416,7 @@ async function _flipCamera() {
     // (si no, la cámara queda encendida sin nadie que la detenga)
     if (!_panel) { stream.getTracks().forEach(t => t.stop()); return; }
     _stream = stream;
+    _watchStream(_stream);
     if (_video) {
       _video.srcObject = _stream;
       _video.play().catch(() => {});
