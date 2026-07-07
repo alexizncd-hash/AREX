@@ -50,6 +50,7 @@
       <div style="font-size:11px;color:#4a7a96;line-height:1.5;">En la app instalada escribe <code style="color:#22d3ee;background:rgba(34,211,238,0.1);padding:1px 5px;border-radius:3px;">/config</code> → toca <strong style="color:#fff;">COPIAR CÓDIGO COMPLETO</strong> (keys + datos) o <strong style="color:#fff;">CÓDIGO DE ACCESO</strong> (solo keys) → pégalo aquí:</div>
       <textarea id="cfg-import-code" rows="3" placeholder="Pega aquí el código de transferencia..." style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,212,255,0.25);border-radius:4px;color:#e8f4ff;font-family:monospace;font-size:11px;padding:8px;resize:none;width:100%;box-sizing:border-box;"></textarea>
       <button onclick="importarCodigoConfig()" style="background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.4);color:#22d3ee;font-family:monospace;font-size:10px;letter-spacing:2px;padding:8px;cursor:pointer;border-radius:3px;">IMPORTAR Y CONTINUAR</button>
+      <button onclick="forzarActualizacion()" style="background:transparent;border:1px solid rgba(255,153,0,0.35);color:#ff9900;font-family:monospace;font-size:9px;letter-spacing:2px;padding:6px;cursor:pointer;border-radius:3px;">🔄 ¿PROBLEMAS? FORZAR ACTUALIZACIÓN</button>
     </div>
 
     <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;text-align:center;">— O INGRESA TUS CLAVES MANUALMENTE —</div>
@@ -336,6 +337,9 @@
           <input id="import-file" type="file" accept=".json" style="display:none" onchange="importarBackup(this.files[0])"/>
         </div>
         <div id="import-status" style="font-size:10px;color:#4a7a96;min-height:1rem;letter-spacing:1px;"></div>
+        <div style="font-size:9px;color:#ff9900;letter-spacing:2px;margin-top:4px;">MANTENIMIENTO</div>
+        <button onclick="forzarActualizacion()" style="background:rgba(255,153,0,0.06);border:1px solid rgba(255,153,0,0.4);color:#ff9900;font-family:monospace;font-size:10px;letter-spacing:2px;padding:9px 12px;cursor:pointer;border-radius:3px;width:100%;">🔄 FORZAR ACTUALIZACIÓN COMPLETA</button>
+        <div style="font-size:9px;color:#4a7a96;letter-spacing:1px;line-height:1.5;">Borra la caché de la app y recarga la última versión. Tus datos NO se tocan. Úsalo si los módulos no cargan o ves una versión vieja.</div>
         <div style="font-size:9px;color:#4a7a96;letter-spacing:2px;margin-top:4px;">NOTIFICACIONES</div>
         <div style="display:flex;align-items:center;gap:0.75rem;">
           <button onclick="requestNotifPermission()" style="background:transparent;border:1px solid #4a7a96;color:#4a7a96;font-family:monospace;font-size:10px;letter-spacing:2px;padding:7px 12px;cursor:pointer;border-radius:2px;white-space:nowrap;">ACTIVAR</button>

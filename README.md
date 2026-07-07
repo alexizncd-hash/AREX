@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v172)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v173)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -49,7 +49,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v172 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v173 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -101,7 +101,7 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v172 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v173 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |

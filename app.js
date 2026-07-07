@@ -27,6 +27,49 @@ if (IS_QUEST) {
 }
 window._isQuest = IS_QUEST;
 
+/* ── Forzar actualización completa ──────────────────── */
+// Un SW viejo con archivos rotos en caché deja los módulos "vacíos" sin error
+// visible (típico: Quest con versión antigua). Esto desregistra el SW, borra
+// TODAS las cachés y recarga limpio. Los datos (localStorage) NO se tocan.
+async function forzarActualizacion() {
+  try {
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      for (const k of keys) await caches.delete(k);
+    }
+  } catch (e) { console.warn('forzarActualizacion:', e); }
+  location.reload();
+}
+window.forzarActualizacion = forzarActualizacion;
+
+/* ── Errores visibles ───────────────────────────────── */
+// En dispositivos sin consola (Quest, móvil) los errores de módulos son
+// invisibles: el panel simplemente queda vacío. Mostrar un toast breve
+// con el error real para poder diagnosticar. Throttle: máx 1 cada 5s.
+let _lastErrToast = 0;
+window.addEventListener('error', e => {
+  try {
+    if (typeof logBitacora === 'function') logBitacora('alerta', `JS: ${e.message} (${(e.filename || '').split('/').pop()}:${e.lineno})`);
+    const now = Date.now();
+    if (now - _lastErrToast < 5000) return;
+    _lastErrToast = now;
+    let t = document.getElementById('arex-err-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'arex-err-toast';
+      t.style.cssText = 'position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(40,0,0,0.92);border:1px solid #ff4444;color:#ffb0b0;font-family:monospace;font-size:11px;padding:8px 14px;border-radius:4px;max-width:90vw;pointer-events:none;';
+      document.body.appendChild(t);
+    }
+    t.textContent = `⚠ ${e.message}`.slice(0, 140);
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 6000);
+  } catch {}
+});
+
 function loadConfig() {
   if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
   const saved = localStorage.getItem('arex_config');
