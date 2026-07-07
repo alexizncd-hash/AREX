@@ -120,7 +120,9 @@ function setupSaveHandler() {
 }
 
 /* ── Atajos personalizados ──────────────────────────── */
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','run','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy'];
+// 'run' quitado (nunca tuvo implementación); 'proyecto' agregado (tiene case
+// en handleCommand pero un atajo del usuario llamado igual lo eclipsaba)
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy','proyecto'];
 
 function loadAtalos() {
   return _safeJSON(localStorage.getItem('arex_atajos'), []);
@@ -791,12 +793,18 @@ async function pullAllModuleData() {
       const local = localStorage.getItem(key);
       if (!local) {
         localStorage.setItem(key, JSON.stringify(toStore));
+        _setSyncTs(key, remoteTs);
         synced++;
       } else {
-        // Resolución de conflictos: gana el timestamp más reciente
+        // Resolución de conflictos: gana el timestamp más reciente.
+        // Los arrays no llevan _updatedAt — usar el registro de sync local
         try {
-          const localTs = JSON.parse(local)?._updatedAt || 0;
-          if (remoteTs > localTs) { localStorage.setItem(key, JSON.stringify(toStore)); synced++; }
+          const localTs = Math.max(_getSyncTs(key), JSON.parse(local)?._updatedAt || 0);
+          if (remoteTs > localTs) {
+            localStorage.setItem(key, JSON.stringify(toStore));
+            _setSyncTs(key, remoteTs);
+            synced++;
+          }
         } catch {
           localStorage.setItem(key, JSON.stringify(toStore)); synced++;
         }
@@ -814,6 +822,18 @@ async function pullAllModuleData() {
 }
 
 // arexSyncData con _updatedAt para resolución de conflictos cross-device
+// Registro local de timestamps de sync: los datos array (tareas, notas...)
+// no llevan _updatedAt embebido, así que sin esto la resolución de conflictos
+// del pull leía localTs=0 y el remoto SIEMPRE pisaba lo local
+function _getSyncTs(key) {
+  return _safeJSON(localStorage.getItem('arex_sync_meta'), {})[key] || 0;
+}
+function _setSyncTs(key, ts) {
+  const meta = _safeJSON(localStorage.getItem('arex_sync_meta'), {});
+  meta[key] = ts;
+  localStorage.setItem('arex_sync_meta', JSON.stringify(meta));
+}
+
 async function arexSyncData(lsKey) {
   if (!db || !window._arexUid) return;
   try {
@@ -821,6 +841,7 @@ async function arexSyncData(lsKey) {
     if (!raw) return;
     const payload = JSON.parse(raw);
     const ts = Date.now();
+    _setSyncTs(lsKey, ts);
     const toStore = Array.isArray(payload)
       ? { _arr: payload, _updatedAt: ts }
       : { ...payload, _updatedAt: ts };
@@ -1499,7 +1520,12 @@ function renderTareas() {
 
 // ── Módulo Notas ────────────────────────────────────────
 function getNotas() { return _safeJSON(localStorage.getItem('arex_notas'), []); }
-function saveNotas(arr) { localStorage.setItem('arex_notas', JSON.stringify(arr)); }
+function saveNotas(arr) {
+  localStorage.setItem('arex_notas', JSON.stringify(arr));
+  // Sin esto las notas bajaban de Firestore pero nunca subían: cualquier
+  // documento remoto viejo pisaba las ediciones locales en cada arranque
+  if (typeof arexSyncData === 'function') arexSyncData('arex_notas');
+}
 
 function addNota(titulo, contenido) {
   const arr = getNotas();
@@ -1733,9 +1759,10 @@ window.importarBackup  = importarBackup;
 function _renderSyncBadge() {
   const badge = document.getElementById('dash-sync-badge');
   if (!badge) return;
-  if (!window._arexLastSync) { badge.textContent = ''; return; }
+  if (!window._arexLastSync) { badge.textContent = ''; badge.style.display = 'none'; return; }
   const mins = Math.round((Date.now() - window._arexLastSync) / 60000);
   const ok   = mins < 5;
+  badge.style.display = '';   // el HTML lo crea con display:none — sin esto jamás se veía
   badge.innerHTML = `<span style="color:${ok?'#34ffc3':'#ff9900'}">● FB ${mins === 0 ? 'SYNC' : mins + 'min'}</span>`;
 }
 
@@ -1827,6 +1854,12 @@ function renderDashboard() {
         </div>
       </div>
 
+      <!-- Clima (renderWeatherWidget lo llena si hay OWM key) -->
+      <div id="dash-weather" class="dhud-panel"></div>
+
+      <!-- Recordatorios activos -->
+      <div id="dash-rec-body" class="dhud-panel"></div>
+
       <!-- System status -->
       <div class="inicio-sys-bar">
         <span class="isys-item"><i class="isys-dot ${groqOk?'ok':'off'}"></i>GROQ <b class="${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</b></span>
@@ -1838,6 +1871,10 @@ function renderDashboard() {
   `;
   // Fetch live exchange rate (async, non-blocking)
   if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
+  // Clima y recordatorios — sus contenedores acaban de crearse arriba;
+  // sin estas llamadas ambos widgets quedaban muertos (bug v175)
+  renderWeatherWidget();
+  _refreshRecWidget();
 }
 
 function renderSessionsList() {
@@ -2708,7 +2745,7 @@ function _buildModuloContext(mod) {
       const gastosFijos = fd.gastos.reduce((s, g) => s + (g.monto || 0), 0);
       const margen  = (fd.config.ingresoMensual || 0) - gastosFijos;
       const pagos   = typeof obtenerProximosPagos === 'function' ? obtenerProximosPagos(10) : [];
-      return `FINANZAS:\nIngreso mensual: $${(fd.config.ingresoMensual||0).toLocaleString('es-MX')}\nDeuda total: $${deuda.toLocaleString('es-MX')}\nGastos fijos/mes: $${gastosFijos.toLocaleString('es-MX')}\nMargen libre: $${margen.toLocaleString('es-MX')}\nTarjetas: ${fd.tarjetas.map(t=>`${t.nombre}: $${t.saldo} (límite ${t.fechaLimite})`).join(' | ')}\nPróximos pagos: ${pagos.slice(0,3).map(p=>`${p.nombre} $${p.monto} en ${p.diasRestantes}d`).join(', ')||'ninguno urgente'}`;
+      return `FINANZAS:\nIngreso mensual: $${(fd.config.ingresoMensual||0).toLocaleString('es-MX')}\nDeuda total: $${deuda.toLocaleString('es-MX')}\nGastos fijos/mes: $${gastosFijos.toLocaleString('es-MX')}\nMargen libre: $${margen.toLocaleString('es-MX')}\nTarjetas: ${fd.tarjetas.map(t=>`${t.nombre}: $${t.saldo} (límite ${t.fechaLimite})`).join(' | ')}\nPróximos pagos: ${pagos.slice(0,3).map(p=>`${p.tarjeta} $${p.pagoMinimo} en ${p.diasRestantes}d`).join(', ')||'ninguno urgente'}`;
     }
     if (mod === 'gastos' && typeof getGastosData === 'function') {
       const gd = getGastosData();
@@ -2808,8 +2845,8 @@ function _buildIdleMsg() {
   try {
     const pendientes = getTareas().filter(t => !t.done);
     const deHoy = pendientes.filter(t => t.fecha && t.fecha <= todayStr);
-    if (deHoy.length === 1) msgs.push(`Tienes una tarea para hoy: "${deHoy[0].texto}".`);
-    else if (deHoy.length > 1) msgs.push(`Tienes ${deHoy.length} tareas pendientes para hoy. La primera: "${deHoy[0].texto}".`);
+    if (deHoy.length === 1) msgs.push(`Tienes una tarea para hoy: "${deHoy[0].text || deHoy[0].texto || ''}".`);
+    else if (deHoy.length > 1) msgs.push(`Tienes ${deHoy.length} tareas pendientes para hoy. La primera: "${deHoy[0].text || deHoy[0].texto || ''}".`);
     else if (pendientes.length > 0) msgs.push(`Llevas ${pendientes.length} tarea${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''} sin completar.`);
   } catch(e) {}
 
@@ -2833,8 +2870,8 @@ function _buildIdleMsg() {
       if (pagos.length > 0) {
         const p = pagos[0];
         const label = p.diasRestantes === 0 ? 'hoy' : p.diasRestantes === 1 ? 'mañana' : `en ${p.diasRestantes} días`;
-        const monto = p.monto ? ` ($${p.monto.toLocaleString('es-MX')})` : '';
-        msgs.push(`Tienes un pago de ${p.nombre}${monto} ${label}.`);
+        const monto = p.pagoMinimo ? ` ($${p.pagoMinimo.toLocaleString('es-MX')})` : '';
+        msgs.push(`Tienes un pago de ${p.tarjeta}${monto} ${label}.`);
       }
     }
   } catch(e) {}
@@ -3647,7 +3684,7 @@ async function handleCommand(cmd) {
             history.map(m=>`${m.role==='user'?'Alexiz':'AREX'}: ${m.content}`).join('\n')
           }` }
         ], { maxTokens: 500 });
-        if (!summaryText) return;
+        if (!summaryText) { hideThinking(); return; }
         history.push({ role:'assistant', content: `[Resumen]\n${summaryText}` });
         await saveMsg('assistant', `[Resumen]\n${summaryText}`);
         updateMemMetric();
@@ -3829,10 +3866,16 @@ async function handleCommand(cmd) {
       break;
 
     case 'buscar':
-      abrirBusqueda();
-      if (args) {
-        const bi = document.getElementById('busqueda-input');
-        if (bi) { bi.value = args; renderBusquedaGlobal(args); }
+      // openSearch (search.js) acepta prefill — el flujo viejo rellenaba el
+      // overlay legacy oculto y el usuario veía la búsqueda vacía
+      if (typeof window.openSearch === 'function') {
+        window.openSearch(args || '');
+      } else {
+        abrirBusqueda();
+        if (args) {
+          const bi = document.getElementById('busqueda-input');
+          if (bi) { bi.value = args; renderBusquedaGlobal(args); }
+        }
       }
       break;
 
@@ -5107,6 +5150,9 @@ window.getTareas       = getTareas;
 window.getNotas        = getNotas;
 window._arexHistory    = () => history;
 window.loadSession     = loadSession;
+// El botón del onboarding la invoca con onclick="_finishOnboarding?.()" —
+// sin esta línea el ?. fallaba en silencio y el usuario nuevo quedaba atrapado
+window._finishOnboarding = _finishOnboarding;
 
 // Escape HTML compartido — todos los módulos lazy (negocio, hábitos, reparto,
 // agenda, control, evidencias, proyectos, search) lo usan al renderizar listas
@@ -5323,7 +5369,7 @@ function mostrarResumenHoy() {
   const habsPend = habitos.filter(h => !h.completados?.[hoyStr]);
   const agEvents = typeof _agGetEvents === 'function'
     ? (_agGetEvents()[hoyStr] || []) : [];
-  const recs = _safeJSON(localStorage.getItem('arex_reminders'), []).filter(r => !r.done);
+  const recs = _safeJSON(localStorage.getItem('arex_recordatorios'), []).filter(r => !r.disparado);
 
   const fecha = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
   const lines = [`**◈ RESUMEN DEL DÍA · ${fecha.toUpperCase()}**\n`];
@@ -5354,7 +5400,7 @@ function mostrarResumenHoy() {
   if (recs.length) {
     lines.push('');
     lines.push(`**⏰ RECORDATORIOS ACTIVOS (${recs.length})**`);
-    recs.slice(0, 3).forEach(r => lines.push(`- ${r.texto}`));
+    recs.slice(0, 3).forEach(r => lines.push(`- ${r.msg}`));
   }
 
   addMsg('arex', lines.join('\n'));
@@ -5429,8 +5475,10 @@ function _proactiveModuleGreeting(mod) {
         const ms = typeof getMetas === 'function' ? getMetas() : [];
         const act = ms.filter(m => !m.completada);
         if (!act.length) return null;
-        const top = act.reduce((a, b) => (b.progreso || 0) > (a.progreso || 0) ? b : a, act[0]);
-        return `Meta principal: ${top.titulo}. Al ${Math.round(top.progreso || 0)} por ciento.`;
+        // Las metas guardan valorActual/valorObjetivo, no "progreso"
+        const pct = m => m.valorObjetivo > 0 ? ((m.valorActual || 0) / m.valorObjetivo) * 100 : 0;
+        const top = act.reduce((a, b) => pct(b) > pct(a) ? b : a, act[0]);
+        return `Meta principal: ${top.titulo}. Al ${Math.round(pct(top))} por ciento.`;
       },
       finanzas() {
         const raw = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
