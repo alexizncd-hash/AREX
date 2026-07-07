@@ -832,9 +832,11 @@ async function _captureFrame(maxPx = 480) {
   const scale = Math.min(1, maxPx / Math.max(vw, vh));
   const w = Math.round(vw * scale);
   const h = Math.round(vh * scale);
-  // Reuse canvas — avoid GC pressure on repeated captures
-  if (!_captureCanvas || _captureCanvas.width !== w || _captureCanvas.height !== h) {
-    _captureCanvas = document.createElement('canvas');
+  // UN solo canvas SIEMPRE, redimensionado — crear uno nuevo por cada cambio
+  // de resolución (AUTO 320 vs VER 420 vs OBJETO 600) acumula backing stores
+  // en iOS hasta que el GC pasa → jetsam mata la pestaña (pantalla blanca)
+  if (!_captureCanvas) _captureCanvas = document.createElement('canvas');
+  if (_captureCanvas.width !== w || _captureCanvas.height !== h) {
     _captureCanvas.width  = w;
     _captureCanvas.height = h;
   }
@@ -889,18 +891,24 @@ async function _analyze(mode, extra = '') {
   try {
     let reply;
 
-    if (groqKey) {
+    // Gemini primero: mucho más preciso identificando objetos/texto que
+    // llama-scout. Groq queda como fallback rápido si Gemini falla o no hay key.
+    if (geminiKey) {
+      try {
+        _setStatus('ANALIZANDO · GEMINI...');
+        reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 14000);
+      } catch (e) {
+        console.warn('Gemini vision failed:', e.message);
+      }
+    }
+
+    if (!reply && groqKey) {
       try {
         _setStatus('ANALIZANDO · GROQ...');
         reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 14000);
       } catch (e) {
         console.warn('Groq vision failed:', e.message);
       }
-    }
-
-    if (!reply && geminiKey) {
-      _setStatus('ANALIZANDO · GEMINI...');
-      reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 14000);
     }
 
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
@@ -1251,7 +1259,9 @@ async function _runContinuous() {
         if (_noMotionCnt < 8) { _setStatus('SMART · EN ESPERA'); continue; }
         _noMotionCnt = 0;
       }
-      if (_busyCont) continue;
+      // No competir con un análisis manual en curso (doble captura + doble
+      // upload + doble voz = pico de memoria que en iOS tira la pestaña)
+      if (_busyCont || _busy) continue;
       _contCycle++;
       await _analyzeCont();
     }
@@ -1298,14 +1308,14 @@ function _checkMotion() {
 
 /* ─── Background continuous analysis (non-blocking) ─────── */
 async function _analyzeCont() {
-  if (_busyCont) return;
+  if (_busyCont || _busy) return;
   _busyCont = true;
   // Safety reset: 12s máximo — si la API no respondió, libera y sigue
   const timer = setTimeout(() => { _busyCont = false; }, 12000);
   _setStatus('SMART · ANALIZANDO');
   try {
-    // 240px en AUTO: suficiente para describir, mucho más rápido de enviar
-    const frame = await _captureFrame(240);
+    // 320px en AUTO: balance velocidad/precisión (240 era demasiado borroso)
+    const frame = await _captureFrame(320);
     if (!frame) return;
     const prompt  = _buildVisionPrompt('describe');
     const groqKey = window.AREX_CONFIG?.groqKey;
@@ -1472,7 +1482,9 @@ function _visionSpeak(text) {
     : clean;
 
   // No cancelar si ya está hablando en modo continuo (se espera con _waitForSpeech)
-  if (!_contOn) window.speechSynthesis.cancel();
+  // Cancelar SIEMPRE lo pendiente: encolar utterances sin límite (taps
+  // repetidos en AUTO) acumula memoria en iOS y el usuario oye respuestas viejas
+  window.speechSynthesis.cancel();
 
   const u = new SpeechSynthesisUtterance(truncated);
   u.lang = 'es-MX'; u.rate = 0.97; u.pitch = 0.90; u.volume = 1;
