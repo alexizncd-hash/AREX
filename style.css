@@ -8752,3 +8752,14 @@ header {
 /* Con solo 3 botones, dales aire */
 .vp-hud-bottom { gap: 10px; padding-left: 14px; padding-right: 14px; }
 .vp-hud-bottom .vp-action-btn { flex: 1; }
+
+/* ── Meta Quest (navegador VR) — v172 ─────────────────────
+   El navegador del Quest reporta ventana tipo desktop pero se ve a distancia
+   virtual: la tipografía HUD (8-11px) resulta ilegible. html.quest lo activa
+   app.js al detectar OculusBrowser. zoom escala TODO (px incluidos). */
+html.quest body { zoom: 1.35; }
+/* Targets de puntero láser más generosos en el dock y botones de header */
+html.quest .nav-btn { min-width: 54px; min-height: 46px; }
+html.quest .btn-hdr-icon { min-width: 40px; min-height: 40px; }
+/* El textarea de importación necesita espacio para códigos largos */
+html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }

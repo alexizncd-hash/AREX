@@ -15,6 +15,18 @@ function _safeJSON(str, fallback) {
   try { return JSON.parse(str) ?? fallback; } catch { return fallback; }
 }
 
+/* ── Meta Quest (navegador VR) ──────────────────────── */
+// El viewport del PWA bloquea el zoom (correcto en celular, terrible en VR):
+// en el Quest el usuario necesita pellizcar/ajustar para leer. Detectamos el
+// navegador del Quest, liberamos el zoom y escalamos la UI vía html.quest.
+const IS_QUEST = /OculusBrowser/i.test(navigator.userAgent);
+if (IS_QUEST) {
+  document.documentElement.classList.add('quest');
+  document.querySelector('meta[name="viewport"]')?.setAttribute('content',
+    'width=device-width, initial-scale=1.0, viewport-fit=cover');
+}
+window._isQuest = IS_QUEST;
+
 function loadConfig() {
   if (window.AREX_CONFIG?.groqKey) return true; // config.js presente
   const saved = localStorage.getItem('arex_config');
@@ -4194,12 +4206,47 @@ function copiarCodigoConfig() {
 }
 window.copiarCodigoConfig = copiarCodigoConfig;
 
+// Código COMPLETO: keys + todos los datos (tarjetas, negocio, tareas, notas...)
+// Pensado para el Quest: un solo copy/paste deja el dispositivo idéntico,
+// sin andar pasando archivos de backup.
+function copiarCodigoCompleto() {
+  const cfg = window.AREX_CONFIG;
+  if (!cfg?.groqKey) { alert('No hay configuración cargada para copiar.'); return; }
+  const data = {};
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('arex_') && k !== 'arex_config')
+    .forEach(k => { data[k] = localStorage.getItem(k); });
+  let code;
+  try { code = btoa(unescape(encodeURIComponent(JSON.stringify({ __arex: 'full-v1', config: cfg, data })))); }
+  catch (e) { alert('No se pudo generar el código: ' + e.message); return; }
+  const kb = Math.max(1, Math.round(code.length / 1024));
+  const done = () => alert(`Código completo copiado (${kb} KB) — keys + todos tus datos.\n\nPégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys y datos personales — compártelo solo por canales privados.`);
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(() => prompt('Copia este código manualmente:', code));
+  } else {
+    prompt('Copia este código manualmente:', code);
+  }
+}
+window.copiarCodigoCompleto = copiarCodigoCompleto;
+
 function importarCodigoConfig() {
   const raw = document.getElementById('cfg-import-code')?.value.trim();
   if (!raw) { alert('Pega primero el código de transferencia.'); return; }
   let cfg;
-  try { cfg = JSON.parse(decodeURIComponent(escape(atob(raw)))); }
-  catch { alert('Código inválido. Verifica que lo copiaste completo desde /config → COPIAR CÓDIGO DE ACCESO.'); return; }
+  try {
+    const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (parsed?.__arex === 'full-v1') {
+      // Código completo: restaurar también todos los datos
+      if (!parsed.config?.groqKey) { alert('El código no contiene una Groq API Key válida.'); return; }
+      Object.entries(parsed.data || {}).forEach(([k, v]) => {
+        if (k.startsWith('arex_')) { try { localStorage.setItem(k, v); } catch {} }
+      });
+      cfg = parsed.config;
+    } else {
+      cfg = parsed;
+    }
+  }
+  catch { alert('Código inválido. Verifica que lo copiaste completo desde /config → COPIAR CÓDIGO.'); return; }
   if (!cfg?.groqKey) { alert('El código no contiene una Groq API Key válida.'); return; }
   localStorage.setItem('arex_config', JSON.stringify(cfg));
   window.AREX_CONFIG = cfg;
