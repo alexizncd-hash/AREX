@@ -342,7 +342,26 @@ function getFinanzasData() {
 
 function saveFinanzasOverrides(overrides) {
   localStorage.setItem('arex_finanzas_overrides', JSON.stringify(overrides));
+  _publicarSnapshotFinanzas();
 }
+
+// Snapshot de los datos financieros efectivos en localStorage 'arex_finanzas'.
+// CTRL (agente Hermes), Visión y el backup leen esa key — pero nadie la
+// escribía nunca: siempre veían {} y mostraban datos vacíos.
+function _publicarSnapshotFinanzas() {
+  try {
+    const d = getFinanzasData();
+    localStorage.setItem('arex_finanzas', JSON.stringify({
+      config:   d.config,
+      tarjetas: d.tarjetas,
+      gastos:   d.gastos,
+      ingresoMensual: d.config.ingresoMensual,   // alias plano que usa Visión
+      deudas:   d.tarjetas,                      // alias que usa el HUD de Visión
+      _updatedAt: Date.now(),
+    }));
+  } catch {}
+}
+_publicarSnapshotFinanzas();
 
 function resetFinanzasOverrides() {
   localStorage.removeItem('arex_finanzas_overrides');
@@ -381,7 +400,14 @@ function obtenerProximosPagos(dias = 30) {
       fechaLimite.setMonth(fechaLimite.getMonth() + 1);
     }
 
-    const diasRestantes = Math.ceil((fechaLimite - hoy) / (1000 * 60 * 60 * 24));
+    let diasRestantes = Math.ceil((fechaLimite - hoy) / (1000 * 60 * 60 * 24));
+    // Si la fecha límite de este mes ya pasó, el próximo pago es el del mes
+    // siguiente — sin esto la tarjeta desaparecía de recordatorios y las
+    // alertas de 1-3 días no sonaban en el cambio de mes
+    if (diasRestantes < 0) {
+      fechaLimite.setMonth(fechaLimite.getMonth() + 1);
+      diasRestantes = Math.ceil((fechaLimite - hoy) / (1000 * 60 * 60 * 24));
+    }
 
     if (diasRestantes >= 0 && diasRestantes <= dias) {
       proximosPagos.push({
@@ -428,7 +454,14 @@ function simularLiquidacion(pagoExtra, estrategia = 'avalancha') {
         const interesMensual = (tarjeta.saldo * (tarjeta.tasaAnual / 100)) / 12;
         tarjeta.saldo += interesMensual;
         tarjeta.saldo -= tarjeta.pagoMinimo;
-        if (tarjeta.saldo < 0) tarjeta.saldo = 0;
+        if (tarjeta.saldo <= 0) {
+          // Liquidada solo con pagos mínimos: sin esto la simulación con
+          // pagoExtra=0 corría 120 meses aunque la deuda llegara a $0
+          tarjeta.saldo = 0;
+          tarjeta.liquidada = true;
+          tarjeta.mesLiquidacion = mes;
+          dineroDisponible += tarjeta.pagoMinimo;
+        }
       }
     });
 

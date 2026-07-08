@@ -406,6 +406,9 @@ const FinanzasModule = {
 
   _cOp(op) {
     const s = this._cState;
+    // Recuperación tras 'Error' (÷0): sin esto parseFloat('Error') propaga
+    // NaN al display y la calculadora queda inservible hasta AC
+    if (!isFinite(parseFloat(s.curr))) { s.curr = '0'; s.prev = 0; s.op = ''; s.justEq = false; }
     if (s.op && !s.justOp) {
       const a = s.prev, b = parseFloat(s.curr);
       let res = _cCalc(a, s.op, b);

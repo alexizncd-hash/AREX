@@ -114,7 +114,7 @@ function _updateVisionHudData() {
     const metas  = JSON.parse(localStorage.getItem('arex_metas') || '[]');
     const metEl  = document.getElementById('vis-dr-metas');
     if (metEl) metEl.textContent = `${metas.filter(m => !m.completada).length} metas`;
-    const fd     = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || localStorage.getItem('arex_finanzas') || '{}');
+    const fd     = JSON.parse(localStorage.getItem('arex_finanzas') || localStorage.getItem('arex_finanzas_overrides') || '{}');
     const saldo  = fd.saldoCuenta ?? fd.ingresoMensual ?? null;
     const finEl  = document.getElementById('vis-dr-fin');
     if (finEl) finEl.textContent = saldo != null ? `$${Number(saldo).toLocaleString('es-MX')}` : '···';
@@ -2517,7 +2517,7 @@ function _wkContent(id) {
     }
 
     case 'finanzas': {
-      const fd = JSON.parse(localStorage.getItem('arex_finanzas_overrides') || localStorage.getItem('arex_finanzas') || '{}');
+      const fd = JSON.parse(localStorage.getItem('arex_finanzas') || localStorage.getItem('arex_finanzas_overrides') || '{}');
       const ing = fd.ingresoMensual || 0;
       const deu = (fd.deudas||[]).reduce((s,d)=>s+(d.saldo||0),0);
       const prx = (fd.deudas||[]).filter(d=>{

@@ -1860,6 +1860,11 @@ function renderDashboard() {
       <!-- Recordatorios activos -->
       <div id="dash-rec-body" class="dhud-panel"></div>
 
+      <!-- Notas fijadas (renderNotasWidget lo llena; se oculta si no hay) -->
+      <div id="dash-notas-widget" class="dhud-panel" style="display:none">
+        <div class="dash-notas-body"></div>
+      </div>
+
       <!-- System status -->
       <div class="inicio-sys-bar">
         <span class="isys-item"><i class="isys-dot ${groqOk?'ok':'off'}"></i>GROQ <b class="${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</b></span>
@@ -1871,10 +1876,11 @@ function renderDashboard() {
   `;
   // Fetch live exchange rate (async, non-blocking)
   if (typeof renderExchangeWidget === 'function') renderExchangeWidget();
-  // Clima y recordatorios — sus contenedores acaban de crearse arriba;
-  // sin estas llamadas ambos widgets quedaban muertos (bug v175)
+  // Clima, recordatorios y notas fijadas — sus contenedores acaban de
+  // crearse arriba; sin estas llamadas los widgets quedaban muertos (v175/v176)
   renderWeatherWidget();
   _refreshRecWidget();
+  renderNotasWidget();
 }
 
 function renderSessionsList() {
