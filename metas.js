@@ -461,6 +461,9 @@ window.deleteHito = deleteHito;
 
 // ── Exports globales ─────────────────────────────────
 window.renderMetasModule    = () => switchMetasView('activas');
+// Alias: app.js (pull de Firebase, quick-capture) y control.js refrescan con
+// window.renderMetas?.() — sin el alias eran no-ops y Metas no se actualizaba
+window.renderMetas          = window.renderMetasModule;
 window.switchMetasView      = switchMetasView;
 window.metaCrear            = metaCrear;
 window.metaActualizar       = metaActualizar;

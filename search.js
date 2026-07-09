@@ -16,6 +16,12 @@ let _searchOpen = false;
 let _searchTimer = null;
 let _srchSelIdx  = -1;
 
+// Escape HTML — se usaba _esc() en 4 lugares pero jamás fue definida:
+// "Sin resultados" y el historial de chat reventaban con ReferenceError
+const _esc = s => (typeof _h === 'function'
+  ? _h(s)
+  : String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+
 /* ── Open / Close ──────────────────────────────────────── */
 function openSearch(prefill = '') {
   const ov = document.getElementById('srch-overlay');
