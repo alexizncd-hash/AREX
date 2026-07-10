@@ -1514,7 +1514,12 @@ function _stopIosKa() {
 function _applyVoice(u) {
   const voices = window.speechSynthesis.getVoices();
   const names = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
-  const v = voices.find(v => v.lang.startsWith('es') && names.some(n => v.name.toLowerCase().includes(n)))
+  const prem = v => `${v.name} ${v.voiceURI}`.toLowerCase().match(/premium|enhanced|mejorada|neural/);
+  const esMatch = v => v.lang.startsWith('es') && names.some(n => v.name.toLowerCase().includes(n));
+  // Premium primero (iOS: descargables en Accesibilidad → Contenido hablado)
+  const v = voices.find(v => esMatch(v) && prem(v))
+         || voices.find(v => v.lang.startsWith('es') && prem(v))
+         || voices.find(esMatch)
          || voices.find(v => v.lang.startsWith('es'));
   if (v) u.voice = v;
 }

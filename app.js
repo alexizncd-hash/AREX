@@ -2387,17 +2387,24 @@ function showThinking() {
 function hideThinking() { document.getElementById('thinking')?.remove(); }
 
 /* ── Voz del asistente (dinámica por perfil) ────────── */
+// Prioriza voces PREMIUM/MEJORADAS del sistema (iOS: Ajustes → Accesibilidad →
+// Contenido hablado → Voces → descargar la versión Premium/Mejorada): son
+// neurales, gratis, offline y sin latencia — misma API, mucha mejor calidad
+function _isPremiumVoice(v) {
+  const s = `${v.name} ${v.voiceURI}`.toLowerCase();
+  return s.includes('premium') || s.includes('enhanced') || s.includes('mejorada') || s.includes('neural');
+}
 function getVoice(profile) {
   const voices = window.speechSynthesis.getVoices();
   const gender = profile?.voiceGender || 'male';
-  if (gender === 'female') {
-    const femaleNames = ['paulina','lucia','sofia','valentina','rosa','sabina','monica','google español','microsoft sabina'];
-    return voices.find(v => v.lang.startsWith('es') && femaleNames.some(n => v.name.toLowerCase().includes(n)))
-        || voices.find(v => v.lang.startsWith('es'));
-  }
-  const maleNames = ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
-  return voices.find(v => v.lang.startsWith('es') && maleNames.some(n => v.name.toLowerCase().includes(n)))
-      || voices.find(v => v.lang.startsWith('es'));
+  const names = gender === 'female'
+    ? ['paulina','lucia','sofia','valentina','rosa','sabina','monica','google español','microsoft sabina']
+    : ['pablo','jorge','diego','carlos','miguel','david','google español','microsoft pablo','microsoft jorge'];
+  const esMatch = v => v.lang.startsWith('es') && names.some(n => v.name.toLowerCase().includes(n));
+  return voices.find(v => esMatch(v) && _isPremiumVoice(v))                       // nombre preferido + premium
+      || voices.find(v => v.lang.startsWith('es') && _isPremiumVoice(v))          // cualquier es premium
+      || voices.find(esMatch)                                                     // nombre preferido estándar
+      || voices.find(v => v.lang.startsWith('es'));                               // cualquier español
 }
 // Compatibilidad: getMaleVoice usada en otros lugares
 function getMaleVoice() { return getVoice({ voiceGender: 'male' }); }
