@@ -1643,12 +1643,15 @@ function _toggleGesture() {
     canvas.height = 240;
     const _startGE = () => {
       if (typeof initGestureEngine !== 'function') return;
-      _say('**[Gestos]** CARGANDO MOTOR DE GESTOS...');
+      // Estado de carga en el badge del HUD — discreto y en tema
+      // (antes: texto dibujado sobre el video + mensaje al chat)
+      _setStatus('CARGANDO SEÑAS...');
       initGestureEngine(_video, canvas, _handleGesture)
         .then(ok => {
           if (!ok) {
             _gestureOn = false;
             if (btn) btn.classList.remove('on');
+            _setStatus('LISTO');
             _say('**[Gestos]** No se pudo iniciar MediaPipe. Verifica tu conexión.');
           } else {
             _setStatus('GESTOS ON');

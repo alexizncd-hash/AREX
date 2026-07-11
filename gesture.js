@@ -39,16 +39,10 @@ async function initGestureEngine(videoEl, canvasEl, callback) {
     pinching: false, swipeTs: 0, pinchTs: 0, swipeAnim: null,
   });
 
-  // Show loading state on canvas
+  // Estado de carga: lo muestra el badge de estado del HUD de Visión
+  // (vision.js) — nada de texto dibujado sobre el video
   window._geLoadingStatus = 'loading';
-  const ctx = _ge.ctx;
-  const cw = canvasEl.width || 320, ch = canvasEl.height || 240;
-  ctx.clearRect(0, 0, cw, ch);
-  ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = '#00d4ff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  _textUpright(ctx, '◈ INICIANDO SISTEMA DE SEÑAS', cw * 0.5, ch * 0.5);
+  _ge.ctx.clearRect(0, 0, canvasEl.width || 320, canvasEl.height || 240);
 
   try {
     await _loadScript(_GE_CDN);
@@ -95,11 +89,25 @@ function stopGestureEngine() {
 async function _geLoop() {
   if (!_ge.active) return;
   if (!_ge.pending && _ge.video?.readyState >= 2 && _ge.hands) {
-    // Resize canvas to 320x240 for faster MediaPipe processing
     _ge.canvas.width = 320;
     _ge.canvas.height = 240;
+    // Alimentar a MediaPipe con una MINIATURA del video, nunca el stream
+    // completo: a 1080p cada frame sube ~8MB a su contexto WebGL 15 veces
+    // por segundo → presión de memoria → iOS mata la pestaña (pantalla
+    // blanca). A 256px detecta manos igual de bien.
+    const vw = _ge.video.videoWidth || 640, vh = _ge.video.videoHeight || 480;
+    const scale = 256 / Math.max(vw, vh);
+    const fw = Math.max(2, Math.round(vw * scale)), fh = Math.max(2, Math.round(vh * scale));
+    if (!_ge.feed) {
+      _ge.feed = document.createElement('canvas');
+      _ge.fctx = _ge.feed.getContext('2d');
+    }
+    if (_ge.feed.width !== fw || _ge.feed.height !== fh) {
+      _ge.feed.width = fw; _ge.feed.height = fh;
+    }
+    _ge.fctx.drawImage(_ge.video, 0, 0, fw, fh);
     _ge.pending = true;
-    try { await _ge.hands.send({ image: _ge.video }); }
+    try { await _ge.hands.send({ image: _ge.feed }); }
     catch (_) {}
     finally { _ge.pending = false; }
   }
