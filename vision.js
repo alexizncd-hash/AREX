@@ -1632,10 +1632,23 @@ function _deletePersona(i) {
 }
 
 /* ─── Gesture Engine Toggle ───────────────────────────── */
+// Mientras los gestos corren, bajar el stream a 720p en vivo (sin reabrir la
+// cámara): MediaPipe (WASM+WebGL) + video 1080p + HUD era demasiada memoria
+// junta en iOS — el jetsam mataba la pestaña al hacer una seña. Al apagar
+// gestos, el video regresa a 1080p nítido.
+function _setStreamQuality(high) {
+  const track = _stream?.getVideoTracks?.()[0];
+  track?.applyConstraints?.(high
+    ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
+    : { width: { ideal: 1280 }, height: { ideal: 720 } }
+  ).catch(() => {});
+}
+
 function _toggleGesture() {
   _gestureOn = !_gestureOn;
   const btn = document.getElementById('vis-gesture');
   if (btn) btn.classList.toggle('on', _gestureOn);
+  _setStreamQuality(!_gestureOn);
 
   const canvas = document.getElementById('vis-gesture-canvas');
   if (_gestureOn && _video && canvas) {

@@ -3,9 +3,9 @@
 
 const _GE_CDN        = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js';
 const _GE_COOL       = 1600;   // ms cooldown tras disparar gesto (2500 se sentía lento)
-const _GE_HOLD       = 8;      // frames estables requeridos (8×66ms ≈ 0.53s)
+const _GE_HOLD       = 6;      // frames estables requeridos (6×100ms ≈ 0.6s)
 const _GE_SWIPE_THR  = 0.18;   // desplazamiento mínimo para swipe
-const _GE_SWIPE_WIN  = 9;
+const _GE_SWIPE_WIN  = 6;      // ventana de swipe (6×100ms ≈ 0.6s)
 const _GE_SWIPE_COOL = 1400;   // ms entre swipes
 const _GE_PINCH_THR  = 0.06;
 const _GE_PINCH_COOL = 1100;
@@ -89,8 +89,13 @@ function stopGestureEngine() {
 async function _geLoop() {
   if (!_ge.active) return;
   if (!_ge.pending && _ge.video?.readyState >= 2 && _ge.hands) {
-    _ge.canvas.width = 320;
-    _ge.canvas.height = 240;
+    // Solo redimensionar si cambió: asignar canvas.width SIEMPRE realoja el
+    // backing store aunque el valor sea igual — 15 realojos/s en iOS = churn
+    // de memoria constante que empuja la pestaña al jetsam
+    if (_ge.canvas.width !== 320 || _ge.canvas.height !== 240) {
+      _ge.canvas.width = 320;
+      _ge.canvas.height = 240;
+    }
     // Alimentar a MediaPipe con una MINIATURA del video, nunca el stream
     // completo: a 1080p cada frame sube ~8MB a su contexto WebGL 15 veces
     // por segundo → presión de memoria → iOS mata la pestaña (pantalla
@@ -111,7 +116,9 @@ async function _geLoop() {
     catch (_) {}
     finally { _ge.pending = false; }
   }
-  if (_ge.active) _ge.af = setTimeout(_geLoop, 66);
+  // 100ms (10fps): las manos no necesitan 15fps de detección y el GPU
+  // respira — menos calor, menos memoria, misma sensación de respuesta
+  if (_ge.active) _ge.af = setTimeout(_geLoop, 100);
 }
 
 /* ─── Results Handler ─────────────────────────────────── */
