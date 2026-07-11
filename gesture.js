@@ -2,11 +2,11 @@
 // Cursor · Swipe · Pinch · Progress Ring · Haptic feedback (no particles, no audio)
 
 const _GE_CDN        = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js';
-const _GE_COOL       = 2500;   // ms cooldown tras disparar gesto
-const _GE_HOLD       = 10;     // frames estables requeridos (10×66ms ≈ 0.65s)
+const _GE_COOL       = 1600;   // ms cooldown tras disparar gesto (2500 se sentía lento)
+const _GE_HOLD       = 8;      // frames estables requeridos (8×66ms ≈ 0.53s)
 const _GE_SWIPE_THR  = 0.18;   // desplazamiento mínimo para swipe
 const _GE_SWIPE_WIN  = 9;
-const _GE_SWIPE_COOL = 2000;   // ms entre swipes
+const _GE_SWIPE_COOL = 1400;   // ms entre swipes
 const _GE_PINCH_THR  = 0.06;
 const _GE_PINCH_COOL = 1100;
 
@@ -44,11 +44,11 @@ async function initGestureEngine(videoEl, canvasEl, callback) {
   const ctx = _ge.ctx;
   const cw = canvasEl.width || 320, ch = canvasEl.height || 240;
   ctx.clearRect(0, 0, cw, ch);
-  ctx.font = 'bold 14px monospace';
+  ctx.font = 'bold 12px monospace';
   ctx.fillStyle = '#00d4ff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('CARGANDO GESTOS...', cw * 0.5, ch * 0.5);
+  _textUpright(ctx, '◈ INICIANDO SISTEMA DE SEÑAS', cw * 0.5, ch * 0.5);
 
   try {
     await _loadScript(_GE_CDN);
@@ -233,6 +233,22 @@ function _detectGesture(lm) {
 }
 
 /* ─── Canvas Drawing ──────────────────────────────────── */
+// El canvas de gestos se voltea en espejo (CSS scaleX(-1)) con la cámara
+// frontal para que la mano coincida — pero eso voltea también todo TEXTO
+// dibujado. Este helper lo dibuja siempre legible.
+function _mirrored() {
+  return (_ge.canvas?.style.transform || '').includes('-1');
+}
+function _textUpright(ctx, text, x, y) {
+  if (!_mirrored()) { ctx.fillText(text, x, y); return; }
+  const w = _ge.canvas.width;
+  ctx.save();
+  ctx.translate(w, 0);
+  ctx.scale(-1, 1);
+  ctx.fillText(text, w - x, y);
+  ctx.restore();
+}
+
 const _CONNS = [
   [0,1],[1,2],[2,3],[3,4],
   [0,5],[5,6],[6,7],[7,8],
@@ -244,7 +260,8 @@ const _CONNS = [
 const _TIPS = new Set([4, 8, 12, 16, 20]);
 
 function _drawSkeleton(ctx, lm, w, h) {
-  ctx.strokeStyle = 'rgba(0,212,255,0.50)'; ctx.lineWidth = 1.5;
+  // Malla técnica sutil — líneas finas, articulaciones discretas
+  ctx.strokeStyle = 'rgba(0,212,255,0.32)'; ctx.lineWidth = 1;
   for (const [a, b] of _CONNS) {
     ctx.beginPath();
     ctx.moveTo(lm[a].x * w, lm[a].y * h);
@@ -254,22 +271,35 @@ function _drawSkeleton(ctx, lm, w, h) {
   for (let i = 0; i < lm.length; i++) {
     const tip = _TIPS.has(i);
     ctx.beginPath();
-    ctx.arc(lm[i].x * w, lm[i].y * h, tip ? 5 : 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = tip ? 'rgba(0,255,170,0.92)' : 'rgba(0,212,255,0.70)';
+    ctx.arc(lm[i].x * w, lm[i].y * h, tip ? 3 : 1.6, 0, Math.PI * 2);
+    if (tip) { ctx.save(); ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 7; }
+    ctx.fillStyle = tip ? 'rgba(190,245,255,0.95)' : 'rgba(0,212,255,0.55)';
     ctx.fill();
+    if (tip) ctx.restore();
   }
 }
 
 function _drawCursor(ctx, lm, w, h) {
+  // Retícula Stark: dos arcos que orbitan el índice + cruz de precisión
   const cx = lm[8].x * w, cy = lm[8].y * h;
-  ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(0,255,170,0.20)'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,255,170,0.95)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(0,255,170,0.45)'; ctx.lineWidth = 1;
+  const t  = Date.now() * 0.0022;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,212,255,0.75)'; ctx.lineWidth = 1.4;
+  ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 6;
+  for (const off of [0, Math.PI]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 15, t + off, t + off + Math.PI * 0.55);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // Núcleo
+  ctx.beginPath(); ctx.arc(cx, cy, 2.6, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220,250,255,0.95)'; ctx.fill();
+  // Cruz de precisión
+  ctx.strokeStyle = 'rgba(0,212,255,0.45)'; ctx.lineWidth = 1;
   const arms = [
-    [cx-12,cy,cx-7,cy], [cx+7,cy,cx+12,cy],
-    [cx,cy-12,cx,cy-7], [cx,cy+7,cx,cy+12],
+    [cx-11,cy,cx-6,cy], [cx+6,cy,cx+11,cy],
+    [cx,cy-11,cx,cy-6], [cx,cy+6,cx,cy+11],
   ];
   for (const [x1,y1,x2,y2] of arms) {
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
@@ -278,42 +308,66 @@ function _drawCursor(ctx, lm, w, h) {
 
 function _drawProgressRing(ctx, lm, w, h, progress, g) {
   const cx = lm[8].x * w, cy = lm[8].y * h;
-  const R = 22;
+  const R = 21;
+  // Marcas técnicas alrededor del anillo (estilo HUD)
+  ctx.strokeStyle = g.color + '30'; ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R + 3), cy + Math.sin(a) * (R + 3));
+    ctx.lineTo(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6));
+    ctx.stroke();
+  }
   // Background ring
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI * 2);
   ctx.strokeStyle = g.color + '22';
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 2;
   ctx.stroke();
-  // Progress arc
+  // Progress arc con glow
+  ctx.save();
+  ctx.shadowColor = g.color; ctx.shadowBlur = 8;
   ctx.beginPath();
   ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
   ctx.strokeStyle = g.color;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   ctx.stroke();
-  // Label when >50%
-  if (progress > 0.5) {
+  ctx.restore();
+  // Etiqueta + porcentaje (siempre legibles, aunque el canvas esté en espejo)
+  if (progress > 0.35) {
     ctx.font = 'bold 9px monospace';
     ctx.fillStyle = g.color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(g.label, cx, cy + R + 4);
+    _textUpright(ctx, `${g.label} · ${Math.round(progress * 100)}%`, cx, cy + R + 8);
   }
 }
 
 function _drawSwipeAnim(ctx, w, h) {
   if (!_ge.swipeAnim) return;
   const s = _ge.swipeAnim;
-  s.life *= 0.83;
+  s.life *= 0.85;
   if (s.life < 0.05) { _ge.swipeAnim = null; return; }
-  const arrows = { swipe_left: '←', swipe_right: '→' };
+  // Triple chevron vectorial deslizante (nada de flechas emoji).
+  // Dirección corregida por espejo: debe apuntar hacia donde el usuario movió la mano
+  let dir = s.dir === 'swipe_right' ? 1 : -1;
+  if (_mirrored()) dir = -dir;
+  const drift = (1 - s.life) * 34 * dir;
   ctx.save();
-  ctx.globalAlpha = s.life;
-  ctx.font = `bold ${26 + Math.round((1 - s.life) * 18)}px monospace`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 22;
-  ctx.fillText(arrows[s.dir] || '→', s.x, s.y);
+  ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 12;
+  for (let i = 0; i < 3; i++) {
+    const alpha = s.life * (1 - i * 0.28);
+    if (alpha <= 0) continue;
+    ctx.globalAlpha = alpha;
+    const x = s.x + drift + i * 13 * dir;
+    ctx.beginPath();
+    ctx.moveTo(x - 6 * dir, s.y - 11);
+    ctx.lineTo(x + 6 * dir, s.y);
+    ctx.lineTo(x - 6 * dir, s.y + 11);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
