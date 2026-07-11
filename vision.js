@@ -353,10 +353,7 @@ export async function openVision() {
   _opening = true;
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: _facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    });
+    stream = await navigator.mediaDevices.getUserMedia(_camConstraints());
   } catch (e) {
     _opening = false;
     _say(`No se pudo acceder a la cámara.\n\n${e.message}`); return;
@@ -1363,6 +1360,23 @@ function _applyMirror() {
 }
 
 /* ─── Camera flip ─────────────────────────────────────── */
+/* ─── Constraints de cámara (única fuente) ─────────────
+   1080p ideal: con 720p la cámara FRONTAL de iPhone negocia un modo
+   suave/binned que estirado a pantalla completa se ve opaco y borroso;
+   a 1080p entrega el sensor completo. "ideal" = cada cámara da lo mejor
+   que pueda sin fallar. Los frames para IA se siguen reduciendo a
+   320-720px al capturar, así que el costo de análisis no cambia. */
+function _camConstraints() {
+  return {
+    video: {
+      facingMode: { ideal: _facingMode },
+      width:  { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
+    audio: false,
+  };
+}
+
 /* ─── Auto-recuperación del stream ────────────────────
    iOS/Android pueden matar el track de cámara cuando otra cosa toma el
    hardware de audio/video (típico: el mic del modo AR continuo, una llamada,
@@ -1393,10 +1407,7 @@ async function _recoverStream(reason) {
   _recoverTries++;
   _setStatus('RECUPERANDO CÁMARA...');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: _facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    });
+    const stream = await navigator.mediaDevices.getUserMedia(_camConstraints());
     if (!_panel) { stream.getTracks().forEach(t => t.stop()); return; }
     _stream?.getTracks().forEach(t => t.stop());
     _stream = stream;
@@ -1418,10 +1429,7 @@ async function _flipCamera() {
   _stream.getTracks().forEach(t => t.stop());
   _facingMode = _facingMode === 'environment' ? 'user' : 'environment';
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: _facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    });
+    const stream = await navigator.mediaDevices.getUserMedia(_camConstraints());
     // Si el usuario cerró Visión mientras esperábamos, apagar el stream nuevo
     // (si no, la cámara queda encendida sin nadie que la detenga)
     if (!_panel) { stream.getTracks().forEach(t => t.stop()); return; }
