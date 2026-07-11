@@ -888,25 +888,23 @@ async function _analyze(mode, extra = '') {
   try {
     let reply;
 
-    // Gemini primero: mucho más preciso identificando objetos/texto que
-    // llama-scout. Groq queda como fallback rápido si Gemini falla o no hay key.
-    if (geminiKey) {
-      try {
-        _setStatus('ANALIZANDO · GEMINI...');
-        reply = await _withTimeout(_callGemini(frame, prompt, geminiKey), 14000);
-      } catch (e) {
-        console.warn('Gemini vision failed:', e.message);
-      }
-    }
-
-    if (!reply && groqKey) {
-      try {
-        _setStatus('ANALIZANDO · GROQ...');
-        reply = await _withTimeout(_callGroq(frame, prompt, groqKey), 14000);
-      } catch (e) {
-        console.warn('Groq vision failed:', e.message);
-      }
-    }
+    // Enrutamiento por modo — velocidad donde se percibe, precisión donde importa:
+    // · describe/scene → Groq primero (LPU: respuesta casi instantánea)
+    // · text/recibo/product → Gemini primero (OCR e identificación superiores)
+    const fastFirst = (mode === 'describe' || mode === 'scene');
+    const tryGroq = async () => {
+      if (!groqKey) return null;
+      try { _setStatus('ANALIZANDO · GROQ...'); return await _withTimeout(_callGroq(frame, prompt, groqKey), 10000); }
+      catch (e) { console.warn('Groq vision failed:', e.message); return null; }
+    };
+    const tryGemini = async () => {
+      if (!geminiKey) return null;
+      try { _setStatus('ANALIZANDO · GEMINI...'); return await _withTimeout(_callGemini(frame, prompt, geminiKey), 10000); }
+      catch (e) { console.warn('Gemini vision failed:', e.message); return null; }
+    };
+    reply = fastFirst
+      ? (await tryGroq()   || await tryGemini())
+      : (await tryGemini() || await tryGroq());
 
     if (!reply) throw new Error('No hay API de visión disponible. Verifica tus keys en /config.');
 
@@ -945,15 +943,22 @@ async function _callGemini(frame, prompt, key) {
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastErr;
   for (const model of models) {
+    const body = { contents: [{ parts: [
+      { inline_data: { mime_type: 'image/jpeg', data: b64 } },
+      { text: prompt }
+    ]}]};
+    // 2.5-flash RAZONA por defecto (segundos extra invisibles antes de
+    // responder) — para describir una imagen no hace falta: apagarlo
+    // recorta la latencia a la mitad o más. 2.0-flash no acepta el campo.
+    if (model.startsWith('gemini-2.5')) {
+      body.generationConfig = { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 800 };
+    }
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [
-          { inline_data: { mime_type: 'image/jpeg', data: b64 } },
-          { text: prompt }
-        ]}]})
+        body: JSON.stringify(body)
       }
     );
     if (res.ok) {
@@ -970,7 +975,9 @@ async function _callGemini(frame, prompt, key) {
 async function _callGroq(frame, prompt, key, fast = false) {
   const models = [
     'meta-llama/llama-4-scout-17b-16e-instruct',
-    'llama-3.2-11b-vision-preview',
+    // maverick también acepta imágenes — el fallback anterior
+    // (llama-3.2-11b-vision-preview) ya fue retirado de Groq
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
   ];
   for (const model of models) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1243,7 +1250,7 @@ async function _runContinuous() {
   _lastPixels  = null;
   try {
     while (_contOn) {
-      await new Promise(r => setTimeout(r, 3500));  // 1.8s → 3.5s: menos carga CPU/GPU
+      await new Promise(r => setTimeout(r, 2800));  // ciclo de escaneo del modo AUTO
       if (!_contOn) break;
       // Keep stream alive on iOS
       if (_video?.paused) { _video.play().catch(() => {}); }
@@ -1252,8 +1259,8 @@ async function _runContinuous() {
         _noMotionCnt = 0;
       } else {
         _noMotionCnt++;
-        // Sin movimiento ~28s (8 ciclos × 3.5s): análisis ambient de todas formas
-        if (_noMotionCnt < 8) { _setStatus('SMART · EN ESPERA'); continue; }
+        // Sin movimiento ~14s (5 ciclos × 2.8s): análisis ambient de todas formas
+        if (_noMotionCnt < 5) { _setStatus('SMART · EN ESPERA'); continue; }
         _noMotionCnt = 0;
       }
       // No competir con un análisis manual en curso (doble captura + doble
@@ -1319,7 +1326,7 @@ async function _analyzeCont() {
     const gemKey  = window.AREX_CONFIG?.geminiKey;
     let reply;
     if (groqKey) {
-      // fast=true → llama-3.2-11b-vision: respuesta rápida para modo AUTO
+      // fast=true → respuesta corta (220 tokens) con scout: ideal para AUTO
       try { reply = await _withTimeout(_callGroq(frame, prompt, groqKey, true), 10000); } catch { /**/ }
     }
     if (!reply && gemKey) {
