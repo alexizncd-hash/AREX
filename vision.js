@@ -45,6 +45,7 @@ let _opening       = false;   // guard: getUserMedia en curso (evita doble apert
 let _greetTimer    = null;    // saludo "Visión activa" — se cancela al cerrar
 let _recovering    = false;   // guard: recuperación de stream en curso
 let _recoverTries  = 0;       // reintentos de recuperación (máx 3 seguidos)
+let _bbTimer       = null;    // caja negra: snapshot de estado cada 2s
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -362,9 +363,13 @@ export async function openVision() {
   _stream = stream;
   _recoverTries = 0;
   window._arexVisionOpen = true;   // pausa animaciones de fondo (estrellas, matrix, orbe)
+  _bbReportPrev();                 // ¿la sesión anterior murió por crash? reportarlo
   _buildPanel();
   _watchStream(_stream);
   document.addEventListener('visibilitychange', _onVisResume);
+  clearInterval(_bbTimer);
+  _bbTimer = setInterval(_bbSnapshot, 2000);
+  _bbSnapshot();
   document.getElementById('btn-vision')?.classList.add('active');
   clearTimeout(_greetTimer);
   _greetTimer = setTimeout(() => { if (_panel) { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); } }, 600);
@@ -412,6 +417,14 @@ export function closeVision() {
     setTimeout(() => { if (!window._arexContModeActive) window.toggleContinuousMode?.(); }, 700);
   }
   document.removeEventListener('visibilitychange', _onVisResume);
+  // Caja negra: cierre limpio — que no se reporte como crash
+  clearInterval(_bbTimer);
+  _bbTimer = null;
+  try {
+    const bb = JSON.parse(localStorage.getItem('arex_vision_bb') || '{}');
+    bb.clean = true;
+    localStorage.setItem('arex_vision_bb', JSON.stringify(bb));
+  } catch {}
   _stream?.getTracks().forEach(t => t.stop());
   _stream = null; _video = null;
   window._arexVisionOpen = false;   // reanuda animaciones de fondo
@@ -1367,6 +1380,34 @@ function _applyMirror() {
 }
 
 /* ─── Camera flip ─────────────────────────────────────── */
+/* ─── Caja negra ───────────────────────────────────────
+   iOS no expone la memoria de la pestaña, así que no podemos medirla — pero
+   sí GRABAR el estado de Visión cada 2s en localStorage. Si iOS mata la
+   pestaña, el último snapshot sobrevive al reinicio: al reabrir Visión,
+   AREX reporta exactamente qué estaba encendido en el momento del crash. */
+function _bbSnapshot() {
+  try {
+    localStorage.setItem('arex_vision_bb', JSON.stringify({
+      ts: Date.now(), clean: false,
+      gestos: _gestureOn, voz: _voiceCmdOn, auto: _contOn,
+      res: _video?.videoWidth ? `${_video.videoWidth}x${_video.videoHeight}` : '—',
+      cam: _facingMode,
+      analizando: !!(_busy || _busyCont),
+      motorSenas: window._geLoadingStatus || '—',
+    }));
+  } catch {}
+}
+
+function _bbReportPrev() {
+  try {
+    const prev = JSON.parse(localStorage.getItem('arex_vision_bb') || 'null');
+    if (!prev || prev.clean) return;
+    const det = `gestos:${prev.gestos ? 'ON' : 'off'} · voz:${prev.voz ? 'ON' : 'off'} · auto:${prev.auto ? 'ON' : 'off'} · cam:${prev.res} (${prev.cam}) · motor señas:${prev.motorSenas}${prev.analizando ? ' · ANALIZANDO' : ''}`;
+    logBitacora?.('vision', `⚠ CAJA NEGRA — sesión anterior terminó abrupta: ${det}`);
+    _say(`**[Caja negra]** La sesión de Visión anterior se cerró de golpe (crash).\n\nEstado en ese momento:\n${det}\n\nMándale esto a tu desarrollador 😉`);
+  } catch {}
+}
+
 /* ─── Constraints de cámara (única fuente) ─────────────
    1080p ideal: con 720p la cámara FRONTAL de iPhone negocia un modo
    suave/binned que estirado a pantalla completa se ve opaco y borroso;
@@ -1632,23 +1673,31 @@ function _deletePersona(i) {
 }
 
 /* ─── Gesture Engine Toggle ───────────────────────────── */
-// Mientras los gestos corren, bajar el stream a 720p en vivo (sin reabrir la
-// cámara): MediaPipe (WASM+WebGL) + video 1080p + HUD era demasiada memoria
-// junta en iOS — el jetsam mataba la pestaña al hacer una seña. Al apagar
-// gestos, el video regresa a 1080p nítido.
-function _setStreamQuality(high) {
-  const track = _stream?.getVideoTracks?.()[0];
-  track?.applyConstraints?.(high
-    ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
-    : { width: { ideal: 1280 }, height: { ideal: 720 } }
-  ).catch(() => {});
+// Calidad del stream por niveles (applyConstraints en vivo, sin reabrir):
+// high 1080p = visualización · mid 720p = gestos activos · min 480p = durante
+// la CARGA del WASM de MediaPipe (su pico de memoria es el momento más
+// peligroso en iOS — darle todo el margen posible)
+function _setStreamQuality(tier) {
+  const dims = tier === 'high' ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
+             : tier === 'min'  ? { width: { ideal: 640 },  height: { ideal: 480 } }
+             :                   { width: { ideal: 1280 }, height: { ideal: 720 } };
+  _stream?.getVideoTracks?.()[0]?.applyConstraints?.(dims).catch(() => {});
 }
 
 function _toggleGesture() {
   _gestureOn = !_gestureOn;
   const btn = document.getElementById('vis-gesture');
   if (btn) btn.classList.toggle('on', _gestureOn);
-  _setStreamQuality(!_gestureOn);
+  // Durante la carga del motor: mínima calidad + pausar ciclos AUTO +
+  // cancelar voz — despejar toda la memoria posible para el spike del WASM
+  const prevAuto = _contOn;
+  if (_gestureOn) {
+    _setStreamQuality('min');
+    if (prevAuto) _contOn = false;
+    window.speechSynthesis?.cancel();
+  } else {
+    _setStreamQuality('high');
+  }
 
   const canvas = document.getElementById('vis-gesture-canvas');
   if (_gestureOn && _video && canvas) {
@@ -1665,11 +1714,15 @@ function _toggleGesture() {
             _gestureOn = false;
             if (btn) btn.classList.remove('on');
             _setStatus('LISTO');
+            _setStreamQuality('high');
             _say('**[Gestos]** No se pudo iniciar MediaPipe. Verifica tu conexión.');
           } else {
             _setStatus('GESTOS ON');
+            _setStreamQuality('mid');   // pasó el pico de carga → 720p estable
             document.getElementById('vis-gest-guide')?.classList.add('visible');
           }
+          // Restaurar el modo AUTO si estaba activo antes de cargar gestos
+          if (prevAuto && !_contOn) { _contOn = true; _runContinuous(); }
         });
     };
     if (typeof initGestureEngine === 'function') {
