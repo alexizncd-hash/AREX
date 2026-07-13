@@ -533,14 +533,10 @@ function _buildPanel() {
       <div class="vp-tel-row"><span>VOZ</span><span id="vis-tel-voice">—</span></div>
     </div>
 
-    <!-- RIGHT GESTURE GUIDE -->
+    <!-- RIGHT GESTURE GUIDE (filas generadas por _renderGestGuide con el mapa real) -->
     <div class="vp-gest-guide" id="vis-gest-guide">
       <div class="vp-tel-hdr"><span class="vp-tel-dot"></span>GESTOS<button class="vp-gg-cfg-btn" id="vis-gest-cfg-btn" title="Configurar gestos">⚙</button></div>
-      <div class="vp-gg-row"><span>✋</span><span>ANALIZAR</span></div>
-      <div class="vp-gg-row"><span>✊</span><span>DETENER</span></div>
-      <div class="vp-gg-row"><span>☝</span><span>MÓDULOS</span></div>
-      <div class="vp-gg-row"><span>✌</span><span>AUTO</span></div>
-      <div class="vp-gg-row"><span>👍</span><span>VOZ</span></div>
+      <div id="vis-gest-guide-rows"></div>
     </div>
 
     <!-- STATUS BADGE -->
@@ -1678,8 +1674,10 @@ function _deletePersona(i) {
 // la CARGA del WASM de MediaPipe (su pico de memoria es el momento más
 // peligroso en iOS — darle todo el margen posible)
 function _setStreamQuality(tier) {
+  // TODOS los niveles en 16:9 — mezclar proporciones (el min era 4:3)
+  // hacía que el encuadre saltara y se viera "cortado" al cambiar calidad
   const dims = tier === 'high' ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
-             : tier === 'min'  ? { width: { ideal: 640 },  height: { ideal: 480 } }
+             : tier === 'min'  ? { width: { ideal: 960 },  height: { ideal: 540 } }
              :                   { width: { ideal: 1280 }, height: { ideal: 720 } };
   _stream?.getVideoTracks?.()[0]?.applyConstraints?.(dims).catch(() => {});
 }
@@ -1719,6 +1717,7 @@ function _toggleGesture() {
           } else {
             _setStatus('GESTOS ON');
             _setStreamQuality('mid');   // pasó el pico de carga → 720p estable
+            _renderGestGuide();
             document.getElementById('vis-gest-guide')?.classList.add('visible');
           }
           // Restaurar el modo AUTO si estaba activo antes de cargar gestos
@@ -2223,6 +2222,26 @@ const _GESTURE_ACTIONS_LABELS = {
   recibo:      '🧾 ESCANEAR recibo',
 };
 
+const _GEST_DEFS = [
+  { key:'open_hand', icon:'✋', label:'Mano abierta', def:'analyze' },
+  { key:'fist',      icon:'✊', label:'Puño cerrado', def:'stop' },
+  { key:'index_up',  icon:'☝', label:'Índice arriba', def:'modules' },
+  { key:'peace',     icon:'✌', label:'Victoria / V', def:'toggle_auto' },
+  { key:'thumb_up',  icon:'👍', label:'Pulgar arriba', def:'voice' },
+];
+
+// La guía lateral muestra las funciones REALES según tu configuración
+// (antes era una lista fija que podía mentir si remapeabas los gestos)
+function _renderGestGuide() {
+  const box = document.getElementById('vis-gest-guide-rows');
+  if (!box) return;
+  const map = _loadGestureMap();
+  box.innerHTML = _GEST_DEFS.map(g => {
+    const raw = _GESTURE_ACTIONS_LABELS[map[g.key] || g.def] || '';
+    return `<div class="vp-gg-row"><span>${g.icon}</span><span>${raw.replace(/^[^\s]+\s/, '')}</span></div>`;
+  }).join('');
+}
+
 function _toggleGestureConfig() {
   const panel = document.getElementById('vis-gesture-config');
   if (!panel) return;
@@ -2231,13 +2250,7 @@ function _toggleGestureConfig() {
   const list = document.getElementById('vis-gest-cfg-list');
   if (!list) return;
   const map = _loadGestureMap();
-  const gestures = [
-    { key:'open_hand', icon:'✋', label:'Mano abierta', def:'analyze' },
-    { key:'fist',      icon:'✊', label:'Puño cerrado', def:'stop' },
-    { key:'index_up',  icon:'☝', label:'Índice arriba', def:'modules' },
-    { key:'peace',     icon:'✌', label:'Victoria / V', def:'toggle_auto' },
-    { key:'thumb_up',  icon:'👍', label:'Pulgar arriba', def:'voice' },
-  ];
+  const gestures = _GEST_DEFS;
   list.innerHTML = gestures.map(g => {
     const cur = map[g.key] || g.def;
     const opts = Object.entries(_GESTURE_ACTIONS_LABELS)
@@ -2256,6 +2269,7 @@ function _toggleGestureConfig() {
       m[sel.dataset.gest] = sel.value;
       _gestureMapCache = null;
       _saveGestureMap(m);
+      _renderGestGuide();   // la guía lateral refleja el cambio al instante
     });
   });
   panel.classList.add('visible');

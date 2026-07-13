@@ -24,6 +24,9 @@ let _ge = {
 const GESTURES = {
   open_hand:   { icon: '✋', label: 'ANALIZAR',    color: '#00d4ff', action: 'analyze' },
   fist:        { icon: '✊', label: 'DETENER',     color: '#ff4455', action: 'stop' },
+  index_up:    { icon: '☝',  label: 'MÓDULOS',     color: '#f5a623', action: 'modules' },
+  peace:       { icon: '✌',  label: 'AUTO',        color: '#00ffaa', action: 'toggle_auto' },
+  thumb_up:    { icon: '👍', label: 'VOZ',         color: '#00d4ff', action: 'voice' },
   pinch:       { icon: '🤏', label: 'SELECCIONAR', color: '#00ffaa', action: 'pinch_click' },
   swipe_left:  { icon: '◀',  label: 'ANTERIOR',    color: '#00d4ff', action: 'prev_module' },
   swipe_right: { icon: '▶',  label: 'SIGUIENTE',   color: '#00d4ff', action: 'next_module' },
@@ -236,14 +239,20 @@ function _checkPinch(lm, w, h) {
 
 /* ─── Gesture Detection ───────────────────────────────── */
 function _detectGesture(lm) {
-  const ix = lm[8].y  < lm[6].y;
-  const mx = lm[12].y < lm[10].y;
-  const rx = lm[16].y < lm[14].y;
-  const px = lm[20].y < lm[18].y;
-  const tx = lm[4].y  < lm[3].y;
+  const ix = lm[8].y  < lm[6].y;   // índice extendido
+  const mx = lm[12].y < lm[10].y;  // medio extendido
+  const rx = lm[16].y < lm[14].y;  // anular extendido
+  const px = lm[20].y < lm[18].y;  // meñique extendido
+  const tx = lm[4].y  < lm[3].y;   // pulgar extendido hacia arriba
   const n = [ix, mx, rx, px].filter(Boolean).length;
-  if (n >= 3 && tx) return 'open_hand';
-  if (n === 0 && !tx) return 'fist';
+  // Orden: de más dedos a menos — los específicos antes que los genéricos.
+  // ☝✌👍 estaban en la guía y el config pero NADIE los detectaba (por eso
+  // configurarlos nunca hacía nada) — ahora los 5 gestos son reales.
+  if (n >= 3 && tx)              return 'open_hand';
+  if (ix && mx && !rx && !px)    return 'peace';
+  if (ix && !mx && !rx && !px)   return 'index_up';
+  if (n === 0 && tx)             return 'thumb_up';
+  if (n === 0 && !tx)            return 'fist';
   return null;
 }
 
