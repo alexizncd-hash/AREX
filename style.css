@@ -8763,3 +8763,32 @@ html.quest .nav-btn { min-width: 54px; min-height: 46px; }
 html.quest .btn-hdr-icon { min-width: 40px; min-height: 40px; }
 /* El textarea de importación necesita espacio para códigos largos */
 html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }
+
+/* ── FORJA v186: chips flotantes + botón activo ── */
+#vis-forja-bar {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 11;
+}
+.vp-forja-chip {
+  background: rgba(0, 8, 20, 0.88);
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  color: #22d3ee;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.vp-forja-chip:active { background: rgba(0, 212, 255, 0.18); }
+.vp-forja-chip-del { border-color: rgba(255, 68, 85, 0.45); color: #ff6677; }
+.vp-forja-btn.on {
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.35);
+}

@@ -220,7 +220,11 @@ function _checkPinch(lm, w, h) {
     _ge.pinching = true; _ge.pinchTs = now;
     navigator.vibrate?.([40]);
     _ge.cb?.('pinch', { x: lm[8].x, y: lm[8].y });
+  } else if (isPinching && _ge.pinching) {
+    // Pellizco sostenido: posición continua (FORJA lo usa para arrastrar hologramas)
+    _ge.cb?.('pinch_move', { x: lm[8].x, y: lm[8].y });
   } else if (!isPinching) {
+    if (_ge.pinching) _ge.cb?.('pinch_end', null);
     _ge.pinching = false;
   }
 

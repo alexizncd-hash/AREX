@@ -408,6 +408,10 @@ export function closeVision() {
   _moduleGridVis = false;
   // Stop gesture engine
   if (_gestureOn) { _gestureOn = false; if (typeof stopGestureEngine === 'function') stopGestureEngine(); }
+  // Stop FORJA (libera WebGL, giroscopio y hologramas)
+  if (_forjaOn) { _forjaOn = false; window.ForjaEngine?.stop?.(); }
+  document.getElementById('vis-forja-bar')?.remove();
+  document.getElementById('vis-forja')?.classList.remove('on');
   // Stop voice commands
   _voiceCmdOn = false;
   _stopVoiceCmd();
@@ -500,6 +504,7 @@ function _buildPanel() {
     <div class="vp-hud-top">
       <div class="vp-title"><span class="vp-dot"></span>AREX · VISIÓN</div>
       <div class="vp-top-btns">
+        <button class="vp-icon-btn vp-forja-btn" id="vis-forja" title="FORJA — hologramas 3D">◈</button>
         <button class="vp-icon-btn vp-gesture-btn" id="vis-gesture" title="Gestos">✋</button>
         <button class="vp-icon-btn vp-vcmd-btn"    id="vis-vcmd"    title="Comandos de voz">🎙</button>
         <button class="vp-icon-btn vp-voice-btn on" id="vis-voice"  title="Síntesis de voz">🔊</button>
@@ -713,6 +718,7 @@ function _buildPanel() {
   document.getElementById('vis-personas-close').addEventListener('click', _closePersonasPanel);
   document.getElementById('vp-p-add').addEventListener('click', _addPersona);
   document.getElementById('vis-gesture').addEventListener('click', _toggleGesture);
+  document.getElementById('vis-forja').addEventListener('click', _toggleForja);
   document.getElementById('vis-vcmd').addEventListener('click', _toggleVoiceCmd);
 
   // Module HUD
@@ -1390,6 +1396,7 @@ function _bbSnapshot() {
       cam: _facingMode,
       analizando: !!(_busy || _busyCont),
       motorSenas: window._geLoadingStatus || '—',
+      forja: _forjaOn ? (window.ForjaEngine?.count?.() ?? 0) + ' hologramas' : 'off',
     }));
   } catch {}
 }
@@ -1398,7 +1405,7 @@ function _bbReportPrev() {
   try {
     const prev = JSON.parse(localStorage.getItem('arex_vision_bb') || 'null');
     if (!prev || prev.clean) return;
-    const det = `gestos:${prev.gestos ? 'ON' : 'off'} · voz:${prev.voz ? 'ON' : 'off'} · auto:${prev.auto ? 'ON' : 'off'} · cam:${prev.res} (${prev.cam}) · motor señas:${prev.motorSenas}${prev.analizando ? ' · ANALIZANDO' : ''}`;
+    const det = `gestos:${prev.gestos ? 'ON' : 'off'} · voz:${prev.voz ? 'ON' : 'off'} · auto:${prev.auto ? 'ON' : 'off'} · cam:${prev.res} (${prev.cam}) · motor señas:${prev.motorSenas} · forja:${prev.forja || 'off'}${prev.analizando ? ' · ANALIZANDO' : ''}`;
     logBitacora?.('vision', `⚠ CAJA NEGRA — sesión anterior terminó abrupta: ${det}`);
     _say(`**[Caja negra]** La sesión de Visión anterior se cerró de golpe (crash).\n\nEstado en ese momento:\n${det}\n\nMándale esto a tu desarrollador 😉`);
   } catch {}
@@ -1682,6 +1689,72 @@ function _setStreamQuality(tier) {
   _stream?.getVideoTracks?.()[0]?.applyConstraints?.(dims).catch(() => {});
 }
 
+/* ─── FORJA: hologramas 3D (ForjaEngine en forja.js, lazy) ── */
+let _forjaOn = false;
+
+function _forjaChips(show) {
+  let bar = document.getElementById('vis-forja-bar');
+  if (!show) { bar?.remove(); return; }
+  if (bar || !_panel) return;
+  bar = document.createElement('div');
+  bar.id = 'vis-forja-bar';
+  bar.innerHTML = `
+    <button class="vp-forja-chip" onclick="window._forjaCrearUI()">➕ FORJAR</button>
+    <button class="vp-forja-chip" onclick="window.ForjaEngine?.recentrar()" title="Traer los hologramas al frente">⟲ RECENTRAR</button>
+    <button class="vp-forja-chip vp-forja-chip-del" onclick="window.ForjaEngine?.clear()" title="Borrar todos los hologramas">🗑</button>`;
+  _panel.appendChild(bar);
+}
+
+window._forjaCrearUI = async function () {
+  if (!window.ForjaEngine?.isOn?.()) return;
+  const desc = prompt('¿Qué quieres forjar? (ej: un dron, una mesa, un cohete)');
+  if (!desc?.trim()) return;
+  _setStatus('FORJANDO...');
+  try {
+    await window.ForjaEngine.crear(desc.trim());
+    _setStatus('FORJA ON');
+    _visionSpeak(`${desc.trim()}: forjado.`);
+  } catch (e) {
+    _setStatus('FORJA ON');
+    _say(`**[FORJA]** No pude diseñarlo: ${e.message}`);
+  }
+};
+
+async function _toggleForja() {
+  const btn = document.getElementById('vis-forja');
+  if (!_forjaOn) {
+    _setStatus('CARGANDO FORJA...');
+    if (!window.ForjaEngine) {
+      await new Promise(res => {
+        const existing = document.querySelector('script[src="./forja.js"]');
+        if (existing) { existing.addEventListener('load', res, { once: true }); return; }
+        const s = document.createElement('script');
+        s.src = './forja.js';
+        s.onload = res;
+        s.onerror = () => { s.remove(); res(); };
+        document.body.appendChild(s);
+      });
+    }
+    const ok = await window.ForjaEngine?.start?.(_panel);
+    if (!ok) {
+      _setStatus('LISTO');
+      _say('**[FORJA]** No se pudo iniciar el motor 3D. Verifica tu conexión.');
+      return;
+    }
+    _forjaOn = true;
+    btn?.classList.add('on');
+    _setStatus('FORJA ON');
+    _forjaChips(true);
+    _say('**[FORJA]** Motor de hologramas activo.\n- Toca **➕ FORJAR** o di **"AREX forja un dron"**\n- Activa ✋ señas y **PELLIZCA** un holograma para agarrarlo y moverlo\n- Mueve el teléfono: los hologramas quedan anclados a tu espacio\n- **⟲ RECENTRAR** los trae al frente si los pierdes de vista');
+  } else {
+    _forjaOn = false;
+    btn?.classList.remove('on');
+    window.ForjaEngine?.stop?.();
+    _forjaChips(false);
+    _setStatus('LISTO');
+  }
+}
+
 function _toggleGesture() {
   _gestureOn = !_gestureOn;
   const btn = document.getElementById('vis-gesture');
@@ -1877,6 +1950,20 @@ function _processVoiceCmd(text) {
   if (/\b(quién es|quien es|quién hay|quien hay|quién está|quien esta|alguien ahí|alguien ahi|reconoce)\b/.test(t)) {
     feedback('IDENTIFICAR PERSONA');
     if (!_busy) _analyze('describe');
+    return;
+  }
+
+  // FORJA por voz: "arex forja un dron" / "construye una mesa"
+  if (/\b(forja|construye|fabrica)\b/.test(t)) {
+    const obj = t.replace(/^.*\b(forja|construye|fabrica)\b/, '').replace(/^[\s,:]+/, '').trim() || 'un cubo';
+    feedback(`FORJANDO · ${obj.toUpperCase().slice(0, 24)}`);
+    (async () => {
+      if (!window.ForjaEngine?.isOn?.()) await _toggleForja();
+      if (!window.ForjaEngine?.isOn?.()) return;
+      _setStatus('FORJANDO...');
+      try { await window.ForjaEngine.crear(obj); _setStatus('FORJA ON'); _visionSpeak(`${obj}: forjado.`); }
+      catch (e) { _setStatus('FORJA ON'); _say(`**[FORJA]** No pude diseñarlo: ${e.message}`); }
+    })();
     return;
   }
 
@@ -2314,6 +2401,21 @@ function _handleGesture(type, data) {
   if (type === 'swipe_right') { _navigateNextModule(); return; }
   if (type === 'swipe_up')    { _hudModuleId ? _hideModuleHud() : closeVision(); return; }
   if (type === 'swipe_down')  { _toggleModuleGrid(); return; }
+
+  // FORJA: pellizco sobre un holograma = agarrar/arrastrar/soltar
+  // (coordenadas compensadas por espejo en cámara frontal)
+  const _fx = v => _facingMode === 'user' ? 1 - v : v;
+  if (type === 'pinch_move') {
+    if (data) window.ForjaEngine?.drag?.(_fx(data.x), data.y);
+    return;
+  }
+  if (type === 'pinch_end') {
+    window.ForjaEngine?.release?.();
+    return;
+  }
+  if (type === 'pinch' && data && window.ForjaEngine?.isOn?.()) {
+    if (window.ForjaEngine.tryGrab(_fx(data.x), data.y)) return;   // agarró → no es click
+  }
 
   // Pinch — click element at cursor position
   if (type === 'pinch' && data) { _doPinchClick(data); return; }
