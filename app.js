@@ -122,7 +122,7 @@ function setupSaveHandler() {
 /* ── Atajos personalizados ──────────────────────────── */
 // 'run' quitado (nunca tuvo implementación); 'proyecto' agregado (tiene case
 // en handleCommand pero un atajo del usuario llamado igual lo eclipsaba)
-const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy','proyecto'];
+const RESERVED_CMDS = ['ayuda','limpiar','examen','resumir','exportar','notas','stats','recordar','contexto','config','atajos','memoria','tarea','briefing','pomodoro','buscar','hechos','semana','analizar','hoy','proyecto','profundo'];
 
 function loadAtalos() {
   return _safeJSON(localStorage.getItem('arex_atajos'), []);
@@ -3218,9 +3218,12 @@ async function handleFile(file) {
    modelo que ya falló hasta que el usuario recarga la app.
 ─────────────────────────────────────────────────────── */
 const _GROQ_MODELS = {
-  chat:   ['meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile'],
+  // chat: Kimi K2 (~1T params MoE, el modelo abierto más potente en Groq free)
+  // con cascada a maverick → llama-3.3 si no está disponible (_groqFetch maneja 404)
+  chat:   ['moonshotai/kimi-k2-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile'],
   fast:   ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.3-70b-versatile'],
-  vision: ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.2-11b-vision-preview'],
+  // vision: llama-3.2-11b-vision-preview fue RETIRADO de Groq → maverick (acepta imágenes)
+  vision: ['meta-llama/llama-4-scout-17b-16e-instruct',     'meta-llama/llama-4-maverick-17b-128e-instruct'],
 };
 const _groqBad = new Set(); // modelos con 404 en esta sesión
 
@@ -3384,6 +3387,35 @@ async function saveMsg(role, content) {
 }
 
 /* ── Firebase: cargar historial ─────────────────────── */
+/* ── Modo profundo: Gemini 2.5 Pro bajo demanda (/profundo) ──
+   Razonamiento pesado con TODO el contexto de AREX. Cuota gratis diaria
+   limitada — por eso solo se dispara con el comando explícito, nunca solo. */
+async function _callGeminiPro(question) {
+  const sys = buildSystemBase() + buildContextSection() + buildMemoriaSection()
+            + buildSessionMemorySection() + buildModuleContext();
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${AREX_CONFIG.geminiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(60000),   // razona en serio: darle tiempo
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role: 'user', parts: [{ text: question }] }],
+        generationConfig: { maxOutputTokens: 2048 },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`${res.status}: ${err?.error?.message || res.statusText}`);
+  }
+  const d = await res.json();
+  const out = d?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+  if (!out.trim()) throw new Error('respuesta vacía de Gemini Pro');
+  return out;
+}
+
 async function loadHistory() {
   if (!db || !window._arexUid) return;
   try {
@@ -3742,6 +3774,41 @@ async function handleCommand(cmd) {
         <div class="stat-card"><div class="s-label">BÚSQUEDAS HOY</div><div class="s-value">${s.d.searches||0}</div></div>
       `;
       modalStats.classList.remove('hidden');
+      break;
+    }
+
+    case 'profundo': {
+      if (!args) {
+        addMsg('arex', '**◆ MODO PROFUNDO** — razonamiento pesado con Gemini 2.5 Pro (cuota diaria limitada, tarda 10-30s).\n\nUso: `/profundo tu pregunta`\nEjemplo: `/profundo ¿cómo reestructuro mis pagos para liquidar la Oro 6 meses antes?`');
+        break;
+      }
+      if (!AREX_CONFIG?.geminiKey) {
+        addMsg('arex', 'El modo profundo necesita tu **Gemini API Key**. Agrégala en `/config` (gratis en aistudio.google.com).');
+        break;
+      }
+      addMsg('user', `◆ /profundo ${args}`);
+      showThinking();
+      setOrb('thinking', 'Razonamiento profundo...');
+      try {
+        const deep = await _callGeminiPro(args);
+        hideThinking();
+        const texto = `**◆ MODO PROFUNDO · GEMINI 2.5 PRO**\n\n${deep}`;
+        history.push({ role: 'assistant', content: texto });
+        await saveMsg('assistant', texto);
+        updateMemMetric();
+        const wrap = makeArexWrap();
+        await renderArexReply(wrap, texto);
+      } catch (e) {
+        hideThinking();
+        const esCuota = /429|quota|RESOURCE_EXHAUSTED/i.test(e.message || '');
+        addMsg('arex', esCuota
+          ? '**[Modo profundo]** Cuota diaria de Gemini Pro agotada — vuelve a intentar mañana. Te respondo con el cerebro normal (K2):'
+          : `**[Modo profundo]** Error: ${e.message}. Te respondo con el cerebro normal:`);
+        // Fallback: la misma pregunta al cerebro de chat (Kimi K2)
+        txt.value = args;
+        await handleSend();
+      }
+      setOrb(null, 'En espera de instrucciones');
       break;
     }
 
