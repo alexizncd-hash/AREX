@@ -47,6 +47,7 @@ let _recovering    = false;   // guard: recuperación de stream en curso
 let _recoverTries  = 0;       // reintentos de recuperación (máx 3 seguidos)
 let _bbTimer       = null;    // caja negra: snapshot de estado cada 2s
 let _idleTimer     = null;    // auto-ocultamiento del HUD (v188)
+let _ttsEndTs      = 0;       // fin de la última síntesis de voz (anti-eco charla)
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -604,7 +605,7 @@ function _buildPanel() {
       <div class="vp-wave" id="vis-wave">
         <span></span><span></span><span></span><span></span><span></span>
       </div>
-      <span id="vis-cmd-text">DI "AREX" + COMANDO</span>
+      <span id="vis-cmd-text">TE ESCUCHO — HÁBLAME</span>
     </div>
 
     <!-- MODULE NAVIGATION GRID -->
@@ -1633,8 +1634,8 @@ function _visionSpeak(text) {
       if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     }, 5000);
   };
-  u.onend   = () => { _stopIosKa(); window.VisionOrb?.setState(_contOn ? 'scanning' : 'idle'); };
-  u.onerror = () => { _stopIosKa(); window.VisionOrb?.setState('idle'); };
+  u.onend   = () => { _ttsEndTs = Date.now(); _stopIosKa(); window.VisionOrb?.setState(_contOn ? 'scanning' : 'idle'); };
+  u.onerror = () => { _ttsEndTs = Date.now(); _stopIosKa(); window.VisionOrb?.setState('idle'); };
 
   window.speechSynthesis.speak(u);
 }
@@ -1940,6 +1941,9 @@ function _initVoiceCmd() {
   };
 
   _vsr.onresult = (e) => {
+    // Anti-eco: mientras AREX habla (y medio segundo después), el micrófono
+    // lo está oyendo A ÉL — ignorar o la charla se retroalimenta sola
+    if (window.speechSynthesis?.speaking || Date.now() - _ttsEndTs < 600) return;
     let interim = '';
     let final = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1985,20 +1989,23 @@ function _stopVoiceCmd() {
     _vsr = null;
   }
   _vsrRunning = false;
+  _charlaHist = [];   // el hilo de charla muere con el micrófono
 }
 
 /* ─── Voice Command Parser ────────────────────────────── */
 function _processVoiceCmd(text) {
-  if (!text.includes('arex')) return;
-
-  const t = text.replace(/arex\s*/i, '').trim();
+  // MODO CHARLA (v189): con el 🎙 encendido, TODO lo que digas va a AREX —
+  // decir "arex" es opcional (se tolera y se limpia). Las acciones se detectan
+  // dentro de la conversación; lo demás fluye como plática natural.
+  const t = text.replace(/^\s*(oye\s+|hey\s+)?arex[,.\s]*/i, '').trim().toLowerCase();
+  if (!t || t.length < 2) return;
   const cmdEl = document.getElementById('vis-cmd-text');
 
   const feedback = (lbl) => {
     if (cmdEl) cmdEl.textContent = `⬤ ${lbl}`;
     clearTimeout(_cmdFeedbackT);
     _cmdFeedbackT = setTimeout(() => {
-      if (cmdEl) cmdEl.textContent = 'DI "AREX" + COMANDO';
+      if (cmdEl) cmdEl.textContent = 'TE ESCUCHO — HÁBLAME';
     }, 3000);
   };
 
@@ -2135,25 +2142,73 @@ function _processVoiceCmd(text) {
     control:    ['control', 'configuración', 'ajustes'],
     chat:       ['chat', 'chatear'],
   };
-  for (const [id, keywords] of Object.entries(modMap)) {
-    if (keywords.some(k => t.includes(k))) {
-      if (openMode) {
+  // Navegación SOLO con verbo explícito ("abre finanzas") — en modo charla
+  // una frase casual con "dinero" o "nota" NO debe sacarte a un módulo
+  if (openMode) {
+    for (const [id, keywords] of Object.entries(modMap)) {
+      if (keywords.some(k => t.includes(k))) {
         feedback(`ABRIR ${id.toUpperCase()}`);
         _say(`**[Voz]** Abriendo ${id}...`);
         setTimeout(() => _navigateAndClose(id), 800);
-      } else {
-        feedback(`◈ ${id.toUpperCase()}`);
-        _showModuleHud(id);
+        return;
       }
-      return;
     }
   }
 
-  // Free voice fallback: if speech starts with "arex" but matched nothing,
-  // treat the rest as a natural language question about the current camera view
-  if (t.length > 3 && !_busy) {
-    feedback('PREGUNTA LIBRE');
-    _freeVoiceQuery(t);
+  // Enrutador de charla: si la frase refiere a lo VISIBLE ("qué es esto",
+  // "mira", "lo que ves") → pregunta con frame; si no → conversación pura
+  // (sin captura ni upload: respuesta casi instantánea con K2)
+  if (t.length > 2 && !_busy) {
+    if (/\b(esto|eso|aqu[ií]|ves|viendo|mira|enfrente|pantalla|cámara)\b/.test(t)) {
+      feedback('PREGUNTA VISUAL');
+      _freeVoiceQuery(t);
+    } else {
+      feedback('CHARLA');
+      _charla(t);
+    }
+  }
+}
+
+/* ─── Charla fluida (v189) ─────────────────────────────
+   Conversación natural con memoria de hilo — sin frames, sin comandos:
+   K2 responde en frases cortas pensadas para VOZ, casi al instante. */
+let _charlaHist = [];
+async function _charla(texto) {
+  const key = window.AREX_CONFIG?.groqKey;
+  if (!key) return;
+  _charlaHist.push({ role: 'user', content: texto });
+  if (_charlaHist.length > 12) _charlaHist = _charlaHist.slice(-12);
+  _setStatus('CHARLANDO...');
+  window.VisionOrb?.setState('analyzing');
+  try {
+    const models = ['moonshotai/kimi-k2-instruct', 'llama-3.3-70b-versatile'];
+    let reply = null;
+    for (const model of models) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model, max_tokens: 200, temperature: 0.7,
+          messages: [
+            { role: 'system', content: 'Eres AREX, el asistente personal de Alexiz (estilo JARVIS, español mexicano). Están CONVERSANDO POR VOZ con la cámara abierta: responde como se habla, en 1-3 frases naturales y directas, sin markdown, sin listas, sin emojis. Si te pide algo que no puedes hacer por voz, dilo breve y sugiere cómo.' },
+            ..._charlaHist,
+          ],
+        }),
+      });
+      if (res.status === 404) continue;
+      if (!res.ok) break;
+      const d = await res.json();
+      reply = d?.choices?.[0]?.message?.content?.trim() || null;
+      break;
+    }
+    if (!reply) { _setStatus('LISTO'); return; }
+    _charlaHist.push({ role: 'assistant', content: reply });
+    _say(`**[Charla]** ${reply}`);
+    _visionSpeak(reply);
+    _setStatus(_contOn ? 'SMART · EN ESPERA' : 'LISTO');
+  } catch (e) {
+    console.warn('charla:', e);
+    _setStatus('LISTO');
   }
 }
 
