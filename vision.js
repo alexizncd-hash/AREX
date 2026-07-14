@@ -46,6 +46,7 @@ let _greetTimer    = null;    // saludo "Visión activa" — se cancela al cerra
 let _recovering    = false;   // guard: recuperación de stream en curso
 let _recoverTries  = 0;       // reintentos de recuperación (máx 3 seguidos)
 let _bbTimer       = null;    // caja negra: snapshot de estado cada 2s
+let _idleTimer     = null;    // auto-ocultamiento del HUD (v188)
 
 // Vision Workspace state (full module panels + mini-chat in vision)
 let _wkOn    = false;
@@ -370,6 +371,9 @@ export async function openVision() {
   clearInterval(_bbTimer);
   _bbTimer = setInterval(_bbSnapshot, 2000);
   _bbSnapshot();
+  // Auto-ocultamiento: cualquier toque revive el HUD y rearma el temporizador
+  _panel.addEventListener('pointerdown', _wakeHud, { passive: true });
+  _wakeHud();
   document.getElementById('btn-vision')?.classList.add('active');
   clearTimeout(_greetTimer);
   _greetTimer = setTimeout(() => { if (_panel) { _jarvisSound('open'); _visionSpeak('Visión activa. Aquí contigo.'); } }, 600);
@@ -421,6 +425,8 @@ export function closeVision() {
     setTimeout(() => { if (!window._arexContModeActive) window.toggleContinuousMode?.(); }, 700);
   }
   document.removeEventListener('visibilitychange', _onVisResume);
+  clearTimeout(_idleTimer);
+  _idleTimer = null;
   // Caja negra: cierre limpio — que no se reporte como crash
   clearInterval(_bbTimer);
   _bbTimer = null;
@@ -486,13 +492,59 @@ const _MODS_GRID = [
   { id:'chat',       icon:'▸',  label:'CHAT' },
 ];
 
+/* ─── Auto-ocultamiento del HUD (v188) ─────────────────
+   Tras 5s sin interacción, el HUD se desvanece dejando el video limpio
+   (queda la retícula y el badge de estado). Cualquier toque lo revive.
+   No se oculta si hay algo abierto que el usuario está leyendo/usando. */
+function _hudBusy() {
+  return _busy
+    || document.getElementById('vis-result')?.classList.contains('visible')
+    || document.getElementById('vis-radial')?.classList.contains('vr-open')
+    || document.getElementById('vis-ask-bar')?.classList.contains('visible')
+    || document.getElementById('vis-personas-panel')?.classList.contains('visible')
+    || document.getElementById('vis-gesture-config')?.classList.contains('visible')
+    || _wkOn;
+}
+function _wakeHud() {
+  _panel?.classList.remove('vp-idle');
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    if (_panel && !_hudBusy()) _panel.classList.add('vp-idle');
+    else if (_panel) _wakeHud();   // algo abierto: reintentar después
+  }, 5000);
+}
+
+/* ─── Iconografía monocroma (v188) ────────────────────
+   SVG inline con stroke:currentColor — mismos trazos en iPhone y Quest,
+   heredan color/estados CSS. Los emojis de sistema se veían "de juego". */
+const _SVG = (d, extra = '') => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${extra}<path d="${d}"/></svg>`;
+const _I = {
+  forja:    _SVG('M12 3 L21 12 L12 21 L3 12 Z M12 8 L16.5 12 L12 16 L7.5 12 Z'),
+  gestos:   _SVG('M7 11.5 V6.2 a1.4 1.4 0 0 1 2.8 0 V10 M9.8 10 V4.8 a1.4 1.4 0 0 1 2.8 0 V10 M12.6 10 V5.8 a1.4 1.4 0 0 1 2.8 0 V11 M15.4 11.5 V8.4 a1.4 1.4 0 0 1 2.8 0 V14 c0 4-2.7 7-6.7 7 c-3.3 0-4.8-1.5-6.3-4.3 L4 14.8 c-.6-1.2.4-2.4 1.7-2 l1.3.5'),
+  mic:      _SVG('M12 4 a3 3 0 0 1 3 3 v4 a3 3 0 0 1 -6 0 V7 a3 3 0 0 1 3 -3 Z M6.5 11 a5.5 5.5 0 0 0 11 0 M12 16.5 V20 M9 20 h6'),
+  bocina:   _SVG('M4 10 v4 h3 l5 4.2 V5.8 L7 10 Z M15.5 9.5 a3.6 3.6 0 0 1 0 5 M18 7.5 a7 7 0 0 1 0 9'),
+  persona:  _SVG('M5.5 19.5 a6.5 6.5 0 0 1 13 0', '<circle cx="12" cy="8.5" r="3.2"/>'),
+  flip:     _SVG('M4.5 9 a8 8 0 0 1 13.6 -2.2 M18 3 v4.2 h-4.2 M19.5 15 a8 8 0 0 1 -13.6 2.2 M6 21 v-4.2 h4.2'),
+  cerrar:   _SVG('M6 6 L18 18 M18 6 L6 18'),
+  ojo:      _SVG('M2.5 12 C5 7.2 8.5 5 12 5 s7 2.2 9.5 7 C19 16.8 15.5 19 12 19 s-7-2.2-9.5-7 Z', '<circle cx="12" cy="12" r="2.7"/>'),
+  auto:     _SVG('', '<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>'),
+  menu:     _SVG('M12 8.5 v7 M8.5 12 h7', '<circle cx="12" cy="12" r="8"/>'),
+};
+
 function _buildPanel() {
   const el = document.createElement('div');
   el.id = 'vision-panel';
   el.innerHTML = `
     <video id="vis-video" autoplay playsinline muted></video>
     <canvas id="vis-gesture-canvas" class="vp-gesture-canvas"></canvas>
-    <div class="vp-scan-line" id="vis-scan"></div>
+    <!-- RETÍCULA CENTRAL (v188): corazón visual del modo — el anillo de
+         progreso gira SOLO durante el análisis (reemplaza al sweep) -->
+    <div id="vis-reticle">
+      <span class="vr-c vr-tl"></span><span class="vr-c vr-tr"></span>
+      <span class="vr-c vr-bl"></span><span class="vr-c vr-br"></span>
+      <span class="vr-dot"></span>
+      <svg class="vr-ring" viewBox="0 0 72 72"><circle cx="36" cy="36" r="32" pathLength="100"/></svg>
+    </div>
     <div class="vp-corner vp-tl"></div>
     <div class="vp-corner vp-tr"></div>
     <div class="vp-corner vp-bl"></div>
@@ -504,13 +556,13 @@ function _buildPanel() {
     <div class="vp-hud-top">
       <div class="vp-title"><span class="vp-dot"></span>AREX · VISIÓN</div>
       <div class="vp-top-btns">
-        <button class="vp-icon-btn vp-forja-btn" id="vis-forja" title="FORJA — hologramas 3D">◈</button>
-        <button class="vp-icon-btn vp-gesture-btn" id="vis-gesture" title="Gestos">✋</button>
-        <button class="vp-icon-btn vp-vcmd-btn"    id="vis-vcmd"    title="Comandos de voz">🎙</button>
-        <button class="vp-icon-btn vp-voice-btn on" id="vis-voice"  title="Síntesis de voz">🔊</button>
-        <button class="vp-icon-btn" id="vis-personas" title="Personas conocidas">👤</button>
-        <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">⟳</button>
-        <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">✕</button>
+        <button class="vp-icon-btn vp-forja-btn" id="vis-forja" title="FORJA — hologramas 3D">${_I.forja}</button>
+        <button class="vp-icon-btn vp-gesture-btn" id="vis-gesture" title="Gestos">${_I.gestos}</button>
+        <button class="vp-icon-btn vp-vcmd-btn"    id="vis-vcmd"    title="Comandos de voz">${_I.mic}</button>
+        <button class="vp-icon-btn vp-voice-btn on" id="vis-voice"  title="Síntesis de voz">${_I.bocina}</button>
+        <button class="vp-icon-btn" id="vis-personas" title="Personas conocidas">${_I.persona}</button>
+        <button class="vp-icon-btn" id="vis-flip" title="Cambiar cámara">${_I.flip}</button>
+        <button class="vp-icon-btn vp-close-btn" onclick="closeVision()" title="Cerrar">${_I.cerrar}</button>
       </div>
     </div>
 
@@ -524,9 +576,6 @@ function _buildPanel() {
       <span class="vp-dr-sep">·</span>
       <span id="vis-dr-fin">···</span>
     </div>
-
-    <!-- CINEMATIC SWEEP (enhanced scan overlay) -->
-    <div class="vp-sweep-line" id="vis-sweep"></div>
 
     <!-- LEFT TELEMETRY -->
     <div class="vp-telemetry" id="vis-telemetry">
@@ -592,6 +641,7 @@ function _buildPanel() {
     <div class="vp-result" id="vis-result">
       <div class="vp-result-hd">
         <span class="vp-result-lbl" id="vis-result-lbl">ANÁLISIS</span>
+        <button class="vp-icon-btn" id="vis-result-min" title="Minimizar">—</button>
         <button class="vp-icon-btn vp-close-btn" id="vis-result-close" title="Cerrar">✕</button>
       </div>
       <div class="vp-result-inner">
@@ -684,13 +734,13 @@ function _buildPanel() {
     <!-- BOTTOM ACTION BUTTONS — solo 3: los demás modos viven en el menú radial -->
     <div class="vp-hud-bottom">
       <button class="vp-action-btn vp-btn-primary" data-mode="describe" onclick="captureAndAnalyze('describe')">
-        <span class="vp-btn-ico">👁</span><span class="vp-btn-lbl">VER</span>
+        <span class="vp-btn-ico">${_I.ojo}</span><span class="vp-btn-lbl">VER</span>
       </button>
       <button class="vp-action-btn vp-cont-btn" id="vis-cont">
-        <span class="vp-btn-ico">⬤</span><span class="vp-btn-lbl">AUTO</span>
+        <span class="vp-btn-ico">${_I.auto}</span><span class="vp-btn-lbl">AUTO</span>
       </button>
       <button class="vp-action-btn vp-radial-trigger" id="vis-radial-btn" onclick="window._toggleRadial()">
-        <span class="vp-btn-ico">⊕</span><span class="vp-btn-lbl">MENÚ</span>
+        <span class="vp-btn-ico">${_I.menu}</span><span class="vp-btn-lbl">MENÚ</span>
       </button>
     </div>
   `;
@@ -713,6 +763,7 @@ function _buildPanel() {
   document.getElementById('vis-flip').addEventListener('click', _flipCamera);
   window._visQR = _detectQR;   // QR ahora vive en el menú radial
   document.getElementById('vis-result-close').addEventListener('click', _hideResult);
+  document.getElementById('vis-result-min').addEventListener('click', _minimizeResult);
   document.getElementById('vis-voice').addEventListener('click', _toggleVoice);
   document.getElementById('vis-personas').addEventListener('click', _openPersonasPanel);
   document.getElementById('vis-personas-close').addEventListener('click', _closePersonasPanel);
@@ -891,10 +942,6 @@ async function _analyze(mode, extra = '') {
   _setStatus('ANALIZANDO...');
   _setScanActive(true);
   _jarvisSound('scan');
-
-  // Cinematic sweep animation
-  const sweepEl = document.getElementById('vis-sweep');
-  if (sweepEl) { sweepEl.classList.remove('active'); void sweepEl.offsetWidth; sweepEl.classList.add('active'); }
 
   const prompt    = extra || _buildVisionPrompt(mode);
   const geminiKey = window.AREX_CONFIG?.geminiKey;
@@ -1077,6 +1124,7 @@ function _showResult(label, text, thumb, mode = '') {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
   if (body) body.innerHTML = html;
+  document.getElementById('vis-result-pill')?.remove();   // resultado nuevo pisa la pastilla
   panel.classList.add('visible');
   _jarvisSound('result');
   clearTimeout(_resultTimer);
@@ -1086,8 +1134,30 @@ function _showResult(label, text, thumb, mode = '') {
 
 function _hideResult() {
   document.getElementById('vis-result')?.classList.remove('visible');
+  document.getElementById('vis-result-pill')?.remove();
   const actionsEl = document.getElementById('vis-result-actions');
   if (actionsEl) actionsEl.innerHTML = '';
+}
+
+// Minimizar: la tarjeta se colapsa a una pastilla flotante — el resultado
+// sigue vivo y se reabre con un toque, sin taparte la cámara
+function _minimizeResult() {
+  const panel = document.getElementById('vis-result');
+  if (!panel?.classList.contains('visible')) return;
+  panel.classList.remove('visible');
+  clearTimeout(_resultTimer);   // minimizada = el usuario decide cuándo cerrarla
+  let pill = document.getElementById('vis-result-pill');
+  if (!pill && _panel) {
+    pill = document.createElement('button');
+    pill.id = 'vis-result-pill';
+    _panel.appendChild(pill);
+    pill.addEventListener('click', () => {
+      pill.remove();
+      panel.classList.add('visible');
+      _wakeHud();
+    });
+  }
+  if (pill) pill.textContent = `◆ ${document.getElementById('vis-result-lbl')?.textContent || 'RESULTADO'}`;
 }
 
 /* ─── Context-aware quick actions after analysis ──────── */
@@ -1515,7 +1585,11 @@ function _setStatus(txt) {
   }
 }
 function _setScanActive(on) {
-  document.getElementById('vis-scan')?.classList.toggle('active', on);
+  // Retícula central: anillo de progreso girando mientras analiza
+  const r = document.getElementById('vis-reticle');
+  if (!r) return;
+  r.classList.toggle('scanning', on);
+  if (!on) { r.classList.add('hit'); setTimeout(() => r.classList.remove('hit'), 700); }
 }
 function _setAnalyzing(on, mode) {
   document.querySelectorAll('#vision-panel [data-mode]').forEach(b => {
@@ -1589,7 +1663,8 @@ function _toggleVoice() {
   _stopIosKa();
   const btn = document.getElementById('vis-voice');
   if (btn) {
-    btn.textContent = _voiceOn ? '🔊' : '🔇';
+    // El estado se comunica por la clase .on (opacidad/color del icono SVG),
+    // no reescribiendo el contenido — eso borraría el glifo
     btn.classList.toggle('on', _voiceOn);
     btn.title = _voiceOn ? 'Voz activada' : 'Voz desactivada';
   }
@@ -2538,7 +2613,7 @@ function _doPinchClick(data) {
   if (tapCv) tapCv.style.pointerEvents = prevPE || '';
   if (el && el.tagName !== 'CANVAS' && el.tagName !== 'VIDEO' && el !== _panel) {
     el.click();
-    _gestureFlash('🤏 TAP', '#00ffaa');
+    _gestureFlash('🤏 TAP', '#7fe7ff');
     // Ripple effect at pinch location
     const ripple = document.createElement('div');
     ripple.className = 'pinch-ripple';

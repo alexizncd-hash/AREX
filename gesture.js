@@ -25,9 +25,9 @@ const GESTURES = {
   open_hand:   { icon: '✋', label: 'ANALIZAR',    color: '#00d4ff', action: 'analyze' },
   fist:        { icon: '✊', label: 'DETENER',     color: '#ff4455', action: 'stop' },
   index_up:    { icon: '☝',  label: 'MÓDULOS',     color: '#f5a623', action: 'modules' },
-  peace:       { icon: '✌',  label: 'AUTO',        color: '#00ffaa', action: 'toggle_auto' },
+  peace:       { icon: '✌',  label: 'AUTO',        color: '#00d4ff', action: 'toggle_auto' },
   thumb_up:    { icon: '👍', label: 'VOZ',         color: '#00d4ff', action: 'voice' },
-  pinch:       { icon: '🤏', label: 'SELECCIONAR', color: '#00ffaa', action: 'pinch_click' },
+  pinch:       { icon: '🤏', label: 'SELECCIONAR', color: '#00d4ff', action: 'pinch_click' },
   swipe_left:  { icon: '◀',  label: 'ANTERIOR',    color: '#00d4ff', action: 'prev_module' },
   swipe_right: { icon: '▶',  label: 'SIGUIENTE',   color: '#00d4ff', action: 'next_module' },
 };
@@ -235,7 +235,7 @@ function _checkPinch(lm, w, h) {
     ctx.beginPath();
     ctx.moveTo(lm[4].x * w, lm[4].y * h);
     ctx.lineTo(lm[8].x * w, lm[8].y * h);
-    ctx.strokeStyle = `rgba(0,255,170,${alpha.toFixed(2)})`;
+    ctx.strokeStyle = `rgba(0,212,255,${alpha.toFixed(2)})`;
     ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
     ctx.stroke(); ctx.setLineDash([]);
   }

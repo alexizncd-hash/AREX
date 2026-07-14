@@ -641,7 +641,7 @@ main {
 .vp-btn-lbl { font-size:7px; letter-spacing:1.5px; }
 .vp-cont-btn.on {
   border-color:var(--green); color:var(--green);
-  background:rgba(52,255,195,0.1);
+  background:rgba(0,212,255,0.1);
 }
 .vp-cont-btn.on .vp-status-dot { background:var(--green); }
 
@@ -830,18 +830,18 @@ main {
 }
 .vp-act-btn:hover, .vp-act-btn:active { background:rgba(34,211,238,0.22); }
 .vp-act-btn.accent {
-  background:rgba(52,255,195,0.1);
-  border-color:rgba(52,255,195,0.4);
+  background:rgba(0,212,255,0.1);
+  border-color:rgba(0,212,255,0.4);
   color:var(--green);
 }
-.vp-act-btn.accent:hover { background:rgba(52,255,195,0.2); }
+.vp-act-btn.accent:hover { background:rgba(0,212,255,0.2); }
 .vp-act-btn:disabled { opacity:0.55; cursor:default; }
 
 /* Voice button active state */
 .vp-voice-btn.on {
   border-color:var(--green); color:var(--green);
-  background:rgba(52,255,195,0.12);
-  box-shadow:0 0 8px rgba(52,255,195,0.2);
+  background:rgba(0,212,255,0.12);
+  box-shadow:0 0 8px rgba(0,212,255,0.2);
 }
 
 /* Analyzing button — pulsing highlight */
@@ -932,15 +932,15 @@ main {
   border-radius:6px; min-height:18px; transition:opacity 0.3s;
   letter-spacing:0.5px;
 }
-.vp-personas-msg.ok  { color:#34ffc3; background:rgba(52,255,195,0.08); }
+.vp-personas-msg.ok  { color:#00d4ff; background:rgba(0,212,255,0.08); }
 .vp-personas-msg.err { color:#ff6b6b; background:rgba(255,80,80,0.08); }
 
 /* ── Vision AR mode badge ─────────────────────────────── */
 .vp-ar-badge {
   position:absolute; top:58px; left:50%; transform:translateX(-50%);
-  background:rgba(52,255,195,0.12); border:1px solid rgba(52,255,195,0.5);
+  background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.5);
   border-radius:20px; padding:4px 16px;
-  color:#34ffc3; font-size:9px; letter-spacing:2px;
+  color:#00d4ff; font-size:9px; letter-spacing:2px;
   font-family:var(--font); white-space:nowrap; z-index:4;
   animation:vp-ar-pulse 2s ease-in-out infinite;
 }
@@ -983,7 +983,7 @@ main {
   letter-spacing:0.5px;
 }
 .vp-tel-row:last-child { border-bottom:none; }
-.vp-tel-row span:last-child { color:rgba(52,255,195,0.9); font-weight:600; }
+.vp-tel-row span:last-child { color:rgba(0,212,255,0.9); font-weight:600; }
 
 /* ─── Gesture Guide (right HUD) ───────────────────────── */
 .vp-gest-guide {
@@ -4688,9 +4688,9 @@ footer {
 
 /* ── Module active color glow on bottom bar ──────────── */
 .vp-hud-bottom .vp-action-btn.on {
-  border-color: rgba(52,255,195,0.5);
-  background: rgba(52,255,195,0.1);
-  box-shadow: 0 0 12px rgba(52,255,195,0.18);
+  border-color: rgba(0,212,255,0.5);
+  background: rgba(0,212,255,0.1);
+  box-shadow: 0 0 12px rgba(0,212,255,0.18);
 }
 
 /* ── Pinch click ripple ───────────────────────────────── */
@@ -4700,7 +4700,7 @@ footer {
 }
 .pinch-ripple {
   position: fixed; width: 40px; height: 40px; border-radius: 50%;
-  border: 2px solid #34ffc3; pointer-events: none; z-index: 9999;
+  border: 2px solid #00d4ff; pointer-events: none; z-index: 9999;
   animation: pinch-ripple 0.4s ease-out forwards;
 }
 
@@ -5089,11 +5089,11 @@ textarea:focus {
 }
 .vp-mhud-act-btn:hover { background: rgba(34,211,238,0.22); border-color: rgba(34,211,238,0.6); }
 .vp-mhud-act-btn.vp-mhud-act-add {
-  background: rgba(52,255,195,0.10);
-  border-color: rgba(52,255,195,0.35);
-  color: #34ffc3;
+  background: rgba(0,212,255,0.10);
+  border-color: rgba(0,212,255,0.35);
+  color: #00d4ff;
 }
-.vp-mhud-act-btn.vp-mhud-act-add:hover { background: rgba(52,255,195,0.20); }
+.vp-mhud-act-btn.vp-mhud-act-add:hover { background: rgba(0,212,255,0.20); }
 
 /* ── HUD body ────────────────────────────────────────── */
 .vp-mhud-body {
@@ -5236,7 +5236,7 @@ textarea:focus {
   margin-left: -22px;
   margin-top: -22px;
   border-radius: 50%;
-  border: 2px solid rgba(52,255,195,0.8);
+  border: 2px solid rgba(0,212,255,0.8);
   animation: pinch-expand 0.42s ease-out forwards;
   pointer-events: none;
   z-index: 9999;
@@ -8792,3 +8792,105 @@ html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }
   border-color: rgba(0, 212, 255, 0.7);
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.35);
 }
+
+/* ═══ VISIÓN v188 — rediseño: retícula, auto-hide, pastilla, iconos ═══ */
+
+/* Iconos SVG monocromos en botones */
+.vp-icon-btn svg { display: block; }
+.vp-icon-btn { display: flex; align-items: center; justify-content: center; opacity: 0.75; }
+.vp-icon-btn.on { opacity: 1; color: #00d4ff; }
+.vp-btn-ico svg { display: block; margin: 0 auto; }
+
+/* ── Retícula central ── */
+#vis-reticle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 72px; height: 72px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.4s;
+}
+#vis-reticle .vr-c {
+  position: absolute; width: 14px; height: 14px;
+  border-color: rgba(0, 212, 255, 0.85); border-style: solid; border-width: 0;
+}
+#vis-reticle .vr-tl { top: 0; left: 0; border-top-width: 1.5px; border-left-width: 1.5px; }
+#vis-reticle .vr-tr { top: 0; right: 0; border-top-width: 1.5px; border-right-width: 1.5px; }
+#vis-reticle .vr-bl { bottom: 0; left: 0; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+#vis-reticle .vr-br { bottom: 0; right: 0; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+#vis-reticle .vr-dot {
+  position: absolute; top: 50%; left: 50%;
+  width: 3px; height: 3px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 212, 255, 0.9);
+}
+#vis-reticle .vr-ring {
+  position: absolute; inset: 0;
+  opacity: 0;
+}
+#vis-reticle .vr-ring circle {
+  fill: none;
+  stroke: #00d4ff;
+  stroke-width: 2;
+  stroke-dasharray: 26 74;   /* arco parcial estilo radar */
+  stroke-linecap: round;
+}
+/* Analizando: el anillo aparece y gira — ÚNICA animación en loop, solo mientras dura */
+#vis-reticle.scanning { opacity: 1; }
+#vis-reticle.scanning .vr-ring {
+  opacity: 1;
+  animation: vr-spin 1.1s linear infinite;
+}
+@keyframes vr-spin { to { transform: rotate(360deg); } }
+/* Resultado recibido: pulso one-shot */
+#vis-reticle.hit { animation: vr-hit 0.7s ease-out; }
+@keyframes vr-hit {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  40%  { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
+}
+
+/* ── Auto-ocultamiento del HUD ── */
+#vision-panel .vp-hud-top,
+#vision-panel .vp-data-ribbon,
+#vision-panel .vp-telemetry,
+#vision-panel .vp-gest-guide,
+#vision-panel .vp-hud-bottom,
+#vision-panel #vis-forja-bar,
+#vision-panel .vp-swipe-hint {
+  transition: opacity 0.6s ease;
+}
+#vision-panel.vp-idle .vp-hud-top,
+#vision-panel.vp-idle .vp-data-ribbon,
+#vision-panel.vp-idle .vp-telemetry,
+#vision-panel.vp-idle .vp-gest-guide,
+#vision-panel.vp-idle .vp-hud-bottom,
+#vision-panel.vp-idle #vis-forja-bar {
+  opacity: 0.12;
+}
+
+/* ── Pastilla de resultado minimizado ── */
+#vis-result-pill {
+  position: absolute;
+  bottom: 150px; right: 12px;
+  max-width: 46vw;
+  background: rgba(0, 8, 20, 0.9);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  color: #7fe7ff;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  z-index: 12;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.18);
+}
+
+/* Tarjeta de resultados: borde con glow sutil (box-shadow, no blur) */
+.vp-result.visible { box-shadow: 0 -4px 24px rgba(0, 212, 255, 0.12); }
