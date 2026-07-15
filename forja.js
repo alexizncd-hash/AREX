@@ -105,6 +105,7 @@ const ForjaEngine = (() => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      signal: AbortSignal.timeout(20000),   // sin esto, un cuelgue de red = "FORJANDO..." eterno
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', max_tokens: 1400, temperature: 0.4,
         response_format: { type: 'json_object' },

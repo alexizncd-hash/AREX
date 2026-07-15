@@ -8767,13 +8767,36 @@ html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }
 /* ── FORJA v186: chips flotantes + botón activo ── */
 #vis-forja-bar {
   position: absolute;
-  bottom: 88px;
+  /* Sobre la barra inferior + zona segura del iPhone — antes quedaba
+     encimada con los botones VER/AUTO/MENÚ y era difícil de tocar */
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
   z-index: 11;
+  width: min(92vw, 420px);
 }
+.vp-forja-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+.vp-forja-inp {
+  flex: 1;
+  background: rgba(0, 8, 20, 0.92);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  color: #e8f4ff;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  min-width: 0;
+}
+.vp-forja-inp::placeholder { color: rgba(127, 231, 255, 0.4); }
 .vp-forja-chip {
   background: rgba(0, 8, 20, 0.88);
   border: 1px solid rgba(0, 212, 255, 0.45);
@@ -8781,7 +8804,8 @@ html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }
   font-family: var(--font-mono, monospace);
   font-size: 10px;
   letter-spacing: 1.5px;
-  padding: 8px 14px;
+  padding: 10px 16px;
+  min-height: 40px;   /* target táctil cómodo — antes era difícil de atinar */
   border-radius: 4px;
   cursor: pointer;
 }

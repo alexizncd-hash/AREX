@@ -1774,27 +1774,57 @@ function _forjaChips(show) {
   if (bar || !_panel) return;
   bar = document.createElement('div');
   bar.id = 'vis-forja-bar';
+  // Input integrado al HUD — prompt() está roto en PWAs de iOS (congela
+  // el hilo y suele regresar vacío): jamás usar diálogos del navegador aquí
   bar.innerHTML = `
-    <button class="vp-forja-chip" onclick="window._forjaCrearUI()">➕ FORJAR</button>
-    <button class="vp-forja-chip" onclick="window.ForjaEngine?.recentrar()" title="Traer los hologramas al frente">⟲ RECENTRAR</button>
-    <button class="vp-forja-chip vp-forja-chip-del" onclick="window.ForjaEngine?.clear()" title="Borrar todos los hologramas">🗑</button>`;
+    <div class="vp-forja-row" id="vis-forja-input-row" style="display:none">
+      <input id="vis-forja-input" class="vp-forja-inp" placeholder="¿Qué quieres forjar? (un dron, una mesa...)" autocomplete="off" spellcheck="false"/>
+      <button class="vp-forja-chip" id="vis-forja-go">▶</button>
+    </div>
+    <div class="vp-forja-row">
+      <button class="vp-forja-chip" id="vis-forja-new">➕ FORJAR</button>
+      <button class="vp-forja-chip" onclick="window.ForjaEngine?.recentrar()" title="Traer los hologramas al frente">⟲ RECENTRAR</button>
+      <button class="vp-forja-chip vp-forja-chip-del" onclick="window.ForjaEngine?.clear()" title="Borrar todos los hologramas">🗑</button>
+    </div>`;
   _panel.appendChild(bar);
+  const row = bar.querySelector('#vis-forja-input-row');
+  const inp = bar.querySelector('#vis-forja-input');
+  bar.querySelector('#vis-forja-new').addEventListener('click', () => {
+    const visible = row.style.display !== 'none';
+    row.style.display = visible ? 'none' : 'flex';
+    if (!visible) inp.focus();
+    _wakeHud();
+  });
+  const go = () => {
+    const desc = inp.value.trim();
+    if (!desc) { inp.focus(); return; }
+    inp.value = '';
+    row.style.display = 'none';
+    inp.blur();
+    _forjaCrear(desc);
+  };
+  bar.querySelector('#vis-forja-go').addEventListener('click', go);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
 
-window._forjaCrearUI = async function () {
+async function _forjaCrear(desc) {
   if (!window.ForjaEngine?.isOn?.()) return;
-  const desc = prompt('¿Qué quieres forjar? (ej: un dron, una mesa, un cohete)');
-  if (!desc?.trim()) return;
   _setStatus('FORJANDO...');
+  window.VisionOrb?.setState('analyzing');
   try {
-    await window.ForjaEngine.crear(desc.trim());
+    await window.ForjaEngine.crear(desc);
     _setStatus('FORJA ON');
-    _visionSpeak(`${desc.trim()}: forjado.`);
+    _visionSpeak(`${desc}: forjado.`);
   } catch (e) {
-    _setStatus('FORJA ON');
+    // El error debe verse AQUÍ (el usuario está en la cámara, no en el chat)
+    _setStatus('FORJA · ERROR');
+    setTimeout(() => _setStatus('FORJA ON'), 2500);
+    _visionSpeak('No pude diseñarlo, intenta describirlo distinto.');
     _say(`**[FORJA]** No pude diseñarlo: ${e.message}`);
   }
-};
+  window.VisionOrb?.setState('idle');
+}
+window._forjaCrearUI = () => document.getElementById('vis-forja-new')?.click();
 
 async function _toggleForja() {
   const btn = document.getElementById('vis-forja');
