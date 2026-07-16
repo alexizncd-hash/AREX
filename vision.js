@@ -661,7 +661,7 @@ function _buildPanel() {
     </div>
 
     <!-- SWIPE HINT -->
-    <div class="vp-swipe-hint">TAP = ANALIZAR ZONA · MANTENER = PREGUNTAR LIBRE</div>
+    <div class="vp-swipe-hint">MANTÉN PRESIONADO = PREGUNTAR LIBRE</div>
 
     <!-- MODULE HUD (permanece en visión al navegar módulos) -->
     <div class="vp-module-hud" id="vis-module-hud">
@@ -816,36 +816,26 @@ function _buildPanel() {
   window.addEventListener('resize', _resizeCanvas);
   _panel._cleanupResize = () => window.removeEventListener('resize', _resizeCanvas);
 
-  // Tap-to-analyze: single tap on video area triggers region analysis
+  // v191: el TAP simple ya NO analiza (dibujaba un objetivo donde tocaras y
+  // disparaba análisis sin querer — feedback del usuario: molesto). El tap
+  // ahora solo despierta el HUD. Se conserva MANTENER PRESIONADO → pregunta
+  // libre, que es deliberado y no se dispara por accidente.
   const tapCv = document.getElementById('vis-tap-canvas');
   if (tapCv) {
     let _tapStart = null;
     tapCv.addEventListener('touchstart', e => {
       if (e.touches.length !== 1) return;
-      _tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-      // Long press → ask bar
+      _tapStart = { t: Date.now() };
       _longPressTimer = setTimeout(() => {
         if (!_tapStart) return;
         _tapStart = null;
         _toggleAskBar();
       }, 650);
     }, { passive: true });
-    tapCv.addEventListener('touchend', e => {
+    tapCv.addEventListener('touchend', () => {
       clearTimeout(_longPressTimer);
-      if (!_tapStart) return;
-      const dx = e.changedTouches[0].clientX - _tapStart.x;
-      const dy = e.changedTouches[0].clientY - _tapStart.y;
-      const dt = Date.now() - _tapStart.t;
       _tapStart = null;
-      // Only fire on short taps with little movement
-      if (dt < 400 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
-        _handleTapAnalyze(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-      }
     }, { passive: true });
-    tapCv.addEventListener('click', e => {
-      // Desktop: single click to analyze region
-      if (e.detail === 1) _handleTapAnalyze(e.clientX, e.clientY);
-    });
   }
 
   document.getElementById('vis-ask-send').addEventListener('click', _sendAskBar);

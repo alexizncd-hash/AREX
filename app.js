@@ -11,6 +11,15 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
+
+// CRÍTICO (fix Quest): en un dispositivo nuevo config.js NO existe y las
+// referencias sueltas a AREX_CONFIG (sin window.) lanzan ReferenceError —
+// el optional chaining NO protege contra identificadores no declarados.
+// Eso mataba TODO el arranque de app.js antes de llegar al setup: por eso
+// el Quest mostraba "ReferenceError: AREX_CONFIG is not defined" y quedaba
+// inutilizable. Con este default seguro, AREX_CONFIG?.x siempre funciona.
+if (!('AREX_CONFIG' in window)) window.AREX_CONFIG = null;
+
 function _safeJSON(str, fallback) {
   try { return JSON.parse(str) ?? fallback; } catch { return fallback; }
 }
