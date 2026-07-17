@@ -335,8 +335,6 @@ main#module-chat.module-panel.active {
   box-shadow: 0 10px 36px rgba(0,0,0,0.55), 0 0 24px rgba(34,211,238,0.07);
 }
 
-.metric-icon { display: none; }
-
 .metric-content {
   display: flex;
   flex-direction: column;

@@ -80,7 +80,7 @@
 
   /* ── 3. 3D PERSPECTIVE TILT ON ALL CARDS ────────────────── */
   const TILT_SEL = [
-    '.hud-panel', '.dash-widget', '.diag-quad', '.ctrl-agent-card',
+    '.hud-panel', '.dash-widget', '.diag-quad',
     '.meta-card', '.metric-card', '.resultado-card', '.quick-btn',
     '.nota-card', '.note-item', '.tarea-item', '.fin-card',
     '.neg-stat-card', '.negocio-card', '.gp-card', '.gp-cat-card',

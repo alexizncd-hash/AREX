@@ -674,7 +674,7 @@ function _applyProfile() {
   if (!p) return;
   // Header: nombre del asistente
   const nameEl = document.getElementById('hdr-assistant-name');
-  if (nameEl) nameEl.textContent = `${p.assistantName} · MARK 35`;
+  if (nameEl) nameEl.textContent = `${p.assistantName} · MARK IV`;
   // Sidebar: etiqueta de voz
   const voiceLbl = document.querySelector('#sb-voice .mt-lbl');
   if (voiceLbl) voiceLbl.textContent = `VOZ DE ${p.assistantName}`;
@@ -5939,7 +5939,7 @@ window.renderExchangeWidget = renderExchangeWidget;
   const bar  = document.getElementById('boot-bar');
   const logo = document.querySelector('.boot-logo');
   if (!logo) return;
-  const lines = ['AREX · MARK 35 · INICIANDO...', 'CARGANDO MÓDULOS...', 'CONECTANDO IA · GROQ · GEMINI...', 'TODOS LOS SISTEMAS EN LÍNEA.'];
+  const lines = ['AREX · MARK IV · INICIANDO...', 'CARGANDO MÓDULOS...', 'CONECTANDO IA · GROQ · GEMINI...', 'TODOS LOS SISTEMAS EN LÍNEA.'];
   const linesEl = document.getElementById('boot-lines');
   if (!linesEl) return;
 

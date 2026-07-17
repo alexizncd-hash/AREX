@@ -72,41 +72,6 @@
   gap: 0.8rem;
 }
 
-.ctrl-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.ctrl-section-label {
-  font-size: 8px;
-  letter-spacing: 3px;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 4px;
-}
-
-.ctrl-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(34,211,238,0.05);
-}
-
-.ctrl-key {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 1px;
-}
-
-.ctrl-val {
-  font-size: 10px;
-  color: var(--cyan);
-  letter-spacing: 1px;
-  font-family: 'Courier New', monospace;
-}
-
 .ctrl-log-wrap {
   flex: 1;
   min-height: 0;
@@ -178,70 +143,10 @@
   margin-bottom: 0.5rem;
 }
 
-.ctrl-filter-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-family: var(--font);
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  padding: 3px 8px;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.2s;
-}
-
-.ctrl-filter-btn.active {
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
-
 .ctrl-agents {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.8rem;
-}
-
-.ctrl-agent-card {
-  background: linear-gradient(135deg, rgba(0,10,22,0.94) 0%, rgba(0,5,14,0.98) 100%);
-  border: 1px solid rgba(34,211,238,0.12);
-  border-left: 3px solid var(--agent-color, var(--cyan));
-  border-radius: 6px;
-  padding: 0.8rem;
-}
-
-.ctrl-agent-name {
-  font-size: 11px;
-  color: var(--text-main);
-  letter-spacing: 2px;
-  font-weight: 700;
-}
-
-.ctrl-agent-desc {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  margin: 0.2rem 0;
-}
-
-.ctrl-agent-status {
-  font-size: 9px;
-  letter-spacing: 1.5px;
-}
-
-.ctrl-agent-status.online {
-  color: var(--green);
-}
-
-.ctrl-agent-status.standby {
-  color: var(--text-muted);
-}
-
-.ctrl-agent-last {
-  font-size: 9px;
-  color: var(--text-muted);
-  margin-top: 0.3rem;
-  line-height: 1.4;
 }
 
 /* ══ MISSION DIAGNOSTICS — 4-quadrant layout ═══════════ */
