@@ -1279,7 +1279,9 @@ main {
 
 /* ── FAB: Analizar con AREX ─────────────────────────── */
 #fab-analizar {
-  position:fixed; bottom:68px; right:0; z-index:300;
+  /* Encima del botón + (qc-fab: bottom 28 + alto 54 = 82px): sin esto ambos
+     FABs se encimaban en la esquina inferior derecha (hallazgo del Infiltrado) */
+  position:fixed; bottom:96px; right:0; z-index:300;
   display:flex; align-items:center; gap:6px;
   background:linear-gradient(155deg,rgba(14,42,66,.82),rgba(10,30,52,.68));
   border:1px solid rgba(34,211,238,0.45);
@@ -8184,7 +8186,8 @@ main#module-chat.module-panel.active { display: flex; }
     padding-right: 120px;
   }
   #fab-analizar {
-    bottom: calc(54px + env(safe-area-inset-bottom, 0px) + 6px);
+    /* Móvil: por encima del qc-fab + zona segura del iPhone */
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 }
 
