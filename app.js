@@ -4738,7 +4738,9 @@ async function boot() {
   // Firebase pulls (pullConfigFromFirestore, pullAllModuleData, loadHistory)
   // se ejecutan en el callback de onAuthStateChanged, no aquí.
   try {
-    await requestNotifPerm();
+    // Acotado a 3s: si el prompt de permisos se cuelga (Quest/iOS raros),
+    // el arranque NO puede quedarse esperando eternamente
+    await Promise.race([requestNotifPerm(), new Promise(r => setTimeout(r, 3000))]);
     updateCtxBadge();
     updateSidebarAll();
     renderTareas();
@@ -5293,9 +5295,44 @@ setInterval(() => {
 // Punto de entrada — siempre registrar el handler del setup
 setupSaveHandler();
 
+// ── Rescate de arranque (v192) ──────────────────────────
+// Si boot() muere o se cuelga por CUALQUIER razón, la pantalla de carga
+// jamás debe quedarse eterna: a los 12s se libera la interfaz a la fuerza
+// y se reporta qué pasó. "Cargando para siempre" queda prohibido.
+function _bootRescue(err) {
+  const bs = document.getElementById('boot-screen');
+  if (!bs || bs.style.display === 'none') return;   // el boot sí terminó
+  bs.style.display = 'none';
+  const detalle = err?.message || 'el arranque tardó demasiado (>12s)';
+  try { logBitacora?.('alerta', `BOOT RESCATADO: ${detalle}`); } catch {}
+  try { addMsg('arex', `⚠ **El arranque se atoró y fue rescatado.**\nDetalle: ${detalle}\n\nLa interfaz quedó liberada. Si algo se ve incompleto: ⚙ → 🔄 FORZAR ACTUALIZACIÓN COMPLETA.`); } catch {}
+}
+
+// Promesas rechazadas sin catch (async): el listener de 'error' no las ve —
+// eran exactamente los fallos invisibles del "se queda cargando"
+window.addEventListener('unhandledrejection', e => {
+  try {
+    const msg = e.reason?.message || String(e.reason || 'promesa rechazada');
+    if (typeof logBitacora === 'function') logBitacora('alerta', `ASYNC: ${msg.slice(0, 120)}`);
+    let t = document.getElementById('arex-err-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'arex-err-toast';
+      t.style.cssText = 'position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(40,0,0,0.92);border:1px solid #ff4444;color:#ffb0b0;font-family:monospace;font-size:11px;padding:8px 14px;border-radius:4px;max-width:90vw;pointer-events:none;';
+      document.body.appendChild(t);
+    }
+    t.textContent = `⚠ ${msg}`.slice(0, 140);
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 6000);
+  } catch {}
+});
+
 if (loadConfig()) {
   initFirebase();
-  boot();
+  const _bootWatchdog = setTimeout(_bootRescue, 12000);
+  boot()
+    .catch(e => _bootRescue(e))
+    .finally(() => clearTimeout(_bootWatchdog));
 } else {
   showSetup();
 }
