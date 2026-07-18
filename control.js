@@ -211,6 +211,11 @@ const AGENTES = [
     desc: 'Notas · Organiza y resume información',
     area: 'chat'
   },
+  {
+    id: 'espectro', nombre: 'ESPECTRO', color: '#cfefff',
+    desc: 'Infiltrado · Usa el sistema y caza fallas reales',
+    area: 'infiltrado'
+  },
 ];
 
 function _getAgentLastAction(area) {
@@ -229,10 +234,26 @@ function _getAgentStatus(area) {
 }
 
 function _renderAgentes(el) {
-  el.innerHTML = AGENTES.map(a => {
+  const estadoAll = (() => { try { return JSON.parse(localStorage.getItem('arex_agentes_estado') || '{}'); } catch { return {}; } })();
+  // Barra de mando superior: barrido total + estado del escuadrón
+  const okCount = AGENTES.filter(a => estadoAll[a.id]?.status === 'ok').length;
+  const barra = `
+    <div class="agent-cmd-bar">
+      <button class="agent-cmd-btn" onclick="window._barridoTotal()" title="Ejecutar los ${AGENTES.length} agentes en secuencia">⚡ BARRIDO TOTAL</button>
+      <span class="agent-cmd-status">${okCount}/${AGENTES.length} agentes con última corrida OK</span>
+    </div>`;
+
+  el.innerHTML = barra + AGENTES.map(a => {
     const status  = _getAgentStatus(a.area);
     const last    = _getAgentLastAction(a.area);
     const orbState = status === 'online' ? 'active' : 'idle';
+    const est     = estadoAll[a.id] || {};
+    const hist    = Array.isArray(est.historial) ? est.historial : [];
+    const histHtml = hist.slice(0, 3).map(h => {
+      const min = Math.floor((Date.now() - h.ts) / 60000);
+      const cuando = min < 1 ? 'ahora' : min < 60 ? `${min}m` : `${Math.floor(min / 60)}h`;
+      return `<div class="agent-hist-row ${h.status === 'error' ? 'err' : ''}">${h.status === 'error' ? '✕' : '✓'} ${cuando} · ${(h.summary || '').slice(0, 38)}</div>`;
+    }).join('');
     return `
       <div class="agent-orb-wrap" data-agent="${a.id}" data-area="${a.area}"
            onclick="window._runAgent('${a.id}','${a.area}')">
@@ -247,6 +268,7 @@ function _renderAgentes(el) {
           ${status === 'online' ? '● ACTIVO' : '○ EN ESPERA'}
         </div>
         <div class="agent-orb-last">${last}</div>
+        ${histHtml ? `<div class="agent-hist">${histHtml}</div>` : ''}
         <button class="agent-run-btn" style="border-color:${a.color}88;color:${a.color}">EJECUTAR</button>
       </div>`;
   }).join('');
@@ -254,6 +276,24 @@ function _renderAgentes(el) {
   // Init canvas orbs after DOM is painted
   setTimeout(() => window.initNeuralOrbs?.(), 60);
 }
+
+/* ── Barrido total: los 5 agentes en secuencia, reporte al final ── */
+window._barridoTotal = async function () {
+  logBitacora('sistema', `⚡ BARRIDO TOTAL iniciado (${AGENTES.length} agentes)`);
+  for (const a of AGENTES) {
+    await window._runAgent(a.id, a.area);
+    await new Promise(r => setTimeout(r, 400));   // respiro entre agentes
+  }
+  try {
+    const estado = JSON.parse(localStorage.getItem('arex_agentes_estado') || '{}');
+    const conError = AGENTES.filter(a => estado[a.id]?.status === 'error').map(a => a.nombre);
+    const resumen = conError.length
+      ? `⚡ Barrido completo: ${AGENTES.length - conError.length}/${AGENTES.length} OK — con error: ${conError.join(', ')}`
+      : `⚡ Barrido completo: ${AGENTES.length}/${AGENTES.length} agentes OK`;
+    logBitacora('sistema', resumen);
+    window.arexAlert?.('CTRL', resumen, conError.length ? 'warn' : 'info');
+  } catch {}
+};
 
 window._runAgent = async function (agentId, area) {
   /* ── Safe JSON helper ─────────────────────────────────── */
@@ -438,15 +478,92 @@ window._runAgent = async function (agentId, area) {
       logBitacora('chat', `SCRIBE: ${notasArr.length} notas, ${tareasVencidas} vencidas`);
     }
 
+    /* ════════════════════════════════════════════════════════
+       ESPECTRO — El Infiltrado residente
+       Usa las técnicas del agente espía (medición de solapamientos en DOM
+       vivo, integridad de datos, salud de funciones) DENTRO de la app.
+       Todo local: cero API, cero costo, resultado en segundos.
+    ═══════════════════════════════════════════════════════ */
+    else if (agentId === 'espectro') {
+      const fallas = [];
+
+      // a) Funciones críticas del sistema — si falta una, hay botones muertos
+      // Solo funciones GARANTIZADAS post-boot (shell). openVision/ForjaEngine
+      // son lazy — incluirlas daría falsos positivos si no se han usado
+      const criticas = ['cambiarModulo','getTareas','getNotas','getMetas','_h',
+        'arexCalleResumen','renderDashboard','exportarBackup','importarBackup',
+        'forzarActualizacion','abrirConfig','arexSyncData','arexAlert'];
+      const faltantes = criticas.filter(f => typeof window[f] !== 'function' && typeof window[f] !== 'object');
+      if (faltantes.length) fallas.push(`Funciones ausentes: ${faltantes.join(', ')}`);
+
+      // b) Integridad de datos — keys arex_* corruptas (JSON inválido)
+      const corruptas = [];
+      for (const k of Object.keys(localStorage)) {
+        if (!k.startsWith('arex_')) continue;
+        try { JSON.parse(localStorage.getItem(k)); }
+        catch { if (!['arex_voiceOn','arex_searchOn','arex_onboard_done','arex_migrated_v1','arex_vision_wkmod'].includes(k)) corruptas.push(k); }
+      }
+      if (corruptas.length) fallas.push(`Datos corruptos: ${corruptas.join(', ')}`);
+
+      // c) Solapamientos visuales en el módulo ACTIVO (técnica del infiltrado:
+      //    bounding boxes reales, no lectura de CSS)
+      const activo = document.querySelector('.module-panel.active');
+      let solapes = 0; const paresTxt = [];
+      if (activo) {
+        const vis = [];
+        activo.querySelectorAll('button, canvas, input, select, .neg-kpi, .metric-card').forEach(el => {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.15) return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 24 || r.height < 24 || r.bottom < 0 || r.top > innerHeight) return;
+          vis.push({ el, r, sel: el.id ? '#' + el.id : el.className.toString().split(' ')[0] });
+        });
+        for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) {
+          const a = vis[i], b = vis[j];
+          if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+          const ox = Math.max(0, Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left));
+          const oy = Math.max(0, Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top));
+          if (ox * oy > Math.min(a.r.width * a.r.height, b.r.width * b.r.height) * 0.5) {
+            solapes++;
+            if (paresTxt.length < 3) paresTxt.push(`${a.sel}×${b.sel}`);
+          }
+        }
+      }
+      if (solapes) fallas.push(`Elementos encimados: ${solapes} (${paresTxt.join(', ')})`);
+
+      // d) Errores recientes (24h) en la bitácora + crash de Visión sin reportar
+      const hace24 = Date.now() - 86400000;
+      const errores24 = _getBitacora().filter(e => e.ts > hace24 && /^(ERROR|JS:|ASYNC:|BOOT RESCATADO|⚠ CAJA NEGRA)/.test(e.accion) || (e.modulo === 'alerta' && e.ts > hace24)).length;
+      if (errores24 > 0) fallas.push(`Errores registrados en 24h: ${errores24} (revisa la bitácora)`);
+      try {
+        const bb = JSON.parse(localStorage.getItem('arex_vision_bb') || 'null');
+        if (bb && !bb.clean) fallas.push('Visión: la última sesión de cámara terminó en crash (caja negra pendiente)');
+      } catch {}
+
+      const veredicto = fallas.length === 0
+        ? '✅ **Sistema limpio.** Recorrí funciones, datos, diseño del módulo activo y bitácora — sin fallas detectables desde adentro.'
+        : `⚠ **${fallas.length} hallazgo${fallas.length > 1 ? 's' : ''}:**\n${fallas.map(f => `- ${f}`).join('\n')}`;
+
+      cardTipo    = fallas.length ? 'alerta' : 'general';
+      cardTitulo  = 'ESPECTRO · Infiltración del Sistema';
+      cardContent = `**Funciones críticas:** ${criticas.length - faltantes.length}/${criticas.length} vivas\n**Keys de datos:** ${Object.keys(localStorage).filter(k => k.startsWith('arex_')).length} (${corruptas.length} corruptas)\n**Módulo inspeccionado:** ${activo?.id?.replace('module-', '') || '—'}\n\n${veredicto}`;
+      shortSummary = fallas.length ? `⚠ ${fallas.length} hallazgos` : 'Sistema limpio ✓';
+
+      logBitacora('infiltrado', `ESPECTRO: ${shortSummary}`);
+    }
+
     /* 3. Add evidencia card */
     if (cardContent && typeof window.addEvidencia === 'function') {
       window.addEvidencia(cardTipo, cardTitulo, cardContent);
     }
 
-    /* 4. Save agent state */
+    /* 4. Save agent state + historial (últimas 10 corridas por agente) */
     try {
       const estado = _safeCtrlJSON(localStorage.getItem('arex_agentes_estado'), {});
-      estado[agentId] = { lastRun: Date.now(), status: 'ok', summary: shortSummary };
+      const prev = estado[agentId] || {};
+      const historial = Array.isArray(prev.historial) ? prev.historial : [];
+      historial.unshift({ ts: Date.now(), status: 'ok', summary: shortSummary });
+      estado[agentId] = { lastRun: Date.now(), status: 'ok', summary: shortSummary, historial: historial.slice(0, 10) };
       localStorage.setItem('arex_agentes_estado', JSON.stringify(estado));
       window.arexSyncData?.('arex_agentes_estado');
     } catch {}
@@ -461,7 +578,11 @@ window._runAgent = async function (agentId, area) {
 
     try {
       const estado = _safeCtrlJSON(localStorage.getItem('arex_agentes_estado'), {});
-      estado[agentId] = { lastRun: Date.now(), status: 'error', summary: String(err.message || err).slice(0, 80) };
+      const prev = estado[agentId] || {};
+      const historial = Array.isArray(prev.historial) ? prev.historial : [];
+      const resumenErr = String(err.message || err).slice(0, 80);
+      historial.unshift({ ts: Date.now(), status: 'error', summary: resumenErr });
+      estado[agentId] = { lastRun: Date.now(), status: 'error', summary: resumenErr, historial: historial.slice(0, 10) };
       localStorage.setItem('arex_agentes_estado', JSON.stringify(estado));
       window.arexSyncData?.('arex_agentes_estado');
     } catch {}
