@@ -5329,7 +5329,9 @@ window.addEventListener('unhandledrejection', e => {
 
 if (loadConfig()) {
   initFirebase();
-  const _bootWatchdog = setTimeout(_bootRescue, 12000);
+  // 8s: verificado con el infiltrado — sin red, el boot natural se bloquea
+  // y es el watchdog quien libera la interfaz; que espere menos
+  const _bootWatchdog = setTimeout(_bootRescue, 8000);
   boot()
     .catch(e => _bootRescue(e))
     .finally(() => clearTimeout(_bootWatchdog));
