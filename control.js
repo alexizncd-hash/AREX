@@ -257,11 +257,15 @@ function _renderAgentes(el) {
     return `
       <div class="agent-orb-wrap" data-agent="${a.id}" data-area="${a.area}"
            onclick="window._runAgent('${a.id}','${a.area}')">
-        <canvas class="neural-orb-canvas"
-                data-neural-orb="${a.id}"
-                data-color="${a.color}"
-                data-state="${orbState}"
-                width="180" height="180"></canvas>
+        <div class="orb-space" style="--oc:${a.color}">
+          <span class="orb-orbita o1"><i class="orb-sat s1"></i></span>
+          <span class="orb-orbita o2"><i class="orb-sat s2"></i></span>
+          <canvas class="neural-orb-canvas"
+                  data-neural-orb="${a.id}"
+                  data-color="${a.color}"
+                  data-state="${orbState}"
+                  width="180" height="180"></canvas>
+        </div>
         <div class="agent-orb-name" style="color:${a.color};text-shadow:0 0 12px ${a.color}88">${a.nombre}</div>
         <div class="agent-orb-desc">${a.desc}</div>
         <div class="agent-orb-status ${status}">
@@ -800,9 +804,7 @@ function renderControlModule() {
     </div>
 
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
-      <div style="display:flex;justify-content:flex-end;padding:4px 8px 0">
-        <button class="ctrl-tab" onclick="AGENTES.forEach(a=>window._runAgent(a.id,a.area))" style="font-size:9px;padding:4px 14px;border-color:var(--cyan)44;color:var(--cyan)">▶ EJECUTAR TODOS</button>
-      </div>
+      <!-- v198: el viejo "EJECUTAR TODOS" era redundante con ⚡ BARRIDO TOTAL -->
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
     </div>
 

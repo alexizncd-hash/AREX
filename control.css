@@ -145,8 +145,13 @@
 
 .ctrl-agents {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr): sin esto el min-content de las tarjetas (historial nowrap)
+     ensanchaba las columnas y ATLAS/SCRIBE se salían de la pantalla */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
+  width: 100%;
+  /* aire inferior para que el botón + flotante no tape el último EJECUTAR */
+  padding-bottom: 96px;
 }
 
 /* ══ MISSION DIAGNOSTICS — 4-quadrant layout ═══════════ */
@@ -532,3 +537,63 @@
   text-overflow: ellipsis;
 }
 .agent-hist-row.err { color: #ff6677; }
+
+/* ── v198: contención de tarjetas + órbitas planetarias ── */
+.agent-orb-wrap { min-width: 0; }
+.agent-hist-row { max-width: 100%; }
+.agent-cmd-bar { flex-wrap: wrap; }
+.agent-cmd-status { min-width: 0; }
+
+/* Órbitas planetarias alrededor de cada orbe (color del agente vía --oc).
+   Satélites animados con offset-path (transform puro, costo GPU mínimo);
+   en navegadores sin soporte el punto queda estático — inofensivo. */
+.orb-space {
+  position: relative;
+  width: 118px;
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.orb-space .neural-orb-canvas { width: 88px; height: 88px; }
+.orb-orbita {
+  position: absolute;
+  top: 50%; left: 50%;
+  border: 1px solid var(--oc);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.orb-orbita.o1 {
+  width: 118px; height: 44px;
+  margin: -22px 0 0 -59px;
+  transform: rotate(-16deg);
+  opacity: 0.30;
+}
+.orb-orbita.o2 {
+  width: 102px; height: 36px;
+  margin: -18px 0 0 -51px;
+  transform: rotate(28deg);
+  opacity: 0.16;
+}
+.orb-sat {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 5px; height: 5px;
+  margin: -2.5px;
+  border-radius: 50%;
+  background: var(--oc);
+  box-shadow: 0 0 7px var(--oc);
+}
+.orb-orbita.o1 .orb-sat {
+  offset-path: ellipse(58px 21px at 0px 0px);
+  animation: orb-sat-mv 7s linear infinite;
+}
+.orb-orbita.o2 .orb-sat {
+  width: 3.5px; height: 3.5px; margin: -1.75px;
+  offset-path: ellipse(50px 17px at 0px 0px);
+  animation: orb-sat-mv 11s linear infinite reverse;
+}
+@keyframes orb-sat-mv {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
+}
