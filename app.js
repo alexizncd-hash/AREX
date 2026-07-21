@@ -4803,14 +4803,14 @@ async function boot() {
   document.addEventListener('keydown',     _loadVisualEngines, { once: true });
   setTimeout(_loadVisualEngines, 4000); // fallback si no hay interacción
 
-  // Fade boot screen — but only fully hide once auth state is resolved.
-  // Prevents the gap where main app is visible between boot and login overlay.
-  await new Promise(r => setTimeout(r, 400));
-  bootScreen.style.transition = 'opacity 0.6s';
+  // Fade del boot — v197: recortado de ~3.5s de esperas a ~1.3s máximo.
+  // La espera de auth baja de 2.5s a 1s: si Firebase tarda más, el login
+  // overlay aparece SOBRE la app sin problema — no vale la pena retener
+  // la pantalla de carga por evitar un parpadeo de medio segundo.
+  bootScreen.style.transition = 'opacity 0.35s';
   bootScreen.style.opacity = '0';
-  await new Promise(r => setTimeout(r, 600));
-  // Wait until either authenticated or login overlay is showing (max 2.5s)
-  for (let i = 0; i < 25; i++) {
+  await new Promise(r => setTimeout(r, 350));
+  for (let i = 0; i < 10; i++) {
     if (window._arexUid) break;
     const lo = document.getElementById('login-overlay');
     if (lo && lo.style.display !== 'none') break;
