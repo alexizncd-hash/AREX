@@ -3227,17 +3227,20 @@ async function handleFile(file) {
    modelo que ya falló hasta que el usuario recarga la app.
 ─────────────────────────────────────────────────────── */
 const _GROQ_MODELS = {
-  // chat: Kimi K2 (~1T params MoE, el modelo abierto más potente en Groq free)
-  // con cascada a maverick → llama-3.3 si no está disponible (_groqFetch maneja 404)
-  chat:   ['moonshotai/kimi-k2-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile'],
-  fast:   ['meta-llama/llama-4-scout-17b-16e-instruct',     'llama-3.3-70b-versatile'],
-  // vision: llama-3.2-11b-vision-preview fue RETIRADO de Groq → maverick (acepta imágenes)
-  vision: ['meta-llama/llama-4-scout-17b-16e-instruct',     'meta-llama/llama-4-maverick-17b-128e-instruct'],
+  // chat: GPT-OSS 120B — Groq DIO DE BAJA kimi-k2-instruct (y su -0905), y el
+  // reemplazo vigente recomendado es gpt-oss-120b. Cascada a llama-3.3 →
+  // llama-3.1-8b (siempre disponibles). _groqFetch salta modelos retirados
+  // aunque Groq los reporte con 400 model_decommissioned, no solo 404.
+  chat:   ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+  fast:   ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.1-8b-instant'],
+  // vision necesita modelo con visión — scout (llama-4) la soporta y sigue vigente
+  vision: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct'],
 };
 const _groqBad = new Set(); // modelos con 404 en esta sesión
 
 async function _groqFetch(tier, bodyWithoutModel, key) {
   const list = _GROQ_MODELS[tier] || _GROQ_MODELS.chat;
+  let lastErr = 'Ningún modelo Groq disponible. Verifica tu API key.';
   for (const model of list) {
     if (_groqBad.has(model)) continue;
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -3245,10 +3248,24 @@ async function _groqFetch(tier, bodyWithoutModel, key) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({ ...bodyWithoutModel, model }),
     });
-    if (res.status === 404) { _groqBad.add(model); continue; }
-    return res; // OK o error manejado por el caller
+    if (res.ok) return res;
+    // Modelo retirado por Groq: puede venir como 404 O como 400
+    // "model_decommissioned"/"model_not_found". En ambos casos hay que
+    // MARCARLO muerto y caer al siguiente de la cascada (antes solo 404 →
+    // el chat reventaba cuando Groq dio de baja kimi-k2 con un 400).
+    let errBody = {};
+    try { errBody = await res.json(); } catch {}
+    const detalle = `${errBody?.error?.code || ''} ${errBody?.error?.message || res.statusText}`;
+    if (res.status === 404 || /decommission|model_not_found|does not exist|deprecated|no longer/i.test(detalle)) {
+      _groqBad.add(model);
+      lastErr = `${model} retirado: ${detalle.trim()}`;
+      continue;
+    }
+    // Error real (rate-limit, auth, petición inválida): propagar sin quemar
+    // el resto de la cascada por algo que también fallaría en los demás
+    throw new Error(`${res.status} — ${errBody?.error?.message || 'Error de API'}`);
   }
-  throw new Error('Ningún modelo Groq disponible. Verifica tu API key.');
+  throw new Error(lastErr);
 }
 
 // ── callBrain: router de cerebros IA ─────────────────────

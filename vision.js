@@ -2201,7 +2201,9 @@ async function _charla(texto) {
   _setStatus('CHARLANDO...');
   window.VisionOrb?.setState('analyzing');
   try {
-    const models = ['moonshotai/kimi-k2-instruct', 'llama-3.3-70b-versatile'];
+    // gpt-oss-120b: Groq dio de baja kimi-k2. Cascada a llama-3.3 → 3.1-8b,
+    // saltando cualquier modelo retirado (404 o 400 model_decommissioned)
+    const models = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
     let reply = null;
     for (const model of models) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -2215,8 +2217,13 @@ async function _charla(texto) {
           ],
         }),
       });
-      if (res.status === 404) continue;
-      if (!res.ok) break;
+      if (!res.ok) {
+        // Modelo retirado → siguiente; otro error → abortar la charla
+        let eb = {}; try { eb = await res.json(); } catch {}
+        const det = `${eb?.error?.code || ''} ${eb?.error?.message || ''}`;
+        if (res.status === 404 || /decommission|model_not_found|does not exist|deprecated|no longer/i.test(det)) continue;
+        break;
+      }
       const d = await res.json();
       reply = d?.choices?.[0]?.message?.content?.trim() || null;
       break;
