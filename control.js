@@ -605,8 +605,13 @@ const BACKUP_KEYS = [
   'arex_negocio','arex_gastos_pers','arex_metas','arex_tareas',
   'arex_recordatorios','arex_memoria','arex_hechos','arex_context',
   'arex_atajos','arex_proyectos','arex_evidencias','arex_notas',
-  'arex_finanzas','arex_finanzas_overrides','arex_reparto_routes',
+  'arex_finanzas','arex_finanzas_overrides',
+  // v200: 'arex_reparto_routes' NUNCA existió — reparto.js escribe en
+  // 'arex_reparto_rutas' (español). El respaldo de rutas guardaba vacío.
+  'arex_reparto_rutas',
   'arex_personas','arex_gesture_map','arex_bitacora','arex_agentes_estado',
+  // v200: faltaban en el respaldo — se perdían al exportar/importar
+  'arex_habitos','arex_sessions','arex_session_memories',
 ];
 
 function _exportBackupJSON() {

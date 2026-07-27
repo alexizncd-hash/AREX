@@ -734,8 +734,8 @@ async function _migrateFirestoreIfNeeded() {
     'arex_negocio','arex_gastos_pers','arex_metas','arex_tareas',
     'arex_recordatorios','arex_memoria','arex_hechos','arex_context',
     'arex_atajos','arex_proyectos','arex_evidencias','arex_notas',
-    'arex_finanzas','arex_finanzas_overrides','arex_reparto_routes',
-    'arex_personas','arex_gesture_map',
+    'arex_finanzas','arex_finanzas_overrides','arex_reparto_rutas',
+    'arex_personas','arex_gesture_map','arex_habitos',
   ];
   try {
     for (const key of keys) {
@@ -787,7 +787,8 @@ async function pullAllModuleData() {
     // Módulos previamente fuera de sync:
     'arex_proyectos','arex_evidencias','arex_notas',
     'arex_finanzas','arex_finanzas_overrides',
-    'arex_reparto_routes','arex_personas','arex_gesture_map',
+    'arex_reparto_rutas','arex_personas','arex_gesture_map',
+    'arex_habitos','arex_sessions','arex_session_memories',
   ];
   let synced = 0;
   for (const key of keys) {
