@@ -279,6 +279,7 @@ function _renderAgentes(el) {
 
   // Init canvas orbs after DOM is painted
   setTimeout(() => window.initNeuralOrbs?.(), 60);
+  window._renderVigia?.();
 }
 
 /* ── Barrido total: los 5 agentes en secuencia, reporte al final ── */
@@ -810,6 +811,7 @@ function renderControlModule() {
 
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
       <!-- v198: el viejo "EJECUTAR TODOS" era redundante con ⚡ BARRIDO TOTAL -->
+      <div id="ctrl-vigia"></div>
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
     </div>
 
@@ -863,3 +865,156 @@ window.renderControlModule = renderControlModule;
 window.switchCtrlView      = switchCtrlView;
 window.ctrlSetFilter       = ctrlSetFilter;
 window.logBitacora         = logBitacora;
+
+/* ═══════════════════════════════════════════════════════
+   VIGÍA — Vigilancia proactiva cruzando módulos (v204)
+   Corre solo al abrir AREX. Sin IA, sin red: lee los datos reales y
+   CRUZA información entre módulos, que es lo que ningún agente hacía.
+   Solo habla si encuentra algo que de verdad amerita interrumpir.
+   ═══════════════════════════════════════════════════════ */
+const VIGIA_KEY = 'arex_vigia_ultimo';
+
+function _vigiaDatos() {
+  const J = (k, fb) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? fb; } catch { return fb; } };
+  const neg = J('arex_negocio', {});
+  const gpRaw = J('arex_gastos_pers', { gastos: [], presupuesto: {} });
+  return {
+    neg,
+    ventas: neg.ventas || [], entregas: neg.entregas || [], sucursales: neg.sucursales || [],
+    stockKg: Number(neg.inventario?.stockKg) || 0,
+    stockMin: neg.config?.stockMinimo ?? 5,
+    rend: neg.config?.rendimiento || 1.8,
+    tareas: J('arex_tareas', []),
+    metas: J('arex_metas', []),
+    gastos: (gpRaw && Array.isArray(gpRaw.gastos)) ? gpRaw.gastos : (Array.isArray(gpRaw) ? gpRaw : []),
+    presup: gpRaw?.presupuesto || {},
+  };
+}
+
+/* Devuelve hallazgos: { nivel:'critico'|'aviso', texto, accion:{label,cmd} } */
+function _vigiaAnalizar() {
+  const d = _vigiaDatos();
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const hoyStr = hoy.toISOString().slice(0,10);
+  const semanaTs = Date.now() - 7*86400000;
+  const mesTs = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+  const out = [];
+
+  /* ── CRUCE 1: liquidez — pago próximo vs margen vs ventas reales ── */
+  const pagos = (typeof window.obtenerProximosPagos === 'function' ? window.obtenerProximosPagos(7) : []) || [];
+  if (pagos.length) {
+    const totalPagos = pagos.reduce((a,p) => a + (p.pagoMinimo || 0), 0);
+    const margen = (typeof window.calcularMargen === 'function' ? window.calcularMargen() : 0) || 0;
+    const ventasSem = d.ventas.filter(v => v.fecha >= semanaTs).reduce((a,v) => a + (v.total||0), 0);
+    const cubre = margen + ventasSem >= totalPagos;
+    const quien = pagos.map(p => p.tarjeta || 'pago').join(', ');
+    out.push({
+      nivel: cubre ? 'aviso' : 'critico',
+      texto: cubre
+        ? `Pagos en 7 días: $${totalPagos.toFixed(0)} (${quien}). Con margen $${margen.toFixed(0)} + ventas de la semana $${ventasSem.toFixed(0)} lo cubres.`
+        : `⚠ Pagos en 7 días por $${totalPagos.toFixed(0)} (${quien}) y solo tienes $${(margen+ventasSem).toFixed(0)} entre margen y ventas de la semana. Faltan $${(totalPagos-margen-ventasSem).toFixed(0)}.`,
+      accion: { label: 'Ver finanzas', cmd: "window.cambiarModulo('finanzas')" },
+    });
+  }
+
+  /* ── CRUCE 2: stock real vs lo que las tiendas van a pedir ── */
+  const consigna = d.sucursales.filter(s => s.activa && s.modo === 'consignacion');
+  if (consigna.length && d.stockKg >= 0) {
+    // ML que cada tienda consumió en el último mes = lo que probablemente pedirá
+    const demandaML = consigna.reduce((tot, s) => {
+      const ent = d.entregas.filter(e => e.sucursalId === s.id && e.fecha >= mesTs)
+                            .reduce((a,e) => a + (e.cantidadML||0), 0);
+      return tot + ent;
+    }, 0);
+    const disponibleML = Math.floor(d.stockKg * d.rend);
+    if (demandaML > 0 && disponibleML < demandaML) {
+      out.push({
+        nivel: 'critico',
+        texto: `Stock corto: tus ${consigna.length} tiendas en consignación movieron ${demandaML} ML este mes, pero solo te quedan ${disponibleML} ML (${d.stockKg.toFixed(1)} kg). Faltan ~${demandaML-disponibleML} ML para cubrir el siguiente ciclo.`,
+        accion: { label: 'Ver inventario', cmd: "window.cambiarModulo('negocio')" },
+      });
+    }
+  }
+  if (d.stockKg < d.stockMin) {
+    out.push({ nivel: 'critico',
+      texto: `Inventario bajo mínimo: ${d.stockKg.toFixed(1)} kg (mínimo ${d.stockMin} kg).`,
+      accion: { label: 'Registrar entrada', cmd: "window.cambiarModulo('negocio')" } });
+  }
+
+  /* ── CRUCE 3: carga real del día — tareas vencidas + metas venciendo ── */
+  const vencidas = d.tareas.filter(t => !t.done && t.fecha && t.fecha < hoyStr);
+  const hoyTareas = d.tareas.filter(t => !t.done && t.fecha === hoyStr);
+  const metasProx = d.metas.filter(m => !m.completada && m.fechaLimite && m.fechaLimite >= hoyStr &&
+                     (new Date(m.fechaLimite) - hoy) / 86400000 <= 7);
+  if (vencidas.length || metasProx.length) {
+    const partes = [];
+    if (vencidas.length) partes.push(`${vencidas.length} tarea${vencidas.length>1?'s':''} vencida${vencidas.length>1?'s':''}`);
+    if (hoyTareas.length) partes.push(`${hoyTareas.length} para hoy`);
+    if (metasProx.length) partes.push(`${metasProx.length} meta${metasProx.length>1?'s':''} venciendo esta semana`);
+    out.push({ nivel: vencidas.length > 2 ? 'critico' : 'aviso',
+      texto: `Pendientes: ${partes.join(' · ')}.${vencidas.length ? ' La más vieja: "' + (vencidas[0].text||'').slice(0,40) + '".' : ''}`,
+      accion: { label: 'Ver tareas', cmd: "window.cambiarModulo('tareas')" } });
+  }
+
+  /* ── CRUCE 4: gasto personal proyectado a fin de mes vs presupuesto ── */
+  const gMes = d.gastos.filter(g => g.fecha && g.fecha >= hoyStr.slice(0,7) + '-01');
+  const totalMes = gMes.reduce((a,g) => a + (g.monto||0), 0);
+  const presupTotal = Object.values(d.presup).reduce((a,v) => a + (Number(v)||0), 0);
+  if (presupTotal > 0 && totalMes > 0) {
+    const diaMes = hoy.getDate();
+    const diasMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+    const proyec = totalMes / diaMes * diasMes;
+    if (proyec > presupTotal * 1.05) {
+      out.push({ nivel: 'aviso',
+        texto: `Ritmo de gasto alto: llevas $${totalMes.toFixed(0)} al día ${diaMes}. A este paso cerrarás el mes en ~$${proyec.toFixed(0)}, sobre tu presupuesto de $${presupTotal.toFixed(0)}.`,
+        accion: { label: 'Ver gastos', cmd: "window.cambiarModulo('gastos')" } });
+    }
+  }
+
+  const orden = { critico: 0, aviso: 1 };
+  return out.sort((a,b) => orden[a.nivel] - orden[b.nivel]);
+}
+
+/* Vigilancia al abrir la app: solo interrumpe si hay algo CRÍTICO,
+   y como máximo una vez cada 6 h para no volverse ruido. */
+window._vigilancia = function (forzar = false) {
+  let hallazgos = [];
+  try { hallazgos = _vigiaAnalizar(); } catch (e) { console.warn('VIGÍA:', e); return []; }
+  const criticos = hallazgos.filter(h => h.nivel === 'critico');
+  if (hallazgos.length) {
+    logBitacora('sistema', `VIGÍA: ${criticos.length} crítico(s), ${hallazgos.length - criticos.length} aviso(s)`);
+  }
+  if (!forzar) {
+    const ultimo = Number(localStorage.getItem(VIGIA_KEY) || 0);
+    if (Date.now() - ultimo < 6 * 3600000) return hallazgos;   // ya avisó hace poco
+    if (!criticos.length) return hallazgos;                     // nada urgente: no molestar
+  }
+  if (criticos.length || forzar) {
+    localStorage.setItem(VIGIA_KEY, String(Date.now()));
+    const cuerpo = (criticos.length ? criticos : hallazgos).slice(0, 3)
+      .map(h => `- ${h.texto}`).join('\n');
+    if (cuerpo) {
+      window.arexAlert?.('VIGÍA', `Revisé tus módulos al arrancar:\n${cuerpo}`, criticos.length ? 'warn' : 'info');
+    }
+  }
+  return hallazgos;
+};
+
+/* Panel del VIGÍA dentro de CTRL (pestaña Agentes) */
+window._renderVigia = function () {
+  const box = document.getElementById('ctrl-vigia');
+  if (!box) return;
+  let h = [];
+  try { h = _vigiaAnalizar(); } catch {}
+  if (!h.length) {
+    box.innerHTML = `<div class="vigia-hdr">◉ VIGÍA</div><div class="vigia-ok">✓ Sin señales de alerta cruzando tus módulos.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="vigia-hdr">◉ VIGÍA · ${h.length} señal${h.length>1?'es':''}</div>` +
+    h.slice(0, 5).map(x => `
+      <div class="vigia-row ${x.nivel}">
+        <span class="vigia-dot"></span>
+        <span class="vigia-txt">${_h(x.texto)}</span>
+        ${x.accion ? `<button class="vigia-btn" onclick="${x.accion.cmd}">${_h(x.accion.label)}</button>` : ''}
+      </div>`).join('');
+};

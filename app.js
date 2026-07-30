@@ -4287,6 +4287,10 @@ async function boot() {
     setTimeout(() => {
       if (typeof window.checkFinanzasAlerts === 'function') window.checkFinanzasAlerts();
       if (typeof window.checkMetasAlerts === 'function') window.checkMetasAlerts();
+      // VIGÍA (v204): vigilancia proactiva cruzando módulos. control.js es
+      // lazy — si aún no cargó, se reintenta una vez más adelante.
+      if (typeof window._vigilancia === 'function') window._vigilancia();
+      else setTimeout(() => window._vigilancia?.(), 12000);
     }, 3500);
 
     // Iniciar temporizador de mensajes proactivos por inactividad
