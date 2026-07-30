@@ -1,11 +1,12 @@
-const CACHE   = 'arex-v200';
-const VERSION = 'v200';
+const CACHE   = 'arex-v201';
+const VERSION = 'v201';
 const SHELL = [
   './index.html',
   './style.css',
   './app.js',
   './firebase-config.js',
   './jarvis.js',
+  './tareas.js',
   './finanzas.js',
   './finanzas.css',
   './finanzas-data.js',
