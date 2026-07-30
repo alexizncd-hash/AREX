@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v202';
-const VERSION = 'v202';
+const CACHE   = 'arex-v203';
+const VERSION = 'v203';
 const SHELL = [
   './index.html',
   './style.css',
@@ -8,6 +8,7 @@ const SHELL = [
   './jarvis.js',
   './tareas.js',
   './notas.js',
+  './memoria.js',
   './finanzas.js',
   './finanzas.css',
   './finanzas-data.js',
