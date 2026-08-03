@@ -86,7 +86,7 @@ function negRegistrarEntrega(sucId, cantidadML, fechaTs) {
   data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kg);
   data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg, nota: `Entrega ${cant} ML → ${suc.nombre}` });
   saveNegocioData(data);
-  logBitacora?.('negocio', `Entrega: ${cant} ML → ${suc.nombre}`);
+  window.logBitacora?.('negocio', `Entrega: ${cant} ML → ${suc.nombre}`);
   return true;
 }
 

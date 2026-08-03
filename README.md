@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v204)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v205)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -53,7 +53,7 @@ arex/
 ├── agenda.css          → Estilos del módulo Agenda
 ├── habitos.js          → Módulo Hábitos: hábitos diarios con streaks, mini-calendario semanal, categorías
 ├── habitos.css         → Estilos del módulo Hábitos
-├── sw.js               → Service Worker v204 (PWA / modo offline / cache network-first)
+├── sw.js               → Service Worker v205 (PWA / modo offline / cache network-first)
 ├── manifest.json       → Manifest PWA (instalable en móvil/escritorio)
 ├── icon.svg            → Ícono de la aplicación
 ├── config.js           → API keys locales (gitignored — NUNCA se sube al repo)
@@ -81,7 +81,7 @@ arex/
 | **METAS** | 🎯 | Objetivos con progreso (numérico o porcentaje), fecha límite y categorías |
 | **PROYECTOS** | ▣ | Proyectos personales con fases, estado y seguimiento |
 | **CTRL** | ⊡ | Mission Control: telemetría, bitácora, VIGÍA proactivo (cruza módulos y avisa al arrancar), escuadrón de 5 agentes (ESPECTRO infiltrado incluido) con barrido total e historial, exportar/importar datos |
-| **REPARTO** | 📍 | Rutas de Reparto: mapa 3D interactivo, geolocalización, clima en tiempo real, mini-dashboard por tienda en el popup (existencia, vendido del mes, última entrega, registrar entrega), rutas guardadas |
+| **REPARTO** | 📍 | Rutas de Reparto: mapa 3D, geolocalización, clima, mini-dashboard por tienda en el popup con registro de entrega, **ruta que optimiza el orden de paradas (TSP)**, **ruta solo-resurtir** (cruza con negocio), **navegación en Google Maps/Waze**, rutas guardadas con sync a la nube |
 | **AGENDA** | 📅 | Calendario semanal/mensual que agrega automáticamente tareas con fecha, recordatorios y metas con deadline |
 | **HÁBITOS** | ◎ | Hábitos diarios con streak counter, mini-calendario de los últimos 7 días y categorías personalizables |
 
@@ -106,7 +106,7 @@ arex/
 | WebGL + GLSL Shaders | Orbe 3D Mark III: vertex displacement, Fresnel rim, plasma energy bands |
 | Canvas 2D API | Campo de estrellas, esqueleto de mano, partículas, fallback orbe |
 | Exo 2 + JetBrains Mono | Tipografía futurista vía Google Fonts CDN |
-| PWA + Service Worker v204 | Instalable, network-first para shell, cache offline |
+| PWA + Service Worker v205 | Instalable, network-first para shell, cache offline |
 | marked.js + DOMPurify | Renderizado seguro de Markdown en el chat |
 | highlight.js | Syntax highlighting en bloques de código |
 | PDF.js (CDN) | Extracción de texto de archivos PDF |

@@ -24,6 +24,10 @@ function renderRepartoModule() {
         <div class="rep-btns">
           <button class="rep-btn" onclick="repGeolocate()">◎ MI UBICACIÓN</button>
           <button class="rep-btn" onclick="repRouteSucursales()">⊕ RUTA COMPLETA</button>
+          <button class="rep-btn rep-btn-hot" onclick="repRouteSucursales(true)">🔥 SOLO RESURTIR</button>
+          <button class="rep-btn rep-btn-opt" onclick="repOptimizarRuta()">⚡ OPTIMIZAR</button>
+          <button class="rep-btn rep-btn-nav" onclick="repNavegar('google')">▶ NAVEGAR</button>
+          <button class="rep-btn" onclick="repNavegar('waze')">◈ WAZE</button>
           <button class="rep-btn" onclick="repSaveRoute()">⊡ GUARDAR</button>
           <button class="rep-btn rep-btn-del" onclick="repClearRoute()">✕ LIMPIAR</button>
         </div>
@@ -63,7 +67,7 @@ function renderRepartoModule() {
   _renderSucList();
   _renderSavedList();
   setTimeout(_initRepMap, 80);
-  logBitacora?.('reparto', 'Módulo Rutas abierto');
+  window.logBitacora?.('reparto', 'Módulo Rutas abierto');
 }
 
 /* ── MapLibre GL init ────────────────────────────────── */
@@ -251,7 +255,7 @@ function _onRepMapClick(e) {
   _syncRepRoute();
   _renderWpList();
   _updateWpCount();
-  logBitacora?.('reparto', `Punto ${_repWaypoints.length} añadido a ruta`);
+  window.logBitacora?.('reparto', `Punto ${_repWaypoints.length} añadido a ruta`);
 }
 
 /* ── Sucursal markers ────────────────────────────────── */
@@ -316,7 +320,7 @@ window.repGeolocate = async function () {
     if (cEl) cEl.textContent = `${lat.toFixed(4)}° ${lng.toFixed(4)}°`;
 
     await Promise.all([_fetchRepWeather(lat, lng), _fetchRepRegion(lat, lng)]);
-    logBitacora?.('reparto', `Geolocalizado: ${lat.toFixed(4)}, ${lng.toFixed(4)} ±${Math.round(accuracy)}m`);
+    window.logBitacora?.('reparto', `Geolocalizado: ${lat.toFixed(4)}, ${lng.toFixed(4)} ±${Math.round(accuracy)}m`);
   }, () => {
     if (msgEl) { msgEl.textContent = '✕ ACCESO A UBICACIÓN DENEGADO'; setTimeout(() => { if (msgEl) msgEl.style.display = 'none'; }, 3500); }
   }, { enableHighAccuracy: true, timeout: 12000 });
@@ -406,6 +410,12 @@ function _updateWpCount() {
   if (el) el.textContent = _repWaypoints.length;
 }
 
+/* Guardar rutas + SINCRONIZAR (v205): antes solo vivían en este dispositivo */
+function _saveRutas(rutas) {
+  localStorage.setItem(REPARTO_KEY, JSON.stringify(rutas));
+  if (typeof arexSyncData === 'function') arexSyncData(REPARTO_KEY);
+}
+
 function _getSavedRutas() {
   try { return JSON.parse(localStorage.getItem(REPARTO_KEY) || '[]'); } catch { return []; }
 }
@@ -417,7 +427,7 @@ window.repAddWpSuc = function (lat, lng, nombre) {
   _renderWpList();
   _updateWpCount();
   if (_repMap) _repMap.flyTo({ center: [lng, lat], zoom: 14, duration: 900 });
-  logBitacora?.('reparto', `Sucursal "${nombre}" añadida a ruta`);
+  window.logBitacora?.('reparto', `Sucursal "${nombre}" añadida a ruta`);
 };
 
 window.repDelWp = function (i) {
@@ -439,25 +449,66 @@ window.repFlyToSuc = function (lat, lng) {
   if (_repMap) _repMap.flyTo({ center: [lng, lat], zoom: 16, pitch: 55, duration: 1200 });
 };
 
+/* ── Diálogo integrado (v205) ─────────────────────────
+   prompt()/alert()/confirm() están ROTOS en PWAs instaladas de iOS:
+   congelan el hilo y suelen devolver vacío. En la calle eso significaba
+   no poder registrar una entrega. Nada de diálogos del navegador aquí. */
+function repDialogo({ titulo, valor = '', tipo = 'text', placeholder = '', onOk, okLabel = 'ACEPTAR' }) {
+  document.getElementById('rep-dlg')?.remove();
+  const d = document.createElement('div');
+  d.id = 'rep-dlg';
+  d.innerHTML = `
+    <div class="rep-dlg-card">
+      <div class="rep-dlg-title">${titulo}</div>
+      ${onOk ? `<input class="rep-dlg-inp" id="rep-dlg-inp" type="${tipo}" value="${valor}" placeholder="${placeholder}" inputmode="${tipo === 'number' ? 'numeric' : 'text'}" autocomplete="off">` : ''}
+      <div class="rep-dlg-btns">
+        <button class="rep-dlg-btn rep-dlg-cancel" id="rep-dlg-no">${onOk ? 'CANCELAR' : 'CERRAR'}</button>
+        ${onOk ? `<button class="rep-dlg-btn rep-dlg-ok" id="rep-dlg-si">${okLabel}</button>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('module-reparto')?.appendChild(d) || document.body.appendChild(d);
+  const cerrar = () => d.remove();
+  d.querySelector('#rep-dlg-no').onclick = cerrar;
+  const inp = d.querySelector('#rep-dlg-inp');
+  if (onOk) {
+    const ok = () => { const v = inp?.value?.trim(); cerrar(); onOk(v); };
+    d.querySelector('#rep-dlg-si').onclick = ok;
+    if (inp) { inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); }); setTimeout(() => inp.focus(), 60); }
+  }
+}
+function repAviso(msg) { repDialogo({ titulo: msg }); }
+
 // Registrar entrega de consignación directo desde el popup del mapa
 window.repEntregaSuc = function (sucId) {
-  const c = prompt('¿Cuántos medio litros dejaste en esta tienda?');
-  if (!c) return;
-  if (typeof negRegistrarEntrega === 'function' && negRegistrarEntrega(sucId, c)) {
-    _addRepSucursalesMarkers();   // refresca popups con la nueva existencia
-    _renderSucList();
-  }
+  const suc = (getNegocioData().sucursales || []).find(s => s.id === sucId);
+  repDialogo({
+    titulo: `Entrega en ${suc?.nombre || 'la tienda'}<br><small>¿Cuántos medio litros dejaste?</small>`,
+    tipo: 'number', placeholder: 'ej. 20', okLabel: 'REGISTRAR',
+    onOk: c => {
+      if (!c) return;
+      if (typeof negRegistrarEntrega === 'function' && negRegistrarEntrega(sucId, c)) {
+        _addRepSucursalesMarkers();   // refresca popups con la nueva existencia
+        _renderSucList();
+        window.logBitacora?.('reparto', `Entrega registrada desde el mapa: ${c} ML → ${suc?.nombre || sucId}`);
+      }
+    },
+  });
 };
 
 window.repSaveRoute = function () {
-  if (!_repWaypoints.length) { alert('Agrega puntos a la ruta antes de guardar.'); return; }
-  const nombre = prompt('Nombre de la ruta:', `Ruta ${new Date().toLocaleDateString('es-MX')}`);
-  if (!nombre?.trim()) return;
-  const rutas = _getSavedRutas();
-  rutas.unshift({ nombre: nombre.trim(), waypoints: [..._repWaypoints], ts: Date.now() });
-  localStorage.setItem(REPARTO_KEY, JSON.stringify(rutas));
-  _renderSavedList();
-  logBitacora?.('reparto', `Ruta guardada: "${nombre.trim()}"`);
+  if (!_repWaypoints.length) { repAviso('Agrega puntos a la ruta antes de guardar.'); return; }
+  repDialogo({
+    titulo: 'Nombre de la ruta', valor: `Ruta ${new Date().toLocaleDateString('es-MX')}`,
+    okLabel: 'GUARDAR',
+    onOk: nombre => {
+      if (!nombre) return;
+      const rutas = _getSavedRutas();
+      rutas.unshift({ nombre, waypoints: [..._repWaypoints], ts: Date.now() });
+      _saveRutas(rutas);
+      _renderSavedList();
+      window.logBitacora?.('reparto', `Ruta guardada: "${nombre}"`);
+    },
+  });
 };
 
 window.repLoadRuta = function (i) {
@@ -479,17 +530,94 @@ window.repLoadRuta = function (i) {
 };
 
 window.repDelRuta = function (i) {
-  if (!confirm('¿Eliminar esta ruta guardada?')) return;
-  const rutas = _getSavedRutas();
-  rutas.splice(i, 1);
-  localStorage.setItem(REPARTO_KEY, JSON.stringify(rutas));
-  _renderSavedList();
+  const r = _getSavedRutas()[i];
+  repDialogo({
+    titulo: `¿Eliminar la ruta "${(r?.nombre || '').slice(0, 30)}"?`,
+    okLabel: 'ELIMINAR', valor: '', tipo: 'hidden',
+    onOk: () => {
+      const rutas = _getSavedRutas();
+      rutas.splice(i, 1);
+      _saveRutas(rutas);
+      _renderSavedList();
+      window.logBitacora?.('reparto', `Ruta eliminada: "${r?.nombre || i}"`);
+    },
+  });
 };
 
-window.repRouteSucursales = function () {
-  const withCoords = (getNegocioData().sucursales || []).filter(s => s.lat && s.lng && s.activa !== false);
+/* ── Optimizar el ORDEN de las paradas (v205) ─────────
+   OSRM /route/ respeta el orden en que tocaste el mapa. /trip/ resuelve el
+   problema del viajante: mismo conjunto de paradas, orden más corto.
+   source=first mantiene tu punto de partida; roundtrip=false no te obliga
+   a regresar al inicio. */
+window.repOptimizarRuta = async function () {
+  if (_repWaypoints.length < 3) {
+    repAviso('Necesitas al menos 3 paradas para optimizar el orden.');
+    return;
+  }
+  const el = document.getElementById('rep-wp-count');
+  const prev = el?.textContent;
+  if (el) el.textContent = 'optimizando…';
+  try {
+    const coords = _repWaypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
+    const url = `https://router.project-osrm.org/trip/v1/driving/${coords}`
+              + '?source=first&roundtrip=false&geometries=geojson&overview=full';
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error('OSRM ' + r.status);
+    const d = await r.json();
+    const wps = d.waypoints;
+    if (!wps?.length || !d.trips?.[0]) throw new Error('sin solución');
+
+    // waypoint_index = posición en la ruta óptima
+    const ordenados = new Array(wps.length);
+    wps.forEach((w, i) => { ordenados[w.waypoint_index] = _repWaypoints[i]; });
+    const antesKm = await _distanciaRuta(_repWaypoints);
+    _repWaypoints = ordenados.filter(Boolean);
+    _syncRepRoute();
+    _renderWpList();
+    const km = (d.trips[0].distance / 1000).toFixed(1);
+    const min = Math.round(d.trips[0].duration / 60);
+    if (el) el.textContent = `${_repWaypoints.length} · ${km}km · ~${min}min`;
+    const ahorro = antesKm ? (antesKm - d.trips[0].distance / 1000) : 0;
+    repAviso(ahorro > 0.3
+      ? `Ruta optimizada ⚡<br><small>${km} km · ~${min} min — te ahorra ${ahorro.toFixed(1)} km contra el orden anterior.</small>`
+      : `Ruta optimizada ⚡<br><small>${km} km · ~${min} min. Tu orden ya era prácticamente el mejor.</small>`);
+    window.logBitacora?.('reparto', `Ruta optimizada: ${_repWaypoints.length} paradas, ${km} km`);
+  } catch (e) {
+    if (el && prev) el.textContent = prev;
+    repAviso('No pude optimizar la ruta ahora.<br><small>El servicio de rutas no respondió. Intenta de nuevo.</small>');
+  }
+};
+
+/* Distancia de la ruta en el orden actual (para comparar el ahorro) */
+async function _distanciaRuta(wps) {
+  try {
+    const coords = wps.map(w => `${w[0]},${w[1]}`).join(';');
+    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`,
+                          { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return 0;
+    const d = await r.json();
+    return (d.routes?.[0]?.distance || 0) / 1000;
+  } catch { return 0; }
+}
+
+/* soloResurtir=true → arma la ruta SOLO con las tiendas que ya necesitan
+   producto (cruce con negocio: existencia bajo umbral) */
+window.repRouteSucursales = function (soloResurtir = false) {
+  const data = getNegocioData();
+  let withCoords = (data.sucursales || []).filter(s => s.lat && s.lng && s.activa !== false);
+  if (soloResurtir && typeof negTiendaStats === 'function') {
+    const necesitan = withCoords.filter(s => {
+      try { const st = negTiendaStats(s.id, data); return st?.resurtir || st?.existencia <= 0; }
+      catch { return false; }
+    });
+    if (!necesitan.length) {
+      repAviso('Ninguna tienda necesita resurtido ahora mismo. ✓');
+      return;
+    }
+    withCoords = necesitan;
+  }
   if (!withCoords.length) {
-    alert('Ninguna sucursal activa tiene coordenadas.\nUsa el botón 📍 junto a cada sucursal para fijar su ubicación.');
+    repAviso('Ninguna sucursal activa tiene coordenadas.<br><small>Usa el botón 📍 junto a cada sucursal para fijar su ubicación.</small>');
     return;
   }
   _repWaypoints = withCoords.map(s => [s.lng, s.lat]);
@@ -503,12 +631,13 @@ window.repRouteSucursales = function () {
     );
     _repMap.fitBounds(bounds, { padding: 80, pitch: 45, duration: 1600 });
   }
-  logBitacora?.('reparto', `Ruta de ${withCoords.length} sucursales creada`);
+  window.logBitacora?.('reparto', `Ruta de ${withCoords.length} sucursales creada${soloResurtir ? ' (solo resurtido)' : ''}`);
+  if (soloResurtir) repAviso(`Ruta de resurtido: ${withCoords.length} tienda${withCoords.length>1?'s':''} que ya necesitan producto.`);
 };
 
 // Fijar coordenadas de una sucursal con la ubicación actual del dispositivo
 window.repSetSucCoords = function (sucIdx) {
-  if (!navigator.geolocation) { alert('Geolocalización no disponible.'); return; }
+  if (!navigator.geolocation) { repAviso('Geolocalización no disponible.'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lng } = pos.coords;
     const data = getNegocioData();
@@ -519,8 +648,35 @@ window.repSetSucCoords = function (sucIdx) {
     _renderSucList();
     _addRepSucursalesMarkers();
     if (_repMap) _repMap.flyTo({ center: [lng, lat], zoom: 15, pitch: 50, duration: 1000 });
-    logBitacora?.('reparto', `Coords fijadas para "${data.sucursales[sucIdx].nombre}"`);
-  }, () => alert('No se pudo obtener la ubicación.'), { enableHighAccuracy: true, timeout: 8000 });
+    window.logBitacora?.('reparto', `Coords fijadas para "${data.sucursales[sucIdx].nombre}"`);
+  }, () => repAviso('No se pudo obtener la ubicación.'), { enableHighAccuracy: true, timeout: 8000 });
+};
+
+/* ── Navegar de verdad (v205) ─────────────────────────
+   Abre la ruta en la app de mapas del teléfono para manejar con
+   indicaciones por voz. Google Maps acepta múltiples paradas; Waze solo
+   un destino, así que ahí mandamos la SIGUIENTE parada. */
+window.repNavegar = function (app = 'google') {
+  if (!_repWaypoints.length) { repAviso('Arma una ruta primero.'); return; }
+  const wps = _repWaypoints;
+  if (app === 'waze') {
+    const [lng, lat] = wps[wps.length > 1 ? 1 : 0];   // siguiente parada
+    window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank');
+    window.logBitacora?.('reparto', 'Navegación abierta en Waze');
+    return;
+  }
+  // Google Maps: origen = 1ª parada, destino = última, el resto waypoints
+  // (límite práctico de la URL: ~9 waypoints intermedios)
+  const fmt = w => `${w[1]},${w[0]}`;
+  const origen  = fmt(wps[0]);
+  const destino = fmt(wps[wps.length - 1]);
+  const medios  = wps.slice(1, -1).slice(0, 9).map(fmt).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origen}&destination=${destino}&travelmode=driving`;
+  if (medios) url += `&waypoints=${medios}`;
+  window.open(url, '_blank');
+  const omitidas = Math.max(0, wps.length - 2 - 9);
+  window.logBitacora?.('reparto', `Navegación abierta en Google Maps (${wps.length} paradas${omitidas ? `, ${omitidas} omitidas por límite` : ''})`);
+  if (omitidas) repAviso(`Abrí Google Maps con las primeras 11 paradas.<br><small>Google limita a 9 puntos intermedios; ${omitidas} quedaron fuera.</small>`);
 };
 
 window.renderRepartoModule = renderRepartoModule;

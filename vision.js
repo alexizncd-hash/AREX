@@ -1467,7 +1467,7 @@ function _bbReportPrev() {
     const prev = JSON.parse(localStorage.getItem('arex_vision_bb') || 'null');
     if (!prev || prev.clean) return;
     const det = `gestos:${prev.gestos ? 'ON' : 'off'} · voz:${prev.voz ? 'ON' : 'off'} · auto:${prev.auto ? 'ON' : 'off'} · cam:${prev.res} (${prev.cam}) · motor señas:${prev.motorSenas} · forja:${prev.forja || 'off'}${prev.analizando ? ' · ANALIZANDO' : ''}`;
-    logBitacora?.('vision', `⚠ CAJA NEGRA — sesión anterior terminó abrupta: ${det}`);
+    window.logBitacora?.('vision', `⚠ CAJA NEGRA — sesión anterior terminó abrupta: ${det}`);
     _say(`**[Caja negra]** La sesión de Visión anterior se cerró de golpe (crash).\n\nEstado en ese momento:\n${det}\n\nMándale esto a tu desarrollador 😉`);
   } catch {}
 }
@@ -1526,7 +1526,7 @@ async function _recoverStream(reason) {
     if (_video) { _video.srcObject = _stream; _video.play().catch(() => {}); }
     _watchStream(_stream);
     _setStatus('LISTO');
-    logBitacora?.('vision', `Cámara recuperada (${reason})`);
+    window.logBitacora?.('vision', `Cámara recuperada (${reason})`);
     setTimeout(() => { _recoverTries = 0; }, 15000);   // resetear contador si sobrevive
   } catch (e) {
     console.warn('AREX Vision: recuperación de cámara falló:', e.message);
