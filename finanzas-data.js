@@ -342,6 +342,9 @@ function getFinanzasData() {
 
 function saveFinanzasOverrides(overrides) {
   localStorage.setItem('arex_finanzas_overrides', JSON.stringify(overrides));
+  // v206: sin esto tus ediciones (saldos, pagos, config) NUNCA subían a la
+  // nube — el otro dispositivo seguía viendo los datos viejos
+  if (typeof window.arexSyncData === 'function') window.arexSyncData('arex_finanzas_overrides');
   _publicarSnapshotFinanzas();
 }
 
@@ -359,6 +362,7 @@ function _publicarSnapshotFinanzas() {
       deudas:   d.tarjetas,                      // alias que usa el HUD de Visión
       _updatedAt: Date.now(),
     }));
+    if (typeof window.arexSyncData === 'function') window.arexSyncData('arex_finanzas');
   } catch {}
 }
 _publicarSnapshotFinanzas();

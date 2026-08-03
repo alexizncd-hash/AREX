@@ -3891,15 +3891,43 @@ window.abrirConfig = abrirConfig;
 // ── Transferencia de config a otro dispositivo (Quest, tablet, etc.) ──
 // El código es la config completa en base64 — contiene API keys en claro:
 // compartirlo solo por canales privados, nunca publicarlo.
+
+/* Panel de respaldo si el portapapeles falla (v206).
+   ANTES caía en prompt(), que en PWAs instaladas de iOS está roto: congela
+   el hilo y suele devolver vacío — justo en la función que sirve para pasar
+   AREX al Quest. Ahora muestra el código en un textarea seleccionable. */
+function _mostrarCodigoManual(code, titulo) {
+  document.getElementById('arex-code-panel')?.remove();
+  const d = document.createElement('div');
+  d.id = 'arex-code-panel';
+  d.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,4,12,.82);padding:18px;';
+  d.innerHTML = `
+    <div style="width:min(96%,460px);background:rgba(0,10,24,.98);border:1px solid rgba(34,211,238,.5);border-left:3px solid #22d3ee;border-radius:6px;padding:18px;">
+      <div style="font-family:var(--font);font-size:11px;letter-spacing:1.4px;color:#d6f2ff;margin-bottom:10px;">${titulo}</div>
+      <div style="font-size:10px;color:#8caabe;margin-bottom:8px;line-height:1.5;">Mantén presionado sobre el código → Seleccionar todo → Copiar.<br>⚠ Contiene tus API keys: compártelo solo por canales privados.</div>
+      <textarea id="arex-code-ta" readonly style="width:100%;height:130px;background:rgba(0,6,16,.9);border:1px solid rgba(34,211,238,.35);color:#eaf7ff;font-family:var(--font-mono,monospace);font-size:10px;padding:10px;border-radius:4px;resize:none;word-break:break-all;">${code}</textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button id="arex-code-sel" style="background:rgba(34,211,238,.10);border:1px solid rgba(34,211,238,.6);color:#22d3ee;font-family:var(--font);font-size:10px;letter-spacing:1.4px;padding:10px 16px;min-height:40px;border-radius:4px;cursor:pointer;">SELECCIONAR TODO</button>
+        <button id="arex-code-x" style="background:transparent;border:1px solid rgba(140,170,190,.35);color:#8caabe;font-family:var(--font);font-size:10px;letter-spacing:1.4px;padding:10px 16px;min-height:40px;border-radius:4px;cursor:pointer;">CERRAR</button>
+      </div>
+    </div>`;
+  document.body.appendChild(d);
+  const ta = d.querySelector('#arex-code-ta');
+  d.querySelector('#arex-code-x').onclick = () => d.remove();
+  d.querySelector('#arex-code-sel').onclick = () => { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); };
+  setTimeout(() => { ta.focus(); ta.select(); }, 80);
+}
+
 function copiarCodigoConfig() {
   const cfg = window.AREX_CONFIG;
   if (!cfg?.groqKey) { alert('No hay configuración cargada para copiar.'); return; }
   const code = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
   const done = () => alert('Código copiado. Pégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys — no lo compartas ni lo publiques.');
+  const manual = () => _mostrarCodigoManual(code, '◈ CÓDIGO DE CONFIGURACIÓN');
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(code).then(done).catch(() => prompt('Copia este código manualmente:', code));
+    navigator.clipboard.writeText(code).then(done).catch(manual);
   } else {
-    prompt('Copia este código manualmente:', code);
+    manual();
   }
 }
 window.copiarCodigoConfig = copiarCodigoConfig;
@@ -3919,10 +3947,11 @@ function copiarCodigoCompleto() {
   catch (e) { alert('No se pudo generar el código: ' + e.message); return; }
   const kb = Math.max(1, Math.round(code.length / 1024));
   const done = () => alert(`Código completo copiado (${kb} KB) — keys + todos tus datos.\n\nPégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys y datos personales — compártelo solo por canales privados.`);
+  const manual = () => _mostrarCodigoManual(code, `◈ CÓDIGO COMPLETO · ${kb} KB`);
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(code).then(done).catch(() => prompt('Copia este código manualmente:', code));
+    navigator.clipboard.writeText(code).then(done).catch(manual);
   } else {
-    prompt('Copia este código manualmente:', code);
+    manual();
   }
 }
 window.copiarCodigoCompleto = copiarCodigoCompleto;
