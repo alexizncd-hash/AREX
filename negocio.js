@@ -424,7 +424,20 @@ function negRegistrarVenta() {
 function negEliminarVenta(id) {
   if (!confirm('¿Eliminar esta venta?')) return;
   const data = getNegocioData();
-  data.ventas = data.ventas.filter(v => v.id !== id);
+  const v = data.ventas.find(x => x.id === id);
+  if (!v) return;
+  data.ventas = data.ventas.filter(x => x.id !== id);
+  // v207: al registrar una venta de CONTADO el producto salió del inventario
+  // central; al borrarla tiene que REGRESAR. Sin esto el stock quedaba
+  // descontado para siempre y leías menos kg de los que realmente tenías.
+  // (Consignación no toca inventario aquí: salió con la entrega.)
+  const suc = data.sucursales.find(s => s.id === v.sucursalId);
+  if (suc?.modo !== 'consignacion') {
+    const kg = (v.cantidad || 0) / data.config.rendimiento;
+    data.inventario.stockKg += kg;
+    data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(), tipo: 'entrada', kg,
+      nota: `Venta eliminada (${v.cantidad} ML devueltos)` });
+  }
   saveNegocioData(data);
   renderNegVentas();
 }
@@ -465,6 +478,23 @@ function negGuardarEditVenta(id) {
   const fechaStr = document.getElementById(`neg-ve-fecha-${id}`)?.value;
   if (!cantidad || cantidad < 1) { alert('Ingresa la cantidad'); return; }
   if (!precio   || precio   <= 0) { alert('Ingresa el precio'); return; }
+  // v207: ajustar el inventario por el CAMBIO. Antes editabas 10 ML → 20 ML y
+  // el inventario seguía descontado solo por los 10 originales (stock fantasma).
+  // Se revierte el efecto viejo y se aplica el nuevo; cambiar entre contado y
+  // consignación también se maneja porque cada modo tiene su propio efecto.
+  const rend    = data.config.rendimiento || 1;
+  const sucOld  = data.sucursales.find(s => s.id === v.sucursalId);
+  const sucNew  = data.sucursales.find(s => s.id === sucId);
+  const kgOld   = (sucOld?.modo !== 'consignacion') ? (v.cantidad || 0) / rend : 0;
+  const kgNew   = (sucNew?.modo !== 'consignacion') ? cantidad / rend : 0;
+  const delta   = kgOld - kgNew;                      // + devuelve, − descuenta
+  if (Math.abs(delta) > 1e-9) {
+    data.inventario.stockKg = Math.max(0, data.inventario.stockKg + delta);
+    data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(),
+      tipo: delta > 0 ? 'entrada' : 'salida', kg: Math.abs(delta),
+      nota: `Venta editada (${v.cantidad} → ${cantidad} ML)` });
+  }
+
   v.sucursalId    = sucId;
   v.cantidad      = cantidad;
   v.precioUnitario = precio;
@@ -478,7 +508,10 @@ function negGuardarEditVenta(id) {
 function renderNegInventario() {
   const data    = getNegocioData();
   const mlDisp  = Math.floor(data.inventario.stockKg * data.config.rendimiento);
-  const stockBajo = data.inventario.stockKg < 5;
+  // v207: usaba 5 fijo e ignoraba config.stockMinimo — el dashboard avisaba
+  // con tu umbral pero esta vista no. Ahora ambos leen lo mismo.
+  const stockMinInv = data.config.stockMinimo || 5;
+  const stockBajo = data.inventario.stockKg < stockMinInv;
 
   document.getElementById('neg-inv-content').innerHTML = `
     <div class="neg-stock-hero ${stockBajo ? 'neg-stock-low' : ''}">
