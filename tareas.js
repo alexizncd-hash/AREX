@@ -7,7 +7,22 @@
 // cargar), por eso no importa que este script corra antes que el módulo.
 
 /* ── Módulo Tareas ──────────────────────────────────── */
-function getTareas() { return _safeJSON(localStorage.getItem('arex_tareas'), []); }
+function getTareas() {
+  const arr = _safeJSON(localStorage.getItem('arex_tareas'), []);
+  // v208: normaliza tareas creadas por versiones viejas de Visión, que
+  // guardaban el campo como `texto`. Sin esto, una sola tarea mal formada
+  // reventaba renderTareas y el módulo entero dejaba de abrir.
+  let repar = false;
+  for (const t of arr) {
+    if (t && typeof t.text !== 'string') {
+      t.text = (typeof t.texto === 'string' ? t.texto : '') || '(sin descripción)';
+      delete t.texto;
+      repar = true;
+    }
+  }
+  if (repar) { try { localStorage.setItem('arex_tareas', JSON.stringify(arr)); } catch {} }
+  return arr;
+}
 function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
 
 function urgenciaTarea(t) {
@@ -197,7 +212,7 @@ function renderTareas() {
     const _innerHTML = `
       <button class="tarea-toggle" data-id="${t.id}">${t.done ? '✓' : ''}</button>
       <div class="tarea-content">
-        <span class="tarea-text">${t.text.replace(/</g,'&lt;')}</span>
+        <span class="tarea-text">${String(t.text ?? '').replace(/</g,'&lt;')}</span>
         <div class="tarea-meta">
           ${!t.done ? `<span class="tarea-prio-badge prio-${prio}">${prio.toUpperCase()}</span>` : ''}
           ${urg && !t.done ? `<span class="tarea-urg-badge ${urg.cls}">${urg.icon} ${urg.txt}</span>` : ''}
@@ -247,7 +262,7 @@ function renderTareas() {
       div.classList.remove('swipeable');
       div.innerHTML = `
         <div class="tarea-edit-form">
-          <input class="tarea-edit-text" type="text" value="${t.text.replace(/"/g,'&quot;')}" placeholder="Descripción..."/>
+          <input class="tarea-edit-text" type="text" value="${String(t.text ?? '').replace(/"/g,'&quot;')}" placeholder="Descripción..."/>
           <div class="tarea-edit-row">
             <input class="tarea-edit-fecha" type="date" value="${t.fecha || ''}"/>
             <div class="tarea-edit-prio-btns">

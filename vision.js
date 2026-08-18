@@ -1228,6 +1228,7 @@ function _saveNotaFromVision(text) {
       creadaEn:  new Date().toISOString(),
     });
     localStorage.setItem('arex_notas', JSON.stringify(ns));
+    window.arexSyncData?.('arex_notas');    // v208: no subía a la nube
     window.renderNotas?.();
   } catch {}
 }
@@ -2523,10 +2524,14 @@ function _toggleGestureConfig() {
 function _voiceAddTarea(text, priority = 'media') {
   try {
     const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
-    const t  = { id:String(Date.now()), texto:text, prioridad:priority, done:false,
-                  fecha:null, creadaEn:new Date().toISOString() };
+    // v208: el campo es `text` (así lo lee tareas.js). Antes se escribía
+    // `texto` → renderTareas reventaba con TypeError y el módulo Tareas
+    // dejaba de abrir por completo. `created` también unificado.
+    const t  = { id:String(Date.now()), text:text, prioridad:priority, done:false,
+                  fecha:null, created:Date.now() };
     ts.push(t);
     localStorage.setItem('arex_tareas', JSON.stringify(ts));
+    window.arexSyncData?.('arex_tareas');
     window.renderTareas?.();
     window._updateUrgencyBadges?.();
     return t;
@@ -2948,6 +2953,7 @@ function _wkCheckTarea(idx) {
   if (ts[idx]) {
     ts[idx].done = !ts[idx].done;
     localStorage.setItem('arex_tareas', JSON.stringify(ts));
+    window.arexSyncData?.('arex_tareas');   // v208: no subía a la nube
     window.renderTareas?.();
     _wkRender();
     _visionSpeak(ts[idx].done ? 'Tarea completada.' : 'Tarea reactivada.');

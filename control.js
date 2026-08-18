@@ -613,6 +613,8 @@ const BACKUP_KEYS = [
   'arex_personas','arex_gesture_map','arex_bitacora','arex_agentes_estado',
   // v200: faltaban en el respaldo — se perdían al exportar/importar
   'arex_habitos','arex_sessions','arex_session_memories',
+  // v208: SENTINEL la reportaba como huérfana en cada corrida
+  'arex_vigia_ultimo',
 ];
 
 function _exportBackupJSON() {
