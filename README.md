@@ -61,6 +61,7 @@ arex/
 ├── firestore.rules     → Reglas de seguridad Firestore (deploy con firebase deploy)
 ├── firebase.json       → Configuración Firebase CLI (apunta a firestore.rules)
 ├── FIREBASE_SETUP.md   → Guía paso a paso para activar Auth anónimo y publicar reglas
+├── MANUAL.md           → Manual del sistema: mapa de módulos, 39 cruces de datos, rutinas de uso y mejoras priorizadas
 ├── AUDITORIA.md        → Auditoría de seguridad y sprints de mejora
 └── README.md           → Este archivo
 ```
