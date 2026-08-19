@@ -655,3 +655,38 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ── v210: panel de VIERNES ── */
+#ctrl-viernes {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; gap: 6px;
+  background: rgba(0, 8, 20, 0.8);
+  border: 1px solid rgba(207, 239, 255, 0.16);
+  border-left: 3px solid rgba(207, 239, 255, 0.55);
+  border-radius: 4px; padding: 10px; margin-bottom: 4px;
+}
+.vrn-hdr {
+  font-family: var(--font); font-size: 9px; letter-spacing: 2.5px;
+  color: #cfefff; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.vrn-sub { font-size: 8px; letter-spacing: 1px; color: var(--text-muted, #4a7a96); }
+.vrn-load, .vrn-none {
+  font-size: 10px; color: var(--text-muted, #4a7a96); letter-spacing: .5px;
+}
+.vrn-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 10px; line-height: 1.45; color: #cfe9f5;
+  padding: 6px 0; border-top: 1px solid rgba(207, 239, 255, 0.08);
+}
+.vrn-dot {
+  width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+  background: #cfefff;
+}
+.vrn-row.crit .vrn-dot { background: #ff6677; box-shadow: 0 0 7px #ff6677; }
+.vrn-txt { flex: 1; min-width: 0; }
+.vrn-det { margin-top: 4px; }
+.vrn-det summary {
+  font-size: 9px; letter-spacing: 1px; color: var(--text-muted, #4a7a96);
+  cursor: pointer; padding: 4px 0;
+}
+.vrn-wait { font-size: 9px; color: var(--text-muted, #4a7a96); padding: 2px 0 2px 8px; }

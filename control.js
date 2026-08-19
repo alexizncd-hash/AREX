@@ -280,6 +280,7 @@ function _renderAgentes(el) {
   // Init canvas orbs after DOM is painted
   setTimeout(() => window.initNeuralOrbs?.(), 60);
   window._renderVigia?.();
+  window._renderViernes?.();
 }
 
 /* ── Barrido total: los 5 agentes en secuencia, reporte al final ── */
@@ -814,6 +815,7 @@ function renderControlModule() {
     <div class="ctrl-view ${_ctrlView==='agentes'?'active':''}" id="ctrl-agents-view">
       <!-- v198: el viejo "EJECUTAR TODOS" era redundante con ⚡ BARRIDO TOTAL -->
       <div id="ctrl-vigia"></div>
+      <div id="ctrl-viernes"></div>
       <div class="ctrl-agents" id="ctrl-agents-body"></div>
     </div>
 
@@ -975,6 +977,18 @@ function _vigiaAnalizar() {
     }
   }
 
+  /* ── CRUCE 5 (v210): predicciones de VIERNES ──
+     Solo si el motor ya está cargado — el VIGÍA no debe forzar su carga
+     ni bloquearse esperándolo. */
+  try {
+    if (window.VIERNES?.insights) {
+      window.VIERNES.insights({ soloCriticos: true }).forEach(i => {
+        out.push({ nivel: 'critico', texto: `◆ ${i.texto}`,
+                   accion: { label: 'Ver negocio', cmd: "window.cambiarModulo('negocio')" } });
+      });
+    }
+  } catch {}
+
   const orden = { critico: 0, aviso: 1 };
   return out.sort((a,b) => orden[a.nivel] - orden[b.nivel]);
 }
@@ -1021,4 +1035,54 @@ window._renderVigia = function () {
         <span class="vigia-txt">${_h(x.texto)}</span>
         ${x.accion ? `<button class="vigia-btn" onclick="${x.accion.cmd}">${_h(x.accion.label)}</button>` : ''}
       </div>`).join('');
+};
+
+
+/* ═══════════════════════════════════════════════════════
+   VIERNES en Mission Control (v210)
+   El motor vive en viernes.js y carga bajo demanda: es análisis, no
+   algo que deba pesar en el arranque.
+   ═══════════════════════════════════════════════════════ */
+function _cargarViernes() {
+  if (window.VIERNES) return Promise.resolve(true);
+  if (document.querySelector('script[src="./viernes.js"]')) {
+    return new Promise(r => setTimeout(() => r(!!window.VIERNES), 400));
+  }
+  return new Promise(res => {
+    const s = document.createElement('script');
+    s.src = './viernes.js';
+    s.onload  = () => res(true);
+    s.onerror = () => res(false);
+    document.body.appendChild(s);
+  });
+}
+
+window._renderViernes = async function () {
+  const box = document.getElementById('ctrl-viernes');
+  if (!box) return;
+  box.innerHTML = `<div class="vrn-hdr">◆ VIERNES <span class="vrn-sub">análisis de tendencia · local</span></div>
+                   <div class="vrn-load">calculando…</div>`;
+  const ok = await _cargarViernes();
+  if (!ok || !window.VIERNES) {
+    box.innerHTML = `<div class="vrn-hdr">◆ VIERNES</div><div class="vrn-none">No se pudo cargar el motor de análisis.</div>`;
+    return;
+  }
+  let a;
+  try { a = window.VIERNES.analizar(); }
+  catch (e) { box.innerHTML = `<div class="vrn-hdr">◆ VIERNES</div><div class="vrn-none">Error: ${_h(e.message)}</div>`; return; }
+
+  const orden = ['agotamiento','ritmoTiendas','ciclos','mejorDia','ritmoGasto'];
+  const listos  = orden.map(k => a[k]).filter(x => x && x.ok);
+  const faltan  = orden.map(k => a[k]).filter(x => x && !x.ok);
+
+  box.innerHTML =
+    `<div class="vrn-hdr">◆ VIERNES <span class="vrn-sub">${listos.length} análisis · ${a._ms} ms · sin API</span></div>` +
+    (listos.length
+      ? listos.map(x => `<div class="vrn-row ${x.critico?'crit':''}"><span class="vrn-dot"></span><span class="vrn-txt">${_h(x.texto)}</span></div>`).join('')
+      : `<div class="vrn-none">Aún no hay historial suficiente para predecir nada. Sigue usando AREX unas semanas.</div>`) +
+    (faltan.length
+      ? `<details class="vrn-det"><summary>${faltan.length} análisis esperando datos</summary>` +
+        faltan.map(x => `<div class="vrn-wait">· ${_h(x.razon)}</div>`).join('') + `</details>`
+      : '');
+  logBitacora('sistema', `VIERNES: ${listos.length} análisis listos, ${faltan.length} esperando datos`);
 };

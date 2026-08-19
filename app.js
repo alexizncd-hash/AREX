@@ -328,6 +328,13 @@ function buildModuleContext() {
       let negTxt = `NEGOCIO (${neg.config.variedad}): ventas_mes=${fmtM(vM)}, gastos_mes=${fmtM(gM)}, ganancia_mes=${fmtM(vM-gM)}, stock=${neg.inventario.stockKg}kg`;
       const calle = arexCalleResumen();
       if (calle.totalML > 0) negTxt += `, consignado_en_tiendas=${calle.totalML}ML(${fmtM(calle.valor)})`;
+      // v210: predicciones de VIERNES al prompt, para que AREX pueda responder
+      // "¿cuándo me quedo sin producto?" con un número CALCULADO, no inventado.
+      // Solo si el motor ya está cargado: nunca se fuerza desde el chat.
+      try {
+        const pred = window.VIERNES?.insights?.() || [];
+        if (pred.length) negTxt += `\nTENDENCIAS_CALCULADAS (VIERNES, datos reales — cítalas tal cual, no inventes cifras): ${pred.slice(0,3).map(p => p.texto).join(' | ')}`;
+      } catch {}
       if (calle.resurtir.length) negTxt += `, tiendas_por_resurtir=[${calle.resurtir.join(', ')}]`;
       parts.push(negTxt);
     }
