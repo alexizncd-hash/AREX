@@ -920,7 +920,9 @@ function _vigiaAnalizar() {
   }
 
   /* ── CRUCE 2: stock real vs lo que las tiendas van a pedir ── */
-  const consigna = d.sucursales.filter(s => s.activa && s.modo === 'consignacion');
+  // v209: mismo criterio que arexCalleResumen — una tienda pausada con
+  // producto tuyo sigue teniendo tu producto
+  const consigna = d.sucursales.filter(s => s.modo === 'consignacion');
   if (consigna.length && d.stockKg >= 0) {
     // ML que cada tienda consumió en el último mes = lo que probablemente pedirá
     const demandaML = consigna.reduce((tot, s) => {

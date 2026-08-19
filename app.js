@@ -2299,9 +2299,9 @@ function _buildModuloContext(mod) {
     }
     if (mod === 'negocio' && typeof getNegocioData === 'function') {
       const nd = getNegocioData();
-      const ventasMes = (nd.ventas||[]).filter(v => v.fecha?.startsWith(mesActual));
+      const ventasMes = (nd.ventas||[]).filter(v => (v.fecha||0) >= _inicioMesTs());
       const ingresosMes = ventasMes.reduce((s,v) => s+(v.total||0), 0);
-      const gastosMes   = (nd.gastos||[]).filter(g => g.fecha?.startsWith(mesActual)).reduce((s,g) => s+g.monto, 0);
+      const gastosMes   = (nd.gastos||[]).filter(g => (g.fecha||0) >= _inicioMesTs()).reduce((s,g) => s+g.monto, 0);
       return `NEGOCIO (${nd.config.variedad}):\nStock: ${nd.inventario.stockKg}kg\nVentas del mes: ${ventasMes.length} · $${ingresosMes.toLocaleString('es-MX')}\nGastos del mes: $${gastosMes.toLocaleString('es-MX')}\nGanancia neta: $${(ingresosMes-gastosMes).toLocaleString('es-MX')}\nSucursales: ${(nd.sucursales||[]).map(s=>s.nombre).join(', ')||'ninguna'}`;
     }
     if (mod === 'proyectos' && typeof getProyectos === 'function') {
@@ -4808,26 +4808,55 @@ window._h = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
 // Consignación: producto en la calle (lee localStorage directo — funciona
 // aunque negocio.js no esté cargado; lo usan finanzas.js y buildModuleContext)
+// v209: FUENTE ÚNICA DE VERDAD de la existencia por tienda.
+// Este cálculo estaba escrito 4 veces (aquí, negTiendaStats en negocio.js, el
+// VIGÍA y el filtro de reparto) y ya divergía. Vive en app.js porque es el
+// único archivo siempre cargado: negocio.js es lazy y INICIO/FINANZAS se
+// pintan antes de que exista. negocio.js y control.js lo consumen desde aquí.
+// v209: ventas/gastos de negocio guardan `fecha` como TIMESTAMP numérico.
+// El código de contexto usaba v.fecha?.startsWith(...) — que lanza TypeError
+// sobre un número; el try/catch lo tragaba y el análisis IA del módulo NEGOCIO
+// respondía SIEMPRE "no hay datos suficientes". Este helper compara bien.
+function _inicioMesTs() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), 1).getTime();
+}
+
+function negExistenciaTienda(neg, sucId) {
+  const out = { existencia: 0, entregado: 0, vendido: 0, ultimaEntrega: null };
+  if (!neg) return out;
+  const ent = (neg.entregas || []).filter(e => e.sucursalId === sucId);
+  if (!ent.length) return out;
+  const primera = Math.min(...ent.map(e => e.fecha));
+  out.entregado = ent.reduce((a, e) => a + (e.cantidadML || 0), 0);
+  out.vendido   = (neg.ventas || [])
+    .filter(v => v.sucursalId === sucId && v.fecha >= primera)
+    .reduce((a, v) => a + (v.cantidad || 0), 0);
+  out.existencia    = Math.max(0, out.entregado - out.vendido);
+  out.ultimaEntrega = ent.reduce((m, e) => e.fecha > m.fecha ? e : m, ent[0]);
+  return out;
+}
+window.negExistenciaTienda = negExistenciaTienda;
+
+// Consignación: producto en la calle (lee localStorage directo — funciona
+// aunque negocio.js no esté cargado; lo usan finanzas.js y buildModuleContext)
 function arexCalleResumen() {
   const empty = { totalML: 0, tiendas: 0, valor: 0, resurtir: [] };
   try {
     const neg = _safeJSON(localStorage.getItem('arex_negocio'), null);
     if (!neg) return empty;
-    const precio = neg.config?.precioVenta || 0;
-    const sucs = (neg.sucursales || []).filter(s => s.modo === 'consignacion' && s.activa !== false);
+    // v209: default 12 como getNegocioData(). Antes, si faltaba precioVenta
+    // en config, el valor del producto en la calle salía $0 con producto real.
+    const precio = neg.config?.precioVenta ?? 12;
+    // v209: ya NO se excluyen las tiendas pausadas — si una tienda pausada
+    // tiene producto tuyo, ese dinero SIGUE en la calle. Antes se subestimaba.
+    const sucs = (neg.sucursales || []).filter(s => s.modo === 'consignacion');
     let totalML = 0; const resurtir = [];
     sucs.forEach(s => {
-      const ent = (neg.entregas || []).filter(e => e.sucursalId === s.id);
-      let exist = 0;
-      if (ent.length) {
-        const primera   = Math.min(...ent.map(e => e.fecha));
-        const entregado = ent.reduce((a, e) => a + e.cantidadML, 0);
-        const vendido   = (neg.ventas || []).filter(v => v.sucursalId === s.id && v.fecha >= primera)
-                                            .reduce((a, v) => a + v.cantidad, 0);
-        exist = Math.max(0, entregado - vendido);
-      }
-      totalML += exist;
-      if (exist < (s.minML ?? 10)) resurtir.push(s.nombre);
+      const { existencia } = negExistenciaTienda(neg, s.id);
+      totalML += existencia;
+      // <= para que una tienda vacía con minML 0 también pida resurtido
+      if (existencia <= (s.minML ?? 10)) resurtir.push(s.nombre);
     });
     return { totalML, tiendas: sucs.length, valor: totalML * precio, resurtir };
   } catch { return empty; }

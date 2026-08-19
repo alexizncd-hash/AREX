@@ -60,13 +60,23 @@ function negTiendaStats(sucId, data) {
     resurtir:   false,
   };
   if (ent.length) {
-    const primera   = Math.min(...ent.map(e => e.fecha));
-    const entregado = ent.reduce((a, e) => a + e.cantidadML, 0);
-    const vendido   = d.ventas.filter(v => v.sucursalId === sucId && v.fecha >= primera)
-                              .reduce((a, v) => a + v.cantidad, 0);
-    stats.existencia    = Math.max(0, entregado - vendido);
-    stats.ultimaEntrega = ent.reduce((m, e) => e.fecha > m.fecha ? e : m, ent[0]);
-    stats.resurtir      = stats.modo === 'consignacion' && stats.existencia < (suc?.minML ?? 10);
+    // v209: delega en la función canónica de app.js (siempre cargado) para que
+    // exista UN solo cálculo de existencia en el sistema. Fallback inline por
+    // si algún día negocio.js se usara fuera de AREX.
+    const r = typeof window.negExistenciaTienda === 'function'
+      ? window.negExistenciaTienda(d, sucId)
+      : (() => {
+          const primera   = Math.min(...ent.map(e => e.fecha));
+          const entregado = ent.reduce((a, e) => a + e.cantidadML, 0);
+          const vendido   = d.ventas.filter(v => v.sucursalId === sucId && v.fecha >= primera)
+                                    .reduce((a, v) => a + v.cantidad, 0);
+          return { existencia: Math.max(0, entregado - vendido),
+                   ultimaEntrega: ent.reduce((m, e) => e.fecha > m.fecha ? e : m, ent[0]) };
+        })();
+    stats.existencia    = r.existencia;
+    stats.ultimaEntrega = r.ultimaEntrega;
+    // <= : con minML 0 y existencia 0 también hay que resurtir
+    stats.resurtir      = stats.modo === 'consignacion' && stats.existencia <= (suc?.minML ?? 10);
   } else {
     stats.resurtir = stats.modo === 'consignacion';
   }

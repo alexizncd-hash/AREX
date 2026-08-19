@@ -383,12 +383,26 @@ function calcularGastosTotal() {
   return getFinanzasData().gastos.reduce((total, g) => total + g.monto, 0);
 }
 
+// v209: ANTES esta era la fórmula estática (salario − fijos = −2,251 fijo):
+// no veía las ventas del negocio ni los gastos personales. La usaban 8 de las
+// 9 superficies —incluidos HERMES y el VIGÍA para decidir "¿te alcanza para el
+// pago?"— mientras solo el dashboard de INICIO usaba la real. Resultado: dos
+// pantallas mostraban números distintos del mismo concepto.
+// Ahora DELEGA: un solo margen en todo el sistema.
 function calcularMargen() {
+  return calcularMargenReal();
+}
+
+// La fórmula declarativa original, por si algún cálculo la necesita
+// (hoy: ningún llamador). No usar para decisiones de liquidez.
+function calcularMargenEstatico() {
   return getFinanzasData().config.ingresoMensual - calcularGastosTotal();
 }
 
 function calcularPorcentajeGastos() {
-  return ((calcularGastosTotal() / getFinanzasData().config.ingresoMensual) * 100).toFixed(1);
+  // v209: dividía entre el ingreso ESTÁTICO ignorando las ventas del negocio
+  const ingreso = calcularIngresoReal() || 1;
+  return ((calcularGastosTotal() / ingreso) * 100).toFixed(1);
 }
 
 function obtenerProximosPagos(dias = 30) {
@@ -552,14 +566,36 @@ function calcularGastosPers() {
   } catch { return 0; }
 }
 
-// Full real margin: (salary + negocio income) - fixed commitments - variable spending
+// v209: gastos del NEGOCIO del mes (compra de materia prima, empaque...).
+// Espejo de calcularIngresoReal: misma clave, mismo filtro por timestamp.
+// Nadie los restaba en ningún punto del sistema — el margen salía inflado.
+function calcularGastosNegocio() {
+  try {
+    const neg  = JSON.parse(localStorage.getItem('arex_negocio') || '{}');
+    const now  = new Date();
+    const imTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    return (neg.gastos || [])
+      .filter(g => (g.fecha || 0) >= imTs)
+      .reduce((s, g) => s + (g.monto || 0), 0);
+  } catch { return 0; }
+}
+
+// Margen real y ÚNICO del sistema:
+//   (salario + ventas del negocio) − fijos − gastos personales − gastos del negocio
 function calcularMargenReal() {
-  return calcularIngresoReal() - calcularGastosTotal() - calcularGastosPers();
+  return calcularIngresoReal()
+       - calcularGastosTotal()
+       - calcularGastosPers()
+       - calcularGastosNegocio();
 }
 
 window.checkFinanzasAlerts   = checkFinanzasAlerts;
 window.calcularDeudaTotal    = calcularDeudaTotal;
 window.calcularMargen        = calcularMargen;
 window.calcularMargenReal    = calcularMargenReal;
+window.calcularMargenEstatico = calcularMargenEstatico;
+window.calcularGastosNegocio  = calcularGastosNegocio;
+window.calcularIngresoReal    = calcularIngresoReal;
+window.calcularGastosPers     = calcularGastosPers;
 window.calcularGastosTotal   = calcularGastosTotal;
 window.obtenerProximosPagos  = obtenerProximosPagos;
