@@ -1,6 +1,21 @@
 // AREX — WebXR AR Panels (Fase 3)
 // Three.js panels flotantes en passthrough del Meta Quest 3S
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+/* v212: ANTES era `import * as THREE from ...` ESTÁTICO. Si jsdelivr fallaba,
+   el módulo entero NUNCA se evaluaba: window.enterAR no llegaba a existir, el
+   botón lanzaba ReferenceError en consola y para ti no pasaba absolutamente
+   nada. Muerte silenciosa. Ahora carga bajo demanda y avisa si falla. */
+let THREE = null;
+async function _cargarThree() {
+  if (THREE) return true;
+  try {
+    THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+    return true;
+  } catch (e) {
+    console.warn('WebXR: Three.js no cargó —', e.message);
+    window.arexAlert?.('AR', 'No se pudo cargar el motor 3D. Verifica tu conexión.', 'warn');
+    return false;
+  }
+}
 
 /* ─── Layout ──────────────────────────────────────────── */
 const PW = 0.52, PH = 0.36;      // panel metros
@@ -30,6 +45,9 @@ export async function enterAR() {
     _activateArexCAM();
     return;
   }
+  // v212: asegurar Three.js antes de tocarlo. Si el CDN falla, el usuario
+  // recibe un aviso en vez de un botón que no hace nada.
+  if (!await _cargarThree()) return;
 
   const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!ok) {

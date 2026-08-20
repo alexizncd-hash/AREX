@@ -1190,10 +1190,16 @@
 <!-- Módulos lazy-loaded por jarvis.js al abrirse: negocio, gastos, metas, proyectos,
      evidencias, control, agenda, habitos, reparto, holo, parallax, vision-orb, vision -->
 
-<!-- Marked (Markdown parser) -->
-<script defer src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-<!-- DOMPurify (sanitizar HTML) -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+<!-- Marked (Markdown parser) — v212: AUTOALOJADO. Renderiza el chat: si su
+     CDN cae, el chat quedaba en texto plano. La copia local (36 KB) va en el
+     SHELL, así que también funciona offline. El CDN queda como respaldo. -->
+<script defer src="vendor/marked.min.js"
+        onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';document.head.appendChild(s)"></script>
+<!-- DOMPurify (sanitizar HTML) — v212: AUTOALOJADO. Es la defensa contra
+     HTML malicioso en las respuestas de la IA; depender de un CDN para una
+     pieza de seguridad era el riesgo mayor. Copia local (21 KB) en el SHELL. -->
+<script defer src="vendor/purify.min.js"
+        onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js';document.head.appendChild(s)"></script>
 <!-- Highlight.js (syntax highlight) -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <!-- AR HUD indicator -->

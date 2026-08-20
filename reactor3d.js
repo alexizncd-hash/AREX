@@ -2,7 +2,16 @@
    Estados: calm | processing | listening | speaking
    Expone: window.arexReactorSetState(state)
 */
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+/* v212: import dinámico. Como estático, si jsdelivr fallaba el reactor 3D
+   simplemente nunca aparecía y nadie se enteraba (los llamadores usan
+   optional chaining). Ahora el fallo queda al menos en la bitácora. */
+let THREE = null;
+try {
+  THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+} catch (e) {
+  console.warn('Reactor3D: Three.js no cargó —', e.message);
+  window.__arexReactorSinThree = true;
+}
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
 
@@ -385,5 +394,6 @@ function init() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
-  init();
+  if (THREE) init();
+  else console.warn('Reactor3D: omitido (sin Three.js)');
 }

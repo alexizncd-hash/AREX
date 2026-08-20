@@ -537,6 +537,21 @@ window._runAgent = async function (agentId, area) {
       }
       if (solapes) fallas.push(`Elementos encimados: ${solapes} (${paresTxt.join(', ')})`);
 
+      // c2) v212: dependencias externas realmente cargadas. Las librerías
+      //     vienen de CDN y varias mueren en silencio si su host falla; este
+      //     chequeo pone nombre a lo que falta en vez de dejarte adivinando.
+      const deps = [
+        { n: 'marked (render del chat)',   ok: typeof window.marked !== 'undefined' },
+        { n: 'DOMPurify (sanitizado)',     ok: typeof window.DOMPurify !== 'undefined' },
+        { n: 'highlight.js (código)',      ok: typeof window.hljs !== 'undefined' },
+        { n: 'Firebase (sync en la nube)', ok: !!window._arexDb },
+      ];
+      const sinCargar = deps.filter(d => !d.ok).map(d => d.n);
+      if (sinCargar.length) fallas.push(`Dependencias no cargadas: ${sinCargar.join(', ')}`);
+      if (window.__arexReactorSinThree) fallas.push('Three.js no cargó — el reactor 3D no aparecerá');
+      if (window.AREX_SW_FALLIDOS?.length) fallas.push(`El service worker instaló con ${window.AREX_SW_FALLIDOS.length} recursos fallidos`);
+      if (window.AREX_DESAJUSTE) fallas.push(`Desajuste de versión: app ${window.AREX_DESAJUSTE.app} vs service worker ${window.AREX_DESAJUSTE.sw}`);
+
       // d) Errores recientes (24h) en la bitácora + crash de Visión sin reportar
       const hace24 = Date.now() - 86400000;
       const errores24 = _getBitacora().filter(e => e.ts > hace24 && /^(ERROR|JS:|ASYNC:|BOOT RESCATADO|⚠ CAJA NEGRA)/.test(e.accion) || (e.modulo === 'alerta' && e.ts > hace24)).length;
@@ -552,7 +567,7 @@ window._runAgent = async function (agentId, area) {
 
       cardTipo    = fallas.length ? 'alerta' : 'general';
       cardTitulo  = 'ESPECTRO · Infiltración del Sistema';
-      cardContent = `**Funciones críticas:** ${criticas.length - faltantes.length}/${criticas.length} vivas\n**Keys de datos:** ${Object.keys(localStorage).filter(k => k.startsWith('arex_')).length} (${corruptas.length} corruptas)\n**Módulo inspeccionado:** ${activo?.id?.replace('module-', '') || '—'}\n\n${veredicto}`;
+      cardContent = `**Funciones críticas:** ${criticas.length - faltantes.length}/${criticas.length} vivas\n**Dependencias externas:** ${deps.length - sinCargar.length}/${deps.length} cargadas\n**Versión:** app ${window.AREX_VERSION || '—'} · SW ${window.AREX_SW_VERSION || '—'}\n**Keys de datos:** ${Object.keys(localStorage).filter(k => k.startsWith('arex_')).length} (${corruptas.length} corruptas)\n**Módulo inspeccionado:** ${activo?.id?.replace('module-', '') || '—'}\n\n${veredicto}`;
       shortSummary = fallas.length ? `⚠ ${fallas.length} hallazgos` : 'Sistema limpio ✓';
 
       logBitacora('infiltrado', `ESPECTRO: ${shortSummary}`);
