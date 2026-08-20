@@ -1207,7 +1207,10 @@
 <canvas id="matrix-r" class="matrix-cv matrix-cv-r" aria-hidden="true"></canvas>
 
 <script defer src="firebase-config.js"></script>
-<script defer src="config.js"></script>
+<!-- config.js está en .gitignore: NO existe en el despliegue público, así que
+     esta carga da 404 en cada arranque salvo en instalaciones locales que sí lo
+     tengan. onerror lo silencia: la configuración vive en localStorage. -->
+<script defer src="config.js" onerror="window.__sinConfigJs=true"></script>
 <!-- App principal (type=module implica defer) -->
 <script type="module" src="app.js"></script>
 <!-- WebXR AR Panels (Fase 3) -->

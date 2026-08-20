@@ -9,6 +9,12 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
     getRedirectResult, onAuthStateChanged, signOut;
 
+/* v211: versión que ESTA build de la app espera. Se compara contra la que
+   reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
+   y para sellar los datos que se sincronizan entre dispositivos. */
+const AREX_VERSION = 'v211';
+window.AREX_VERSION = AREX_VERSION;
+
 /* ── Carga de configuración ─────────────────────────── */
 // Prioridad: config.js (local) → localStorage → pantalla de setup
 
@@ -749,6 +755,7 @@ async function pullAllModuleData() {
       if (!snap.exists()) continue;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
+      _revisarVersionRemota(data, key);
       const { _updatedAt, _arr, ...rest } = data;
       const toStore = _arr !== undefined ? _arr : rest;
 
@@ -783,6 +790,28 @@ async function pullAllModuleData() {
   return synced;
 }
 
+
+/* v211 · DESFASE ENTRE DISPOSITIVOS
+   Los datos sincronizados ahora llevan _appVer. Si llegan escritos por una
+   versión distinta a la nuestra, se avisa UNA vez por sesión: es la señal de
+   que el iPhone y el Quest están en versiones distintas, cosa que antes era
+   completamente invisible (solo se comparaba el timestamp). */
+let _avisoDesfaseDado = false;
+function _revisarVersionRemota(data, key) {
+  try {
+    const remota = data?._appVer;
+    if (!remota || remota === AREX_VERSION || _avisoDesfaseDado) return;
+    _avisoDesfaseDado = true;
+    const nRem = parseInt(String(remota).replace(/\D/g, ''), 10) || 0;
+    const nMia = parseInt(String(AREX_VERSION).replace(/\D/g, ''), 10) || 0;
+    const msg = nRem > nMia
+      ? `Otro dispositivo tuyo ya está en ${remota} y este va en ${AREX_VERSION}. Conviene actualizar este.`
+      : `Otro dispositivo tuyo escribió datos desde ${remota}, una versión más vieja que la tuya (${AREX_VERSION}). Ábrelo y actualízalo para que no pise datos con formato viejo.`;
+    logBitacora?.('alerta', `Desfase de versión: local ${AREX_VERSION} vs remoto ${remota} (${key})`);
+    setTimeout(() => window.arexAlert?.('SINCRONIZACIÓN', msg, 'warn'), 3000);
+  } catch {}
+}
+
 // arexSyncData con _updatedAt para resolución de conflictos cross-device
 // Registro local de timestamps de sync: los datos array (tareas, notas...)
 // no llevan _updatedAt embebido, así que sin esto la resolución de conflictos
@@ -804,9 +833,12 @@ async function arexSyncData(lsKey) {
     const payload = JSON.parse(raw);
     const ts = Date.now();
     _setSyncTs(lsKey, ts);
+    // v211: sellar con la versión de la app. Antes solo iba _updatedAt, así
+    // que un dispositivo en versión vieja podía pisar los datos del nuevo sin
+    // que nadie notara la diferencia de formato (ya pasó con `texto`/`text`).
     const toStore = Array.isArray(payload)
-      ? { _arr: payload, _updatedAt: ts }
-      : { ...payload, _updatedAt: ts };
+      ? { _arr: payload, _updatedAt: ts, _appVer: AREX_VERSION }
+      : { ...payload, _updatedAt: ts, _appVer: AREX_VERSION };
     _rtLastTs[lsKey] = ts;  // prevent onSnapshot loop for our own write
     await setDoc(_userDoc('arex_data', lsKey), toStore);
     window._arexLastSync = Date.now();
@@ -829,6 +861,7 @@ function initRealtimeSync() {
       if (!snap.exists()) return;
       const data = snap.data();
       const remoteTs = data._updatedAt || 0;
+      _revisarVersionRemota(data, key);
       // Skip if we already processed this timestamp (avoids loop after our own writes)
       if (remoteTs <= (_rtLastTs[key] || 0)) return;
       _rtLastTs[key] = remoteTs;
@@ -4042,37 +4075,87 @@ document.getElementById('sb-continuous').addEventListener('click', toggleContinu
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
 // PWA
+/* v211 · ACTUALIZACIÓN CONTROLADA POR EL USUARIO
+   ANTES: skipWaiting() + el mensaje SW_UPDATED forzaban location.reload() a
+   los 800 ms, así que el banner de "nueva versión" y la auto-recarga competían
+   y ganaba la recarga — el usuario podía perder lo que estaba capturando. Y la
+   PRIMERA instalación de un dispositivo nuevo disparaba una recarga espuria.
+   AHORA: el banner aparece, la página NO se recarga sola, y solo al tocarlo se
+   le pide al SW que aplique la versión nueva. */
 if ('serviceWorker' in navigator) {
-  // Detect active cache version immediately (control.js telemetría)
-  if ('caches' in window) {
-    caches.keys().then(keys => {
-      const active = keys.find(k => k.startsWith('arex-'));
-      if (active) window.AREX_SW_VERSION = active.replace('arex-', '');
-    });
-  }
+  let _swReg = null;
+  let _ultimoChequeo = 0;
 
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
-    // Forzar verificación inmediata de actualizaciones
+    _swReg = reg;
     reg.update();
-    // Detectar cuando el SW se actualiza en segundo plano
+    _ultimoChequeo = Date.now();
+
+    // Si ya hay un SW esperando de una visita anterior, avisar de una vez
+    if (reg.waiting && navigator.serviceWorker.controller) _showUpdateBanner();
+
     reg.addEventListener('updatefound', () => {
-      const newWorker = reg.installing;
-      newWorker?.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+      const nuevo = reg.installing;
+      nuevo?.addEventListener('statechange', () => {
+        // controller != null ⇒ NO es la primera instalación: es una actualización
+        if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
           _showUpdateBanner();
         }
       });
     });
   }).catch(e => console.warn('SW:', e));
 
-  // Mensaje del SW activo indicando nueva versión — auto-recarga
+  /* v211: chequeo al volver a primer plano. Antes solo se comprobaba una vez
+     al cargar la página: una PWA instalada que se deja suspendida (el Quest en
+     reposo, la app de iOS en segundo plano) podía pasar DÍAS sin enterarse de
+     que había versión nueva. Por eso los dos dispositivos divergían. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !_swReg) return;
+    if (Date.now() - _ultimoChequeo < 15 * 60000) return;   // máximo cada 15 min
+    _ultimoChequeo = Date.now();
+    _swReg.update().catch(() => {});
+  });
+
+  // Aplicar la actualización: lo llama el botón del banner
+  window._aplicarActualizacion = function () {
+    const w = _swReg?.waiting || _swReg?.installing;
+    if (w) {
+      // Cuando el SW nuevo tome el control, recargamos una sola vez
+      let recargado = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!recargado) { recargado = true; window.location.reload(); }
+      });
+      w.postMessage({ type: 'APLICAR_ACTUALIZACION' });
+    } else {
+      window.location.reload();
+    }
+  };
+
   navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data?.type === 'SW_UPDATED') {
+    if (e.data?.type === 'SW_UPDATED' || e.data?.type === 'SW_VERSION') {
       if (e.data.version) window.AREX_SW_VERSION = e.data.version;
-      // Auto-reload para aplicar nuevos archivos inmediatamente
-      setTimeout(() => window.location.reload(), 800);
+      // v211: el SW avisa si instaló con recursos fallidos — antes era invisible
+      if (e.data.fallidos?.length) {
+        window.AREX_SW_FALLIDOS = e.data.fallidos;
+        try { logBitacora?.('alerta', `SW instalado con ${e.data.fallidos.length} recursos fallidos`); } catch {}
+      }
+      // v211: comparar la versión del SW contra la que espera esta app.
+      // Detecta el escenario "index.html nuevo con app.js viejo" (o al revés),
+      // que antes era completamente invisible.
+      if (e.data.version && e.data.version !== AREX_VERSION) {
+        console.warn(`AREX: desajuste de versión — app ${AREX_VERSION}, SW ${e.data.version}`);
+        window.AREX_DESAJUSTE = { app: AREX_VERSION, sw: e.data.version };
+      }
+      // Ya NO se recarga sola: el usuario decide con el banner.
     }
   });
+
+  // Preguntar la versión real al SW (fuente fiable). Antes se deducía del
+  // nombre del caché, que durante una transición es NO determinista: coexisten
+  // arex-v210 y arex-v211 y se tomaba la primera del array.
+  navigator.serviceWorker.ready.then(reg => {
+    reg.active?.postMessage({ type: 'QUE_VERSION' });
+  }).catch(() => {});
 }
 
 function _showUpdateBanner() {
@@ -4080,12 +4163,12 @@ function _showUpdateBanner() {
   const banner = document.createElement('div');
   banner.id = 'update-banner';
   banner.innerHTML = `
-    <span>⬆ Nueva versión de AREX disponible</span>
-    <button onclick="window.location.reload(true)">ACTUALIZAR</button>
+    <span>⬆ Nueva versión de AREX lista</span>
+    <button onclick="window._aplicarActualizacion?.()">ACTUALIZAR</button>
     <button onclick="this.parentElement.remove()" style="opacity:0.5;font-size:10px">×</button>
   `;
   banner.style.cssText = `
-    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    position:fixed;bottom:calc(80px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);
     background:rgba(0,14,26,0.97);border:1px solid rgba(0,212,255,0.5);
     color:#22d3ee;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;
     padding:10px 14px;border-radius:6px;z-index:9999;
