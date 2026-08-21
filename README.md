@@ -147,6 +147,13 @@ arex/
 | `/config` | Cambia API keys y configuración desde la app |
 | `/buscar texto` | Búsqueda global en todos los módulos |
 | `/pomodoro` | Abre/cierra el widget Pomodoro |
+| `/hoy` | Resumen del día: tareas, gastos, hábitos y agenda |
+| `/proyecto nombre — descripción` | Crea un proyecto desde el chat |
+| `/profundo pregunta` | Razonamiento pesado con Gemini 2.5 Pro. Cuota diaria limitada, tarda 10-30 s |
+
+> Los tres de arriba llevaban tiempo funcionando **sin estar documentados**:
+> existían en el enrutador de comandos pero no en este archivo, así que no
+> había forma de enterarse de que estaban ahí.
 
 ### Tareas
 | Comando | Descripción |
@@ -168,24 +175,33 @@ arex/
 
 ---
 
-## Orbe 3D Mark III — WebGL + GLSL
+## Orbe — Mark IV · malla neuronal en Canvas 2D
 
-El orbe central de AREX usa un renderer WebGL con shaders GLSL personalizados, sin dependencias externas. Si WebGL no está disponible, cae automáticamente al modo 2D Canvas (esfera de partículas Fibonacci).
+El orbe central de AREX es una esfera de Fibonacci de 100 nodos unidos por
+aristas a sus 5 vecinos más cercanos, más una nube de hasta 160 partículas.
+Se dibuja en **Canvas 2D**, sin dependencias y sin WebGL.
 
-### Shaders (WebGL path)
-- **Vertex shader**: esfera de 40×40 subdivisiones con desplazamiento de vértices en tiempo real (función seno multi-frecuencia animada). Cada estado del sistema tiene amplitud/frecuencia propia.
-- **Fragment shader**: efecto Fresnel (brillo en los bordes de la esfera, como un holograma), bandas de energía en latitud (co-rotan con la esfera), espirales en longitud, y núcleo de iluminación frontal. Todo ajustado con uniforms por estado.
-- **Blending aditivo**: `SRC_ALPHA + ONE` para apariencia de holograma translúcido sobre cualquier fondo.
+> **Corrección (v221).** Este apartado describía durante mucho tiempo un
+> "Mark III con shaders GLSL": vertex shader de 40×40 subdivisiones, fragment
+> shader con efecto Fresnel, blending aditivo. **Nada de eso existe en el
+> código.** `orb.js` no contiene una sola llamada a WebGL. Se documentaba una
+> implementación anterior que se sustituyó y nadie actualizó el texto.
 
 | Estado | Color | Comportamiento |
-|--------|-------|----------------|
-| En espera | Cyan | Rotación lenta, sin desplazamiento |
-| Hablando | Blanco azulado | Rotación rápida, desplazamiento fuerte (amp=0.12), bandas intensas |
-| Pensando | Azul profundo | Velocidad media, desplazamiento sutil, frecuencia baja |
-| Escuchando | Verde | Rotación lenta, desplazamiento mínimo |
-| Buscando | Naranja | Rotación rápida, desplazamiento fuerte, bandas veloz |
+|---|---|---|
+| `default` | cian | giro lento, 55 partículas |
+| `speaking` | cian claro | giro rápido, 140 partículas, respiración amplia |
+| `thinking` | azul | giro medio, 100 partículas |
+| `listening` | verde | giro lento, 65 partículas |
+| `searching` | naranja | giro rápido, 115 partículas |
 
----
+El estado se cambia añadiendo la clase correspondiente a `#orb`; un
+`MutationObserver` la detecta e interpola el color suavemente.
+
+**Desde v215 el bucle no gira a ciegas.** Un `IntersectionObserver` lo corta
+cuando el orbe sale de pantalla y lo reanuda al volver; en reposo va a 30 fps
+y solo sube a 60 cuando AREX habla, piensa, escucha o busca. Antes pedía un
+fotograma 60 veces por segundo estuvieras en el chat o registrando una venta.
 
 ## Visión MARK IV (cámara)
 
@@ -266,7 +282,11 @@ Guarda descripciones físicas de personas; AREX las reconoce y saluda por su nom
 
 ---
 
-## Mission Control (`/ctrl`)
+## Mission Control
+
+> Se abre con el botón **MISSION CONTROL ►** del encabezado, o desde la
+> tarjeta CONTROL del dashboard. **No** existe un comando `/ctrl`, aunque
+> este documento lo prometió durante varias versiones.
 
 Panel de administración del sistema con tres vistas:
 
@@ -371,6 +391,16 @@ Ocho versiones seguidas de saneamiento. El detalle y el estado están en
 
 ### v117 — Liquid Glass System: superficies de vidrio líquido + GPU ×6 más eficiente
 
+> **Nota de v218.** Este apartado quedó desmentido por la medición. Los cinco
+> tokens `--lg-*` que describe se declararon aquí y **nunca tuvieron un solo
+> consumidor**: se comprobó en los 13 archivos CSS y en todo el JS, incluidos
+> los `setProperty()`. Se retiraron en v218. Además `applyPerformanceProfile()`
+> usa `cores || 4` con umbral `<= 4`, así que cualquier navegador que no
+> exponga ese dato queda marcado como equipo flojo y se queda sin blur — es
+> decir, el cristal probablemente llevaba tiempo apagado en el iPhone.
+> El texto de abajo se conserva como historia, no como descripción del estado
+> actual.
+
 **`style.css`** (nueva sección v117 — unlayered, gana sobre todo)
 - Variables blur reducidas: `--blur-sm: 3px` (era 10), `--blur-md: 6px` (era 18), `--blur-lg: 10px` (era 26)
 - GPU: área de muestreo por compositing layer cae de π·26² ≈ 2,123 px² → π·10² ≈ 314 px² (×6.7 menos por panel)
@@ -396,6 +426,9 @@ Ocho versiones seguidas de saneamiento. El detalle y el estado están en
 
 **`style.css`**
 - Implementado sistema CSS `@layer arex-base` para resolver el conflicto estructural de cascada
+  · **(v213 descubrió que esa capa nunca se cerró:** su `}` quedó dentro de un
+  comentario, así que TODO `style.css` vivía dentro y cualquier archivo de
+  módulo le ganaba sin importar la especificidad. El envoltorio se retiró.)
 - Todo el CSS base (líneas 1–5636) envuelto en `@layer arex-base { }` — menor prioridad en cascada
 - Los bloques v63 (Translucency), v64 (Neural Orbs) y v65 (Iron Man HUD) quedan sin capa (unlayered), ganando automáticamente sobre el base por diseño del spec CSS
 - Eliminados **790 `!important`** de los bloques v63/v64/v65 — ahora innecesarios gracias a la precedencia de reglas sin capa sobre capas
