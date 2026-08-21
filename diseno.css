@@ -66,7 +66,10 @@
   /* ── Texto: tres niveles y ya. Antes había siete grises ────────── */
   --texto:   oklch(96% 0.015 var(--tono));
   --texto-2: oklch(72% 0.030 var(--tono));   /* etiquetas, apoyo */
-  --texto-3: oklch(55% 0.030 var(--tono));   /* deshabilitado */
+  /* v221 · era 55%, que daba 3,83:1 sobre el panel y 3,48:1 sobre la
+     tarjeta — por debajo del 4,5:1 que exige WCAG para texto normal. Medido
+     con un lienzo, no a ojo. A 64% queda en 5,53:1 y 5,03:1. */
+  --texto-3: oklch(64% 0.030 var(--tono));   /* apoyo tenue */
 
   /* Los bordes se derivan del acento en vez de escribirse a mano.
      Cambiar --tono repinta el sistema entero, bordes incluidos. */
@@ -123,7 +126,7 @@
     --sup-3:       #192c31;
     --texto:       #e7f5f8;
     --texto-2:     #90aab0;
-    --texto-3:     #5e767d;
+    --texto-3:     #8ba3a9;
     /* color-mix tampoco existiría, así que los bordes van literales */
     --borde:       rgba(43,204,235,0.22);
     --borde-alto:  rgba(43,204,235,0.45);
@@ -482,4 +485,202 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+
+/* ═══ CORRECCIONES GLOBALES ════════════════════════════════════════════
+   Arreglos de accesibilidad sobre componentes del diseño VIEJO que aún no
+   se han migrado. Están aquí y no en style.css a propósito: son unos pocos
+   componentes compartidos que aparecían rotos en los 14 módulos a la vez,
+   así que este bloque los arregla todos de una. Cada uno desaparecerá de
+   aquí cuando su módulo se migre de verdad.
+
+   Todo lo de abajo salió MEDIDO por el contrato de calidad, no de mirar.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Objetivos táctiles ─────────────────────────────────────────────────
+   Apple pide 44 px de lado para cualquier cosa que se toque con el dedo.
+   Estos estaban entre 18 y 36. Las pestañas de módulo (.drawer-tab) medían
+   22 px de alto y fallaban en LOS CATORCE módulos. */
+.drawer-tab,
+.neg-tab,
+.subnav-btn,
+.ctrl-tab,
+.ag-vtab,
+.hab-tab {
+  min-height: var(--toque) !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0 !important;
+}
+
+.drawer-back-btn,
+.msg-copy,
+.msg-star,
+#btn-sidebar-close,
+#btn-close-notes,
+#qc-close,
+#srch-close-btn {
+  min-width: var(--toque);
+  min-height: var(--toque);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Botones e inputs de formulario que se quedaban en 21-36 px */
+.rep-btn,
+#hab-btn-nuevo,
+#btn-enter-ar,
+#notas-search, #notas-add-btn,
+#proj-nombre-in, #proj-desc-in, #proj-fecha-in,
+#ev-search-input,
+#note-cat-select, #btn-add-note,
+#tvt-lista, #tvt-cal,
+.qc-pill,
+.nf-btn,
+#sb-search, #sb-exam, #sb-voice, #sb-continuous, #btn-nueva-sesion,
+#qc-save {
+  min-height: var(--toque);
+}
+
+/* Los botones del encabezado eran de 29×27 */
+#btn-sidebar,
+#btn-holo-mode,
+.btn-hdr-icon {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* ── Contraste ──────────────────────────────────────────────────────────
+   Las etiquetas de prioridad de una tarea daban 1,98:1 (BAJA) y 3,27:1
+   (ALTA). El mínimo legible es 4,5:1 — es decir, la prioridad de tus
+   tareas era prácticamente ilegible. Se conserva el código de color, pero
+   con la claridad suficiente para leerse. */
+.tarea-prio-badge {
+  &.prio-baja  { color: oklch(72% 0.06 var(--tono)) !important; }
+  &.prio-media { color: var(--aviso) !important; }
+  &.prio-alta  { color: var(--alerta) !important; }
+}
+
+/* Las etiquetas de las métricas de Finanzas se quedaban en 4,4:1 —
+   a cuatro centésimas del mínimo. */
+.metric-label,
+.fin-card-label,
+.dhud-panel .dhud-label {
+  color: var(--texto-2) !important;
+}
+
+/* ── Desbordes ──────────────────────────────────────────────────────────
+   #txt es flex:1 dentro de la barra de entrada, pero un elemento flexible
+   trae min-width:auto y por eso no encoge por debajo de su contenido: al
+   escribir una línea larga, la barra empujaba fuera de la pantalla. */
+#txt { min-width: 0; }
+
+/* Las tiras de pestañas se desbordaban en vez de poder deslizarse */
+.drawer-tabs,
+.neg-tabs,
+.finanzas-subnav {
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+
+/* ── Cola de casos concretos, todos medidos ─────────────────────────────
+   Lo que quedaba después de arreglar los componentes compartidos. */
+
+/* Los botones de prioridad de una tarea NO declaraban fondo, así que los
+   no seleccionados salían con el gris claro por defecto del navegador
+   —rgb(239,239,239)— dentro de una interfaz oscura. Se veían como cajas
+   grises pálidas, y el texto verde encima daba 1,98:1. */
+.prio-btn {
+  background: transparent;
+  opacity: 1;                    /* el 0,4 original los hacía ilegibles */
+  min-height: var(--toque);
+  padding-inline: var(--e-3);
+}
+.prio-btn:not(.active) { color: var(--texto-2); border-color: var(--borde); }
+
+/* Textos de "aquí no hay nada": estaban en #1e4a60 sobre panel oscuro,
+   1,94:1. Prácticamente invisibles. */
+.dash-empty { color: var(--texto-3); }
+.dash-w-link { color: var(--acento); min-height: var(--toque); display: inline-flex; align-items: center; }
+
+/* Objetivos táctiles que quedaban sueltos */
+#txt { min-height: var(--toque); }
+.tf-chip,
+#tarea-input, #tarea-fecha, #tarea-prio,
+.fx-refresh-btn,
+.neg-chart-tab, .neg-btn-primary,
+.gp-mes-nav-btn, #gp-r-cat, #gp-r-monto, #gp-r-desc, #gp-r-fecha,
+.proj-add-btn,
+#ag-prev, #ag-next, #ag-today,
+.ctrl-btn, .ctrl-action-btn {
+  min-height: var(--toque);
+}
+.fx-refresh-btn, .gp-mes-nav-btn, #ag-prev, #ag-next {
+  min-width: var(--toque);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* Un botón sin clase dentro de .diag-row (el "CONFIG" del panel de
+   diagnóstico) medía 45×13. Al no tener clase no hay forma de nombrarlo
+   más que por su sitio. */
+.diag-row button { min-height: var(--toque); padding-inline: var(--e-3); }
+
+/* ── Iconos de acción de una tarea ──────────────────────────────────────
+   .tarea-toggle, .tarea-edit y .tarea-del medían 17-18 px. Agrandarlos
+   deformaría la fila, así que se agranda solo el ÁREA DE TOQUE con un
+   ::before invisible centrado: el dibujo sigue igual de pequeño, pero el
+   dedo acierta. Es la técnica estándar para iconos densos. */
+.tarea-toggle,
+.tarea-edit,
+.tarea-del,
+.tarea-sub-toggle,
+.tarea-sub-del {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inline-size: var(--toque);
+    block-size: var(--toque);
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    translate: -50% -50%;
+  }
+}
+
+#btn-tarea-hoy, #btn-tarea-man, #tarea-add-btn,
+.tarea-date-quick,
+.tarea-sub-input {
+  min-height: var(--toque);
+}
+
+
+/* ── Los últimos botones naranjas ───────────────────────────────────────
+   .btn-primary, .btn-add, .tarea-add-btn, .notas-add-btn y .qc-btn-save
+   son lo que quedaba de la pasada "Iron Man": naranja duro, recorte
+   diagonal y 'JetBrains Mono' —una fuente que ni siquiera se descarga—.
+   Eran el único acento naranja que sobrevivía en toda la app, chocando
+   con el cian de todo lo demás. Pasan al botón primario del sistema. */
+.btn-primary,
+.btn-add,
+.tarea-add-btn,
+.notas-add-btn,
+.qc-btn-save {
+  background: color-mix(in oklch, var(--acento) 16%, transparent);
+  border: 1px solid var(--borde-alto);
+  color: var(--acento-alto);
+  box-shadow: none;
+  clip-path: none;
+  font-family: var(--font);
+  min-height: var(--toque);
+  border-radius: var(--radio-sm);
+
+  &:hover { background: color-mix(in oklch, var(--acento) 26%, transparent); }
 }
