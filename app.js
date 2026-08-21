@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v213';
+const AREX_VERSION = 'v214';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1366,7 +1366,7 @@ function renderDashboard() {
           <span class="ic-ico">💰</span>
           <div class="ic-name">Capital</div>
           <div class="ic-subs">Finanzas · Gastos · Negocio · Reparto</div>
-          <div class="ic-stat">${margenStr} margen</div>
+          <div class="ic-stat"><b class="ic-cifra">${margenStr}</b><span class="ic-unidad">margen</span></div>
         </div>
 
         <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
@@ -1375,7 +1375,7 @@ function renderDashboard() {
           <span class="ic-ico">🎯</span>
           <div class="ic-name">Impulso</div>
           <div class="ic-subs">Metas · Tareas · Agenda · Hábitos</div>
-          <div class="ic-stat">${pendTotal} tarea${pendTotal!==1?'s':''}${urgentes?` · ⚠ ${urgentes}`:''}</div>
+          <div class="ic-stat"><b class="ic-cifra">${pendTotal}</b><span class="ic-unidad">tarea${pendTotal!==1?'s':''}</span>${urgentes?`<span class="ic-urg">⚠ ${urgentes}</span>`:''}</div>
         </div>
 
         <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
@@ -1384,7 +1384,7 @@ function renderDashboard() {
           <span class="ic-ico">🧠</span>
           <div class="ic-name">Mente</div>
           <div class="ic-subs">Notas · Evidencias · Proyectos</div>
-          <div class="ic-stat">${notas} nota${notas!==1?'s':''} · ${proyectos} proy.</div>
+          <div class="ic-stat"><b class="ic-cifra">${notas}</b><span class="ic-unidad">nota${notas!==1?'s':''}</span><b class="ic-cifra">${proyectos}</b><span class="ic-unidad">proy.</span></div>
         </div>
 
         <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
@@ -1393,7 +1393,11 @@ function renderDashboard() {
           <span class="ic-ico">⚙️</span>
           <div class="ic-name">Control</div>
           <div class="ic-subs">Telemetría · Agentes · Bitácora</div>
-          <div class="ic-stat">${groqOk?'IA ✓':'IA ✗'} · ${fbOk?'DB ✓':'DB ✗'} · ${gemOk?'VIS ✓':'VIS —'}</div>
+          <div class="ic-estado">
+            <span class="ic-srv ${groqOk?'on':'off'}">IA</span>
+            <span class="ic-srv ${fbOk?'on':'off'}">DB</span>
+            <span class="ic-srv ${gemOk?'on':'off'}">VIS</span>
+          </div>
         </div>
 
         <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
