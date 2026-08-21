@@ -1,0 +1,454 @@
+/* ═══════════════════════════════════════════════════════════════════════
+ AREX · SISTEMA DE DISEÑO  (v220)
+
+ Sustituye a las siete pasadas de rediseño apiladas de style.css. No es
+ otra pasada encima: es la capa que va a ir vaciando aquélla módulo a
+ módulo. Cuando un módulo se migra aquí, sus reglas viejas se borran.
+
+ ── Por qué no hace falta Sass, Tailwind ni nada que compile ──
+ El navegador solo entiende CSS; todo lo demás termina compilándose a
+ esto. Y el CSS de hoy ya trae lo que antes obligaba a compilar:
+
+   · anidamiento nativo (&)  → escribir un componente en un solo bloque
+   · @layer                  → precedencia explícita, no orden de archivo
+   · @scope                  → encerrar estilos en un subárbol
+   · @container              → adaptarse al hueco, no a la pantalla
+   · oklch() + color-mix()   → derivar la paleta de un solo acento
+   · :has()                  → estilar el padre según lo que contiene
+
+ Todo eso funciona en Safari 17.4+ (tu iPhone lleva 18) y en el
+ navegador del Quest. Cero paso de compilación: AREX sigue siendo
+ HTML/CSS/JS puro.
+
+ ── Las tres cosas que NO se usan aquí ──
+ animation-timeline, field-sizing y anchor-name son solo de Chromium a
+ día de hoy. Si algún día se usan, van dentro de @supports.
+ ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Por qué este archivo NO usa @layer, aunque el navegador lo soporte ──
+ Una regla dentro de una capa PIERDE contra una regla sin capa, siempre,
+ aunque la sin-capa esté escrita antes. Como en v213 se le quitó la capa
+ a style.css, meter el sistema nuevo en @layer haría que perdiera contra
+ el diseño viejo. Y envolver style.css otra vez tiene su propia trampa:
+ con !important el orden de capas se INVIERTE, así que los 289
+ !important que aún quedan allí seguirían ganando igual.
+
+ La salida no es pelear la cascada, es vaciarla: este archivo se carga
+ EL ÚLTIMO, y cada módulo que se migra aquí pierde sus reglas viejas en
+ el mismo commit. Migrar borrando, no superponiendo. Es exactamente lo
+ que NO hicieron las siete pasadas anteriores, y por eso se apilaron. */
+
+/* ═══ BASE ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Un solo acento. Todo lo demás se deriva de él ──────────────
+     oklch(claridad croma tono). La ventaja sobre hex: dos colores con
+     la misma claridad SE VEN igual de claros, aunque cambien de tono.
+     Con hex eso no pasa — por eso el verde #34ffc3 gritaba más que el
+     cian #22d3ee aunque "pesaran" lo mismo sobre el papel. */
+  --tono:        215;                        /* cian AREX */
+  --acento:      oklch(78% 0.13 var(--tono));
+  --acento-alto: oklch(88% 0.15 var(--tono));
+  --acento-bajo: oklch(62% 0.10 var(--tono));
+
+  /* Colores de señal, a la MISMA claridad que el acento: así ninguno
+     destaca sobre otro salvo por su significado. */
+  --ok:      oklch(78% 0.15 155);
+  --aviso:   oklch(78% 0.15  75);
+  --alerta:  oklch(70% 0.19  25);
+
+  /* ── Superficies. Una escala, no doce fondos sueltos ───────────── */
+  --fondo:   oklch(14% 0.020 var(--tono));
+  --sup-1:   oklch(19% 0.022 var(--tono));   /* panel */
+  --sup-2:   oklch(23% 0.024 var(--tono));   /* tarjeta sobre panel */
+  --sup-3:   oklch(28% 0.026 var(--tono));   /* elemento activo */
+
+  /* ── Texto: tres niveles y ya. Antes había siete grises ────────── */
+  --texto:   oklch(96% 0.015 var(--tono));
+  --texto-2: oklch(72% 0.030 var(--tono));   /* etiquetas, apoyo */
+  --texto-3: oklch(55% 0.030 var(--tono));   /* deshabilitado */
+
+  /* Los bordes se derivan del acento en vez de escribirse a mano.
+     Cambiar --tono repinta el sistema entero, bordes incluidos. */
+  --borde:      color-mix(in oklch, var(--acento) 22%, transparent);
+  --borde-alto: color-mix(in oklch, var(--acento) 45%, transparent);
+
+  /* ── Tipografía ─────────────────────────────────────────────────
+     Una escala de razón 1.25. Antes había 27 tamaños sueltos en px. */
+  --t-xs:  0.6875rem;   /* 11px · etiquetas en versalitas */
+  --t-sm:  0.8125rem;   /* 13px · apoyo */
+  --t-md:  0.9375rem;   /* 15px · cuerpo */
+  --t-lg:  1.1875rem;   /* 19px · título de sección */
+  --t-xl:  1.5rem;      /* 24px · dato */
+  --t-2xl: 1.875rem;    /* 30px · dato principal */
+
+  /* ── Espacio: escala de 4, sin valores intermedios inventados ──── */
+  --e-1: 0.25rem;  --e-2: 0.5rem;  --e-3: 0.75rem;
+  --e-4: 1rem;     --e-5: 1.5rem;  --e-6: 2rem;   --e-7: 3rem;
+
+  --radio:    10px;
+  --radio-sm:  6px;
+  --pastilla: 999px;
+
+  --rapido: 120ms;
+  --medio:  240ms;
+  --curva:  cubic-bezier(.2, .8, .2, 1);
+
+  /* Altura mínima de cualquier cosa que se toque. Apple pide 44px y
+     en AREX había botones de 28. */
+  --toque: 44px;
+}
+
+/* Respetar a quien pide menos movimiento — accesibilidad y batería */
+@media (prefers-reduced-motion: reduce) {
+  :root { --rapido: 1ms; --medio: 1ms; }
+}
+
+/* ═══ COMPONENTES ═════════════════════════════════════════════════ */
+
+/* ═══ SUPERFICIE ═══════════════════════════════════════════════════
+   Una sola definición para lo que antes eran once grupos distintos de
+   panel y tarjeta con nombres diferentes y estilos casi iguales. */
+.dx-sup {
+  background: var(--sup-1);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: var(--e-4);
+
+  /* @container: la tarjeta reacciona a SU hueco, no al ancho de la
+     ventana. Así el mismo componente sirve en una rejilla de dos
+     columnas y en una lista a ancho completo, sin duplicar reglas. */
+  container-type: inline-size;
+
+  &.dx-plana { background: transparent; border-color: transparent; padding: 0; }
+  &.dx-alta  { background: var(--sup-2); }
+
+  /* Filo de color para identificar sin iluminar */
+  &[data-acento] {
+    border-left: 2px solid var(--acento);
+    padding-left: calc(var(--e-4) - 1px);
+  }
+  &[data-acento="ok"]     { border-left-color: var(--ok); }
+  &[data-acento="aviso"]  { border-left-color: var(--aviso); }
+  &[data-acento="alerta"] { border-left-color: var(--alerta); }
+}
+
+/* ═══ CIFRA ════════════════════════════════════════════════════════
+   El dato es lo que vienes a mirar: es lo único grande de la pantalla. */
+.dx-cifra {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xl);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--texto);
+  /* tabular-nums: los dígitos ocupan lo mismo, así el número no baila
+     al actualizarse. letter-spacing negativo porque la monoespaciada
+     separa de más en tamaños grandes. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+
+  & .dx-unidad {
+    font-family: var(--font);
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--texto-2);
+    letter-spacing: 0.04em;
+    margin-left: 0.35em;
+  }
+  /* En un hueco estrecho la cifra baja un escalón sola */
+  @container (max-width: 150px) { & { font-size: var(--t-xl); } }
+}
+
+/* ═══ ETIQUETA ═════════════════════════════════════════════════════ */
+.dx-etq {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+}
+
+/* ═══ ENCABEZADO DE SECCIÓN ════════════════════════════════════════ */
+.dx-seccion {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  margin: var(--e-6) 0 var(--e-4);
+
+  & .dx-etq { white-space: nowrap; }
+  /* la línea rellena lo que sobre */
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--borde), transparent);
+  }
+}
+
+/* ═══ BOTÓN ════════════════════════════════════════════════════════
+   Antes había seis familias de botón cian casi idénticas. */
+.dx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+  padding: 0 var(--e-4);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
+  background: transparent;
+  color: var(--texto-2);
+  font: 600 var(--t-sm)/1 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--rapido), border-color var(--rapido), color var(--rapido);
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover  { color: var(--texto); border-color: var(--borde-alto); }
+  &:active { transform: translateY(1px); }
+  &:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+  &[disabled] { opacity: .4; pointer-events: none; }
+
+  /* Variante principal: una por pantalla, no seis */
+  &.dx-btn-primario {
+    background: color-mix(in oklch, var(--acento) 16%, transparent);
+    border-color: var(--borde-alto);
+    color: var(--acento-alto);
+    &:hover { background: color-mix(in oklch, var(--acento) 26%, transparent); }
+  }
+  &.dx-btn-peligro {
+    color: var(--alerta);
+    border-color: color-mix(in oklch, var(--alerta) 35%, transparent);
+    &:hover { background: color-mix(in oklch, var(--alerta) 14%, transparent); }
+  }
+  /* Botón que solo es un icono: cuadrado y del tamaño mínimo de toque */
+  &.dx-btn-ico { padding: 0; width: var(--toque); }
+}
+
+/* ═══ INSIGNIA ═════════════════════════════════════════════════════
+   Antes había ocho variantes de pastilla. */
+.dx-ins {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.25em 0.6em;
+  border-radius: var(--pastilla);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--acento) 8%, transparent);
+  color: var(--texto-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &[data-tono="ok"] {
+    color: var(--ok);
+    border-color: color-mix(in oklch, var(--ok) 35%, transparent);
+    background: color-mix(in oklch, var(--ok) 10%, transparent);
+  }
+  &[data-tono="aviso"] {
+    color: var(--aviso);
+    border-color: color-mix(in oklch, var(--aviso) 35%, transparent);
+    background: color-mix(in oklch, var(--aviso) 10%, transparent);
+  }
+  &[data-tono="alerta"] {
+    color: var(--alerta);
+    border-color: color-mix(in oklch, var(--alerta) 40%, transparent);
+    background: color-mix(in oklch, var(--alerta) 12%, transparent);
+  }
+  &[data-tono="apagado"] { color: var(--texto-3); border-color: var(--borde); background: transparent; }
+}
+
+/* ═══ FILA DE LISTA ════════════════════════════════════════════════
+   Tareas, ventas, gastos, notas: todas son la misma fila. */
+.dx-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-3);
+  min-height: var(--toque);
+  padding: var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid transparent;
+  border-bottom-color: var(--borde);
+  transition: background var(--rapido);
+
+  &:hover { background: var(--sup-2); }
+  &:last-child { border-bottom-color: transparent; }
+
+  & .dx-fila-cuerpo { flex: 1; min-width: 0; }
+  & .dx-fila-texto  {
+    display: block;
+    font-size: var(--t-md);
+    color: var(--texto);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  & .dx-fila-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+    margin-top: var(--e-2);
+    &:empty { display: none; }
+  }
+  /* :has() — la fila se apaga sola si contiene una casilla marcada.
+     Antes esto exigía que el JS añadiera una clase 'done' al padre. */
+  &:has(> .dx-check[aria-checked="true"]) .dx-fila-texto {
+    color: var(--texto-3);
+    text-decoration: line-through;
+    text-decoration-color: var(--texto-3);
+  }
+}
+
+/* ═══ CASILLA ══════════════════════════════════════════════════════ */
+.dx-check {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  margin-top: 2px;
+  border-radius: var(--radio-sm);
+  border: 1.5px solid var(--borde-alto);
+  background: transparent;
+  color: transparent;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--rapido), border-color var(--rapido);
+
+  &[aria-checked="true"] {
+    background: var(--acento);
+    border-color: var(--acento);
+    color: var(--fondo);
+  }
+  /* área de toque de 44px sin agrandar el dibujo */
+  &::before {
+    content: '';
+    position: absolute;
+    inline-size: var(--toque);
+    block-size: var(--toque);
+    translate: -11px -11px;
+  }
+  position: relative;
+}
+
+/* ═══ CAMPO ════════════════════════════════════════════════════════ */
+.dx-campo {
+  width: 100%;
+  min-height: var(--toque);
+  padding: var(--e-2) var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--fondo) 70%, black);
+  color: var(--texto);
+  font: 400 var(--t-md)/1.4 var(--font);
+
+  &::placeholder { color: var(--texto-3); }
+  &:focus {
+    outline: none;
+    border-color: var(--acento);
+    background: var(--fondo);
+  }
+}
+
+/* ═══ VACÍO ════════════════════════════════════════════════════════
+   Antes había siete maneras distintas de decir "aquí no hay nada". */
+.dx-vacio {
+  padding: var(--e-7) var(--e-4);
+  text-align: center;
+  color: var(--texto-3);
+  font-size: var(--t-sm);
+  text-wrap: balance;
+}
+
+/* ═══ REJILLA ══════════════════════════════════════════════════════ */
+.dx-rejilla {
+  display: grid;
+  gap: var(--e-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+}
+
+/* ═══ MÓDULOS ══════════════════════════════════════════════════════════
+   Estilos propios de cada pantalla. Solo lo que el sistema base no cubre.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── INICIO · centros operativos ────────────────────────────────────── */
+.dx-centros {
+  display: grid;
+  gap: var(--e-3);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.dx-centro {
+  /* Es un botón de verdad, no un <div> con onclick: así responde al
+     teclado, lo anuncia el lector de pantalla y :focus-visible funciona. */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--e-1);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--rapido), border-color var(--rapido);
+
+  &:hover  { background: var(--sup-2); }
+  &:active { transform: scale(.985); }
+  &:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  & .dx-centro-ico  { font-size: 1.35rem; line-height: 1; margin-bottom: var(--e-2); }
+  & .dx-centro-subs {
+    font-size: var(--t-xs);
+    color: var(--texto-3);
+    line-height: 1.5;
+    margin-bottom: var(--e-3);
+  }
+  /* la cifra se pega abajo aunque las tarjetas tengan distinto texto */
+  & .dx-cifra { margin-top: auto; }
+
+  /* Ocupa las dos columnas */
+  &.dx-centro-ancho {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--e-3);
+    & .dx-centro-ico  { margin: 0; }
+    & .dx-centro-subs { margin: 0; }
+  }
+}
+
+/* ── INICIO · estado de los servicios ───────────────────────────────── */
+.dx-servicios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2);
+  margin-top: var(--e-3);
+}
+
+/* ── INICIO · barra de sistema ──────────────────────────────────────── */
+.dx-sistema {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-4);
+  margin-top: var(--e-5);
+  padding-top: var(--e-4);
+  border-top: 1px solid var(--borde);
+  font-size: var(--t-xs);
+  color: var(--texto-3);
+  letter-spacing: 0.06em;
+
+  & b { color: var(--texto-2); font-weight: 600; }
+  & [data-tono="ok"]     b { color: var(--ok); }
+  & [data-tono="aviso"]  b { color: var(--aviso); }
+  & [data-tono="alerta"] b { color: var(--alerta); }
+}
+
+/* La tarjeta ancha apila su etiqueta y su descripción, no las pone en fila */
+.dx-centro-ancho .dx-centro-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

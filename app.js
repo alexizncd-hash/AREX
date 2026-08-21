@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v219';
+const AREX_VERSION = 'v220';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1342,77 +1342,76 @@ function renderDashboard() {
   el.innerHTML = `
     <!-- v215 · Fuera el saludo. Ocupaba pantalla para decir algo que ya
          sabes y que no cambia nunca. Los datos empiezan arriba. -->
-    <!-- Centro cards -->
-    <div class="inicio-centros">
-      <div class="inicio-sec">
-        <span class="inicio-sec-lbl">Centros operativos</span>
-        <span class="inicio-sec-ln"></span>
-        <span class="inicio-sec-n">05 ACTIVOS</span>
+    <!-- v220 · Marcado reescrito sobre el sistema de diseño (diseno.css).
+         Los <div onclick> pasan a <button>: responden al teclado, los
+         anuncia el lector de pantalla y :focus-visible funciona solo. -->
+    <div class="dx-centros-wrap">
+      <div class="dx-seccion">
+        <span class="dx-etq">Centros operativos</span>
       </div>
 
-      <div class="inicio-grid">
-        <div class="inicio-card cap" onclick="abrirCentro('capital');cambiarModulo('finanzas')">
-          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
-          <span class="ic-ico">💰</span>
-          <div class="ic-name">Capital</div>
-          <div class="ic-subs">Finanzas · Gastos · Negocio · Reparto</div>
-          <div class="ic-stat"><b class="ic-cifra">${margenStr}</b><span class="ic-unidad">margen</span></div>
-        </div>
+      <div class="dx-centros">
+        <button type="button" class="dx-sup dx-centro"
+                ${margen < 0 ? 'data-acento="alerta"' : ''}
+                onclick="abrirCentro('capital');cambiarModulo('finanzas')">
+          <span class="dx-centro-ico" aria-hidden="true">💰</span>
+          <span class="dx-etq">Capital</span>
+          <span class="dx-centro-subs">Finanzas · Gastos · Negocio · Reparto</span>
+          <span class="dx-cifra"${margen < 0 ? ' style="color:var(--alerta)"' : ''}>${margenStr}<span class="dx-unidad">margen</span></span>
+        </button>
 
-        <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
-          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
-          <span class="ic-ico">🎯</span>
-          <div class="ic-name">Impulso</div>
-          <div class="ic-subs">Metas · Tareas · Agenda · Hábitos</div>
-          <div class="ic-stat"><b class="ic-cifra">${pendTotal}</b><span class="ic-unidad">tarea${pendTotal!==1?'s':''}</span>${urgentes?`<span class="ic-urg">⚠ ${urgentes}</span>`:''}</div>
-        </div>
+        <button type="button" class="dx-sup dx-centro"
+                ${urgentes ? 'data-acento="aviso"' : ''}
+                onclick="abrirCentro('impulso');cambiarModulo('metas')">
+          <span class="dx-centro-ico" aria-hidden="true">🎯</span>
+          <span class="dx-etq">Impulso</span>
+          <span class="dx-centro-subs">Metas · Tareas · Agenda · Hábitos</span>
+          <span class="dx-cifra">${pendTotal}<span class="dx-unidad">tarea${pendTotal!==1?'s':''}</span></span>
+          ${urgentes ? `<span class="dx-ins" data-tono="aviso">${urgentes} urgente${urgentes!==1?'s':''}</span>` : ''}
+        </button>
 
-        <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
-          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
-          <span class="ic-ico">🧠</span>
-          <div class="ic-name">Mente</div>
-          <div class="ic-subs">Notas · Evidencias · Proyectos</div>
-          <div class="ic-stat"><b class="ic-cifra">${notas}</b><span class="ic-unidad">nota${notas!==1?'s':''}</span><b class="ic-cifra">${proyectos}</b><span class="ic-unidad">proy.</span></div>
-        </div>
+        <button type="button" class="dx-sup dx-centro"
+                onclick="abrirCentro('mente');cambiarModulo('notas')">
+          <span class="dx-centro-ico" aria-hidden="true">🧠</span>
+          <span class="dx-etq">Mente</span>
+          <span class="dx-centro-subs">Notas · Evidencias · Proyectos</span>
+          <span class="dx-cifra">${notas}<span class="dx-unidad">nota${notas!==1?'s':''}</span></span>
+        </button>
 
-        <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
-          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
-          <span class="ic-ico">⚙️</span>
-          <div class="ic-name">Control</div>
-          <div class="ic-subs">Telemetría · Agentes · Bitácora</div>
-          <div class="ic-estado">
-            <span class="ic-srv ${groqOk?'on':'off'}">IA</span>
-            <span class="ic-srv ${fbOk?'on':'off'}">DB</span>
-            <span class="ic-srv ${gemOk?'on':'off'}">VIS</span>
+        <button type="button" class="dx-sup dx-centro"
+                ${(groqOk && fbOk) ? '' : 'data-acento="alerta"'}
+                onclick="abrirCentro('control');cambiarModulo('control')">
+          <span class="dx-centro-ico" aria-hidden="true">⚙️</span>
+          <span class="dx-etq">Control</span>
+          <span class="dx-centro-subs">Telemetría · Agentes · Bitácora</span>
+          <div class="dx-servicios">
+            <span class="dx-ins" data-tono="${groqOk?'ok':'apagado'}">IA</span>
+            <span class="dx-ins" data-tono="${fbOk?'ok':'apagado'}">DB</span>
+            <span class="dx-ins" data-tono="${gemOk?'ok':'apagado'}">VIS</span>
           </div>
-        </div>
+        </button>
 
-        <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
-          <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
-          <span class="ic-ico ic-ico-lg">💬</span>
-          <div>
-            <div class="ic-name">Hablar con AREX</div>
-            <div class="ic-subs">Chat · voz · comandos · visión</div>
-          </div>
-        </div>
+        <button type="button" class="dx-sup dx-centro dx-centro-ancho"
+                onclick="window.cambiarModulo('chat')">
+          <span class="dx-centro-ico" aria-hidden="true">💬</span>
+          <span class="dx-centro-txt">
+            <span class="dx-etq">Hablar con AREX</span>
+            <span class="dx-centro-subs">Chat · voz · comandos · visión</span>
+          </span>
+        </button>
       </div>
 
-      <!-- Clima (renderWeatherWidget lo llena si hay OWM key) -->
-      <div id="dash-weather" class="dhud-panel"></div>
-
-      <!-- Recordatorios activos -->
-      <div id="dash-rec-body" class="dhud-panel"></div>
-
-      <!-- Notas fijadas (renderNotasWidget lo llena; se oculta si no hay) -->
-      <div id="dash-notas-widget" class="dhud-panel" style="display:none">
+      <!-- Los rellena widgets.js / notas.js si hay algo que mostrar -->
+      <div id="dash-weather"      class="dx-sup" style="margin-top:var(--e-3)"></div>
+      <div id="dash-rec-body"     class="dx-sup" style="margin-top:var(--e-3)"></div>
+      <div id="dash-notas-widget" class="dx-sup" style="margin-top:var(--e-3);display:none">
         <div class="dash-notas-body"></div>
       </div>
 
-      <!-- System status -->
-      <div class="inicio-sys-bar">
-        <span class="isys-item"><i class="isys-dot ${groqOk?'ok':'off'}"></i>GROQ <b class="${groqOk?'ok':'off'}">${groqOk?'ONLINE':'OFFLINE'}</b></span>
-        <span class="isys-item"><i class="isys-dot ${fbOk?'ok':'warn'}"></i>FIREBASE <b class="${fbOk?'ok':'warn'}">${fbOk?'ENLAZADO':'LOCAL'}</b></span>
-        <span class="isys-item"><i class="isys-dot ok"></i>AREX <b class="ok">ACTIVO</b></span>
+      <div class="dx-sistema">
+        <span data-tono="${groqOk?'ok':'alerta'}">GROQ <b>${groqOk?'EN LÍNEA':'SIN CLAVE'}</b></span>
+        <span data-tono="${fbOk?'ok':'aviso'}">NUBE <b>${fbOk?'ENLAZADA':'SOLO LOCAL'}</b></span>
+        <span data-tono="ok">AREX <b>ACTIVO</b></span>
       </div>
     </div>
     <span id="dash-sync-badge" class="dash-sync-badge" style="display:none"></span>
