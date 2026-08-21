@@ -37,9 +37,14 @@ function proyectoCrear(nombre, descripcion = '', fechaLimite = '') {
   return p;
 }
 
-function proyectoEliminar(id) {
+async function proyectoEliminar(id) {
+  // v216: la confirmación estaba metida en el onclick del botón —
+  // if(confirm(...))proyectoEliminar(...)— y confirm() se suprime en la PWA
+  // instalada de iOS, así que el proyecto se borraba sin preguntar nada.
+  if (!await pregunta('¿Eliminar este proyecto?')) return;
   saveProyectos(getProyectos().filter(p => p.id !== id));
   renderProyectosModule();
+  tost('Proyecto eliminado', 'ok');
 }
 
 function proyectoToggleEstado(id) {
@@ -152,7 +157,7 @@ function _renderCard(p) {
         <div class="proj-card-actions">
           <button title="Editar" onclick="proyectoEditar('${p.id}')">✏</button>
           <button title="→ ${PROJ_ESTADO_LABELS[nextEstado]}" onclick="proyectoToggleEstado('${p.id}')">→</button>
-          <button title="Eliminar" onclick="if(confirm('¿Eliminar proyecto?'))proyectoEliminar('${p.id}')">✕</button>
+          <button title="Eliminar" onclick="proyectoEliminar('${p.id}')">✕</button>
         </div>
       </div>
       ${p.descripcion ? `<p class="proj-desc">${_safe(p.descripcion)}</p>` : ''}

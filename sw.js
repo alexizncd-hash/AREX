@@ -1,10 +1,11 @@
-const CACHE   = 'arex-v215';
-const VERSION = 'v215';
+const CACHE   = 'arex-v216';
+const VERSION = 'v216';
 const SHELL = [
   './index.html',
   './style.css',
   './app.js',
   './firebase-config.js',
+  './nucleo.js',
   './jarvis.js',
   './tareas.js',
   './notas.js',

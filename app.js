@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v215';
+const AREX_VERSION = 'v216';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -349,7 +349,7 @@ function buildModuleContext() {
     // Gastos personales
     if (typeof getGastosData === 'function') {
       const gp   = getGastosData();
-      const mesKey = new Date().toISOString().slice(0,7);
+      const mesKey = window.mes();   // v216: era UTC
       const gastosMes = (gp.gastos || []).filter(t => t.fecha?.startsWith(mesKey));
       const totalMes  = gastosMes.reduce((a,t)=>a+t.monto,0);
       const fmtM = n => `$${Number(n).toLocaleString('es-MX', {minimumFractionDigits:0})}`;
@@ -366,7 +366,7 @@ function buildModuleContext() {
   try {
     // Tareas urgentes
     const tareas = getTareas().filter(t => !t.done);
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = window.hoy();   // v216: era UTC
     const urgentes = tareas.filter(t => t.fecha && t.fecha <= hoy);
     if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>(t.text||t.texto||'').slice(0,40)).join(', ')}]`);
     else if (tareas.length) parts.push(`TAREAS_PENDIENTES: ${tareas.length} total`);
@@ -1196,7 +1196,7 @@ function deleteSession(sid) {
 // ── Módulo Notas → extraído a notas.js (v202) ────────
 //    getNotas, addNota, renderNotas y compañía viven ahí.
 //    El sistema legado Firestore (saveNote/loadNotes) sigue abajo.
-function _todayStr() { return new Date().toISOString().slice(0, 10); }
+function _todayStr() { return window.hoy(); }   // v216: era UTC
 window._todayStr = _todayStr;   // usada por tareas.js
 
 // ── Vista Calendario ─────────────────────────────────────
@@ -1330,7 +1330,7 @@ function renderDashboard() {
   const margen       = typeof calcularMargenReal === 'function' ? calcularMargenReal() : calcularMargen();
   const margenStr    = typeof formatearMoneda === 'function' ? formatearMoneda(margen) : `$${margen}`;
   const metasActivas = (typeof getMetas === 'function') ? getMetas().filter(m => !m.completada).length : 0;
-  const hoyStr       = new Date().toISOString().slice(0, 10);
+  const hoyStr       = window.hoy();   // v216: era UTC
   const habitos      = _safeJSON(localStorage.getItem('arex_habitos'), []);
   const habsHoy      = habitos.filter(h => h.completados?.[hoyStr]).length;
   const notas        = _safeJSON(localStorage.getItem('arex_notas'), []).length;
@@ -1553,7 +1553,7 @@ function renderHudPanels() {
     if (!pend.length) {
       tareaBody.innerHTML = '<span class="hp-ok">✓ Todo al día</span>';
     } else {
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = window.hoy();   // v216: era UTC
       const urg = pend.filter(t => t.fecha && t.fecha <= hoy);
       const first = (urg[0] || pend[0]).text.slice(0, 26);
       tareaBody.innerHTML =
@@ -2294,7 +2294,7 @@ window.arexAlert = arexAlert;
 /* ── Análisis IA de módulos (sub-agentes interactivos) ── */
 function _buildModuloContext(mod) {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const todayStr = hoy.toISOString().slice(0, 10);
+  const todayStr = window.dia(hoy);   // v216: era UTC
   const mesActual = todayStr.slice(0, 7);
   try {
     if (mod === 'finanzas' && typeof getFinanzasData === 'function') {
@@ -2396,7 +2396,7 @@ window._analizarConArex = _analizarConArex;
 /* ── Mensajes proactivos por inactividad (datos reales) ─ */
 function _buildIdleMsg() {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const todayStr = hoy.toISOString().slice(0, 10);
+  const todayStr = window.dia(hoy);   // v216: era UTC
   const mesActual = todayStr.slice(0, 7);
   const msgs = [];
 
@@ -3050,7 +3050,7 @@ function renderNote(id, text, ts, category = 'General') {
 /* ── Firebase: estadísticas ─────────────────────────── */
 async function updateStats(type) {
   if (!db || !window._arexUid) return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = window.hoy();   // v216: era UTC
   try {
     const globalRef = _userDoc('stats', 'global');
     const dailyRef  = _userDoc('stats', today);
@@ -3067,7 +3067,7 @@ async function updateStats(type) {
 }
 async function loadStats() {
   if (!db || !window._arexUid) return { g:{}, d:{} };
-  const today = new Date().toISOString().slice(0,10);
+  const today = window.hoy();   // v216: era UTC
   try {
     const [gSnap, dSnap] = await Promise.all([
       getDoc(_userDoc('stats', 'global')),
@@ -3314,7 +3314,7 @@ async function handleCommand(cmd) {
       const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href = url; a.download = `AREX_${new Date().toISOString().slice(0,10)}.txt`; a.click();
+      a.href = url; a.download = `AREX_${window.hoy()}.txt`;   // v216: era UTC a.click();
       URL.revokeObjectURL(url);
       addMsg('arex','Conversación exportada correctamente.');
       break;
@@ -3717,7 +3717,7 @@ document.getElementById('btn-tarea-hoy')?.addEventListener('click', () => {
 document.getElementById('btn-tarea-man')?.addEventListener('click', () => {
   const d = new Date(); d.setDate(d.getDate() + 1);
   const f = document.getElementById('tarea-fecha');
-  if (f) f.value = d.toISOString().slice(0, 10);
+  if (f) f.value = window.dia(d);   // v216: era UTC
   document.getElementById('tarea-input')?.focus();
 });
 btnSend.addEventListener('click', handleSend);
@@ -3950,9 +3950,9 @@ function _mostrarCodigoManual(code, titulo) {
 
 function copiarCodigoConfig() {
   const cfg = window.AREX_CONFIG;
-  if (!cfg?.groqKey) { alert('No hay configuración cargada para copiar.'); return; }
+  if (!cfg?.groqKey) { tost('No hay configuración cargada para copiar.', 'error'); return; }
   const code = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
-  const done = () => alert('Código copiado. Pégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys — no lo compartas ni lo publiques.');
+  const done = () => aviso('Código copiado. Pégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys — no lo compartas ni lo publiques.');
   const manual = () => _mostrarCodigoManual(code, '◈ CÓDIGO DE CONFIGURACIÓN');
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(code).then(done).catch(manual);
@@ -3967,16 +3967,16 @@ window.copiarCodigoConfig = copiarCodigoConfig;
 // sin andar pasando archivos de backup.
 function copiarCodigoCompleto() {
   const cfg = window.AREX_CONFIG;
-  if (!cfg?.groqKey) { alert('No hay configuración cargada para copiar.'); return; }
+  if (!cfg?.groqKey) { tost('No hay configuración cargada para copiar.', 'error'); return; }
   const data = {};
   Object.keys(localStorage)
     .filter(k => k.startsWith('arex_') && k !== 'arex_config')
     .forEach(k => { data[k] = localStorage.getItem(k); });
   let code;
   try { code = btoa(unescape(encodeURIComponent(JSON.stringify({ __arex: 'full-v1', config: cfg, data })))); }
-  catch (e) { alert('No se pudo generar el código: ' + e.message); return; }
+  catch (e) { tost('No se pudo generar el código: ' + e.message, 'error'); return; }
   const kb = Math.max(1, Math.round(code.length / 1024));
-  const done = () => alert(`Código completo copiado (${kb} KB) — keys + todos tus datos.\n\nPégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys y datos personales — compártelo solo por canales privados.`);
+  const done = () => aviso(`Código completo copiado (${kb} KB) — keys + todos tus datos.\n\nPégalo en la pantalla de configuración del otro dispositivo.\n\n⚠ Contiene tus API keys y datos personales — compártelo solo por canales privados.`);
   const manual = () => _mostrarCodigoManual(code, `◈ CÓDIGO COMPLETO · ${kb} KB`);
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(code).then(done).catch(manual);
@@ -3988,13 +3988,13 @@ window.copiarCodigoCompleto = copiarCodigoCompleto;
 
 function importarCodigoConfig() {
   const raw = document.getElementById('cfg-import-code')?.value.trim();
-  if (!raw) { alert('Pega primero el código de transferencia.'); return; }
+  if (!raw) { tost('Pega primero el código de transferencia.', 'error'); return; }
   let cfg;
   try {
     const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))));
     if (parsed?.__arex === 'full-v1') {
       // Código completo: restaurar también todos los datos
-      if (!parsed.config?.groqKey) { alert('El código no contiene una Groq API Key válida.'); return; }
+      if (!parsed.config?.groqKey) { tost('El código no contiene una Groq API Key válida.', 'error'); return; }
       Object.entries(parsed.data || {}).forEach(([k, v]) => {
         if (k.startsWith('arex_')) { try { localStorage.setItem(k, v); } catch {} }
       });
@@ -4003,8 +4003,8 @@ function importarCodigoConfig() {
       cfg = parsed;
     }
   }
-  catch { alert('Código inválido. Verifica que lo copiaste completo desde /config → COPIAR CÓDIGO.'); return; }
-  if (!cfg?.groqKey) { alert('El código no contiene una Groq API Key válida.'); return; }
+  catch { tost('Código inválido. Verifica que lo copiaste completo desde /config → COPIAR CÓDIGO.', 'error'); return; }
+  if (!cfg?.groqKey) { tost('El código no contiene una Groq API Key válida.', 'error'); return; }
   localStorage.setItem('arex_config', JSON.stringify(cfg));
   window.AREX_CONFIG = cfg;
   document.getElementById('setup-screen').classList.add('hidden');
@@ -4305,7 +4305,7 @@ function _showUpdateBanner() {
           } else if (monto > 0) {
             const gpData = _safeJSON(localStorage.getItem('arex_gastos_pers'), { gastos: [], presupuesto: {} });
             if (!Array.isArray(gpData.gastos)) gpData.gastos = [];
-            gpData.gastos.unshift({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: new Date().toISOString().slice(0,10) });
+            gpData.gastos.unshift({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: window.hoy() });   // v216: era UTC
             localStorage.setItem('arex_gastos_pers', JSON.stringify(gpData));
             if (typeof arexSyncData === 'function') arexSyncData('arex_gastos_pers');
           }
@@ -5097,7 +5097,7 @@ async function analizarGastos() {
     const meses = [hoy.slice(0,7)];
     for (let i = 1; i <= 2; i++) {
       const d = new Date(hoy + 'T00:00:00'); d.setMonth(d.getMonth() - i);
-      meses.push(d.toISOString().slice(0,7));
+      meses.push(window.mes(d));   // v216: era UTC
     }
     const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
     const todos = gd.gastos || [];
@@ -5152,7 +5152,7 @@ async function analizarMetas() {
 /* ── Resumen del día (/hoy) ─────────────────────────── */
 function mostrarResumenHoy() {
   addMsg('user', '/hoy');
-  const hoyStr  = new Date().toISOString().slice(0, 10);
+  const hoyStr  = window.hoy();   // v216: era UTC
   const tareas  = getTareas();
   const urgentes = sortPending(tareas.filter(t => !t.done)).filter(t => {
     const u = urgenciaTarea(t);
@@ -5209,7 +5209,7 @@ async function generarReporteSemanal() {
     const hoy = new Date();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
-    const lunesStr = lunes.toISOString().slice(0,10);
+    const lunesStr = window.dia(lunes);   // v216: era UTC
     const tareasHechas = getTareas().filter(t => t.done && t.doneAt && new Date(t.doneAt) >= lunes);
     const tareasPend   = getTareas().filter(t => !t.done);
     const gd = typeof getGastosData === 'function' ? getGastosData() : _safeJSON(localStorage.getItem('arex_gastos_pers'), {});
@@ -5220,7 +5220,7 @@ async function generarReporteSemanal() {
     let habitosStr = '';
     try {
       const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
-      const days = Array.from({length:7},(_,i)=>{const d=new Date(lunes);d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
+      const days = Array.from({length:7},(_,i)=>{const d=new Date(lunes);d.setDate(d.getDate()+i);return window.dia(d);});   // v216: era UTC
       habitosStr = habs.map(h=>`${h.nombre}: ${days.filter(d=>h.completados?.[d]).length}/7`).join(', ');
     } catch {}
     const contexto = [

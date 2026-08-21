@@ -6,7 +6,7 @@
 
 /* ─── Helpers ─────────────────────────────────────────────── */
 function _agFmt(date, opts) { return date.toLocaleDateString('es-MX', opts); }
-function _agKey(date) { return date.toISOString().slice(0, 10); }
+function _agKey(date) { return window.dia(date); }   // v216: era UTC
 function _agToday() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
 function _safeAgJSON(raw, def) {

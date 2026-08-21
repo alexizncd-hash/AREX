@@ -86,9 +86,9 @@ function negTiendaStats(sucId, data) {
 function negRegistrarEntrega(sucId, cantidadML, fechaTs) {
   const data = getNegocioData();
   const suc  = data.sucursales.find(s => s.id === sucId);
-  if (!suc) { alert('Sucursal no encontrada'); return false; }
+  if (!suc) { tost('Sucursal no encontrada', 'error'); return false; }
   const cant = parseInt(cantidadML);
-  if (!cant || cant < 1) { alert('Ingresa una cantidad válida de ML'); return false; }
+  if (!cant || cant < 1) { tost('Ingresa una cantidad válida de ML', 'error'); return false; }
   const fecha = fechaTs || Date.now();
   data.entregas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidadML: cant });
   // El producto sale del inventario central: ahora está en la tienda
@@ -100,8 +100,8 @@ function negRegistrarEntrega(sucId, cantidadML, fechaTs) {
   return true;
 }
 
-function negEliminarEntrega(id) {
-  if (!confirm('¿Eliminar esta entrega? El producto regresa a tu inventario central.')) return;
+async function negEliminarEntrega(id) {
+  if (!await pregunta('¿Eliminar esta entrega? El producto regresa a tu inventario central.')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   const e = data.entregas.find(x => x.id === id);
   if (!e) return;
@@ -123,7 +123,7 @@ function negEntregaUI(sucId) {
 const $MXN  = n => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const $KG   = n => `${Number(n).toFixed(1)} kg`;
 const $DATE = d => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => window.hoy();   // v216: era UTC
 const inicioMes = () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
 const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -410,8 +410,8 @@ function negRegistrarVenta() {
   const precio    = parseFloat(document.getElementById('neg-v-precio').value) || data.config.precioVenta;
   const fechaStr  = document.getElementById('neg-v-fecha').value;
 
-  if (!sucId)               { alert('Selecciona una sucursal');  return; }
-  if (!cantidad || cantidad < 1) { alert('Ingresa la cantidad');  return; }
+  if (!sucId)               { tost('Selecciona una sucursal', 'error');  return; }
+  if (!cantidad || cantidad < 1) { tost('Ingresa la cantidad', 'error');  return; }
 
   const fecha = new Date(fechaStr + 'T12:00:00').getTime();
   const total = cantidad * precio;
@@ -431,8 +431,8 @@ function negRegistrarVenta() {
   renderNegVentas();
 }
 
-function negEliminarVenta(id) {
-  if (!confirm('¿Eliminar esta venta?')) return;
+async function negEliminarVenta(id) {
+  if (!await pregunta('¿Eliminar esta venta?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   const v = data.ventas.find(x => x.id === id);
   if (!v) return;
@@ -458,7 +458,7 @@ function negEditarVenta(id) {
   if (!v) return;
   const el = document.querySelector(`[data-venta-id="${id}"]`);
   if (!el) return;
-  const fechaStr = new Date(v.fecha).toISOString().slice(0, 10);
+  const fechaStr = window.dia(v.fecha);   // v216: era UTC
   el.innerHTML = `
     <div class="neg-form-row">
       <select id="neg-ve-suc-${id}" class="neg-select">
@@ -486,8 +486,8 @@ function negGuardarEditVenta(id) {
   const cantidad = parseInt(document.getElementById(`neg-ve-cant-${id}`)?.value);
   const precio   = parseFloat(document.getElementById(`neg-ve-precio-${id}`)?.value);
   const fechaStr = document.getElementById(`neg-ve-fecha-${id}`)?.value;
-  if (!cantidad || cantidad < 1) { alert('Ingresa la cantidad'); return; }
-  if (!precio   || precio   <= 0) { alert('Ingresa el precio'); return; }
+  if (!cantidad || cantidad < 1) { tost('Ingresa la cantidad', 'error'); return; }
+  if (!precio   || precio   <= 0) { tost('Ingresa el precio', 'error'); return; }
   // v207: ajustar el inventario por el CAMBIO. Antes editabas 10 ML → 20 ML y
   // el inventario seguía descontado solo por los 10 originales (stock fantasma).
   // Se revierte el efecto viejo y se aplica el nuevo; cambiar entre contado y
@@ -573,7 +573,7 @@ function negAgregarStock() {
   const costo    = parseFloat(document.getElementById('neg-i-costo').value) || 0;
   const fechaStr = document.getElementById('neg-i-fecha').value;
 
-  if (!kg || kg <= 0) { alert('Ingresa los kilogramos'); return; }
+  if (!kg || kg <= 0) { tost('Ingresa los kilogramos', 'error'); return; }
 
   const fecha = new Date(fechaStr + 'T12:00:00').getTime();
   data.inventario.stockKg += kg;
@@ -594,10 +594,10 @@ function negAgregarStock() {
   renderNegInventario();
 }
 
-function negAjustarStock() {
+async function negAjustarStock() {
   const kg = parseFloat(document.getElementById('neg-i-ajuste').value);
-  if (isNaN(kg) || kg < 0) { alert('Ingresa el valor correcto de stock en kg'); return; }
-  if (!confirm(`¿Establecer el stock en ${kg.toFixed(1)} kg? Esto reemplaza el valor actual.`)) return;
+  if (isNaN(kg) || kg < 0) { tost('Ingresa el valor correcto de stock en kg', 'error'); return; }
+  if (!await pregunta(`¿Establecer el stock en ${kg.toFixed(1)} kg? Esto reemplaza el valor actual.`)) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   const ant  = data.inventario.stockKg;
   data.inventario.stockKg = kg;
@@ -609,8 +609,8 @@ function negAjustarStock() {
   renderNegInventario();
 }
 
-function negEliminarHistorial(id) {
-  if (!confirm('¿Eliminar este movimiento del historial?')) return;
+async function negEliminarHistorial(id) {
+  if (!await pregunta('¿Eliminar este movimiento del historial?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   data.inventario.historial = data.inventario.historial.filter(h => h.id !== id);
   saveNegocioData(data);
@@ -676,7 +676,7 @@ function renderNegSucursales() {
 
 function negAgregarSucursal() {
   const nombre = document.getElementById('neg-s-nombre').value.trim();
-  if (!nombre) { alert('Ingresa el nombre'); return; }
+  if (!nombre) { tost('Ingresa el nombre', 'error'); return; }
   const data    = getNegocioData();
   const contacto = document.getElementById('neg-s-contacto').value.trim();
   const modo     = document.getElementById('neg-s-modo')?.value === 'consignacion' ? 'consignacion' : 'contado';
@@ -693,8 +693,8 @@ function negToggleSucursal(id) {
   renderNegSucursales();
 }
 
-function negEliminarSucursal(id) {
-  if (!confirm('¿Eliminar este punto de venta?')) return;
+async function negEliminarSucursal(id) {
+  if (!await pregunta('¿Eliminar este punto de venta?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   data.sucursales = data.sucursales.filter(s => s.id !== id);
   saveNegocioData(data);
@@ -725,7 +725,7 @@ function negEditarSucursal(id) {
 
 function negGuardarEditSucursal(id) {
   const nombre = document.getElementById(`neg-se-nom-${id}`)?.value.trim();
-  if (!nombre) { alert('Ingresa el nombre'); return; }
+  if (!nombre) { tost('Ingresa el nombre', 'error'); return; }
   const data = getNegocioData();
   const s = data.sucursales.find(s => s.id === id);
   if (s) {
@@ -799,7 +799,7 @@ function negRegistrarGasto() {
   const concepto = document.getElementById('neg-g-concepto').value.trim() || tipo;
   const fechaStr = document.getElementById('neg-g-fecha').value;
 
-  if (!monto || monto <= 0) { alert('Ingresa el monto'); return; }
+  if (!monto || monto <= 0) { tost('Ingresa el monto', 'error'); return; }
 
   const fecha = new Date(fechaStr + 'T12:00:00').getTime();
   data.gastos.push({ id: String(Date.now()), fecha, tipo, concepto, monto });
@@ -807,8 +807,8 @@ function negRegistrarGasto() {
   renderNegGastos();
 }
 
-function negEliminarGasto(id) {
-  if (!confirm('¿Eliminar este gasto?')) return;
+async function negEliminarGasto(id) {
+  if (!await pregunta('¿Eliminar este gasto?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
   data.gastos = data.gastos.filter(g => g.id !== id);
   saveNegocioData(data);
@@ -821,7 +821,7 @@ function negEditarGasto(id) {
   if (!g) return;
   const el = document.querySelector(`[data-gasto-id="${id}"]`);
   if (!el) return;
-  const fechaStr = new Date(g.fecha).toISOString().slice(0, 10);
+  const fechaStr = window.dia(g.fecha);   // v216: era UTC
   const TIPOS = { materia_prima: 'Materia prima', empaque: 'Empaque', transporte: 'Transporte', otro: 'Otro' };
   const opts = Object.entries(TIPOS).map(([v,l]) =>
     `<option value="${v}" ${g.tipo === v ? 'selected' : ''}>${l}</option>`).join('');
@@ -845,7 +845,7 @@ function negGuardarEditGasto(id) {
   const g       = data.gastos.find(g => g.id === id);
   if (!g) return;
   const monto   = parseFloat(document.getElementById(`neg-ge-monto-${id}`)?.value);
-  if (!monto || monto <= 0) { alert('Ingresa el monto'); return; }
+  if (!monto || monto <= 0) { tost('Ingresa el monto', 'error'); return; }
   g.tipo      = document.getElementById(`neg-ge-tipo-${id}`)?.value    || g.tipo;
   g.monto     = monto;
   g.concepto  = document.getElementById(`neg-ge-concepto-${id}`)?.value.trim() || g.concepto;

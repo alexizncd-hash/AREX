@@ -22,7 +22,7 @@ let _gpAnio  = new Date().getFullYear();
 
 // ── Helpers ─────────────────────────────────────────
 const _$MXN    = n => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const _todayISO = () => new Date().toISOString().slice(0, 10);
+const _todayISO = () => window.hoy();   // v216: era UTC
 const _escAttr  = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 const _MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -328,9 +328,9 @@ function gpRegistrar() {
   const desc    = document.getElementById('gp-r-desc')?.value.trim() || '';
   const fecha   = document.getElementById('gp-r-fecha')?.value;
 
-  if (!cat)                         { alert('Selecciona una categoría'); return; }
-  if (!montoRaw || montoRaw <= 0)   { alert('Ingresa un monto válido');  return; }
-  if (!fecha)                       { alert('Ingresa la fecha');         return; }
+  if (!cat)                         { tost('Selecciona una categoría', 'error'); return; }
+  if (!montoRaw || montoRaw <= 0)   { tost('Ingresa un monto válido', 'error');  return; }
+  if (!fecha)                       { tost('Ingresa la fecha', 'error');         return; }
 
   const data = getGastosData();
   data.gastos.push({
@@ -350,8 +350,8 @@ function gpRegistrar() {
   renderGpResumen();
 }
 
-function gpEliminar(id) {
-  if (!confirm('¿Eliminar este gasto?')) return;
+async function gpEliminar(id) {
+  if (!await pregunta('¿Eliminar este gasto?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data  = getGastosData();
   data.gastos = data.gastos.filter(g => g.id !== id);
   saveGastosData(data);
@@ -391,7 +391,7 @@ function gpGuardarEdit(id) {
   if (!g) return;
 
   const monto = parseFloat(document.getElementById(`gp-e-monto-${id}`)?.value);
-  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+  if (!monto || monto <= 0) { tost('Ingresa un monto válido', 'error'); return; }
 
   g.categoria   = document.getElementById(`gp-e-cat-${id}`)?.value   || g.categoria;
   g.monto       = monto;

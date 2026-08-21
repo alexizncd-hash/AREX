@@ -430,7 +430,7 @@ window._runAgent = async function (agentId, area) {
       const notasArr  = Array.isArray(notas)  ? notas  : [];
       const tareasArr = Array.isArray(tareas) ? tareas : [];
 
-      const todayStr     = new Date().toISOString().slice(0, 10);
+      const todayStr     = window.hoy();   // v216: era UTC
       const notasSinTitulo = notasArr.filter(n => !n.titulo).length;
       const tareasVencidas = tareasArr.filter(t => !t.done && t.fecha && t.fecha < todayStr).length;
 
@@ -642,7 +642,7 @@ function _exportBackupJSON() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `arex-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `arex-backup-${window.hoy()}.json`;   // v216: era UTC
   a.click();
   URL.revokeObjectURL(url);
   logBitacora('sistema', 'Backup JSON exportado');
@@ -652,7 +652,7 @@ function _exportGastosCSV() {
   try {
     const raw   = JSON.parse(localStorage.getItem('arex_gastos_pers') || '{}');
     const gs    = Array.isArray(raw) ? raw : (Array.isArray(raw.gastos) ? raw.gastos : []);
-    if (!gs.length) { alert('Sin gastos para exportar.'); return; }
+    if (!gs.length) { tost('Sin gastos para exportar.', 'error'); return; }
     const rows = [['Fecha','Descripción','Categoría','Monto']];
     for (const g of gs) rows.push([g.fecha||'',g.descripcion||'',g.categoria||'',(g.monto||0).toFixed(2)]);
     const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -660,17 +660,17 @@ function _exportGastosCSV() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `arex-gastos-${new Date().toISOString().slice(0,7)}.csv`;
+    a.download = `arex-gastos-${window.mes()}.csv`;   // v216: era UTC
     a.click();
     URL.revokeObjectURL(url);
     logBitacora('sistema', `CSV gastos exportado (${gs.length} registros)`);
-  } catch(e) { alert('Error exportando gastos: ' + e.message); }
+  } catch(e) { tost('Error exportando gastos: ' + e.message, 'error'); }
 }
 
 function _exportTareasCSV() {
   try {
     const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
-    if (!ts.length) { alert('Sin tareas para exportar.'); return; }
+    if (!ts.length) { tost('Sin tareas para exportar.', 'error'); return; }
     const rows = [['Texto','Prioridad','Fecha','Estado']];
     for (const t of ts) rows.push([t.texto||t.text||'',t.prioridad||'media',t.fecha||'',t.done?'Completada':'Pendiente']);
     const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -678,11 +678,11 @@ function _exportTareasCSV() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `arex-tareas-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `arex-tareas-${window.hoy()}.csv`;   // v216: era UTC
     a.click();
     URL.revokeObjectURL(url);
     logBitacora('sistema', `CSV tareas exportado (${ts.length} registros)`);
-  } catch(e) { alert('Error exportando tareas: ' + e.message); }
+  } catch(e) { tost('Error exportando tareas: ' + e.message, 'error'); }
 }
 
 function _importBackupJSON(file) {
@@ -705,9 +705,8 @@ function _importBackupJSON(file) {
       window.renderGpResumen?.();
       if (typeof renderNegocioModule === 'function') renderNegocioModule();
       renderControlModule();
-      const msg = `✓ ${imported} módulos restaurados desde backup (${data._exportedAt?.slice(0,10) || 'sin fecha'}).`;
-      alert(msg);
-    } catch(e) { alert('Error leyendo backup: ' + e.message); }
+      tost(`${imported} módulos restaurados desde el backup (${data._exportedAt?.slice(0,10) || 'sin fecha'})`, 'ok');
+    } catch(e) { tost('Error leyendo backup: ' + e.message, 'error'); }
   };
   reader.readAsText(file);
 }
@@ -914,7 +913,7 @@ function _vigiaDatos() {
 function _vigiaAnalizar() {
   const d = _vigiaDatos();
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const hoyStr = hoy.toISOString().slice(0,10);
+  const hoyStr = window.dia(hoy);   // v216: era UTC
   const semanaTs = Date.now() - 7*86400000;
   const mesTs = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
   const out = [];

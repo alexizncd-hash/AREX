@@ -93,7 +93,7 @@ function _nextFechaRepetir(fechaActual, repetir) {
   else if (repetir === 'mensual')  next.setMonth(next.getMonth() + 1);
   else if (repetir === 'anual')    next.setFullYear(next.getFullYear() + 1);
   else return null;
-  return next.toISOString().slice(0, 10);
+  return window.dia(next);   // v216: era UTC
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));

@@ -8994,3 +8994,88 @@ html.quest #cfg-import-code { min-height: 90px; font-size: 13px; }
   box-shadow: 0 -4px 24px rgba(0, 212, 255, 0.12);
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   NÚCLEO · diálogos y avisos (v216)
+   Sustituyen a alert/confirm/prompt, que en la PWA de iOS se
+   suprimen sin avisar y dejan la función a medias.
+   ═══════════════════════════════════════════════════════════════ */
+#nucleo-dialogo { display: none; }
+#nucleo-dialogo.abierto {
+  display: block;
+  position: fixed; inset: 0;
+  z-index: 99000;
+}
+.ndlg-fondo {
+  position: absolute; inset: 0;
+  background: rgba(0,3,10,.72);
+}
+.ndlg-caja {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100vw - 48px));
+  background: var(--bg-panel);
+  background-color: rgba(4,12,24,.98);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--cyan);
+  border-radius: var(--r-md);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  box-shadow: 0 24px 60px rgba(0,0,0,.7);
+}
+.ndlg-titulo {
+  font-size: var(--fs-sm); font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--cyan);
+  margin-bottom: var(--sp-2);
+}
+.ndlg-texto {
+  font-size: var(--fs-md); color: var(--text-main); line-height: 1.5;
+  white-space: pre-line;
+}
+.ndlg-input {
+  width: 100%; margin-top: var(--sp-3);
+  background: rgba(0,0,0,.4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  color: var(--text-main); font-size: var(--fs-md);
+  font-family: var(--font);
+}
+.ndlg-input:focus { outline: none; border-color: var(--cyan); }
+.ndlg-botones {
+  display: flex; gap: var(--sp-2); justify-content: flex-end;
+  margin-top: var(--sp-5);
+}
+.ndlg-btn {
+  font-family: var(--font); font-size: var(--fs-sm); font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 10px 18px; border-radius: var(--r-sm);
+  cursor: pointer; min-height: 40px;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.ndlg-cancelar {
+  background: transparent; color: var(--muted);
+  border: 1px solid rgba(255,255,255,.10);
+}
+.ndlg-cancelar:hover { color: var(--text-main); border-color: rgba(255,255,255,.22); }
+.ndlg-aceptar {
+  background: rgba(34,211,238,.14); color: var(--cyan);
+  border: 1px solid rgba(34,211,238,.45);
+}
+.ndlg-aceptar:hover { background: rgba(34,211,238,.24); }
+
+#nucleo-tost {
+  position: fixed; left: 50%; bottom: 96px;
+  transform: translate(-50%, 12px);
+  z-index: 99001; pointer-events: none;
+  max-width: calc(100vw - 40px);
+  padding: 11px 18px;
+  background: rgba(4,12,24,.97);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--cyan);
+  border-radius: var(--r-sm);
+  color: var(--text-main); font-size: var(--fs-base);
+  opacity: 0; transition: opacity var(--t-med), transform var(--t-med);
+}
+#nucleo-tost.visible { opacity: 1; transform: translate(-50%, 0); }
+#nucleo-tost.error { border-left-color: var(--red); }
+#nucleo-tost.ok    { border-left-color: var(--green); }

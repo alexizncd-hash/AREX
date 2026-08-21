@@ -217,7 +217,7 @@ function _getData(id) {
       const tarjetas = fd.tarjetas || fd.deudas || [];
       const deuda = tarjetas.reduce((s, t) => s + (t.saldo || 0), 0);
       if (deuda) rows.push(['Deuda total', _fmt(deuda)]);
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = window.hoy();   // v216: era UTC
       const prox = tarjetas.filter(t => t.fechaPago && t.fechaPago >= hoy).sort((a,b) => a.fechaPago > b.fechaPago ? 1 : -1);
       if (prox.length) rows.push(['Próximo pago', `${(prox[0].nombre||prox[0].tarjeta||'').slice(0,14)} ${prox[0].fechaPago||''}`]);
       return rows.length ? rows : [['Sin datos', 'Configura Finanzas']];
@@ -226,7 +226,7 @@ function _getData(id) {
     if (id === 'tareas') {
       // Lee localStorage directamente — no requiere que tareas.js esté cargado
       const tareas = _lsJSON('arex_tareas');
-      const hoy    = new Date().toISOString().slice(0, 10);
+      const hoy    = window.hoy();   // v216: era UTC
       const pend   = tareas.filter(t => !t.done);
       const urg    = pend.filter(t => t.fecha && t.fecha <= hoy);
       const src    = urg.length ? urg : pend;

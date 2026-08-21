@@ -276,7 +276,7 @@ function metaCrear() {
   const fecha   = document.getElementById('mt-fecha')?.value    || '';
 
   if (!titulo) {
-    alert('El título es obligatorio.');
+    tost('El título es obligatorio.', 'error');
     return;
   }
 
@@ -287,7 +287,7 @@ function metaCrear() {
     const rawObj = document.getElementById('mt-objetivo')?.value;
     valorObjetivo = parseFloat(rawObj);
     if (!rawObj || isNaN(valorObjetivo) || valorObjetivo <= 0) {
-      alert('Ingresa un valor objetivo válido mayor a 0.');
+      tost('Ingresa un valor objetivo válido mayor a 0.', 'error');
       return;
     }
     unidad = (document.getElementById('mt-unidad')?.value || '').trim();
@@ -332,8 +332,8 @@ function metaActualizar(id) {
   renderMetasActivas();
 }
 
-function metaCompletar(id) {
-  if (!confirm('¿Marcar esta meta como lograda?')) return;
+async function metaCompletar(id) {
+  if (!await pregunta('¿Marcar esta meta como lograda?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const metas = getMetas();
   const meta  = metas.find(m => m.id === id);
   if (!meta) return;
@@ -354,8 +354,8 @@ function metaReactivar(id) {
   renderMetasCompletadas();
 }
 
-function metaEliminar(id) {
-  if (!confirm('¿Eliminar esta meta?')) return;
+async function metaEliminar(id) {
+  if (!await pregunta('¿Eliminar esta meta?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const metas = getMetas().filter(m => m.id !== id);
   saveMetas(metas);
 
@@ -415,7 +415,7 @@ function metaGuardarEdit(id) {
   const m = metas.find(x => x.id === id);
   if (!m) return;
   const titulo = (document.getElementById(`me-t-${id}`)?.value || '').trim();
-  if (!titulo) { alert('El título es obligatorio.'); return; }
+  if (!titulo) { tost('El título es obligatorio.', 'error'); return; }
   m.titulo      = titulo;
   m.descripcion = (document.getElementById(`me-d-${id}`)?.value || '').trim();
   m.categoria   = document.getElementById(`me-c-${id}`)?.value || m.categoria;

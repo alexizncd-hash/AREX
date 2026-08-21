@@ -1245,7 +1245,7 @@ function _handleReceipt(reply, frame, label) {
 
   // Normalizar fecha a YYYY-MM-DD
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-    fecha = new Date().toISOString().slice(0, 10);
+    fecha = window.hoy();   // v216: era UTC
   }
   // Mapear categoría al set válido de GP_CATS
   const validCats = window.GP_CATS ? Object.keys(window.GP_CATS) : [];

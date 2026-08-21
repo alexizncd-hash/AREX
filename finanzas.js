@@ -915,7 +915,7 @@ const FinanzasModule = {
       gastos.push({ id: inp.dataset.gid, [inp.dataset.field]: parseFloat(inp.value) || 0 });
     });
 
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = window.hoy();   // v216: era UTC
     saveFinanzasOverrides({
       config: { ingresoMensual: ingreso, fechaActualizacion: hoy },
       tarjetas,

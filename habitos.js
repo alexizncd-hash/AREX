@@ -10,7 +10,7 @@ const HABITOS_KEY = 'arex_habitos';
 function _habFecha(d) {
   // Returns 'YYYY-MM-DD' for a given Date (or today)
   const dt = d || new Date();
-  return dt.toISOString().slice(0, 10);
+  return window.dia(dt);   // v216: era UTC
 }
 
 function _habHoy() {
