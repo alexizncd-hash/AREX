@@ -8,7 +8,7 @@
 
 /* ── Módulo Tareas ──────────────────────────────────── */
 function getTareas() {
-  const arr = _safeJSON(localStorage.getItem('arex_tareas'), []);
+  const arr = leer('arex_tareas', []);
   // v208: normaliza tareas creadas por versiones viejas de Visión, que
   // guardaban el campo como `texto`. Sin esto, una sola tarea mal formada
   // reventaba renderTareas y el módulo entero dejaba de abrir.
@@ -20,10 +20,17 @@ function getTareas() {
       repar = true;
     }
   }
-  if (repar) { try { localStorage.setItem('arex_tareas', JSON.stringify(arr)); } catch {} }
+  // v217: la reparación se guardaba en local pero NO subía a la nube, así
+  // que el otro dispositivo seguía con el campo roto. guardar() sí sincroniza.
+  if (repar) guardar('arex_tareas', arr);
   return arr;
 }
-function saveTareasData(arr) { localStorage.setItem('arex_tareas', JSON.stringify(arr)); }
+/* v217 · saveTareasData NO sincronizaba: cada uno de sus siete llamadores
+   tenía que acordarse de invocar arexSyncData a mano justo después. Funcionaba
+   por disciplina, no por diseño — y saveTareasData está expuesta en window, así
+   que cualquier llamador externo se quedaba sin subir a la nube. Ahora la
+   sincronización va dentro y no se puede olvidar. */
+function saveTareasData(arr) { guardar('arex_tareas', arr); }
 
 function urgenciaTarea(t) {
   if (!t.fecha) return null;
@@ -57,7 +64,6 @@ function addTarea(text, fecha = '', prioridad = 'media', repetir = 'ninguna') {
   const t = { id: String(Date.now()), text: text.trim(), done: false, created: Date.now(), fecha, prioridad, repetir };
   arr.unshift(t);
   saveTareasData(arr);
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
   if (typeof logBitacora === 'function') logBitacora('chat', 'Tarea creada: ' + (t.text?.slice(0,40) || ''));
 }
@@ -82,7 +88,6 @@ function toggleTarea(id) {
   }
   saveTareasData(newArr);
   renderTareas();
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
 }
 
 function _nextFechaRepetir(fechaActual, repetir) {
@@ -97,12 +102,10 @@ function _nextFechaRepetir(fechaActual, repetir) {
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
 }
 function updateTarea(id, changes) {
   saveTareasData(getTareas().map(t => t.id === id ? { ...t, ...changes } : t));
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
   renderTareas();
 }
 function addSubtarea(parentId, text) {
@@ -113,7 +116,6 @@ function addSubtarea(parentId, text) {
     return { ...t, subtareas: [...subs, { id: String(Date.now()), text: text.trim(), done: false }] };
   }));
   renderTareas();
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
 }
 function toggleSubtarea(parentId, subId) {
   saveTareasData(getTareas().map(t => {
@@ -121,7 +123,6 @@ function toggleSubtarea(parentId, subId) {
     return { ...t, subtareas: (t.subtareas || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) };
   }));
   renderTareas();
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
 }
 function deleteSubtarea(parentId, subId) {
   saveTareasData(getTareas().map(t => {
@@ -129,7 +130,6 @@ function deleteSubtarea(parentId, subId) {
     return { ...t, subtareas: (t.subtareas || []).filter(s => s.id !== subId) };
   }));
   renderTareas();
-  if (typeof arexSyncData === 'function') arexSyncData('arex_tareas');
 }
 // Swipe gestures en tarjetas de tareas: → completar/reabrir · ← borrar
 function _attachTareaSwipe(div, t) {

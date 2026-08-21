@@ -1,11 +1,8 @@
 // AREX — Módulo Proyectos
 const PROJ_KEY = 'arex_proyectos';
 
-function getProyectos() { try { return JSON.parse(localStorage.getItem(PROJ_KEY) || '[]'); } catch { return []; } }
-function saveProyectos(arr) {
-  localStorage.setItem(PROJ_KEY, JSON.stringify(arr));
-  if (typeof arexSyncData === 'function') arexSyncData(PROJ_KEY);
-}
+function getProyectos() { return leer(PROJ_KEY, []); }
+function saveProyectos(arr) { guardar(PROJ_KEY, arr); }
 
 /* ─── CRUD ────────────────────────────────────────────── */
 const PROJ_ESTADOS = ['activo', 'planeando', 'en-progreso', 'revision', 'completado'];

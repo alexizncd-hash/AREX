@@ -10,11 +10,10 @@ const EV_TIPOS = {
 };
 
 function getEvidencias() {
-  try { return JSON.parse(localStorage.getItem(EV_KEY) || '[]'); } catch { return []; }
+  return leer(EV_KEY, []);
 }
 function saveEvidencias(arr) {
-  localStorage.setItem(EV_KEY, JSON.stringify(arr));
-  if (typeof arexSyncData === 'function') arexSyncData(EV_KEY);
+  guardar(EV_KEY, arr);
 }
 
 function addEvidencia(tipo, titulo, contenido) {

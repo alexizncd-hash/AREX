@@ -28,8 +28,7 @@ function getHabitos() {
 }
 
 function saveHabitos(arr) {
-  localStorage.setItem(HABITOS_KEY, JSON.stringify(arr));
-  window.arexSyncData?.(HABITOS_KEY);
+  guardar(HABITOS_KEY, arr);
 }
 
 /* ─── Operaciones de datos ─────────────────────────────────────── */

@@ -1227,8 +1227,7 @@ function _saveNotaFromVision(text) {
       categoria: 'Visión',
       creadaEn:  new Date().toISOString(),
     });
-    localStorage.setItem('arex_notas', JSON.stringify(ns));
-    window.arexSyncData?.('arex_notas');    // v208: no subía a la nube
+    guardar('arex_notas', ns);   // v217: guardar() sincroniza por dentro
     window.renderNotas?.();
   } catch {}
 }
@@ -2530,8 +2529,7 @@ function _voiceAddTarea(text, priority = 'media') {
     const t  = { id:String(Date.now()), text:text, prioridad:priority, done:false,
                   fecha:null, created:Date.now() };
     ts.push(t);
-    localStorage.setItem('arex_tareas', JSON.stringify(ts));
-    window.arexSyncData?.('arex_tareas');
+    guardar('arex_tareas', ts);   // v217: guardar() sincroniza por dentro
     window.renderTareas?.();
     window._updateUrgencyBadges?.();
     return t;
@@ -2952,8 +2950,7 @@ function _wkCheckTarea(idx) {
   const ts = JSON.parse(localStorage.getItem('arex_tareas') || '[]');
   if (ts[idx]) {
     ts[idx].done = !ts[idx].done;
-    localStorage.setItem('arex_tareas', JSON.stringify(ts));
-    window.arexSyncData?.('arex_tareas');   // v208: no subía a la nube
+    guardar('arex_tareas', ts);   // v217: guardar() sincroniza por dentro
     window.renderTareas?.();
     _wkRender();
     _visionSpeak(ts[idx].done ? 'Tarea completada.' : 'Tarea reactivada.');

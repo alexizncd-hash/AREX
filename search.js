@@ -2,7 +2,10 @@
 // Índice en tiempo real sobre todos los módulos locales
 
 const SEARCH_SOURCES = [
-  { id:'tareas',     key:'arex_tareas',         fields:['texto'],                        icon:'✓',  label:'TAREAS',      mod:'tareas'     },
+  // v217: indexaba 'texto', pero las tareas guardan el campo como 'text'
+  // desde v208. Resultado: la búsqueda global JAMÁS encontraba una tarea.
+  // Comprobado creando una tarea de verdad con addTarea() y buscándola.
+  { id:'tareas',     key:'arex_tareas',         fields:['text','texto'],                 icon:'✓',  label:'TAREAS',      mod:'tareas'     },
   { id:'notas',      key:'arex_notas',           fields:['texto','titulo','cuerpo'],      icon:'📝', label:'NOTAS',       mod:'notas'      },
   { id:'metas',      key:'arex_metas',           fields:['titulo','nombre','descripcion'],icon:'🎯', label:'METAS',       mod:'metas'      },
   { id:'proyectos',  key:'arex_proyectos',       fields:['nombre','descripcion'],         icon:'⚡', label:'PROYECTOS',   mod:'proyectos'  },

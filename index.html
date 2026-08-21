@@ -1175,13 +1175,15 @@
 </div><!-- /#workspace -->
 
 <!-- Core scripts — cargados al inicio -->
+<!-- nucleo.js va EL PRIMERO DE TODOS: define el vocabulario base (hoy,
+     dia, leer, guardar, pregunta, esc…) que usan los demás. Con defer el
+     orden de ejecución es el de aparición, así que aquí queda listo antes
+     que nadie. Ojo: finanzas-data.js llama a getFinanzasData() en su propio
+     arranque —y ésa ya usa leer()—, así que no puede ir antes que éste. -->
+<script defer src="nucleo.js"></script>
 <script defer src="finanzas-data.js"></script>
 <script defer src="finanzas.js"></script>
 <script defer src="search.js"></script>
-<!-- nucleo.js va PRIMERO: define el vocabulario base (hoy, guardar,
-     pregunta, esc…) que usan todos los demás. Con defer, el orden de
-     ejecución es el de aparición, así que está listo antes que ninguno. -->
-<script defer src="nucleo.js"></script>
 <script defer src="jarvis.js"></script>
 <!-- tareas.js: defer + antes del módulo app.js → sus funciones ya son
      globales cuando app.js ejecuta (v201, refactor por bloques) -->

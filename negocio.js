@@ -23,10 +23,8 @@ function getNegocioData() {
     gastos:     [],
     entregas:   []   // consignación: producto dejado en cada tienda
   };
-  try {
-    const raw = localStorage.getItem(NEGOCIO_KEY);
-    if (!raw) return defaults;
-    const saved = JSON.parse(raw);
+  const saved = leer(NEGOCIO_KEY, null);
+  if (saved && typeof saved === 'object') {
     return {
       config:     { ...defaults.config,     ...saved.config },
       inventario: { ...defaults.inventario, ...saved.inventario },
@@ -35,12 +33,12 @@ function getNegocioData() {
       gastos:     saved.gastos     || [],
       entregas:   saved.entregas   || []
     };
-  } catch { return defaults; }
+  }
+  return defaults;
 }
 
 function saveNegocioData(data) {
-  localStorage.setItem(NEGOCIO_KEY, JSON.stringify(data));
-  if (typeof arexSyncData === 'function') arexSyncData(NEGOCIO_KEY);
+  guardar(NEGOCIO_KEY, data);
 }
 
 // ── Consignación: estado por tienda ─────────────────

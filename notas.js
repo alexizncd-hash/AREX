@@ -7,12 +7,11 @@
 //  sigue en app.js: usa imports dinámicos privados del módulo.)
 
 // ── Módulo Notas ────────────────────────────────────────
-function getNotas() { return _safeJSON(localStorage.getItem('arex_notas'), []); }
+function getNotas() { return leer('arex_notas', []); }
 function saveNotas(arr) {
-  localStorage.setItem('arex_notas', JSON.stringify(arr));
+  guardar('arex_notas', arr);
   // Sin esto las notas bajaban de Firestore pero nunca subían: cualquier
   // documento remoto viejo pisaba las ediciones locales en cada arranque
-  if (typeof arexSyncData === 'function') arexSyncData('arex_notas');
 }
 
 function addNota(titulo, contenido) {

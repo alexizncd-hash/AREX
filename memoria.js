@@ -7,11 +7,10 @@
 
 /* ── Memoria larga ──────────────────────────────────── */
 function loadMemoria() {
-  return _safeJSON(localStorage.getItem('arex_memoria'), []);
+  return leer('arex_memoria', []);
 }
 function saveMemoria(entries) {
-  localStorage.setItem('arex_memoria', JSON.stringify(entries));
-  if (typeof arexSyncData === 'function') arexSyncData('arex_memoria');
+  guardar('arex_memoria', entries);
 }
 function buildMemoriaSection() {
   const entries  = loadMemoria();
@@ -27,10 +26,9 @@ function buildMemoriaSection() {
 }
 
 /* ── Memoria de hechos ──────────────────────────────── */
-function getHechos() { return _safeJSON(localStorage.getItem('arex_hechos'), []); }
+function getHechos() { return leer('arex_hechos', []); }
 function saveHechos(arr) {
-  localStorage.setItem('arex_hechos', JSON.stringify(arr));
-  if (typeof arexSyncData === 'function') arexSyncData('arex_hechos');
+  guardar('arex_hechos', arr);
 }
 
 function addHecho(texto, fuente = 'auto') {

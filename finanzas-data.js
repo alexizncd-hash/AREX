@@ -321,10 +321,9 @@ const FINANZAS_DATA = {
 // ═══════════════════════════════════════════════════════════
 
 function getFinanzasData() {
-  const raw = localStorage.getItem('arex_finanzas_overrides');
-  if (!raw) return FINANZAS_DATA;
-  try {
-    const ov = JSON.parse(raw);
+  const ov = leer('arex_finanzas_overrides', null);
+  if (!ov || typeof ov !== 'object') return FINANZAS_DATA;
+  {
     return {
       ...FINANZAS_DATA,
       config: { ...FINANZAS_DATA.config, ...ov.config },
@@ -337,14 +336,13 @@ function getFinanzasData() {
         return o ? { ...g, ...o } : g;
       })
     };
-  } catch { return FINANZAS_DATA; }
+  }
 }
 
 function saveFinanzasOverrides(overrides) {
-  localStorage.setItem('arex_finanzas_overrides', JSON.stringify(overrides));
-  // v206: sin esto tus ediciones (saldos, pagos, config) NUNCA subían a la
-  // nube — el otro dispositivo seguía viendo los datos viejos
-  if (typeof window.arexSyncData === 'function') window.arexSyncData('arex_finanzas_overrides');
+  // v206: antes esto no subía a la nube y tus ediciones (saldos, pagos,
+  // config) se quedaban en el teléfono. v217: guardar() lo lleva dentro.
+  guardar('arex_finanzas_overrides', overrides);
   _publicarSnapshotFinanzas();
 }
 
@@ -354,15 +352,14 @@ function saveFinanzasOverrides(overrides) {
 function _publicarSnapshotFinanzas() {
   try {
     const d = getFinanzasData();
-    localStorage.setItem('arex_finanzas', JSON.stringify({
+    guardar('arex_finanzas', {
       config:   d.config,
       tarjetas: d.tarjetas,
       gastos:   d.gastos,
       ingresoMensual: d.config.ingresoMensual,   // alias plano que usa Visión
       deudas:   d.tarjetas,                      // alias que usa el HUD de Visión
       _updatedAt: Date.now(),
-    }));
-    if (typeof window.arexSyncData === 'function') window.arexSyncData('arex_finanzas');
+    });
   } catch {}
 }
 _publicarSnapshotFinanzas();

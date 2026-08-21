@@ -39,20 +39,16 @@ function getGastosData() {
     gastos: []
   };
 
-  try {
-    const raw = localStorage.getItem(GP_KEY);
-    if (!raw) return defaults;
-    const saved = JSON.parse(raw);
-    return {
-      presupuesto: { ...presDefaults, ...(saved.presupuesto || {}) },
-      gastos:      saved.gastos || []
-    };
-  } catch { return defaults; }
+  const saved = leer(GP_KEY, null);
+  if (!saved || typeof saved !== 'object') return defaults;
+  return {
+    presupuesto: { ...presDefaults, ...(saved.presupuesto || {}) },
+    gastos:      saved.gastos || []
+  };
 }
 
 function saveGastosData(data) {
-  localStorage.setItem(GP_KEY, JSON.stringify(data));
-  if (typeof arexSyncData === 'function') arexSyncData(GP_KEY);
+  guardar(GP_KEY, data);
   _checkGastosAlerts(data);
 }
 

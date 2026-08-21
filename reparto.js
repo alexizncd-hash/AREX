@@ -411,13 +411,10 @@ function _updateWpCount() {
 }
 
 /* Guardar rutas + SINCRONIZAR (v205): antes solo vivían en este dispositivo */
-function _saveRutas(rutas) {
-  localStorage.setItem(REPARTO_KEY, JSON.stringify(rutas));
-  if (typeof arexSyncData === 'function') arexSyncData(REPARTO_KEY);
-}
+function _saveRutas(rutas) { guardar(REPARTO_KEY, rutas); }
 
 function _getSavedRutas() {
-  try { return JSON.parse(localStorage.getItem(REPARTO_KEY) || '[]'); } catch { return []; }
+  return leer(REPARTO_KEY, []);
 }
 
 /* ── Acciones públicas ───────────────────────────────── */
