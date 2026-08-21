@@ -4192,20 +4192,13 @@ footer {
 .dhud-panel:hover {
   border-color: rgba(34,211,238,.48);
 }
-/* .dhud-panel::before — 2 de las 9 declaraciones de este bloque seguían vivas (v213) */
-.dhud-panel::before {
-  left: 0;
-  border-left: 1.5px solid rgba(34,211,238,.6);
-}
-
-.dhud-panel::after {
-  content: '';
-  position: absolute; bottom: 0; right: 0;
-  width: 14px; height: 14px;
-  border-bottom: 1.5px solid rgba(34,211,238,.6);
-  border-right: 1.5px solid rgba(34,211,238,.6);
-  pointer-events: none;
-}
+/* v215 · Esquinas HUD retiradas de .dhud-panel.
+   Estaban ROTAS: ::before y ::after son position:absolute, pero el panel
+   nunca declaró position:relative, así que se anclaban al antepasado
+   posicionado más cercano y aparecían descolgadas — una encima de la
+   palabra "CLIMA" y la otra fuera del recuadro. Se ve en cualquier captura
+   del dashboard. La decoración se quita en vez de apuntalarla: el panel ya
+   se distingue por su borde. */
 /* .dhud-panel-hdr — 1 de las 5 declaraciones de este bloque seguían vivas (v213) */
 .dhud-panel-hdr {
   padding-bottom: 8px;
@@ -7588,25 +7581,29 @@ main#module-chat.module-panel.active { display: flex; }
   border-color: rgba(120,220,255,.55);
   box-shadow: 0 22px 50px -18px rgba(0,0,0,1), 0 0 38px -10px var(--ac), inset 0 0 30px rgba(20,90,130,.32);
 }
-.inicio-card.ic-full { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; }
-.inicio-card.ic-full .ic-ico { margin: 0; font-size: 28px; }
+/* v215 · La tarjeta ancha se comía 200 px para dos renglones porque
+   heredaba el alto de las tarjetas normales. Ahora es una fila compacta. */
+.inicio-card.ic-full {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: row; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) 15px;
+  text-align: left;
+}
+.inicio-card.ic-full .ic-ico { margin: 0; font-size: 22px; }
+.inicio-card.ic-full .ic-name { margin-bottom: 2px; }
+.inicio-card.ic-full .ic-subs { margin-top: 0; }
+.inicio-card.ic-full .ic-corner { display: none; }
 /* v214 · Era un círculo de 140px con blur(8px) por tarjeta —cinco desenfoques
    simultáneos en la primera pantalla— para un halo que apenas se veía. Se
    queda como un tinte plano en la esquina, sin filtro y sin coste. */
-.ic-glow {
-  position: absolute;
-  top: -40%; right: -30%;
-  width: 120px; height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--ac), transparent 68%);
-  opacity: .10;
-  pointer-events: none;
-}
+/* v215 · .ic-glow y .ic-scan se retiran del marcado: eran dos <span>
+   absolutos por tarjeta —diez elementos extra en la primera pantalla— para
+   un halo al 10% y una trama de barrido que ya estaba desactivada. */
 .inicio-card:hover .ic-glow { will-change: opacity; }
 /* v214 · La trama de barrido de la tarjeta sobraba: el sistema ya tiene tres
    capas de scanline encima (body::after, main::before y .module-panel::before).
    Una cuarta no se ve, solo cuesta. */
-.ic-scan { display: none; }
+
 /* v214 · Antes cada esquina tenía su grosor, su color y su opacidad. Mismo
    trazo para las dos: la esquina es identidad HUD, no un segundo acento. */
 .ic-corner { position: absolute; width: 11px; height: 11px; pointer-events: none; opacity: .45; }
@@ -7666,18 +7663,7 @@ main#module-chat.module-panel.active { display: flex; }
   position: relative;
   overflow: hidden;
 }
-/* .dhud-panel::before — 9 de las 9 declaraciones de este bloque seguían vivas (v213) */
-.dhud-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 22px;
-  height: 22px;
-  border-top: 2px solid rgba(34,211,238,.7);
-  pointer-events: none;
-  right: 0;
-  border-right: 2px solid rgba(34,211,238,.7);
-}
+/* v215 · (segunda definición de la misma esquina rota — ver nota arriba) */
 /* .dhud-panel-hdr — 6 de las 6 declaraciones de este bloque seguían vivas (v213) */
 .dhud-panel-hdr {
   display: flex;

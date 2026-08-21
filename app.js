@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v214';
+const AREX_VERSION = 'v215';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1338,19 +1338,10 @@ function renderDashboard() {
   const groqOk       = !!(window.AREX_CONFIG?.groqKey);
   const fbOk         = !!(window._arexDb);
   const gemOk        = !!(window.AREX_CONFIG?.geminiKey);
-  const firstName    = (window._arexUser?.displayName || 'Alexiz').split(' ')[0];
 
   el.innerHTML = `
-    <!-- Hero (transparent — reactor visible behind) -->
-    <div class="inicio-hero">
-      <div class="inicio-state-lbl" id="inicio-state-lbl">EN ESPERA</div>
-      <div class="inicio-welcome">
-        Sistemas en línea. Soy <strong>AREX</strong>.<br>
-        Listo para asistirte, ${firstName}.
-      </div>
-      <div class="inicio-tap-hint">▸ TOCA EL REACTOR ◂</div>
-    </div>
-
+    <!-- v215 · Fuera el saludo. Ocupaba pantalla para decir algo que ya
+         sabes y que no cambia nunca. Los datos empiezan arriba. -->
     <!-- Centro cards -->
     <div class="inicio-centros">
       <div class="inicio-sec">
@@ -1361,7 +1352,6 @@ function renderDashboard() {
 
       <div class="inicio-grid">
         <div class="inicio-card cap" onclick="abrirCentro('capital');cambiarModulo('finanzas')">
-          <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">💰</span>
           <div class="ic-name">Capital</div>
@@ -1370,7 +1360,6 @@ function renderDashboard() {
         </div>
 
         <div class="inicio-card imp" onclick="abrirCentro('impulso');cambiarModulo('metas')">
-          <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🎯</span>
           <div class="ic-name">Impulso</div>
@@ -1379,7 +1368,6 @@ function renderDashboard() {
         </div>
 
         <div class="inicio-card men" onclick="abrirCentro('mente');cambiarModulo('notas')">
-          <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">🧠</span>
           <div class="ic-name">Mente</div>
@@ -1388,7 +1376,6 @@ function renderDashboard() {
         </div>
 
         <div class="inicio-card con" onclick="abrirCentro('control');cambiarModulo('control')">
-          <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico">⚙️</span>
           <div class="ic-name">Control</div>
@@ -1401,7 +1388,6 @@ function renderDashboard() {
         </div>
 
         <div class="inicio-card chat ic-full" onclick="window.cambiarModulo('chat')">
-          <span class="ic-glow"></span><span class="ic-scan"></span>
           <span class="ic-corner ic-corner-tr"></span><span class="ic-corner ic-corner-bl"></span>
           <span class="ic-ico ic-ico-lg">💬</span>
           <div>
@@ -5563,57 +5549,14 @@ window.renderExchangeWidget = renderExchangeWidget;
   // Mid/High: defaults v117 (3/6/10px) son ya eficientes — no override necesario
 })();
 
-/* ── Campo de estrellas (fondo negro con partículas) ── */
-(function initStarField() {
-  const canvas = document.createElement('canvas');
-  canvas.id = 'star-canvas';
-  document.body.prepend(canvas);
-  const ctx = canvas.getContext('2d');
-  let stars = [];
-
-  function resize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    if (canvas.width === w && canvas.height === h) return; // skip if unchanged
-    canvas.width  = w;
-    canvas.height = h;
-    buildStars();
-  }
-
-  function buildStars() {
-    stars = [];
-    const n = Math.floor((canvas.width * canvas.height) / 6000);
-    for (let i = 0; i < n; i++) {
-      stars.push({
-        x:  Math.random() * canvas.width,
-        y:  Math.random() * canvas.height,
-        r:  Math.random() * 1.1 + 0.15,
-        base: Math.random() * 0.55 + 0.08,
-        speed: Math.random() * 0.018 + 0.006,
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
-  }
-
-  let t = 0;
-  function draw() {
-    requestAnimationFrame(draw);
-    if (document.hidden) return; // pause when tab not visible
-    if (window._arexVisionOpen) return; // pause behind camera view (GPU relief)
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    t += 0.016;
-    for (const s of stars) {
-      const a = s.base * (0.45 + 0.55 * Math.sin(t * s.speed * 60 + s.phase));
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0,212,255,${a.toFixed(3)})`;
-      ctx.fill();
-    }
-  }
-
-  resize();
-  draw();
-  window.addEventListener('resize', resize);
-})();
+/* v215 · CAMPO DE ESTRELLAS — RETIRADO
+   Era un canvas a pantalla completa (390×844 = 0,33 Mpx) repintando ~55
+   estrellas en un bucle de requestAnimationFrame a 60 fps, para siempre,
+   en todos los módulos. Medido: junto con las partículas de holo.js hacían
+   120 rAF/s constantes. Es la mayor fuente de consumo de batería del
+   sistema y aporta un punteado que apenas se distingue del fondo negro.
+   Se retira. Está en el historial de git si algún día se quiere de vuelta,
+   pero entonces debería arrancar solo bajo un ajuste explícito. */
 
 /* ── Boot animation: letras una por una ─────────────── */
 (function bootLetterAnim() {

@@ -691,13 +691,11 @@
 
 <!-- ── Módulo: INICIO ── -->
 <div id="module-inicio" class="module-panel is-home">
-  <div id="reactor3d-wrap">
-    <canvas id="reactor3d-canvas"></canvas>
-    <div class="r3d-hud-corner tl"></div>
-    <div class="r3d-hud-corner tr"></div>
-    <div class="r3d-hud-corner bl"></div>
-    <div class="r3d-hud-corner br"></div>
-  </div>
+  <!-- v215 · El reactor 3D se retira del INICIO.
+       Era una escena WebGL con Three.js (descargada de un CDN, ~600 KB) en
+       un bucle de render continuo, ocupando los primeros ~500 px de la
+       pantalla: más de la mitad del primer vistazo sin un solo dato. Ahora
+       los módulos empiezan arriba del todo. -->
   <div id="dash-content" class="dash-content"></div>
 </div>
 
@@ -1316,7 +1314,5 @@
   </div>
 </div>
 
-<link rel="stylesheet" href="reactor3d.css">
-<script type="module" src="reactor3d.js"></script>
 </body>
 </html>

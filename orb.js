@@ -128,9 +128,36 @@
     resize();
     window.ResizeObserver && new ResizeObserver(resize).observe(el);
 
-    function loop() {
+    /* v215 · El bucle ya no gira siempre.
+       Antes pedía un frame 60 veces por segundo mientras la página estuviera
+       abierta —estuvieras en el chat o registrando una venta en Negocio— y
+       solo se saltaba el dibujado si el orbe no era visible. Pedir el frame
+       igualmente despierta al compositor 60 veces por segundo para nada.
+       Ahora un IntersectionObserver corta el bucle en seco cuando el orbe
+       sale de pantalla y lo reanuda al volver. Además, en reposo va a 30 fps:
+       a 0.004 rad por frame el giro es indistinguible, y solo sube a 60
+       cuando AREX está hablando, pensando, escuchando o buscando — que es
+       justo cuando lo estás mirando. */
+    let vivo = false, ultimo = 0;
+
+    function arrancar() { if (!vivo) { vivo = true; requestAnimationFrame(loop); } }
+    function parar()    { vivo = false; }
+
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(ent => ent[0].isIntersecting ? arrancar() : parar(),
+                               { threshold: 0 }).observe(el);
+    } else { arrancar(); }
+    document.addEventListener('visibilitychange',
+      () => document.hidden ? parar() : (el.offsetWidth && arrancar()));
+
+    function loop(ts) {
+      if (!vivo) return;
       requestAnimationFrame(loop);
       if (document.hidden || window._orbPaused || window._arexVisionOpen || !el.offsetWidth) return;
+      // 30 fps en reposo, 60 cuando el estado es activo
+      const minMs = state === 'default' ? 32 : 0;
+      if (ts - ultimo < minMs) return;
+      ultimo = ts;
       tick++;
 
       const cfg = CFG[state] || CFG.default;
@@ -240,7 +267,9 @@
       ctx.fill();
     }
 
-    loop();
+    // v215 · el arranque lo decide ahora el IntersectionObserver de arriba;
+    // esto solo cubre el caso de que el orbe ya esté a la vista al cargar.
+    if (el.offsetWidth) arrancar();
   }
 
   document.addEventListener('visibilitychange', () => { window._orbPaused = document.hidden; });

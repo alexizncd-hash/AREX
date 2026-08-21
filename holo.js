@@ -5,43 +5,13 @@
 (function holoEngine() {
   'use strict';
 
-  /* ── 1. HEXAGONAL GRID CANVAS ───────────────────────────── */
-  function initHexGrid() {
-    const cv = document.createElement('canvas');
-    cv.id = 'holo-hex-cv';
-    document.body.insertBefore(cv, document.body.firstChild);
-
-    function draw() {
-      const W = window.innerWidth, H = window.innerHeight;
-      cv.width = W; cv.height = H;
-      const ctx = cv.getContext('2d');
-      const S   = 30;
-      const RW  = S * Math.sqrt(3);
-      const RH  = S * 1.5;
-      for (let row = -1; row < H / RH + 2; row++) {
-        for (let col = -1; col < W / RW + 2; col++) {
-          const cx = col * RW + (row % 2 ? RW / 2 : 0);
-          const cy = row * RH;
-          const d  = Math.hypot(cx - W / 2, cy - H / 2) / Math.hypot(W / 2, H / 2);
-          const a  = Math.max(0, 0.065 * (1 - d * 0.8));
-          if (a < 0.005) continue;
-          ctx.strokeStyle = `rgba(0,212,255,${a.toFixed(3)})`;
-          ctx.lineWidth = 0.7;
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const ang = (Math.PI / 3) * i - Math.PI / 6;
-            const px = cx + (S - 1) * Math.cos(ang);
-            const py = cy + (S - 1) * Math.sin(ang);
-            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-          }
-          ctx.closePath();
-          ctx.stroke();
-        }
-      }
-    }
-    draw();
-    window.addEventListener('resize', draw);
-  }
+  /* ── 1. REJILLA HEXAGONAL — RETIRADA (v215) ───────────────
+     Creaba un canvas de 390×844 (0,33 Mpx) pegado al fondo del body para
+     dibujar hexágonos a rgba(0,212,255,0.065) — una trama que sobre el
+     fondo #01060d prácticamente no se distingue. No animaba, pero se
+     quedaba residente en memoria de GPU y se redibujaba en cada resize
+     (y en el móvil un resize ocurre cada vez que aparece el teclado).
+     Si se quiere el efecto, un background-image CSS repetido cuesta cero. */
 
   /* ── 2. AMBIENT PARTICLE FIELD ──────────────────────────── */
   function initParticles() {
@@ -78,50 +48,19 @@
     requestAnimationFrame(frame);
   }
 
-  /* ── 3. 3D PERSPECTIVE TILT ON ALL CARDS ────────────────── */
-  const TILT_SEL = [
-    '.hud-panel', '.dash-widget', '.diag-quad',
-    '.meta-card', '.metric-card', '.resultado-card', '.quick-btn',
-    '.nota-card', '.note-item', '.tarea-item', '.fin-card',
-    '.neg-stat-card', '.negocio-card', '.gp-card', '.gp-cat-card',
-    '.proy-card', '.proyecto-card', '.tarjeta-card', '.gastos-card',
-    '.evidencia-card', '.dash-kpi',
-  ];
-
-  function applyTilt(el) {
-    if (el.dataset.ht) return;
-    el.dataset.ht = '1';
-    let raf = 0;
-
-    el.addEventListener('mouseenter', () => {
-      el.style.transition = 'transform .12s ease, box-shadow .12s ease';
-    });
-    el.addEventListener('mousemove', e => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r  = el.getBoundingClientRect();
-        const nx = (e.clientX - r.left)  / r.width  - .5;
-        const ny = (e.clientY - r.top)   / r.height - .5;
-        const rX = -ny * 18, rY = nx * 18;
-        el.style.transform  = `perspective(700px) rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.03,1.03,1.03)`;
-        el.style.boxShadow  = `${-rY * 2}px ${rX * 2}px 40px rgba(0,212,255,0.22), 0 0 35px rgba(0,212,255,0.12)`;
-        el.style.zIndex     = '6';
-        el.style.position   = el.style.position || 'relative';
-      });
-    });
-    el.addEventListener('mouseleave', () => {
-      cancelAnimationFrame(raf);
-      el.style.transition = 'transform .6s cubic-bezier(.03,.98,.52,.99), box-shadow .6s ease';
-      el.style.transform = el.style.boxShadow = el.style.zIndex = '';
-      setTimeout(() => { el.style.transition = ''; }, 650);
-    });
-  }
-
-  function tiltAll() {
-    TILT_SEL.forEach(s => document.querySelectorAll(s).forEach(applyTilt));
-  }
-
-  new MutationObserver(tiltAll).observe(document.documentElement, { childList: true, subtree: true });
+  /* ── 3. TILT 3D EN LAS TARJETAS — RETIRADO (v215) ─────────
+     Enganchaba mouseenter/mousemove/mouseleave a 21 clases de tarjeta para
+     inclinarlas en perspectiva siguiendo el cursor. Dos problemas:
+       · AREX se usa en iPhone y en Quest. Ahí NO HAY CURSOR, así que el
+         efecto no se veía nunca y solo dejaba los oyentes puestos.
+       · Se mantenía al día con un MutationObserver sobre
+         document.documentElement con subtree:true — es decir, CADA cambio
+         del DOM en cualquier módulo relanzaba un recorrido de 21
+         querySelectorAll sobre el documento entero. Cada render de una
+         lista de tareas o de ventas disparaba ese barrido.
+     Era el coste oculto más caro del sistema: no se veía en el perfil de
+     pintado porque no dibuja nada, solo quema CPU en JavaScript. */
+  function tiltAll() {}   // se conserva el nombre: initTransitions() lo llama
 
   /* ── 4. DRAGGABLE FLOATING HUD PANELS ───────────────────── */
   function makeDraggable(id) {
@@ -337,38 +276,14 @@
     rw.appendChild(badge);
   }
 
-  /* ── 11. CORNER BRACKET DECORATORS ──────────────────────── */
-  const BRACKET_SEL = [
-    '.hud-panel', '.dash-widget', '.diag-quad', '.holo-floating',
-  ];
-  function injectCorners(root) {
-    const target = root || document;
-    BRACKET_SEL.forEach(sel => {
-      target.querySelectorAll(sel).forEach(el => {
-        if (el.dataset.hbc) return;
-        el.dataset.hbc = '1';
-        const pos = getComputedStyle(el).position;
-        if (pos === 'static') el.style.position = 'relative';
-        ['tl','tr','bl','br'].forEach(p => {
-          const s = document.createElement('span');
-          s.className = `holo-corner holo-corner-${p}`;
-          el.appendChild(s);
-        });
-        /* Top accent glow line */
-        if (!el.querySelector('.holo-top-line')) {
-          const line = document.createElement('div');
-          line.className = 'holo-top-line';
-          el.insertBefore(line, el.firstChild);
-        }
-        /* Scan-line overlay */
-        if (!el.querySelector('.scan-overlay')) {
-          const ov = document.createElement('div');
-          ov.className = 'scan-overlay';
-          el.appendChild(ov);
-        }
-      });
-    });
-  }
+  /* ── 11. ESQUINAS INYECTADAS — RETIRADAS (v215) ───────────
+     Recorría .hud-panel, .dash-widget, .diag-quad y .holo-floating y le
+     metía a cada uno SEIS nodos: cuatro <span> de esquina, una línea de
+     brillo superior y una capa de barrido. En una pantalla con ocho paneles
+     son 48 elementos de adorno puro, creados desde JavaScript después de
+     cada render. Las tarjetas que de verdad quieren esquinas ya las traen
+     en su propio CSS. */
+  function injectCorners() {}   // se conserva el nombre: init() lo llama
 
   /* ── 10. HOLO MODE TOGGLE BUTTON ────────────────────────── */
   function injectHoloModeBtn() {
@@ -408,8 +323,10 @@
 
   /* ── INIT ───────────────────────────────────────────────── */
   function init() {
-    initHexGrid();
-    tiltAll();
+    /* v215 · initHexGrid() y tiltAll() retirados.
+       El tilt en perspectiva enganchaba mousemove a 21 clases de tarjeta de
+       toda la app: en el iPhone y en el Quest no hay ratón, así que era peso
+       muerto que además obligaba a recorrer el árbol tras cada render. */
     makeDraggable('hp-tareas');
     makeDraggable('hp-finanzas');
     injectHoloLabel();
@@ -417,10 +334,9 @@
     setTimeout(initTransitions, 700);
     setTimeout(initOrbClick, 500);
     setTimeout(injectCorners, 600);
-    new MutationObserver(() => injectCorners()).observe(
-      document.getElementById('dock') || document.body,
-      { childList: true, subtree: true }
-    );
+    /* v215 · El MutationObserver vigilaba el subárbol COMPLETO del dock y
+       relanzaba injectCorners() en cada cambio. Los botones del dock son
+       fijos: basta con inyectar las esquinas una vez. */
     // Restore MODO CINE if previously enabled
     if (localStorage.getItem('arex_modo_cine') === '1') {
       setTimeout(() => {

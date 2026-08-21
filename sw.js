@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v214';
-const VERSION = 'v214';
+const CACHE   = 'arex-v215';
+const VERSION = 'v215';
 const SHELL = [
   './index.html',
   './style.css',
@@ -35,8 +35,6 @@ const SHELL = [
   './search.js',
   './search.css',
   './orb.js',
-  './reactor3d.js',
-  './reactor3d.css',
   './vendor/marked.min.js',
   './vendor/purify.min.js',
   './manifest.json',
