@@ -123,6 +123,87 @@ flowchart LR
 
 ---
 
+## 4 · Uso real de cada módulo
+
+Medido, no opinado. Tres preguntas a cada módulo:
+
+1. **¿Alguien lee lo que escribe?** — se revisó el cuerpo de las 11 funciones
+   consumidoras del sistema (contexto de la IA, dashboard, /hoy, reporte
+   semanal, sincronización, VIGÍA, respaldo, búsqueda, VIERNES, agenda, HUD de
+   visión), buscando tanto la clave de `localStorage` como los getters
+   públicos. Un módulo que nadie consulta es adorno por bien hecho que esté.
+2. **¿Él lee a otros?** — un módulo puede valer por consumir, no solo por
+   producir. Control y Visión no guardan casi nada y son de los más útiles.
+3. **¿AREX lo ve al conversar?** — la prueba más dura. Si no entra en el
+   prompt, no puedes preguntarle por eso, y el módulo deja de ser parte del
+   asistente para ser una pantalla suelta.
+
+### Columna vertebral
+
+| módulo | js+css | lectores | AREX lo ve |
+|---|---|---|---|
+| **Tareas** | 360 | **9 de 11** | sí |
+| **Metas** | 764 | 8 | sí |
+| **Gastos** | 615 | 7 | sí |
+| **Finanzas** | 2.820 | 6 | sí |
+| **Negocio** | 1.488 | 5 | sí |
+
+Tareas es el módulo más conectado de AREX **y el más barato de los grandes**:
+360 líneas sin CSS propio alimentando a nueve consumidores. Finanzas y Negocio
+son los caros, pero son tu dinero: el margen, la deuda, el stock y las ventas.
+
+### Herramientas — valen por lo que LEEN, no por lo que guardan
+
+| módulo | js+css | lee de | nota |
+|---|---|---|---|
+| **Control** | 1.794 | **13 módulos** | el único sitio que ve el sistema entero |
+| **Visión** | 4.113 | 7 módulos | el más caro de AREX, con diferencia |
+| **VIERNES** | 244 | negocio, gastos | 244 líneas y ya alimenta al contexto de la IA y al VIGÍA |
+
+Juzgar a Control o a Visión por "cuántos leen sus datos" sería un error: su
+trabajo es consumir. Visión sí es la partida más cara del sistema —4.113
+líneas, más que Finanzas— y conviene tenerlo presente.
+
+### Reales pero infrautilizados
+
+| módulo | js+css | lectores | el problema |
+|---|---|---|---|
+| **Notas** | 141 | 5 | excelente relación coste/uso, pero **AREX no las ve al conversar** |
+| **Memoria** | 75 | 3 | 75 líneas alimentando el prompt: lo más rentable del sistema |
+| **Proyectos** | 381 | 6 | lee tareas, metas y notas, pero el vínculo **solo funciona por coincidencia de nombre**: ninguna pantalla lo escribe |
+| **Hábitos** | 635 | 5 | entra en el dashboard y en los informes, pero **AREX no lo ve** y no tiene agente |
+
+### Lo que hoy está de adorno
+
+| módulo | js+css | por qué |
+|---|---|---|
+| **Reparto** | **1.124** | 2 lectores, ninguno lo consulta de verdad, AREX no lo ve, y solo lee de Negocio. **La peor relación coste/valor del sistema.** |
+| **Agenda** | 568 | **No guarda absolutamente nada propio** — la clave `arex_agenda` no existe. Es una vista sobre tareas + metas + recordatorios, y AREX tampoco la ve. Funcionalmente es una pestaña de Tareas, no un módulo. |
+| **Evidencias** | 273 | Barato y correcto, pero solo se alcanza por la búsqueda. AREX no lo ve. |
+
+### Qué ve AREX cuando le hablas
+
+El prompt se arma con `buildSystemBase + buildContextSection + buildMemoriaSection
++ buildSessionMemorySection + buildModuleContext`. Entre todas, mencionan:
+
+**Sí ve:** Finanzas · Negocio · Gastos · Metas · Tareas urgentes · Recordatorios ·
+Proyectos · Memoria
+**No ve:** Notas · Hábitos · Evidencias · Agenda · Reparto · capturas de Visión
+
+Seis módulos existen, se llenan de datos y se sincronizan a la nube, pero **no
+puedes preguntarle a AREX por ellos**. Ésa es la mayor pérdida de valor del
+sistema, y es barata de arreglar: son unas pocas líneas dentro de
+`buildModuleContext()`.
+
+### Escalabilidad
+
+Casi todos limitan cuántos registros dibujan. **Metas no**: dibuja todas sin
+tope, así que se degradará según se acumulen. Negocio solo enseña los últimos
+5 movimientos y Reparto los últimos 3 — ahí el problema es el contrario: con
+datos de verdad se quedan cortos.
+
+---
+
 ## 4 · Hoja de ruta
 
 Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
