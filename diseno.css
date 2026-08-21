@@ -99,6 +99,37 @@
   --toque: 44px;
 }
 
+/* ── Red de seguridad ────────────────────────────────────────────────
+   Todo lo de arriba usa oklch() y color-mix(). Ambos funcionan en Safari
+   16.2+ y en el navegador del Quest, pero AREX se instala como PWA y no
+   puedo probar iOS desde aquí. Si algún navegador no entendiera oklch,
+   TODAS las variables de color quedarían inválidas y la interfaz saldría
+   sin color — no rota, pero ilegible.
+
+   Estos hexadecimales son los mismos colores convertidos a sRGB (medidos
+   con un lienzo, no calculados a mano) y solo se aplican donde oklch NO
+   existe. En un navegador moderno este bloque ni se lee. */
+@supports not (color: oklch(78% 0.13 215)) {
+  :root {
+    --acento:      #2bcceb;
+    --acento-alto: #29f0ff;
+    --acento-bajo: #2695ac;
+    --ok:          #59d38c;
+    --aviso:       #efa831;
+    --alerta:      #ff645f;
+    --fondo:       #020b0e;
+    --sup-1:       #07161a;
+    --sup-2:       #0f2024;
+    --sup-3:       #192c31;
+    --texto:       #e7f5f8;
+    --texto-2:     #90aab0;
+    --texto-3:     #5e767d;
+    /* color-mix tampoco existiría, así que los bordes van literales */
+    --borde:       rgba(43,204,235,0.22);
+    --borde-alto:  rgba(43,204,235,0.45);
+  }
+}
+
 /* Respetar a quien pide menos movimiento — accesibilidad y batería */
 @media (prefers-reduced-motion: reduce) {
   :root { --rapido: 1ms; --medio: 1ms; }
