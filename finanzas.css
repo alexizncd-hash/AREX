@@ -932,29 +932,11 @@ main#module-chat.module-panel.active {
 
 .proyeccion-section { margin: 1.5rem 0; }
 
-.grafica-placeholder {
-  padding: 2rem;
-  background: rgba(0, 20, 35, 0.4);
-  border: 1px solid rgba(34,211,238, 0.15);
-  border-radius: 4px;
-  text-align: center;
-}
-
-.grafica-placeholder p {
-  color: #e0f4ff;
-  font-size: 0.9rem;
-  margin: 0.4rem 0;
-  font-family: var(--font-mono);
-}
-
-.nota-grafica { color: #4a7a96 !important; font-size: 0.78rem !important; margin-top: 0.8rem !important; }
-
 /* ── Responsive ───────────────────────────────────────────── */
 
 @media (max-width: 600px) {
   .module-nav          { padding: 0.5rem 1rem; gap: 0.5rem; }
   .nav-btn             { padding: 0.5rem 0.8rem; }
-  .nav-icon            { font-size: 1rem; }
   .nav-label           { font-size: 0.62rem; }
   .finanzas-container  { padding: 1rem; }
   .metrics-grid,

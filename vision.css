@@ -1,0 +1,1060 @@
+/* ═══════════════════════════════════════════════════════════════
+   AREX · MODO VISIÓN — estilos del panel de cámara  (v218)
+
+   Extraído de style.css. Eran 1087 líneas que el navegador
+   descargaba y analizaba en CADA arranque, para un panel que ni siquiera
+   existe en el HTML: lo crea _buildPanel() de vision.js cuando abres la
+   cámara. Ahora viaja con su módulo.
+
+   Se carga DESPUÉS de style.css, así que estas reglas ganan a las de allí
+   a igualdad de especificidad. Verificado con el panel construido de
+   verdad: mismo estilo computado que antes de mover nada.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* #vision-panel — 7 de las 8 declaraciones de este bloque seguían vivas (v213) */
+#vision-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font);
+  overflow: hidden;
+}
+/* Full-screen video */
+#vis-video {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover; display:block;
+}
+/* @keyframes vp-scan — sin uso, retirado (v218) */
+
+/* ── JARVIS Live Data Ribbon ── */
+.vp-data-ribbon {
+  position:absolute; z-index:3;
+  top:calc(58px + env(safe-area-inset-top));
+  left:0; right:0;
+  display:flex; align-items:center; justify-content:center;
+  gap:10px; padding:3px 12px;
+  font-size:8.5px; letter-spacing:1.5px;
+  color:rgba(34,211,238,0.65);
+  font-family:var(--font);
+  pointer-events:none;
+  background:linear-gradient(to bottom, rgba(0,8,18,0.35) 0%, transparent 100%);
+}
+.vp-dr-sep { color:rgba(34,211,238,0.25); font-size:10px; }
+/* @keyframes vp-sweep-anim — sin uso, retirado (v218) */
+
+/* Corner HUD brackets */
+.vp-corner {
+  position:absolute; z-index:2;
+  width:22px; height:22px;
+  border-color:var(--cyan); border-style:solid; border-width:0;
+  opacity:0.7;
+}
+.vp-tl { top:70px;  left:16px;  border-top-width:2px; border-left-width:2px; }
+.vp-tr { top:70px;  right:16px; border-top-width:2px; border-right-width:2px; }
+.vp-bl { bottom:130px; left:16px;  border-bottom-width:2px; border-left-width:2px; }
+.vp-br { bottom:130px; right:16px; border-bottom-width:2px; border-right-width:2px; }
+/* Top HUD bar */
+.vp-hud-top {
+  position:relative; z-index:40;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+  background:linear-gradient(to bottom, rgba(0,8,18,0.70) 0%, transparent 100%);
+}
+.vp-title {
+  display:flex; align-items:center; gap:8px;
+  font-size:10px; letter-spacing:3px; color:var(--cyan);
+}
+.vp-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 8px var(--green);
+  animation:breathe 1.4s ease-in-out infinite;
+}
+.vp-top-btns { display:flex; gap:8px; }
+/* .vp-icon-btn — 9 de las 12 declaraciones de este bloque seguían vivas (v213) */
+.vp-icon-btn {
+  background: rgba(34,211,238,0.1);
+  border: 1px solid rgba(34,211,238,0.35);
+  color: var(--cyan);
+  font-size: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.vp-icon-btn:hover, .vp-icon-btn:active { background:rgba(34,211,238,0.25); }
+.vp-close-btn:hover { border-color:#ff4455; color:#ff4455; background:rgba(255,68,85,0.15); }
+/* Center status badge */
+.vp-status-badge {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%, -50%);
+  z-index:3; pointer-events:none;
+  display:flex; align-items:center; gap:6px;
+  background:rgba(0,8,18,0.78); border:1px solid rgba(34,211,238,0.35);
+  border-radius:20px; padding:5px 14px;
+  font-size:9px; letter-spacing:2.5px; color:var(--cyan);
+  transition:opacity 0.3s;
+}
+.vp-status-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 5px var(--cyan);
+}
+/* .vp-hud-bottom — 10 de las 11 declaraciones de este bloque seguían vivas (v213) */
+.vp-hud-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0,8,18,0.72) 0%, transparent 100%);
+}
+/* .vp-action-btn — 13 de las 14 declaraciones de este bloque seguían vivas (v213) */
+.vp-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.3);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.vp-action-btn:active, .vp-action-btn:hover {
+  background:rgba(34,211,238,0.2); border-color:var(--cyan); color:var(--cyan);
+}
+.vp-btn-ico { font-size:18px; line-height:1; }
+.vp-btn-lbl { font-size:7px; letter-spacing:1.5px; }
+/* ── Result panel (slides up from bottom) ─────────────── */
+.vp-result {
+  position:absolute; bottom:0; left:0; right:0; z-index:5;
+  background:rgba(0,4,12,0.50);
+  border-top:1px solid rgba(34,211,238,0.45);
+  border-radius:16px 16px 0 0;
+  transform:translateY(100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  max-height:50vh;
+  display:flex; flex-direction:column;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));
+}
+.vp-result-hd {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px 8px;
+  border-bottom:1px solid rgba(34,211,238,0.1);
+  flex-shrink:0;
+}
+.vp-result-lbl {
+  flex:1; font-size:9px; letter-spacing:2.5px; color:var(--cyan);
+  font-family:var(--font);
+}
+.vp-result-inner {
+  display:flex; gap:10px;
+  padding:10px 14px 12px;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  flex:1;
+}
+.vp-result-thumb {
+  width:76px; height:58px; object-fit:cover;
+  border-radius:6px; border:1px solid rgba(34,211,238,0.3);
+  flex-shrink:0; align-self:flex-start;
+}
+.vp-result-body {
+  flex:1; font-size:13px; line-height:1.65;
+  color:var(--text-main); font-family:var(--font-body);
+}
+.vp-result-body strong { color:var(--cyan); }
+/* Context-aware quick actions under result */
+.vp-result-actions {
+  display:flex; gap:6px; flex-wrap:wrap;
+  padding:6px 14px 10px;
+  border-top:1px solid rgba(34,211,238,0.08);
+  flex-shrink:0;
+}
+.vp-result-actions:empty { display:none; }
+.vp-act-btn {
+  background:rgba(34,211,238,0.1);
+  border:1px solid rgba(34,211,238,0.3);
+  border-radius:6px;
+  color:var(--cyan);
+  font-family:var(--font);
+  font-size:8px;
+  letter-spacing:1.5px;
+  padding:5px 10px;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.vp-act-btn:hover, .vp-act-btn:active { background:rgba(34,211,238,0.22); }
+.vp-act-btn:disabled { opacity:0.55; cursor:default; }
+/* .vp-hud-bottom — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
+.vp-hud-bottom {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.vp-hud-bottom::-webkit-scrollbar { display:none; }
+/* .vp-action-btn — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
+.vp-action-btn {
+  min-width: 50px;
+}
+/* ── Vision personas panel ────────────────────────────── */
+.vp-personas-panel {
+  position:absolute; bottom:0; left:0; right:0; z-index:6;
+  max-height:75vh;
+  background:rgba(0,5,16,0.97);
+  border-top:1px solid rgba(34,211,238,0.45);
+  border-radius:16px 16px 0 0;
+  transform:translateY(100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  display:flex; flex-direction:column;
+  padding-bottom:calc(80px + env(safe-area-inset-bottom));
+}
+.vp-personas-list {
+  flex:1; overflow-y:auto; padding:6px 14px 4px;
+  -webkit-overflow-scrolling:touch;
+}
+.vp-personas-empty {
+  color:var(--text-muted); font-size:11px; text-align:center;
+  padding:1.2rem 0.5rem; line-height:1.7;
+}
+.vp-persona-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 0;
+  border-bottom:1px solid rgba(34,211,238,0.1);
+}
+.vp-persona-item:last-child { border-bottom:none; }
+.vp-persona-data { flex:1; min-width:0; }
+.vp-persona-data strong {
+  display:block; color:var(--cyan); font-size:12px;
+  letter-spacing:0.5px; margin-bottom:2px;
+}
+.vp-persona-data span {
+  display:block; color:var(--text-muted); font-size:10px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.vp-personas-form {
+  padding:10px 14px 8px;
+  border-top:1px solid rgba(34,211,238,0.15);
+  display:flex; flex-direction:column; gap:6px;
+  flex-shrink:0;
+}
+.vp-personas-input, .vp-personas-textarea {
+  background:rgba(34,211,238,0.07);
+  border:1px solid rgba(34,211,238,0.28);
+  border-radius:8px;
+  color:#e0f4ff; padding:8px 12px;
+  font-size:12px; font-family:var(--font-body);
+  width:100%; box-sizing:border-box; resize:vertical;
+}
+.vp-personas-input::placeholder, .vp-personas-textarea::placeholder { color:rgba(34,211,238,0.35); }
+.vp-personas-input:focus, .vp-personas-textarea:focus {
+  outline:none; border-color:rgba(34,211,238,0.6);
+  background:rgba(34,211,238,0.11);
+}
+.vp-personas-add-btn {
+  background:rgba(34,211,238,0.14);
+  border:1px solid rgba(34,211,238,0.45);
+  border-radius:8px; color:var(--cyan);
+  padding:8px 12px; font-size:11px; letter-spacing:1.5px;
+  cursor:pointer; transition:background 0.2s;
+}
+.vp-personas-add-btn:hover { background:rgba(34,211,238,0.26); }
+.vp-personas-msg {
+  font-size:11px; text-align:center; padding:4px 8px;
+  border-radius:6px; min-height:18px; transition:opacity 0.3s;
+  letter-spacing:0.5px;
+}
+/* ── Vision AR mode badge ─────────────────────────────── */
+.vp-ar-badge {
+  position:absolute; top:58px; left:50%; transform:translateX(-50%);
+  background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.5);
+  border-radius:20px; padding:4px 16px;
+  color:#00d4ff; font-size:9px; letter-spacing:2px;
+  font-family:var(--font); white-space:nowrap; z-index:4;
+  animation:vp-ar-pulse 2s ease-in-out infinite;
+}
+@keyframes vp-ar-pulse {
+  0%,100% { opacity:0.8; box-shadow:0 0 6px rgba(52,255,195,0.2); }
+  50%      { opacity:1;   box-shadow:0 0 14px rgba(52,255,195,0.4); }
+}
+/* ─── Gesture Canvas Overlay ──────────────────────────── */
+.vp-gesture-canvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:4;
+}
+/* .vp-telemetry — 10 de las 10 declaraciones de este bloque seguían vivas (v213) */
+.vp-telemetry {
+  position: absolute;
+  top: 70px;
+  left: 12px;
+  background: rgba(0,5,16,0.90);
+  border: 1px solid rgba(34,211,238,0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 130px;
+  z-index: 10;
+  pointer-events: none;
+}
+.vp-tel-hdr {
+  display:flex; align-items:center; gap:5px;
+  font-size:7px; letter-spacing:2px; color:var(--cyan);
+  margin-bottom:6px; font-weight:700;
+}
+.vp-tel-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 6px var(--cyan);
+  animation:tel-blink 1.8s ease-in-out infinite;
+}
+@keyframes tel-blink {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+.vp-tel-row {
+  display:flex; justify-content:space-between; gap:8px;
+  font-size:8px; color:rgba(34,211,238,0.7);
+  padding:2px 0; border-bottom:1px solid rgba(34,211,238,0.07);
+  letter-spacing:0.5px;
+}
+.vp-tel-row:last-child { border-bottom:none; }
+.vp-tel-row span:last-child { color:rgba(0,212,255,0.9); font-weight:600; }
+/* .vp-gest-guide — 11 de las 12 declaraciones de este bloque seguían vivas (v213) */
+.vp-gest-guide {
+  position: absolute;
+  top: 70px;
+  right: 12px;
+  background: rgba(0,5,16,0.90);
+  border: 1px solid rgba(34,211,238,0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 110px;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+}
+/* .vp-gg-row — 7 de las 7 declaraciones de este bloque seguían vivas (v213) */
+.vp-gg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8px;
+  color: rgba(34,211,238,0.75);
+  padding: 3px 0;
+  letter-spacing: 0.5px;
+}
+.vp-gg-row span:first-child { font-size:14px; line-height:1; }
+/* .vp-voice-bar — 18 de las 19 declaraciones de este bloque seguían vivas (v213) */
+.vp-voice-bar {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,5,16,0.92);
+  border: 1px solid rgba(34,211,238,0.22);
+  border-radius: 24px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(34,211,238,0.5);
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+.vp-wave { display:flex; align-items:center; gap:2px; height:14px; }
+.vp-wave span {
+  display:block; width:2px; background:var(--cyan);
+  border-radius:2px; height:3px;
+}
+/* ─── Module Navigation Grid ──────────────────────────── */
+.vp-module-grid {
+  position:absolute; inset:0;
+  background:rgba(0,5,16,0.95);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:20; opacity:0; pointer-events:none; transition:opacity 0.25s;
+}
+.vp-mg-title {
+  font-size:11px; letter-spacing:3px; color:var(--cyan);
+  margin-bottom:20px; font-weight:700;
+}
+.vp-mg-items {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:10px; max-width:340px; width:100%; padding:0 16px;
+}
+.vp-mg-btn {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:rgba(34,211,238,0.07); border:1px solid rgba(34,211,238,0.2);
+  border-radius:10px; padding:10px 6px;
+  cursor:pointer; color:rgba(34,211,238,0.8); transition:all 0.2s;
+}
+.vp-mg-btn:hover, .vp-mg-btn:active {
+  background:rgba(34,211,238,0.16); border-color:rgba(34,211,238,0.5);
+  box-shadow:0 0 12px rgba(34,211,238,0.2);
+}
+.vp-mg-ico { font-size:18px; line-height:1; }
+.vp-mg-lbl { font-size:6.5px; letter-spacing:1px; color:rgba(34,211,238,0.65); }
+/* ─── Gesture Flash ───────────────────────────────────── */
+.vp-gesture-flash {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:52px; z-index:15; pointer-events:none;
+  opacity:0; transition:opacity 0.15s;
+  text-shadow:0 0 30px currentColor;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+/* .vp-gg-row — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
+.vp-gg-row {
+  justify-content: flex-start;
+}
+.vp-gg-row + .vp-gg-row { border-top: 1px solid rgba(34,211,238,0.07); }
+/* .vp-voice-bar — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
+.vp-voice-bar {
+  opacity: 0.28;
+}
+/* .vp-swipe-hint — 9 de las 9 declaraciones de este bloque seguían vivas (v213) */
+.vp-swipe-hint {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7.5px;
+  letter-spacing: 2px;
+  color: rgba(34,211,238,0.3);
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* ── 3-D Vision Particle Orb ──────────────────────────── */
+.vp-orb-canvas {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 60;
+  filter: drop-shadow(0 0 8px rgba(34,211,238,0.35));
+  transition: filter 0.3s ease;
+}
+/* ── Tap-to-analyze overlay canvas ───────────────────── */
+.vp-tap-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.vp-cw-label {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: rgba(34,211,238,0.35);
+  margin-bottom: 2px;
+}
+/* ── Radial Action Menu ───────────────────────────────── */
+.vp-radial-menu {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.vp-radial-menu.vr-open {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto;
+}
+.vp-radial-ring {
+  position: relative;
+  width: 0; height: 0;
+}
+.vp-radial-btn {
+  position: absolute;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(0,8,24,0.88);
+  border: 1.5px solid rgba(34,211,238,0.55);
+  color: var(--cyan);
+  font-family: var(--font);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  /* Positions set via nth-child below */
+  left: -29px; top: -29px;
+}
+.vp-radial-btn:hover, .vp-radial-btn:active {
+  background: rgba(34,211,238,0.18);
+  border-color: var(--cyan);
+  transform: scale(1.12);
+}
+.vp-rb-ico { font-size: 18px; }
+.vp-rb-lbl { font-size: 7px; letter-spacing: 1px; }
+.vp-radial-center {
+  position: absolute;
+  top: -22px; left: -22px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.12);
+  border: 2px solid rgba(34,211,238,0.6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; letter-spacing: 2px; color: var(--cyan);
+  box-shadow: 0 0 20px rgba(34,211,238,0.25);
+}
+.vp-radial-close {
+  position: absolute;
+  top: -55px; left: -16px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,68,85,0.12);
+  border: 1px solid rgba(255,68,85,0.35);
+  color: #ff6677;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.vp-radial-close:hover { background: rgba(255,68,85,0.28); }
+/* 6 radial positions (radius 90px, 60° each, starting top) */
+.vp-radial-btn:nth-child(1) { left:-29px;  top:-119px; }
+/* 0° = top */
+.vp-radial-btn:nth-child(2) { left:49px;   top:-74px;  }
+/* 60° */
+.vp-radial-btn:nth-child(3) { left:49px;   top:16px;   }
+/* 120° */
+.vp-radial-btn:nth-child(4) { left:-29px;  top:61px;   }
+/* 180° = bottom */
+.vp-radial-btn:nth-child(5) { left:-107px; top:16px;   }
+/* 240° */
+.vp-radial-btn:nth-child(6) { left:-107px; top:-74px;  }
+/* 300° */
+
+/* ── Quick Ask Bar ────────────────────────────────────── */
+.vp-ask-bar {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  width: min(92vw, 420px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,4,12,0.82);
+  border: 1px solid rgba(34,211,238,0.35);
+  border-radius: 32px;
+  padding: 10px 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 120;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 20px rgba(34,211,238,0.08);
+}
+.vp-ask-ico {
+  font-size: 16px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.vp-ask-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  min-width: 0;
+}
+.vp-ask-input::placeholder { color: rgba(34,211,238,0.32); font-size: 13px; }
+.vp-ask-send {
+  background: rgba(34,211,238,0.14);
+  border: 1px solid rgba(34,211,238,0.4);
+  color: var(--cyan);
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.vp-ask-send:hover { background: rgba(34,211,238,0.28); }
+/* Hint text when ask bar is shown */
+.vp-ask-bar::before {
+  content: 'PREGUNTA LIBRE · MANTÉN PRESIONADO PARA ABRIR';
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: rgba(34,211,238,0.4);
+  white-space: nowrap;
+  font-family: var(--font);
+}
+/* .vp-telemetry — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
+.vp-telemetry {
+  transform: perspective(700px)
+             rotateY(calc(var(--ax) * 7deg))
+             rotateX(calc(var(--ay) * -7deg))
+             translate3d(calc(var(--ax) * 6px), calc(var(--ay) * 6px), 0);
+  transition: transform 0.16s ease-out;
+}
+/* .vp-gest-guide — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
+.vp-gest-guide {
+  transition: opacity 0.3s, transform 0.16s ease-out;
+  transform: perspective(700px)
+             rotateY(calc(var(--ax) * 7deg))
+             rotateX(calc(var(--ay) * -7deg))
+             translate3d(calc(var(--ax) * 6px), calc(var(--ay) * 6px), 0);
+}
+/* ═══════════════════════════════════════════════════════
+   AREX VISION · MARK IV  — Module HUD + Gesture Config
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Module HUD overlay ─────────────────────────────── */
+.vp-module-hud {
+  position: absolute;
+  bottom: 80px; left: 0; right: 0;
+  margin: 0 12px;
+  background: rgba(0,4,12,0.92);
+  border: 1px solid rgba(34,211,238,0.30);
+  border-radius: 12px;
+  box-shadow: 0 -4px 30px rgba(34,211,238,0.12), 0 8px 40px rgba(0,0,0,0.6);
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease;
+  z-index: 120;
+  overflow: hidden;
+}
+/* ── HUD header ──────────────────────────────────────── */
+.vp-mhud-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(34,211,238,0.12);
+  background: linear-gradient(90deg, rgba(34,211,238,0.06) 0%, transparent 60%);
+}
+.vp-mhud-icon {
+  font-size: 16px;
+  color: #22d3ee;
+  flex-shrink: 0;
+}
+.vp-mhud-title {
+  font-family: var(--font-display, 'Exo 2', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #22d3ee;
+  flex: 1;
+}
+.vp-mhud-act-btn {
+  background: rgba(34,211,238,0.12);
+  border: 1px solid rgba(34,211,238,0.35);
+  color: #22d3ee;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+.vp-mhud-act-btn:hover { background: rgba(34,211,238,0.22); border-color: rgba(34,211,238,0.6); }
+.vp-mhud-act-btn.vp-mhud-act-add {
+  background: rgba(0,212,255,0.10);
+  border-color: rgba(0,212,255,0.35);
+  color: #00d4ff;
+}
+.vp-mhud-act-btn.vp-mhud-act-add:hover { background: rgba(0,212,255,0.20); }
+/* ── HUD body ────────────────────────────────────────── */
+.vp-mhud-body {
+  padding: 8px 12px 4px;
+  min-height: 40px;
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34,211,238,0.2) transparent;
+}
+.vp-mhud-stat {
+  font-size: 11px;
+  color: rgba(34,211,238,0.7);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+.vp-mhud-item {
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(34,211,238,0.06);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vp-mhud-item.vp-mhud-hi { color: #ff4460; }
+.vp-mhud-item.vp-mhud-meta { display: flex; justify-content: space-between; white-space: normal; }
+.vp-mhud-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: #22d3ee;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+.vp-mhud-empty {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+  padding: 4px 0;
+}
+.vp-mhud-urg { color: #ff4460; font-weight: 700; }
+/* ── HUD actions row ─────────────────────────────────── */
+.vp-mhud-actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px 10px;
+}
+/* ── Gesture Config Panel ────────────────────────────── */
+.vp-gesture-config {
+  position: absolute;
+  top: 60px; right: 12px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  background: rgba(0,4,12,0.95);
+  border: 1px solid rgba(34,211,238,0.28);
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.65), 0 0 20px rgba(34,211,238,0.08);
+  transform: translateX(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), opacity 0.2s ease;
+  z-index: 125;
+  overflow: hidden;
+}
+/* ── Gesture config rows ─────────────────────────────── */
+.vp-gest-cfg-list {
+  padding: 6px 10px 10px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34,211,238,0.2) transparent;
+}
+.vp-gest-cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(34,211,238,0.07);
+}
+.vp-gest-cfg-ico {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+.vp-gest-cfg-lbl {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  flex: 1;
+  min-width: 0;
+}
+.vp-gest-cfg-sel {
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.25);
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  max-width: 130px;
+  cursor: pointer;
+}
+.vp-gest-cfg-sel option { background: #000c1a; }
+.vp-gest-cfg-note {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 8px;
+  text-align: center;
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+/* ── Gesture guide config button ─────────────────────── */
+.vp-gg-cfg-btn {
+  background: none;
+  border: none;
+  color: rgba(34,211,238,0.55);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+  line-height: 1;
+  transition: color 0.15s;
+  vertical-align: middle;
+}
+.vp-gg-cfg-btn:hover { color: #22d3ee; }
+/* #vis-workspace — 10 de las 11 declaraciones de este bloque seguían vivas (v213) */
+#vis-workspace {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 54%;
+  border-left: 1px solid rgba(34,211,238,0.28);
+  display: none;
+  flex-direction: column;
+  z-index: 45;
+  box-shadow: -6px 0 45px rgba(0,0,0,0.85), -1px 0 0 rgba(34,211,238,0.14);
+}
+#vis-workspace::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(34,211,238,0.8) 35%, rgba(34,211,238,0.8) 65%, transparent);
+  pointer-events:none;
+}
+.vis-wk-topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; flex-shrink:0;
+  border-bottom: 1px solid rgba(34,211,238,0.14);
+  background: rgba(34,211,238,0.04);
+}
+.vis-wk-title {
+  font-size:9px; letter-spacing:3px; color:var(--cyan);
+  font-family:var(--font); text-shadow:0 0 10px rgba(34,211,238,0.5);
+}
+.vis-wk-close {
+  background:none; border:none; color:var(--text-muted);
+  font-size:15px; cursor:pointer; padding:2px 5px;
+  transition:color 0.15s;
+}
+.vis-wk-close:hover { color:var(--cyan); }
+.vis-wk-tabs {
+  display:flex; gap:5px; padding:8px 10px;
+  border-bottom: 1px solid rgba(34,211,238,0.09);
+  overflow-x:auto; flex-shrink:0;
+  scrollbar-width:none;
+}
+.vis-wk-tabs::-webkit-scrollbar { display:none; }
+.vis-wk-tab {
+  font-size:8px; letter-spacing:1.5px; padding:5px 10px;
+  background: rgba(34,211,238,0.04); border: 1px solid rgba(34,211,238,0.13);
+  border-radius:2px; color:var(--text-muted); cursor:pointer;
+  white-space:nowrap; font-family:var(--font); transition:all 0.18s;
+}
+.vis-wk-tab:hover { border-color:rgba(34,211,238,0.35); color:rgba(34,211,238,0.8); }
+.vis-wk-body {
+  flex:1; overflow-y:auto; padding:12px 14px;
+  font-family:var(--font); font-size:11px;
+  scrollbar-width:thin;
+  scrollbar-color: rgba(34,211,238,0.2) transparent;
+}
+.vis-wk-body::-webkit-scrollbar { width:3px; }
+.vis-wk-body::-webkit-scrollbar-thumb { background:rgba(34,211,238,0.25); border-radius:2px; }
+/* Workspace mini-chat */
+.vis-wk-msgs {
+  border-top: 1px solid rgba(34,211,238,0.1);
+  padding:10px 12px 6px;
+  display:flex; flex-direction:column; gap:6px;
+  max-height:160px; overflow-y:auto; flex-shrink:0;
+  scrollbar-width:thin; scrollbar-color:rgba(34,211,238,0.2) transparent;
+}
+.vis-wk-msgs::-webkit-scrollbar { width:2px; }
+.vis-wk-msgs::-webkit-scrollbar-thumb { background:rgba(34,211,238,0.2); }
+.vis-wk-bar {
+  display:flex; gap:8px; padding:9px 12px;
+  border-top:1px solid rgba(34,211,238,0.13);
+  flex-shrink:0; background:rgba(34,211,238,0.03);
+}
+.vis-wk-inp {
+  flex:1; background:rgba(0,6,18,0.96); border:1px solid rgba(34,211,238,0.22);
+  color:var(--text-main); font-family:var(--font); font-size:11px;
+  padding:8px 10px; border-radius:2px; outline:none;
+  transition:border-color 0.2s;
+}
+.vis-wk-inp:focus { border-color:rgba(34,211,238,0.52); box-shadow:0 0 12px rgba(34,211,238,0.1); }
+.vis-wk-snd {
+  background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.35);
+  color:var(--cyan); padding:8px 13px; cursor:pointer; border-radius:2px;
+  font-size:14px; transition:all 0.15s;
+}
+.vis-wk-snd:hover  { background:rgba(34,211,238,0.2); box-shadow:0 0 16px rgba(34,211,238,0.3); }
+.vis-wk-snd:active { transform:scale(0.92); }
+.vp-telemetry, .vp-gest-guide, .vp-module-hud,
+.vp-result, .vp-gesture-config, .vp-personas-panel,
+.vp-hud-top, .vp-hud-bottom {
+  background: rgba(0,4,14,0.85);
+}
+/* #vis-workspace — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
+#vis-workspace {
+  background: rgba(0,4,14,0.68);
+}
+/* #vision-panel — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
+#vision-panel {
+  background: rgba(0,4,12,0.72);
+  border: 1px solid rgba(255,106,0,0.22);
+}
+/* .vp-swipe-hint — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
+.vp-swipe-hint {
+  transition: opacity 1.2s ease;
+}
+.vp-swipe-hint.vp-hint-fade { opacity: 0; pointer-events: none; }
+/* VER como acción principal — más grande y destacado */
+.vp-action-btn.vp-btn-primary {
+  flex: 1.6;
+  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(34, 211, 238, 0.10);
+}
+.vp-action-btn.vp-btn-primary .vp-btn-ico { font-size: 20px; }
+/* .vp-hud-bottom — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
+.vp-hud-bottom {
+  gap: 10px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+.vp-hud-bottom .vp-action-btn { flex: 1; }
+/* ── FORJA v186: chips flotantes + botón activo ── */
+#vis-forja-bar {
+  position: absolute;
+  /* Sobre la barra inferior + zona segura del iPhone — antes quedaba
+     encimada con los botones VER/AUTO/MENÚ y era difícil de tocar */
+  bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 11;
+  width: min(92vw, 420px);
+}
+.vp-forja-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+.vp-forja-inp {
+  flex: 1;
+  background: rgba(0, 8, 20, 0.92);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  color: #e8f4ff;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  min-width: 0;
+}
+.vp-forja-inp::placeholder { color: rgba(127, 231, 255, 0.4); }
+.vp-forja-chip {
+  background: rgba(0, 8, 20, 0.88);
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  color: #22d3ee;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 10px 16px;
+  min-height: 40px;   /* target táctil cómodo — antes era difícil de atinar */
+  border-radius: 4px;
+  cursor: pointer;
+}
+.vp-forja-chip:active { background: rgba(0, 212, 255, 0.18); }
+.vp-forja-chip-del { border-color: rgba(255, 68, 85, 0.45); color: #ff6677; }
+/* ═══ VISIÓN v188 — rediseño: retícula, auto-hide, pastilla, iconos ═══ */
+
+/* Iconos SVG monocromos en botones */
+.vp-icon-btn svg { display: block; }
+/* .vp-icon-btn — 4 de las 4 declaraciones de este bloque seguían vivas (v213) */
+.vp-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+}
+.vp-btn-ico svg { display: block; margin: 0 auto; }
+/* ── Retícula central ── */
+#vis-reticle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 72px; height: 72px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.4s;
+}
+#vis-reticle .vr-c {
+  position: absolute; width: 14px; height: 14px;
+  border-color: rgba(0, 212, 255, 0.85); border-style: solid; border-width: 0;
+}
+#vis-reticle .vr-tl { top: 0; left: 0; border-top-width: 1.5px; border-left-width: 1.5px; }
+#vis-reticle .vr-tr { top: 0; right: 0; border-top-width: 1.5px; border-right-width: 1.5px; }
+#vis-reticle .vr-bl { bottom: 0; left: 0; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+#vis-reticle .vr-br { bottom: 0; right: 0; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+#vis-reticle .vr-dot {
+  position: absolute; top: 50%; left: 50%;
+  width: 3px; height: 3px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 212, 255, 0.9);
+}
+#vis-reticle .vr-ring {
+  position: absolute; inset: 0;
+  opacity: 0;
+}
+#vis-reticle .vr-ring circle {
+  fill: none;
+  stroke: #00d4ff;
+  stroke-width: 2;
+  stroke-dasharray: 26 74;   /* arco parcial estilo radar */
+  stroke-linecap: round;
+}
+/* ── Auto-ocultamiento del HUD ── */
+#vision-panel .vp-hud-top,
+#vision-panel .vp-data-ribbon,
+#vision-panel .vp-telemetry,
+#vision-panel .vp-gest-guide,
+#vision-panel .vp-hud-bottom,
+#vision-panel #vis-forja-bar,
+#vision-panel .vp-swipe-hint {
+  transition: opacity 0.6s ease;
+}
+#vision-panel.vp-idle .vp-hud-top,
+#vision-panel.vp-idle .vp-data-ribbon,
+#vision-panel.vp-idle .vp-telemetry,
+#vision-panel.vp-idle .vp-gest-guide,
+#vision-panel.vp-idle .vp-hud-bottom,
+#vision-panel.vp-idle #vis-forja-bar {
+  opacity: 0.12;
+}
+/* ── Pastilla de resultado minimizado ── */
+#vis-result-pill {
+  position: absolute;
+  bottom: 150px; right: 12px;
+  max-width: 46vw;
+  background: rgba(0, 8, 20, 0.9);
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  color: #7fe7ff;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  z-index: 12;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.18);
+}

@@ -5,6 +5,20 @@
 // ═══════════════════════════════════════════════════════
 
 const _lazyLoaded = {};
+
+/* v218 · Carga diferida de una hoja de estilos.
+   Se añade al FINAL del <head> para que, a igualdad de especificidad, gane
+   sobre style.css — igual que si estuviera declarada la última en el HTML. */
+function _lazyCSS(href) {
+  if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+  return new Promise(res => {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = href;
+    l.onload = l.onerror = () => res();
+    document.head.appendChild(l);
+  });
+}
+window._lazyCSS = _lazyCSS;
 function _lazyLoad(src, asModule = false) {
   if (_lazyLoaded[src]) return Promise.resolve();
   if (document.querySelector(`script[src="${src}"]`)) {

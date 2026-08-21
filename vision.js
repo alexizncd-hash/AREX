@@ -4,6 +4,13 @@
 // Gesture Engine · Voice Commands · JARVIS HUD
 
 /* ─── State ───────────────────────────────────────────── */
+
+/* v218 · El CSS del panel viaja con el módulo.
+   Sus 1.060 líneas se descargaban y analizaban en cada arranque de AREX para
+   un panel que ni siquiera está en el HTML: lo crea _buildPanel() más abajo,
+   cuando abres la cámara. Como vision.js ya es diferido, para cuando el
+   usuario pulsa el botón la hoja lleva rato lista. */
+window._lazyCSS?.('vision.css');
 let _stream       = null;
 let _video        = null;
 let _panel        = null;
