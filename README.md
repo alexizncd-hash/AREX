@@ -1,4 +1,4 @@
-# AREX — Sistema de Inteligencia Personal · MARK IV (v212)
+# AREX — Sistema de Inteligencia Personal · MARK IV (v220)
 
 > **AREX** es un agente de IA personal con interfaz HUD futurista estilo JARVIS/Iron Man.  
 > Su nombre nace de **Alex**iz y Marg**aret** — las dos personas más importantes en su vida.
@@ -18,8 +18,12 @@ Visualmente inspirado en el JARVIS / Iron Man de Tony Stark: diseño HUD complet
 ```
 arex/
 ├── index.html          → Estructura HTML: HUD, header pills, modales, paneles, dock, setup screen
-├── style.css           → Diseño futurista / estética Stark Industries / JARVIS
-├── app.js              → Motor principal: IA, voz, comandos, tareas, recordatorios, dashboard, canvas
+├── style.css           → Diseño heredado. Se está vaciando módulo a módulo hacia diseno.css
+├── diseno.css          → Sistema de diseño (v220): tokens en oklch, anidamiento nativo, @container. Se carga el ÚLTIMO
+├── vision.css          → Estilos del panel de cámara. Viajan con vision.js, no en el arranque (v218)
+├── nucleo.js           → Base común (v216): hoy/dia/mes, leer/guardar con sync, pregunta/aviso/tost, esc, dinero. Carga PRIMERO
+├── widgets.js          → Clima, globo, insignias de urgencia, pomodoro y tipo de cambio (extraído de app.js en v219)
+├── app.js              → Motor principal: IA, voz, comandos, arranque, sesión, dashboard
 ├── jarvis.js           → Navegación entre módulos del dock
 ├── tareas.js           → Módulo Tareas: CRUD, subtareas, urgencia, filtros, swipe, recurrencia (extraído de app.js en v201)
 ├── notas.js            → Módulo Notas: CRUD, fijadas, búsqueda, colores (extraído de app.js en v202)
@@ -348,6 +352,22 @@ Para configurarlas: `/config` en el chat, o pantalla de setup en primer arranque
 ---
 
 ## Changelog
+
+### v213–v220 — Limpieza estructural y sistema de diseño nuevo
+
+Ocho versiones seguidas de saneamiento. El detalle y el estado están en
+[MANUAL.md](MANUAL.md#4--hoja-de-ruta).
+
+| ver | qué |
+|---|---|
+| **v220** | `diseno.css`: sistema de diseño en CSS moderno — color en `oklch()` derivado con `color-mix()`, anidamiento nativo, `@container`, `:has()`. Sin paso de compilación. INICIO migrado y sus 52 reglas viejas borradas |
+| **v219** | `widgets.js` sale de `app.js` (579 líneas, cero dependencias cruzadas) |
+| **v218** | 303 clases muertas fuera, confirmadas por tres métodos independientes. CSS al arrancar 421 → 327 KB. `vision.css` viaja con su módulo |
+| **v217** | Los 12 módulos pasan al núcleo: sincronizar deja de ser opcional. La búsqueda global vuelve a encontrar tareas |
+| **v216** | `nucleo.js`: la base común. Cierra de raíz el bug de la fecha (UTC) y los 44 diálogos nativos |
+| **v215** | De 120 rAF/s a 0. Fuera los fondos animados, el tilt 3D con su `MutationObserver` global y el reactor WebGL |
+| **v214** | Dashboard: el dato manda, el color identifica |
+| **v213** | El `@layer arex-base` nunca se cerraba —su `}` estaba dentro de un comentario—, así que todo `style.css` vivía en la capa y cualquier módulo le ganaba. Ésa era la razón de los 411 `!important`. 10 bloques `:root` fundidos en uno |
 
 ### v117 — Liquid Glass System: superficies de vidrio líquido + GPU ×6 más eficiente
 

@@ -123,33 +123,77 @@ flowchart LR
 
 ---
 
-## 4 · Qué se puede mejorar
+## 4 · Hoja de ruta
 
-Ordenado por impacto real. Cada punto salió de auditar el código.
+Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 
-- [ ] **[ALTA · fórmula]** Los gastos de NEGOCIO no cuentan en el margen real —
-      viven separados de `arex_gastos_pers` y `calcularIngresoReal` solo toma las
-      ventas. *Tu margen se ve mejor de lo que es.*
-- [ ] **[ALTA · código]** Dos fuentes de verdad para la existencia por tienda:
-      `arexCalleResumen` (app.js) reimplementa `negTiendaStats` porque negocio.js
-      es lazy. *Si divergen, dos pantallas darán números distintos.*
+### Hecho entre v213 y v220
+
+**Bugs de datos, cerrados de raíz**
+- [x] **La fecha.** 32 sitios en 12 archivos calculaban "hoy" con
+      `toISOString()`, que es UTC. México va seis horas atrás, así que **a
+      partir de las 18:00 todo se guardaba en el día siguiente**: una venta
+      al cerrar el local, un hábito marcado de noche, el briefing del día.
+      Ahora `hoy()` / `dia()` / `mes()` en `nucleo.js`. *(v216)*
+- [x] **Sincronizar dejó de ser opcional.** 12 módulos tenían que acordarse
+      de llamar a `arexSyncData` después de guardar. Olvidarlo dejó sin subir
+      a reparto (v205), finanzas (v206) y visión (v208). Ahora va dentro de
+      `guardar()`. *(v217)*
+- [x] **44 diálogos nativos fuera.** `alert`/`confirm`/`prompt` se suprimen en
+      la PWA de iOS. En `proyectos.js` la confirmación estaba dentro del
+      `onclick`, así que el proyecto se borraba **sin preguntar**. *(v216)*
+- [x] **La búsqueda global nunca encontraba tareas**: indexaba `texto` y el
+      campo se llama `text` desde v208. *(v217)*
+- [x] Los gastos de NEGOCIO ya cuentan en el margen real. *(v209)*
+- [x] Una sola fuente de verdad para la existencia por tienda
+      (`negExistenciaTienda`). *(v207)*
+
+**Rendimiento**
+- [x] **De 120 rAF/s a 0** en el dashboard. Fuera el campo de estrellas, las
+      partículas y la rejilla hexagonal (dos canvas a pantalla completa), y
+      fuera el tilt 3D, que se mantenía al día con un `MutationObserver`
+      sobre TODO el documento — cada render de cualquier lista lo disparaba,
+      y en el iPhone no hay cursor, así que nunca se vio. El orbe se queda
+      pero se apaga cuando sale de pantalla. *(v215)*
+- [x] CSS al arrancar: 421 → 327 KB. 303 clases muertas, 405 reglas, 24
+      variables, 20 `@keyframes` y `reactor3d.*` entero. *(v218)*
+
+**Estructura**
+- [x] `nucleo.js` — la base común que no existía. *(v216)*
+- [x] `widgets.js` — 579 líneas fuera de `app.js`, sin una sola dependencia
+      cruzada. *(v219)*
+- [x] `vision.css` — 1.060 líneas que se analizaban en cada arranque para un
+      panel que solo existe al abrir la cámara. *(v218)*
+- [x] `diseno.css` — sistema de diseño en CSS moderno: oklch, anidamiento
+      nativo, `@container`, `:has()`. INICIO migrado. *(v220)*
+
+### Lo siguiente, por orden
+
+- [ ] **[ALTA · uso diario]** El CHAT tiene **24 objetivos táctiles por debajo
+      de 44 px** y desborde horizontal en la barra de entrada. Medido con el
+      contrato de calidad. Es la pantalla que más usas.
+- [ ] **[ALTA · diseño]** Propagar `diseno.css` a los 13 módulos restantes.
+      Cada uno borra sus reglas viejas al migrar: migrar borrando, no
+      superponiendo.
+- [ ] **[MEDIA · decisión tuya]** El cristal está apagado:
+      `applyPerformanceProfile()` usa `cores || 4` con umbral `<= 4`, así que
+      cualquier navegador que no exponga el dato queda marcado como equipo
+      flojo. Probablemente lleva tiempo así en tu iPhone.
+- [ ] **[MEDIA · decisión tuya]** `Exo 2` y `JetBrains Mono` se piden en 45
+      reglas y **no se descargan nunca**. O se cargan, o se sustituyen.
 - [ ] **[MEDIA · conexión]** La agenda no muestra pagos de tarjeta, aunque
       `obtenerProximosPagos()` ya existe.
-- [ ] **[MEDIA · conexión]** Hábitos es una isla: sin getter, sin agente, sin
+- [ ] **[MEDIA · conexión]** Hábitos sigue siendo una isla: sin agente, sin
       búsqueda, sin agenda.
-- [ ] **[MEDIA · función]** El vínculo proyecto ↔ tarea se **lee** en proyectos.js
-      pero ninguna pantalla lo **escribe**. Solo funciona por coincidencia de nombre.
-- [ ] **[BAJA · función]** La búsqueda global no indexa negocio, reparto, hábitos
-      ni recordatorios.
-- [ ] **[BAJA · código]** 18 diálogos nativos en negocio.js. Funcionan pero bloquean
-      y rompen la estética; el reemplazo (`repDialogo` en reparto.js) ya está escrito.
-
-### Ya corregido en esta auditoría (no volver a listar)
-
-Crash del módulo Tareas al crear una tarea desde la cámara (campo `texto` vs `text`)
-· 3 errores de contabilidad de inventario · transferencia al Quest que podía dejarte
-sin código · fugas de sync en Finanzas, Reparto y Visión · cerebro de IA apuntando a
-un modelo retirado por Groq.
+- [ ] **[MEDIA · función]** El vínculo proyecto ↔ tarea se **lee** en
+      `proyectos.js` pero ninguna pantalla lo **escribe**. Funciona solo por
+      coincidencia de nombre.
+- [ ] **[BAJA · función]** La búsqueda global no indexa negocio, reparto,
+      hábitos ni recordatorios.
+- [ ] **[BAJA · estructura]** `app.js` sigue con 5.029 líneas. Lo que queda
+      —motor de chat, comandos, arranque, sesión— está entrelazado de verdad:
+      seguir partiéndolo con globales de `window` (ya hay 222) empeoraría el
+      acoplamiento. El camino es convertirlo a módulos ES con `import`.
 
 ---
 
@@ -157,5 +201,22 @@ un modelo retirado por Groq.
 
 Todo lo documentado se comprueba en un navegador real (Chromium + Playwright,
 offline, sin gastar APIs) recorriendo AREX como usuario: clicks reales, datos de
-prueba, medición de resultados numéricos contra valores calculados a mano. Es el
-mismo método que encontró los bugs listados arriba.
+prueba, medición de resultados numéricos contra valores calculados a mano.
+
+Desde v213 hay dos contratos automáticos, y son distintos a propósito:
+
+**Contrato de refactor** — para cambios que NO deben alterar el aspecto.
+Captura 30 propiedades de estilo y el rectángulo de ~450 elementos en los 14
+módulos, antes y después. El umbral es **0 diferencias reales**; solo se
+admiten las de fase de animación, que se reconocen porque cambian en la tercera
+cifra decimal o en 1 px. Es lo que hizo seguro colapsar 205 selectores y borrar
+303 clases sin mover un píxel.
+
+**Contrato de rediseño** — para cambios que SÍ deben cambiar el aspecto, donde
+exigir "estilo idéntico" no tendría sentido. Mide que sea correcto: contraste
+WCAG calculado sobre el color realmente pintado (subiendo por los padres hasta
+hallar un fondo opaco), objetivos táctiles de 44 px contando los `::before` que
+amplían el área, desbordes horizontales y solapes entre tarjetas.
+
+Más las suites por función: núcleo (17), sincronización (15), widgets (8) y el
+panel de visión abierto de verdad con una cámara falsa de Chromium.
