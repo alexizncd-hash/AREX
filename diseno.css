@@ -684,3 +684,22 @@
 
   &:hover { background: color-mix(in oklch, var(--acento) 26%, transparent); }
 }
+
+
+/* v222 · Los chips de evento de la agenda medían 13 px de alto. En una
+   rejilla de mes no caben a 44, así que se les da 30 —más del doble— y el
+   área de toque se completa con un ::before que se estira por debajo. Los
+   chips van apilados con hueco entre ellos, así que la zona ampliada no
+   pisa al siguiente. */
+.ag-chip {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    inset-block: -7px;
+  }
+}

@@ -10,6 +10,22 @@ const MAPLIBRE_VER = '4.7.1';
 let _repMap        = null;
 let _repGeoMarker  = null;
 let _repWaypoints  = [];
+
+/* v222 · NOMBRES DE PARADA.
+   repAddWpSuc(lat, lng, nombre) recibía el nombre de la sucursal y lo TIRABA:
+   guardaba solo [lng, lat], así que la lista de la ruta mostraba
+   "19.4326° -99.1332°". Con tres sucursales se aguanta; con quince clientes
+   es ilegible — y ése es justo el escenario para el que sirve el módulo.
+
+   El nombre NO puede ir dentro del array: [lng, lat] se pasa tal cual a
+   MapLibre, a GeoJSON y a OSRM, y un tercer elemento se interpreta como
+   ALTITUD. Un texto ahí rompería la geometría. Por eso va aparte, indexado
+   por coordenada: así sobrevive a reordenar la ruta (optimizar cambia el
+   orden pero no las coordenadas) sin tocar ninguno de los doce sitios que
+   usan la geometría. */
+let _repNombres = {};
+const _wpClave = (lng, lat) => `${(+lng).toFixed(5)},${(+lat).toFixed(5)}`;
+const _wpNombre = wp => _repNombres[_wpClave(wp[0], wp[1])] || '';
 let _repSucMarkers = [];
 
 /* ── Render principal ────────────────────────────────── */
@@ -28,6 +44,7 @@ function renderRepartoModule() {
           <button class="rep-btn rep-btn-opt" onclick="repOptimizarRuta()">⚡ OPTIMIZAR</button>
           <button class="rep-btn rep-btn-nav" onclick="repNavegar('google')">▶ NAVEGAR</button>
           <button class="rep-btn" onclick="repNavegar('waze')">◈ WAZE</button>
+          <button class="rep-btn" onclick="repCompartir()">⇪ COMPARTIR</button>
           <button class="rep-btn" onclick="repSaveRoute()">⊡ GUARDAR</button>
           <button class="rep-btn rep-btn-del" onclick="repClearRoute()">✕ LIMPIAR</button>
         </div>
@@ -379,12 +396,15 @@ function _renderSucList() {
 function _renderWpList() {
   const el = document.getElementById('rep-wp-list');
   if (!el) return;
-  el.innerHTML = _repWaypoints.map((wp, i) => `
+  el.innerHTML = _repWaypoints.map((wp, i) => {
+    const n = _wpNombre(wp);
+    return `
     <div class="rep-wp-row">
       <div class="rep-wp-idx">${i + 1}</div>
-      <div class="rep-wp-coords">${wp[1].toFixed(4)}° ${wp[0].toFixed(4)}°</div>
+      <div class="rep-wp-coords">${n ? _h(n) : `${wp[1].toFixed(4)}° ${wp[0].toFixed(4)}°`}</div>
+      <button class="rep-icon-btn" title="Nombrar esta parada" onclick="repNombrarWp(${i})">✎</button>
       <button class="rep-icon-btn rep-icon-del" onclick="repDelWp(${i})">✕</button>
-    </div>`).join('');
+    </div>`; }).join('');
 }
 
 function _renderSavedList() {
@@ -419,12 +439,31 @@ function _getSavedRutas() {
 
 /* ── Acciones públicas ───────────────────────────────── */
 window.repAddWpSuc = function (lat, lng, nombre) {
+  if (nombre) _repNombres[_wpClave(lng, lat)] = nombre;
   _repWaypoints.push([lng, lat]);
   _syncRepRoute();
   _renderWpList();
   _updateWpCount();
   if (_repMap) _repMap.flyTo({ center: [lng, lat], zoom: 14, duration: 900 });
   window.logBitacora?.('reparto', `Sucursal "${nombre}" añadida a ruta`);
+};
+
+/* v222 · Ponerle nombre a una parada marcada en el mapa. Sin esto, un punto
+   añadido tocando el mapa se queda como coordenadas para siempre. */
+window.repNombrarWp = function (i) {
+  const wp = _repWaypoints[i];
+  if (!wp) return;
+  repDialogo({
+    titulo: `Nombre de la parada ${i + 1}`,
+    valor: _wpNombre(wp),
+    placeholder: 'Tienda de doña Mari, bodega, cliente…',
+    okLabel: 'GUARDAR',
+    onOk: n => {
+      const k = _wpClave(wp[0], wp[1]);
+      if (n && n.trim()) _repNombres[k] = n.trim(); else delete _repNombres[k];
+      _renderWpList();
+    },
+  });
 };
 
 window.repDelWp = function (i) {
@@ -436,6 +475,7 @@ window.repDelWp = function (i) {
 
 window.repClearRoute = function () {
   _repWaypoints = [];
+  _repNombres = {};
   clearTimeout(_osrmDebounce);
   _syncRepRoute();
   _renderWpList();
@@ -450,13 +490,14 @@ window.repFlyToSuc = function (lat, lng) {
    prompt()/alert()/confirm() están ROTOS en PWAs instaladas de iOS:
    congelan el hilo y suelen devolver vacío. En la calle eso significaba
    no poder registrar una entrega. Nada de diálogos del navegador aquí. */
-function repDialogo({ titulo, valor = '', tipo = 'text', placeholder = '', onOk, okLabel = 'ACEPTAR' }) {
+function repDialogo({ titulo, valor = '', tipo = 'text', placeholder = '', onOk, okLabel = 'ACEPTAR', html = '' }) {
   document.getElementById('rep-dlg')?.remove();
   const d = document.createElement('div');
   d.id = 'rep-dlg';
   d.innerHTML = `
     <div class="rep-dlg-card">
       <div class="rep-dlg-title">${titulo}</div>
+      ${html || ''}
       ${onOk ? `<input class="rep-dlg-inp" id="rep-dlg-inp" type="${tipo}" value="${valor}" placeholder="${placeholder}" inputmode="${tipo === 'number' ? 'numeric' : 'text'}" autocomplete="off">` : ''}
       <div class="rep-dlg-btns">
         <button class="rep-dlg-btn rep-dlg-cancel" id="rep-dlg-no">${onOk ? 'CANCELAR' : 'CERRAR'}</button>
@@ -500,7 +541,12 @@ window.repSaveRoute = function () {
     onOk: nombre => {
       if (!nombre) return;
       const rutas = _getSavedRutas();
-      rutas.unshift({ nombre, waypoints: [..._repWaypoints], ts: Date.now() });
+      // v222: los nombres viajan con la ruta; si no, al recargarla se
+      // volvían coordenadas otra vez.
+      const nombres = {};
+      _repWaypoints.forEach(wp => { const k = _wpClave(wp[0], wp[1]);
+        if (_repNombres[k]) nombres[k] = _repNombres[k]; });
+      rutas.unshift({ nombre, waypoints: [..._repWaypoints], nombres, ts: Date.now() });
       _saveRutas(rutas);
       _renderSavedList();
       window.logBitacora?.('reparto', `Ruta guardada: "${nombre}"`);
@@ -512,6 +558,7 @@ window.repLoadRuta = function (i) {
   const r = _getSavedRutas()[i];
   if (!r) return;
   _repWaypoints = [...r.waypoints];
+  Object.assign(_repNombres, r.nombres || {});   // v222: recuperar los nombres
   _syncRepRoute();
   _renderWpList();
   _updateWpCount();
@@ -653,27 +700,100 @@ window.repSetSucCoords = function (sucIdx) {
    Abre la ruta en la app de mapas del teléfono para manejar con
    indicaciones por voz. Google Maps acepta múltiples paradas; Waze solo
    un destino, así que ahí mandamos la SIGUIENTE parada. */
+/* ── Pasar la ruta al navegador del teléfono ─────────────────────────────
+   AREX arma y optimiza la ruta, pero no da indicaciones giro a giro: eso lo
+   hace bien Google Maps y no tiene sentido reimplementarlo. Aquí se entrega.
+
+   v222 · EL LÍMITE DE 11 PARADAS, RESUELTO.
+   La URL de direcciones de Google acepta origen + destino + 9 puntos
+   intermedios: once paradas como mucho. Antes, con doce o más, las
+   sobrantes SE DESCARTABAN — solo salía un aviso. Con tres sucursales daba
+   igual; con quince clientes significaba salir a repartir con media ruta.
+   Ahora se parte en TRAMOS de once, encadenados: el último punto de un
+   tramo es el primero del siguiente, así no queda hueco entre ellos. */
+
+const REP_MAX_GMAPS = 11;          // origen + 9 intermedios + destino
+
+function _repTramos(wps) {
+  if (wps.length <= REP_MAX_GMAPS) return [wps];
+  const out = [];
+  let i = 0;
+  while (i < wps.length - 1) {
+    const fin = Math.min(i + REP_MAX_GMAPS, wps.length);
+    out.push(wps.slice(i, fin));
+    i = fin - 1;                   // encadenar: el final es el inicio del siguiente
+  }
+  return out;
+}
+
+function _repUrlGoogle(tramo) {
+  const fmt = w => `${w[1]},${w[0]}`;
+  const medios = tramo.slice(1, -1).map(fmt).join('|');
+  let url = 'https://www.google.com/maps/dir/?api=1'
+          + `&origin=${fmt(tramo[0])}`
+          + `&destination=${fmt(tramo[tramo.length - 1])}`
+          + '&travelmode=driving';
+  if (medios) url += `&waypoints=${medios}`;
+  return url;
+}
+
 window.repNavegar = function (app = 'google') {
   if (!_repWaypoints.length) { repAviso('Arma una ruta primero.'); return; }
   const wps = _repWaypoints;
+
   if (app === 'waze') {
-    const [lng, lat] = wps[wps.length > 1 ? 1 : 0];   // siguiente parada
+    // Waze solo navega a UN destino: se manda la siguiente parada.
+    const idx = wps.length > 1 ? 1 : 0;
+    const [lng, lat] = wps[idx];
+    const n = _wpNombre(wps[idx]);
     window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank');
-    window.logBitacora?.('reparto', 'Navegación abierta en Waze');
+    window.logBitacora?.('reparto', `Waze: siguiente parada${n ? ' — ' + n : ''}`);
     return;
   }
-  // Google Maps: origen = 1ª parada, destino = última, el resto waypoints
-  // (límite práctico de la URL: ~9 waypoints intermedios)
-  const fmt = w => `${w[1]},${w[0]}`;
-  const origen  = fmt(wps[0]);
-  const destino = fmt(wps[wps.length - 1]);
-  const medios  = wps.slice(1, -1).slice(0, 9).map(fmt).join('|');
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origen}&destination=${destino}&travelmode=driving`;
-  if (medios) url += `&waypoints=${medios}`;
-  window.open(url, '_blank');
-  const omitidas = Math.max(0, wps.length - 2 - 9);
-  window.logBitacora?.('reparto', `Navegación abierta en Google Maps (${wps.length} paradas${omitidas ? `, ${omitidas} omitidas por límite` : ''})`);
-  if (omitidas) repAviso(`Abrí Google Maps con las primeras 11 paradas.<br><small>Google limita a 9 puntos intermedios; ${omitidas} quedaron fuera.</small>`);
+
+  const tramos = _repTramos(wps);
+  if (tramos.length === 1) {
+    window.open(_repUrlGoogle(tramos[0]), '_blank');
+    window.logBitacora?.('reparto', `Google Maps: ${wps.length} paradas`);
+    return;
+  }
+
+  // Más de 11 paradas: se ofrecen los tramos, en orden.
+  const filas = tramos.map((t, i) => {
+    const a = _wpNombre(t[0]) || `parada ${wps.indexOf(t[0]) + 1}`;
+    const z = _wpNombre(t[t.length - 1]) || `parada ${wps.indexOf(t[t.length - 1]) + 1}`;
+    return `<button class="rep-btn rep-btn-nav" style="width:100%;margin-bottom:6px"
+              onclick="window.open('${_repUrlGoogle(t)}','_blank')">
+              ▶ TRAMO ${i + 1} · ${t.length} paradas · ${_h(a)} → ${_h(z)}
+            </button>`;
+  }).join('');
+  repDialogo({
+    titulo: `${wps.length} paradas — Google Maps admite 11 por ruta`,
+    html: `<p style="font-size:12px;line-height:1.5;margin-bottom:10px">
+             Se partió en ${tramos.length} tramos encadenados: el final de cada uno
+             es el arranque del siguiente, así no queda ningún hueco.
+           </p>${filas}`,
+    okLabel: 'CERRAR',
+  });
+  window.logBitacora?.('reparto', `Google Maps: ${wps.length} paradas en ${tramos.length} tramos`);
+};
+
+/* v222 · Compartir la ruta. Cuando tengas quien reparta por ti, esto le
+   manda el enlace por WhatsApp o donde sea, sin instalar nada. */
+window.repCompartir = async function () {
+  if (!_repWaypoints.length) { repAviso('Arma una ruta primero.'); return; }
+  const tramos = _repTramos(_repWaypoints);
+  const texto = _repWaypoints.map((wp, i) =>
+    `${i + 1}. ${_wpNombre(wp) || `${wp[1].toFixed(5)}, ${wp[0].toFixed(5)}`}`).join('\n');
+  const cuerpo = `Ruta de reparto — ${_repWaypoints.length} paradas\n\n${texto}\n\n`
+               + tramos.map((t, i) => `${tramos.length > 1 ? `Tramo ${i+1}: ` : ''}${_repUrlGoogle(t)}`).join('\n');
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Ruta de reparto', text: cuerpo }); }
+    else { await navigator.clipboard.writeText(cuerpo); repAviso('Ruta copiada al portapapeles.'); }
+    window.logBitacora?.('reparto', `Ruta compartida (${_repWaypoints.length} paradas)`);
+  } catch (e) {
+    if (e?.name !== 'AbortError') repAviso('No se pudo compartir: ' + (e?.message || e));
+  }
 };
 
 window.renderRepartoModule = renderRepartoModule;

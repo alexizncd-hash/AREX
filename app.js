@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v221';
+const AREX_VERSION = 'v222';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -371,10 +371,51 @@ function buildModuleContext() {
     if (urgentes.length) parts.push(`TAREAS_URGENTES: ${urgentes.length} vencidas/hoy — [${urgentes.slice(0,4).map(t=>(t.text||t.texto||'').slice(0,40)).join(', ')}]`);
     else if (tareas.length) parts.push(`TAREAS_PENDIENTES: ${tareas.length} total`);
   } catch(e) { console.warn('AREX ctx tareas:', e); }
+  try {
+    // v222 · HÁBITOS. Antes AREX no los veía: podías llevar 40 días de
+    // racha y no podía ni mencionarlo. Es el dato más conversacional del
+    // sistema porque cambia cada día y quieres que alguien te lo recuerde.
+    const hab = leer('arex_habitos', []);
+    if (hab.length) {
+      const h = window.hoy();
+      parts.push('HÁBITOS: ' + hab.slice(0, 6).map(x => {
+        const hecho = x.completados?.[h] || x.hechos?.[h];
+        return `${x.nombre} (racha ${x.racha || 0}d, ${hecho ? 'HECHO hoy' : 'pendiente hoy'})`;
+      }).join(', '));
+    }
+  } catch(e) { console.warn('AREX ctx hábitos:', e); }
+  try {
+    // v222 · NOTAS FIJADAS, con su TEXTO. Mandar solo los títulos no sirve
+    // de nada —"Nota 1, Nota 2"—: el valor de una nota está en lo que dice.
+    // Por eso van solo las fijadas, que son las que marcaste como
+    // importantes, y sí con su contenido. Las demás siguen alcanzables por
+    // la búsqueda global.
+    const notas = leer('arex_notas', []);
+    const fijadas = notas.filter(n => n.pinned).slice(0, 4);
+    if (fijadas.length) {
+      parts.push('NOTAS_FIJADAS:\n' + fijadas.map(n =>
+        `  · ${n.titulo || '(sin título)'}: ${String(n.texto || n.cuerpo || '').replace(/\s+/g,' ').slice(0, 180)}`
+      ).join('\n'));
+    } else if (notas.length) {
+      parts.push(`NOTAS: ${notas.length} guardadas, ninguna fijada`);
+    }
+  } catch(e) { console.warn('AREX ctx notas:', e); }
+  try {
+    // v222 · REPARTO. Solo la ruta más reciente y con lo accionable:
+    // cuántas paradas y si ya se puede navegar. Los nombres de rutas
+    // viejas no responden nada.
+    const rutas = leer('arex_reparto_rutas', []);
+    if (rutas.length) {
+      const r0 = rutas[0];
+      parts.push(`REPARTO: última ruta "${r0.nombre}" con ${(r0.waypoints||[]).length} paradas`
+               + ` (${rutas.length} guardada${rutas.length!==1?'s':''}).`
+               + ` Se puede abrir en Google Maps desde el módulo.`);
+    }
+  } catch(e) { console.warn('AREX ctx reparto:', e); }
 
   if (!parts.length) return '';
   const owner = window._arexProfile?.ownerName || 'Alexiz';
-  return `\n\nDATA EN TIEMPO REAL (usa esto cuando ${owner} pregunte sobre sus finanzas, negocio, gastos, metas o tareas):\n${parts.join('\n')}`;
+  return `\n\nDATA EN TIEMPO REAL (usa esto cuando ${owner} pregunte sobre sus finanzas, negocio, gastos, metas, tareas, hábitos, notas fijadas o rutas de reparto):\n${parts.join('\n')}`;
 }
 
 const EXAM_ADDON = `
