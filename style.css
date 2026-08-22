@@ -2816,16 +2816,14 @@ body::before {
 [class*="-content"],
 [class*="-body"],
 [class*="-lista"],
-.neg-section,
 .gastos-content,
 .metas-lista,
 .proyectos-content {
   background: transparent !important;
 }
-
-/* Headers de secciones */
-[class*="-section-title"], [class*="-header-label"],
-.fin-section-label, .neg-section-label {
+[class*="-section-title"],
+[class*="-header-label"],
+.fin-section-label {
   color: var(--cyan) !important;
   text-shadow: 0 0 6px rgba(34,211,238,0.3);
   letter-spacing: 3px !important;
@@ -3060,16 +3058,14 @@ footer {
 .bar-fill {
   box-shadow: 0 0 8px rgba(34,211,238,.5) !important;
 }
-
-
-/* ── Subnav bars — very bright ───────────────────────── */
-.finanzas-subnav, .neg-subnav, [class*="subnav"],
-.neg-content > .neg-subnav {
+.finanzas-subnav,
+[class*="subnav"] {
   background: rgba(0,2,10,.99) !important;
   border-bottom: 1px solid rgba(34,211,238,.42) !important;
   box-shadow: 0 4px 20px rgba(0,0,0,.6) !important;
 }
-.neg-tab.active, .subnav-btn.active, [class*="-tab"].active {
+.subnav-btn.active,
+[class*="-tab"].active {
   color: var(--cyan) !important;
   border-color: rgba(34,211,238,.65) !important;
   text-shadow: 0 0 8px rgba(34,211,238,.5) !important;
@@ -4502,15 +4498,13 @@ header::after {
   background: rgba(0,0,0,0.6);
   letter-spacing: 4px;
 }
-.fin-card,
-.neg-card {
+.fin-card {
   background: rgba(255,106,0,0.04);
   border: 1px solid rgba(255,106,0,0.15);
   position: relative;
   overflow: hidden;
 }
-.fin-card::before,
-.neg-card::before {
+.fin-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 1px;
@@ -5272,11 +5266,7 @@ main#module-chat.module-panel.active { display: flex; }
   transition: width .5s;
   box-shadow: 0 0 6px currentColor;
 }
-
-
-/* 10. Glass cards — all modules */
 .tarjeta-card,
-.neg-kpi,
 .meta-card,
 .hab-card,
 .ag-day-card {
@@ -5291,7 +5281,10 @@ main#module-chat.module-panel.active { display: flex; }
   border-right: 1px solid rgba(34,211,238,.20);
   border-bottom: 1px solid rgba(34,211,238,.15);
 }
-.tarjeta-card:hover, .neg-kpi:hover, .meta-card:hover, .hab-card:hover, .ag-day-card:hover {
+.tarjeta-card:hover,
+.meta-card:hover,
+.hab-card:hover,
+.ag-day-card:hover {
   border-color: rgba(34,211,238,.34);
   border-top-color: rgba(34,211,238,.58);
 }
@@ -5303,21 +5296,16 @@ main#module-chat.module-panel.active { display: flex; }
   box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13);
   backdrop-filter: none;
 }
-.neg-form-card, .neg-calc-card, .neg-chart, .neg-stock-hero {
-  background: linear-gradient(155deg, rgba(14,42,66,.55), rgba(10,30,52,.44));
-  border: 1px solid rgba(34,211,238,.17);
-  border-top-color: rgba(34,211,238,.30);
-  box-shadow: 0 2px 14px rgba(0,0,0,.40), inset 0 1px 0 rgba(34,211,238,.08);
-  backdrop-filter: none;
-}
-.neg-kpi.neg-kpi-warn { border-color: rgba(255,153,0,.38); border-top-color: rgba(255,153,0,.55); }
-.neg-list-item, .tarjeta-list-item, .list-info-item,
-.rep-suc-row, .rep-wp-row, .rep-saved-row {
+.tarjeta-list-item,
+.list-info-item,
+.rep-suc-row,
+.rep-wp-row,
+.rep-saved-row {
   background: rgba(14,42,66,.38);
   border-color: rgba(34,211,238,.18);
   backdrop-filter: none;
 }
-.neg-list-item:hover, .tarjeta-list-item:hover {
+.tarjeta-list-item:hover {
   border-color: rgba(34,211,238,.36);
   background: rgba(14,42,66,.55);
 }
@@ -5340,7 +5328,6 @@ main#module-chat.module-panel.active { display: flex; }
 .calendario-dia.hoy     { background: rgba(34,211,238,.18); border-color: rgba(34,211,238,.55); }
 .calendario-dia.tiene-pago { background: rgba(80,14,14,.40); }
 .alerta-pago { background: rgba(14,42,66,.45); border-color: rgba(34,211,238,.18); }
-.neg-tab.active { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.50); }
 .gp-alert-banner { background: rgba(14,42,66,.55); border-color: rgba(34,211,238,.22); }
 .stat-card, .wx-card {
   background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48));
@@ -5782,7 +5769,6 @@ button,
 a,
 [onclick],
 .nav-btn,
-.neg-kpi,
 .metric-card,
 .tarjeta-card,
 .tarea-item,
@@ -5996,10 +5982,7 @@ header {
   transition: transform 0.38s cubic-bezier(0.32,0.72,0,1),
               visibility 0s linear 0.38s;
 }
-
-/* Subnavs dentro de drawers: sticker debajo del drawer-handle (~50px) */
 .module-panel.drawer-open .finanzas-subnav,
-.module-panel.drawer-open .neg-tab-bar,
 .module-panel.drawer-open .gastos-subnav,
 .module-panel.drawer-open .subnav {
   top: 50px;
