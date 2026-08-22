@@ -21,22 +21,6 @@
   min-height: 0;
   overflow: hidden;
 }
-
-/* ── Header ──────────────────────────────────────────── */
-.rep-header {
-  flex-shrink: 0;
-  background: rgba(0,5,14,0.72);
-  border-bottom: 1px solid rgba(0,255,136,0.16);
-  padding: 10px 14px 8px;
-  backdrop-filter: blur(16px);
-}
-.rep-title-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .rep-title {
   font-family: 'Exo 2', monospace;
   font-size: 12px;
@@ -45,7 +29,6 @@
   color: #34ffc3;
   text-shadow: 0 0 10px rgba(52,255,195,.50);
 }
-.rep-btns { display: flex; gap: 5px; flex-wrap: wrap; }
 .rep-btn {
   background: rgba(0,255,136,0.06);
   border: 1px solid rgba(0,255,136,0.20);
@@ -65,119 +48,13 @@
   color: #ff7070;
 }
 .rep-btn-del:hover { background: rgba(255,60,60,0.10); box-shadow: 0 0 10px rgba(255,60,60,0.20); }
-
-.rep-info-strip {
-  display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-.rep-info-chip { display: flex; flex-direction: column; gap: 1px; }
-.rep-ic-lbl {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 7px;
-  letter-spacing: 2px;
-  color: rgba(0,255,136,0.40);
-  text-transform: uppercase;
-}
-.rep-ic-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: #34ffc3;
-  letter-spacing: 0.3px;
-  max-width: 320px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Body ────────────────────────────────────────────── */
-.rep-body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* ── Map ─────────────────────────────────────────────── */
-.rep-map-wrap {
-  flex: 1;
-  position: relative;
-  min-width: 0;
-  min-height: 300px;
-  background: #010810;
-  overflow: hidden;
-}
 .rep-map-el {
   width: 100%;
   height: 100%;
 }
+/* (.rep-map-msg viejo retirado en v223: su left:50% + transform peleaba
+   con el recuadro nuevo y lo sacaba media pantalla a la izquierda) */
 
-/* HUD corner brackets */
-.rep-hud-tl, .rep-hud-tr, .rep-hud-bl, .rep-hud-br {
-  position: absolute;
-  width: 20px; height: 20px;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0.55;
-}
-.rep-hud-tl { top:8px; left:8px;   border-top:1.5px solid #34ffc3; border-left:1.5px solid #34ffc3; }
-.rep-hud-tr { top:8px; right:8px;  border-top:1.5px solid #34ffc3; border-right:1.5px solid #34ffc3; }
-.rep-hud-bl { bottom:8px; left:8px;  border-bottom:1.5px solid #34ffc3; border-left:1.5px solid #34ffc3; }
-.rep-hud-br { bottom:8px; right:8px; border-bottom:1.5px solid #34ffc3; border-right:1.5px solid #34ffc3; }
-
-.rep-map-msg {
-  position: absolute;
-  bottom: 14px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,6,16,0.90);
-  border: 1px solid rgba(0,255,136,0.22);
-  color: #34ffc3;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 2px;
-  padding: 5px 14px;
-  z-index: 5;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* ── Sidebar ─────────────────────────────────────────── */
-.rep-sidebar {
-  width: 230px;
-  flex-shrink: 0;
-  background: rgba(0,4,12,0.76);
-  border-left: 1px solid rgba(0,255,136,0.12);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  backdrop-filter: blur(16px);
-}
-.rep-sidebar::-webkit-scrollbar { width: 3px; }
-.rep-sidebar::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.25); }
-
-.rep-sb-section {
-  padding: 10px 11px;
-  border-bottom: 1px solid rgba(0,255,136,0.07);
-  flex-shrink: 0;
-}
-.rep-sb-hdr {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
-  letter-spacing: 3px;
-  color: #34ffc3;
-  margin-bottom: 7px;
-  text-shadow: 0 0 6px rgba(52,255,195,.50);
-}
-.rep-list-hint {
-  font-size: 8px;
-  color: rgba(0,255,136,0.30);
-  letter-spacing: 0.4px;
-  margin-bottom: 6px;
-  line-height: 1.5;
-  font-family: 'JetBrains Mono', monospace;
-}
 .rep-empty {
   font-size: 8px;
   color: rgba(0,255,136,0.28);
@@ -356,12 +233,7 @@
 
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .rep-sidebar { display: none; }
-  .rep-title-bar { flex-direction: column; align-items: flex-start; }
-  .rep-btns { gap: 4px; }
   .rep-btn { font-size: 7px; padding: 4px 8px; }
-  .rep-info-strip { gap: 10px; }
-  .rep-ic-val { font-size: 9px; max-width: 200px; }
 }
 
 /* ── Mini-dashboard por tienda en popup del mapa ── */
@@ -443,3 +315,305 @@
 .rep-btn-opt { border-color: rgba(245, 166, 35, 0.55) !important; color: #f5a623 !important; }
 .rep-btn-hot { border-color: rgba(255, 102, 119, 0.55) !important; color: #ff6677 !important; }
 .rep-btn-nav { border-color: rgba(52, 255, 195, 0.55) !important; color: #34ffc3 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v223 · MAPA A PANTALLA COMPLETA
+
+   Antes esto era una pantalla partida: mapa a la izquierda y barra lateral
+   de 230 px con sucursales, ruta y rutas guardadas. En un iPhone de 390 px
+   el mapa se quedaba en menos de 160 de ancho — no sirve para ver una ruta.
+
+   Ahora el mapa ocupa todo y los datos flotan encima, como en cualquier app
+   de mapas. Los bordes respetan env(safe-area-inset-*) para no quedar bajo
+   la muesca ni bajo la barra de gestos del iPhone.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+#module-reparto:has(.rep-mapa-full) { padding: 0; }
+
+.rep-mapa-full {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+
+  & .rep-map-el { position: absolute; inset: 0; }
+}
+
+/* ── Arriba: buscador y resumen ─────────────────────────────────────── */
+.rep-cap-sup {
+  position: absolute;
+  inset-inline: var(--e-3);
+  /* v223: el módulo vive dentro de un cajón con su propia cabecera de
+     pestañas (~46 px). Sin este hueco el buscador quedaba DEBAJO de ellas. */
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 52px);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  pointer-events: none;
+
+  & > * { pointer-events: auto; }
+}
+
+.rep-buscar {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  padding: 0 0 0 var(--e-3);
+  background: color-mix(in oklch, var(--sup-1) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  & .rep-buscar-inp {
+    flex: 1;
+    min-width: 0;              /* sin esto, un texto largo empuja el botón fuera */
+    min-height: var(--toque);
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--texto);
+    font: 400 var(--t-md)/1 var(--font);
+    &::placeholder { color: var(--texto-3); }
+  }
+  & .rep-buscar-btn {
+    min-width: var(--toque);
+    min-height: var(--toque);
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--borde);
+    color: var(--acento);
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 0 var(--radio) var(--radio) 0;
+    &:active { background: color-mix(in oklch, var(--acento) 16%, transparent); }
+  }
+}
+
+.rep-buscar-res {
+  display: none;
+  flex-direction: column;
+  background: color-mix(in oklch, var(--sup-1) 96%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+  max-height: 46vh;
+  overflow-y: auto;
+
+  &.abierto { display: flex; }
+
+  & .rep-busca-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    min-height: var(--toque);
+    padding: var(--e-2) var(--e-3);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--borde);
+    cursor: pointer;
+    &:last-child { border-bottom: none; }
+    &:active { background: var(--sup-2); }
+  }
+  & .rep-busca-n { color: var(--texto);   font-size: var(--t-sm); }
+  & .rep-busca-d { color: var(--texto-3); font-size: var(--t-xs); }
+  & .rep-busca-cargando {
+    padding: var(--e-3);
+    color: var(--texto-3);
+    font-size: var(--t-sm);
+    text-align: center;
+  }
+}
+
+.rep-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2);
+
+  & .rep-res-chip {
+    padding: 5px 10px;
+    border-radius: var(--pastilla);
+    background: color-mix(in oklch, var(--sup-1) 86%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--borde);
+    color: var(--texto-2);
+    font: 600 var(--t-xs)/1.4 var(--font);
+    letter-spacing: .06em;
+    white-space: nowrap;
+    & b { color: var(--texto); }
+  }
+}
+
+/* ── Derecha: acciones sobre el mapa ────────────────────────────────── */
+.rep-cap-acciones {
+  position: absolute;
+  inset-inline-end: var(--e-3);
+  /* Se anclan por encima de la hoja recogida, no al centro: en el centro
+     quedaban medio tapados al desplegarla. */
+  inset-block-end: calc(124px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.rep-fab {
+  inline-size: var(--toque);
+  block-size: var(--toque);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radio);
+  background: color-mix(in oklch, var(--sup-1) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--borde);
+  color: var(--texto-2);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background var(--rapido), border-color var(--rapido), color var(--rapido);
+
+  &:active { scale: .94; }
+  &:hover, &.rep-fab-on {
+    color: var(--acento);
+    border-color: var(--borde-alto);
+    background: color-mix(in oklch, var(--acento) 14%, var(--sup-1));
+  }
+  &.rep-fab-hot:hover { color: var(--aviso); }
+  &.rep-fab-opt:hover { color: var(--ok); }
+}
+
+/* Al desplegar la hoja ya estás mirando la lista, no el mapa: los botones
+   flotantes se apartan en vez de quedar medio tapados. :has() permite que
+   sea el propio CSS quien lo decida, sin que el JS tenga que avisar. */
+.rep-mapa-full:has(.rep-hoja-media, .rep-hoja-completa) .rep-cap-acciones {
+  opacity: 0;
+  pointer-events: none;
+  translate: 12px 0;
+  transition: opacity var(--rapido), translate var(--rapido);
+}
+
+/* ── Abajo: hoja deslizable ─────────────────────────────────────────── */
+.rep-hoja {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in oklch, var(--sup-1) 94%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--borde-alto);
+  border-radius: var(--radio) var(--radio) 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  transition: max-block-size var(--medio) var(--curva);
+  overflow: hidden;
+
+  /* Tres alturas, como en cualquier app de mapas */
+  &.rep-hoja-recogida { max-block-size: 108px; }
+  &.rep-hoja-media    { max-block-size: 48%; }
+  &.rep-hoja-completa { max-block-size: 88%; }
+}
+
+.rep-hoja-tirador {
+  inline-size: 100%;
+  min-block-size: var(--toque);   /* v223: era 26px, por debajo del mínimo táctil */
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  & .rep-hoja-linea {
+    inline-size: 42px;
+    block-size: 4px;
+    border-radius: var(--pastilla);
+    background: var(--texto-3);
+  }
+  &:active .rep-hoja-linea { background: var(--acento); }
+}
+
+.rep-hoja-barra {
+  display: flex;
+  gap: var(--e-2);
+  /* el botón de limpiar es solo una ✕ y se quedaba en 24 px de ancho */
+  & .rep-btn { min-inline-size: var(--toque); flex-shrink: 0; }
+  padding: 0 var(--e-3) var(--e-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.rep-hoja-cuerpo {
+  overflow-y: auto;
+  padding: 0 var(--e-3) var(--e-4);
+  overscroll-behavior: contain;   /* que el scroll no arrastre la página */
+}
+
+.rep-sec { margin-bottom: var(--e-4); }
+
+.rep-sec-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2);
+  padding: var(--e-2) 0;
+  color: var(--texto-2);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: var(--e-2);
+
+  & .rep-sec-hint {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    color: var(--texto-3);
+  }
+}
+
+
+/* ── Cuando el mapa no puede cargar ──────────────────────────────────────
+   Sin internet, o con el CDN de MapLibre caído, antes quedaba un rectángulo
+   negro sin explicación. La regla de AREX es degradar, no reventar: el
+   mensaje se ve, y la hoja con las paradas y las rutas guardadas sigue
+   funcionando — puedes consultar y compartir aunque no veas el mapa. */
+.rep-map-msg {
+  position: absolute;
+  inset-inline: var(--e-5);
+  inset-block-start: 38%;
+  z-index: 2;
+  padding: var(--e-4);
+  border-radius: var(--radio);
+  background: color-mix(in oklch, var(--sup-1) 92%, transparent);
+  border: 1px solid var(--borde);
+  color: var(--texto-2);
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: balance;
+}
+
+
+/* Los iconos de acción de cada fila (⊙ volar, + añadir, ✎ nombrar, ✕ borrar)
+   miden 22 px. Agrandarlos rompería la densidad de la lista, así que se
+   agranda solo el área de toque con un ::before centrado — el dibujo sigue
+   igual pero el dedo acierta. Misma técnica que en las tareas. */
+.rep-icon-btn {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inline-size: var(--toque);
+    block-size: var(--toque);
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    translate: -50% -50%;
+  }
+}

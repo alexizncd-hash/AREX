@@ -33,56 +33,93 @@ function renderRepartoModule() {
   const wrap = document.getElementById('rep-wrap');
   if (!wrap) return;
 
+  /* v223 · MAPA A PANTALLA COMPLETA.
+     Antes esto era una pantalla partida: el mapa a la izquierda y una barra
+     lateral de 230 px con las sucursales, la ruta y las rutas guardadas. En
+     un teléfono de 390 px eso deja el mapa en menos de 160 px de ancho —
+     inservible para ver una ruta.
+
+     Ahora el mapa ocupa TODO y los datos flotan encima, como en cualquier
+     app de mapas: buscador arriba, acciones a la derecha y una hoja
+     deslizable abajo. Los bordes respetan env(safe-area-inset-*) para no
+     quedar debajo de la muesca ni de la barra de gestos del iPhone. */
   wrap.innerHTML = `
-    <div class="rep-header">
-      <div class="rep-title-bar">
-        <span class="rep-title">▸ RUTAS DE REPARTO</span>
-        <div class="rep-btns">
-          <button class="rep-btn" onclick="repGeolocate()">◎ MI UBICACIÓN</button>
-          <button class="rep-btn" onclick="repRouteSucursales()">⊕ RUTA COMPLETA</button>
-          <button class="rep-btn rep-btn-hot" onclick="repRouteSucursales(true)">🔥 SOLO RESURTIR</button>
-          <button class="rep-btn rep-btn-opt" onclick="repOptimizarRuta()">⚡ OPTIMIZAR</button>
+    <div class="rep-mapa-full">
+      <div id="rep-map-el" class="rep-map-el"></div>
+      <div class="rep-map-msg" id="rep-map-msg">⟳ CARGANDO MAPA…</div>
+
+      <!-- ── arriba: buscar dirección + resumen de la ruta ── -->
+      <div class="rep-cap-sup">
+        <div class="rep-buscar dx-sup">
+          <input id="rep-buscar-inp" class="rep-buscar-inp"
+                 placeholder="Buscar dirección o lugar…" autocomplete="off"
+                 enterkeyhint="search">
+          <button class="rep-buscar-btn" onclick="repBuscarLugar()" aria-label="Buscar">⌕</button>
+        </div>
+        <div id="rep-buscar-res" class="rep-buscar-res"></div>
+        <div class="rep-resumen" id="rep-resumen">
+          <span class="rep-res-chip"><b id="rep-wp-count">0</b> paradas</span>
+          <span class="rep-res-chip" id="rep-res-km">— km</span>
+          <span class="rep-res-chip" id="rep-res-min">— min</span>
+          <span class="rep-res-chip" id="rep-weather">—</span>
+        </div>
+      </div>
+
+      <!-- ── derecha: acciones, sobre el mapa ── -->
+      <div class="rep-cap-acciones">
+        <button class="rep-fab" onclick="repGeolocate()"        title="Mi ubicación">◎</button>
+        <button class="rep-fab" onclick="repCapaMapa()"          title="Cambiar mapa" id="rep-fab-capa">◱</button>
+        <button class="rep-fab" onclick="repRouteSucursales()"   title="Ruta con todas las sucursales">⊕</button>
+        <button class="rep-fab rep-fab-hot" onclick="repRouteSucursales(true)" title="Solo las que hay que resurtir">🔥</button>
+        <button class="rep-fab rep-fab-opt" onclick="repOptimizarRuta()" title="Optimizar el orden">⚡</button>
+      </div>
+
+      <!-- ── abajo: hoja deslizable con las paradas ── -->
+      <div class="rep-hoja" id="rep-hoja">
+        <button class="rep-hoja-tirador" onclick="repHoja()" aria-label="Desplegar">
+          <span class="rep-hoja-linea"></span>
+        </button>
+        <div class="rep-hoja-barra">
           <button class="rep-btn rep-btn-nav" onclick="repNavegar('google')">▶ NAVEGAR</button>
           <button class="rep-btn" onclick="repNavegar('waze')">◈ WAZE</button>
           <button class="rep-btn" onclick="repCompartir()">⇪ COMPARTIR</button>
           <button class="rep-btn" onclick="repSaveRoute()">⊡ GUARDAR</button>
-          <button class="rep-btn rep-btn-del" onclick="repClearRoute()">✕ LIMPIAR</button>
+          <button class="rep-btn rep-btn-del" onclick="repClearRoute()">✕</button>
         </div>
-      </div>
-      <div class="rep-info-strip">
-        <div class="rep-info-chip"><span class="rep-ic-lbl">CLIMA</span><span class="rep-ic-val" id="rep-weather">—</span></div>
-        <div class="rep-info-chip"><span class="rep-ic-lbl">REGIÓN</span><span class="rep-ic-val" id="rep-region">—</span></div>
-        <div class="rep-info-chip"><span class="rep-ic-lbl">COORDS</span><span class="rep-ic-val" id="rep-coords">—</span></div>
-        <div class="rep-info-chip"><span class="rep-ic-lbl">PUNTOS RUTA</span><span class="rep-ic-val" id="rep-wp-count">0</span></div>
-      </div>
-    </div>
-
-    <div class="rep-body">
-      <div class="rep-map-wrap">
-        <div id="rep-map-el" class="rep-map-el"></div>
-        <div class="rep-hud-tl"></div><div class="rep-hud-tr"></div>
-        <div class="rep-hud-bl"></div><div class="rep-hud-br"></div>
-        <div class="rep-map-msg" id="rep-map-msg">⟳ CARGANDO SISTEMA DE MAPAS...</div>
-      </div>
-      <div class="rep-sidebar">
-        <div class="rep-sb-section">
-          <div class="rep-sb-hdr">◈ SUCURSALES</div>
-          <div id="rep-suc-list" class="rep-list"></div>
-        </div>
-        <div class="rep-sb-section">
-          <div class="rep-sb-hdr">◈ RUTA ACTIVA</div>
-          <div class="rep-list-hint">Toca el mapa para añadir puntos de entrega</div>
-          <div id="rep-wp-list" class="rep-list"></div>
-        </div>
-        <div class="rep-sb-section">
-          <div class="rep-sb-hdr">◈ RUTAS GUARDADAS</div>
-          <div id="rep-saved-list" class="rep-list"></div>
+        <div class="rep-hoja-cuerpo">
+          <div class="rep-sec">
+            <div class="rep-sec-hdr">RUTA ACTIVA<span class="rep-sec-hint">toca el mapa para añadir</span></div>
+            <div id="rep-wp-list" class="rep-list"></div>
+          </div>
+          <div class="rep-sec">
+            <div class="rep-sec-hdr">SUCURSALES</div>
+            <div id="rep-suc-list" class="rep-list"></div>
+          </div>
+          <div class="rep-sec">
+            <div class="rep-sec-hdr">RUTAS GUARDADAS</div>
+            <div id="rep-saved-list" class="rep-list"></div>
+          </div>
         </div>
       </div>
     </div>`;
 
   _renderSucList();
   _renderSavedList();
+  document.getElementById('rep-hoja')?.classList.add('rep-hoja-recogida');
+  const bInp = document.getElementById('rep-buscar-inp');
+  if (bInp) {
+    bInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); repBuscarLugar(); } });
+    // Nominatim pide máximo 1 petición por segundo: se espera a que pares
+    bInp.addEventListener('input', () => {
+      clearTimeout(_repBuscaT);
+      if (bInp.value.trim().length < 4) {
+        const c = document.getElementById('rep-buscar-res');
+        if (c) { c.innerHTML = ''; c.classList.remove('abierto'); }
+        return;
+      }
+      _repBuscaT = setTimeout(repBuscarLugar, 900);
+    });
+  }
   setTimeout(_initRepMap, 80);
   window.logBitacora?.('reparto', 'Módulo Rutas abierto');
 }
@@ -111,8 +148,13 @@ function _loadMapLibreGL(cb) {
   s.src = `https://cdn.jsdelivr.net/npm/maplibre-gl@${MAPLIBRE_VER}/dist/maplibre-gl.js`;
   s.onload = cb;
   s.onerror = () => {
+    // v223: degradar, no reventar. Se dice qué falló y qué SÍ se puede hacer.
     const m = document.getElementById('rep-map-msg');
-    if (m) m.textContent = '✕ ERROR AL CARGAR MAPA — VERIFICA TU CONEXIÓN';
+    if (m) m.innerHTML = 'No se pudo cargar el mapa.<br>'
+      + '<small>Necesita internet la primera vez. Tus paradas y rutas '
+      + 'guardadas siguen abajo: puedes consultarlas, navegar y compartirlas '
+      + 'sin el mapa.</small>';
+    document.getElementById('rep-hoja')?.classList.replace('rep-hoja-recogida', 'rep-hoja-media');
   };
   document.head.appendChild(s);
 }
@@ -794,6 +836,103 @@ window.repCompartir = async function () {
   } catch (e) {
     if (e?.name !== 'AbortError') repAviso('No se pudo compartir: ' + (e?.message || e));
   }
+};
+
+/* ── v223 · BUSCAR UNA DIRECCIÓN ─────────────────────────────────────────
+   Hasta ahora solo se podían añadir paradas tocando el mapa o eligiendo una
+   sucursal. Para repartir a clientes hace falta escribir la dirección.
+   Nominatim (OpenStreetMap) lo hace gratis y sin clave; a cambio pide no
+   pasar de una petición por segundo, así que se espera a que dejes de
+   escribir en vez de buscar en cada tecla. */
+let _repBuscaT = null;
+
+window.repBuscarLugar = async function () {
+  const inp = document.getElementById('rep-buscar-inp');
+  const cont = document.getElementById('rep-buscar-res');
+  const q = inp?.value.trim();
+  if (!q || !cont) return;
+  cont.innerHTML = '<div class="rep-busca-cargando">buscando…</div>';
+  cont.classList.add('abierto');
+  try {
+    const c = _repMap?.getCenter();
+    // viewbox: se prioriza lo que hay cerca del mapa, no un resultado en otro país
+    const cerca = c ? `&viewbox=${c.lng-1},${c.lat+1},${c.lng+1},${c.lat-1}` : '';
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=es`
+      + `&countrycodes=mx&q=${encodeURIComponent(q)}${cerca}`,
+      { signal: AbortSignal.timeout(9000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (!d.length) { cont.innerHTML = '<div class="rep-busca-cargando">sin resultados</div>'; return; }
+    cont.innerHTML = d.map(x => {
+      const nom = (x.display_name || '').split(',').slice(0, 2).join(',');
+      const resto = (x.display_name || '').split(',').slice(2, 4).join(',');
+      return `<button class="rep-busca-item"
+        onclick="repAgregarBusqueda(${x.lat},${x.lon},'${_h(nom).replace(/'/g, "\\'")}')">
+        <span class="rep-busca-n">${_h(nom)}</span>
+        <span class="rep-busca-d">${_h(resto)}</span>
+      </button>`;
+    }).join('');
+  } catch (e) {
+    cont.innerHTML = `<div class="rep-busca-cargando">no se pudo buscar (${e.message})</div>`;
+  }
+};
+
+window.repAgregarBusqueda = function (lat, lng, nombre) {
+  window.repAddWpSuc(+lat, +lng, nombre);
+  const cont = document.getElementById('rep-buscar-res');
+  const inp = document.getElementById('rep-buscar-inp');
+  if (cont) { cont.innerHTML = ''; cont.classList.remove('abierto'); }
+  if (inp) inp.value = '';
+  window.logBitacora?.('reparto', `Parada añadida por búsqueda: ${nombre}`);
+};
+
+/* ── v223 · CAPAS DEL MAPA ───────────────────────────────────────────────
+   Tres vistas, todas de mosaicos gratuitos y sin clave. El satélite de ESRI
+   sirve para reconocer una bodega o un portón que en el mapa plano no se ve. */
+const REP_CAPAS = [
+  { id: 'oscuro',   nombre: 'OSCURO',
+    tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'],
+    paint: { 'raster-opacity': 0.90, 'raster-hue-rotate': 160,
+             'raster-saturation': -0.55, 'raster-brightness-max': 0.52, 'raster-contrast': 0.15 } },
+  { id: 'satelite', nombre: 'SATÉLITE',
+    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    paint: { 'raster-opacity': 1, 'raster-saturation': -0.15, 'raster-brightness-max': 0.85 } },
+  { id: 'calles',   nombre: 'CALLES',
+    tiles: ['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+    paint: { 'raster-opacity': 0.95, 'raster-saturation': -0.25, 'raster-brightness-max': 0.78 } },
+];
+let _repCapa = 0;
+
+window.repCapaMapa = function () {
+  if (!_repMap) return;
+  _repCapa = (_repCapa + 1) % REP_CAPAS.length;
+  const c = REP_CAPAS[_repCapa];
+  try {
+    _repMap.getSource('base').setTiles(c.tiles);
+    for (const [k, v] of Object.entries(c.paint)) _repMap.setPaintProperty('base', k, v);
+    const b = document.getElementById('rep-fab-capa');
+    if (b) { b.title = `Mapa: ${c.nombre}`; b.classList.add('rep-fab-on');
+             setTimeout(() => b.classList.remove('rep-fab-on'), 700); }
+    window.logBitacora?.('reparto', `Mapa cambiado a ${c.nombre}`);
+  } catch (e) { console.warn('[reparto] capa:', e); }
+};
+
+/* ── v223 · HOJA DESLIZABLE ──────────────────────────────────────────────
+   Tres alturas, como en cualquier app de mapas: solo la barra de acciones,
+   media pantalla, o completa. Empieza recogida para que el mapa se vea. */
+window.repHoja = function (estado) {
+  const h = document.getElementById('rep-hoja');
+  if (!h) return;
+  const orden = ['recogida', 'media', 'completa'];
+  const actual = orden.findIndex(x => h.classList.contains('rep-hoja-' + x));
+  const sig = estado || orden[(actual + 1) % orden.length];
+  orden.forEach(x => h.classList.remove('rep-hoja-' + x));
+  h.classList.add('rep-hoja-' + sig);
+  setTimeout(() => _repMap?.resize(), 320);
 };
 
 window.renderRepartoModule = renderRepartoModule;
