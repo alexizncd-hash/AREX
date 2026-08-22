@@ -4,6 +4,99 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual"/>
 <title>AREX — Sistema de Inteligencia Personal</title>
+<!-- ═══════════════════════════════════════════════════════════════════
+     RED DE SEGURIDAD (v230)
+
+     Si AREX se queda en negro, hasta ahora no había NADA que hacer desde el
+     teléfono: ni ver el error, ni limpiar la caché, ni saber si el problema
+     era el código o el service worker. Eso pasó con v229 y me dejó a ciegas.
+
+     Este bloque no toca el arranque normal. Solo vigila: si a los 12
+     segundos la pantalla sigue vacía, o si algo revienta antes de pintar,
+     enseña qué falló y ofrece borrar caché y service worker para volver.
+     ═══════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var mostrado = false, fallo = null;
+
+  /* ¿Está AREX realmente parado? Mirar si el <body> tiene texto no sirve: el
+     HTML trae mucho escrito de fábrica aunque nada se pinte. Las señales
+     buenas son tres, y las tres significan "el arranque no terminó":
+       · app.js ni siquiera llegó a ejecutarse (no hay AREX_VERSION)
+       · la pantalla de arranque sigue puesta
+       · ni el escritorio ni la pantalla de configuración están visibles */
+  function visible(id) {
+    try {
+      var el = document.getElementById(id);
+      if (!el) return false;
+      var r = el.getBoundingClientRect();
+      return !!el.offsetParent && r.width > 0 && r.height > 0;
+    } catch (e) { return false; }
+  }
+  function estaVacia() {
+    try {
+      if (!window.AREX_VERSION) return true;
+      if (visible('boot-screen')) return true;
+      return !visible('workspace') && !visible('setup-screen');
+    } catch (e) { return false; }
+  }
+
+  function mostrar(motivo) {
+    if (mostrado || !document.body) return;
+    mostrado = true;
+    try {
+      var d = document.createElement('div');
+      d.id = 'arex-rescate';
+      d.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;background:#050b12;'
+        + 'color:#e7f5f8;font:13px/1.6 ui-monospace,Menlo,monospace;padding:22px;overflow:auto;'
+        + '-webkit-user-select:text;user-select:text');
+      var h = document.createElement('div');
+      h.setAttribute('style', 'color:#ff6b6b;font-weight:700;letter-spacing:2px;margin-bottom:14px');
+      h.textContent = 'AREX NO PUDO ARRANCAR';
+      var p = document.createElement('pre');
+      p.setAttribute('style', 'white-space:pre-wrap;word-break:break-word;color:#90aab0;margin:0 0 18px');
+      p.textContent = motivo + (fallo ? '\n\n' + fallo : '');
+      var b = document.createElement('button');
+      b.setAttribute('style', 'min-height:44px;padding:0 16px;background:rgba(0,212,255,.14);'
+        + 'border:1px solid rgba(0,212,255,.45);color:#22d3ee;font:600 12px/1 ui-monospace,monospace;'
+        + 'letter-spacing:2px;border-radius:4px');
+      b.textContent = 'BORRAR CACHÉ Y REINTENTAR';
+      b.onclick = function () {
+        b.textContent = 'LIMPIANDO…';
+        var tareas = [];
+        try { tareas.push(caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+        try { tareas.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+        Promise.all(tareas)['catch'](function () {})['then'](function () {
+          location.replace(location.pathname + '?rescate=' + Date.now());
+        });
+      };
+      var n = document.createElement('div');
+      n.setAttribute('style', 'margin-top:16px;color:#5d7b85;font-size:11px');
+      n.textContent = 'Tus datos (tareas, negocio, finanzas) NO se borran: viven aparte de la caché.';
+      d.appendChild(h); d.appendChild(p); d.appendChild(b); d.appendChild(n);
+      document.body.appendChild(d);
+    } catch (e) {}
+  }
+
+  window.addEventListener('error', function (ev) {
+    if (!fallo) fallo = String((ev && (ev.message || ev.type)) || 'error')
+      + (ev && ev.filename ? '\n' + String(ev.filename).split('/').pop() + ':' + ev.lineno : '');
+    setTimeout(function () { if (estaVacia()) mostrar('Algo falló antes de dibujar la interfaz.'); }, 3500);
+  }, true);
+
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (!estaVacia()) return;
+      // segunda oportunidad: un teléfono lento puede seguir arrancando
+      setTimeout(function () {
+        if (estaVacia()) mostrar('AREX lleva 15 segundos sin terminar de arrancar.');
+      }, 3000);
+    }, 12000);
+  });
+})();
+</script>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#00d4ff"/>
 <!-- v225: las fuentes se alojan aquí. Ver vendor/fuentes/fuentes.css. -->
