@@ -246,20 +246,30 @@
     inp.parentNode.insertBefore(env, inp);
     env.appendChild(inp);
 
+    // El icono va en SVG, no en un carácter: los glifos de ojo dependen de
+    // la fuente y con Rajdhani/Share Tech Mono salían como un arco que no
+    // se lee. Dibujado se ve igual en el iPhone y en el Quest.
+    const OJO = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/>' +
+      '<circle cx="12" cy="12" r="2.8"/></svg>';
+    const OJO_TACHADO = OJO.replace('</svg>', '<path d="M4 20 20 4"/></svg>');
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'nx-clave-ojo';
     btn.setAttribute('aria-label', 'Mostrar la clave');
-    btn.textContent = '◡';
+    btn.innerHTML = OJO;
     env.appendChild(btn);
 
     let t = null;
-    const ocultar = () => { inp.type = 'password'; btn.textContent = '◡';
+    const ocultar = () => { inp.type = 'password'; btn.innerHTML = OJO;
                             btn.setAttribute('aria-label', 'Mostrar la clave');
                             clearTimeout(t); };
     btn.addEventListener('click', () => {
       if (inp.type === 'password') {
-        inp.type = 'text'; btn.textContent = '◉';
+        inp.type = 'text'; btn.innerHTML = OJO_TACHADO;
         btn.setAttribute('aria-label', 'Ocultar la clave');
         clearTimeout(t); t = setTimeout(ocultar, OCULTAR_TRAS);
       } else ocultar();

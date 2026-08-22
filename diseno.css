@@ -734,6 +734,7 @@
   border-radius: var(--radio-sm);
   transition: color var(--rapido);
 
+  & svg { display: block; }
   &:hover { color: var(--acento); }
   &:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
 }
