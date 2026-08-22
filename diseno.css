@@ -712,9 +712,17 @@
    que arexEfectos('off') nunca las apagó de verdad. Esta regla sí, y en un
    solo sitio. La clase la pone el script del principio de index.html, antes
    de que el navegador componga la primera pantalla. */
-html.sin-cristal *,
-html.sin-cristal *::before,
-html.sin-cristal *::after {
+/* El `:is(*, #cristal)` no es adorno. Hay 18 declaraciones de backdrop-filter
+   marcadas !important (16 en style.css), y una de ellas cuelga de un ID:
+   #holo-sys-badge. Entre dos !important manda la especificidad, así que un
+   selector universal PIERDE contra esa: medido, el cristal se quedaba a medio
+   apagar —#holo-sys-badge conservaba blur(0px), y un blur de cero sigue
+   creando la capa de composición en WebKit, que es justo lo que se quiere
+   evitar—. `:is()` toma la especificidad de su argumento más fuerte: con un
+   ID dentro, esta regla las gana todas sin tocar las 18 una por una. */
+html.sin-cristal :is(*, #cristal),
+html.sin-cristal :is(*, #cristal)::before,
+html.sin-cristal :is(*, #cristal)::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
