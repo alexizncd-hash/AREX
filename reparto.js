@@ -72,6 +72,9 @@ function renderRepartoModule() {
         <button class="rep-fab" onclick="repRouteSucursales()"   title="Ruta con todas las sucursales">⊕</button>
         <button class="rep-fab rep-fab-hot" onclick="repRouteSucursales(true)" title="Solo las que hay que resurtir">🔥</button>
         <button class="rep-fab rep-fab-opt" onclick="repOptimizarRuta()" title="Optimizar el orden">⚡</button>
+        ${_repTraficoDisponible()
+          ? '<button class="rep-fab" id="rep-fab-trafico" onclick="repTrafico()" title="Tráfico en tiempo real">◔</button>'
+          : ''}
       </div>
 
       <!-- ── abajo: hoja deslizable con las paradas ── -->
@@ -162,39 +165,34 @@ function _loadMapLibreGL(cb) {
 function _createRepMap(container) {
   const msgEl = document.getElementById('rep-map-msg');
 
+  /* v224 · VECTORES EN VEZ DE IMÁGENES.
+     Antes el mapa eran mosaicos raster —imágenes ya dibujadas— pasados por
+     filtros para que combinaran con el cian:
+
+         raster-brightness-max: 0.52   ← corta el brillo A LA MITAD
+         raster-saturation:    -0.55   ← deslava el color
+         raster-hue-rotate:     160    ← gira el tono
+
+     Ésa era la causa de que se viera turbio y no se leyeran las calles: los
+     filtros aplastaban una imagen que ya venía dibujada, y encima al hacer
+     zoom entre niveles la imagen se interpolaba y salía borrosa.
+
+     CARTO publica sus estilos en VECTORES, gratis y sin clave. Con vectores
+     las etiquetas se dibujan como texto de verdad —nítido a cualquier zoom y
+     en cualquier densidad de pantalla— y los colores vienen ya pensados para
+     fondo oscuro, así que no hace falta ningún filtro que los destruya. */
   _repMap = new maplibregl.Map({
     container,
-    style: {
-      version: 8,
-      sources: {
-        base: {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-          ],
-          tileSize: 256,
-          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
-          maxzoom: 19,
-        }
-      },
-      layers: [{
-        id: 'base', type: 'raster', source: 'base',
-        paint: {
-          'raster-opacity': 0.90,
-          'raster-hue-rotate': 160,
-          'raster-saturation': -0.55,
-          'raster-brightness-max': 0.52,
-          'raster-contrast': 0.15,
-        }
-      }]
-    },
+    style:     REP_CAPAS[_repCapa].estilo,
     center:    [-102.5, 23.6],
     zoom:      5,
     pitch:     48,
     bearing:   -15,
     antialias: true,
+    maxPitch:  70,
+    // el teléfono ya reporta su densidad; forzarla a 1 era lo que hacía
+    // que en pantallas retina se viera pixelado
+    pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   });
 
   _repMap.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
@@ -218,34 +216,98 @@ function _createRepMap(container) {
 
 /* ── Layers: route + waypoints ───────────────────────── */
 function _addRepRouteLayer() {
+  if (_repMap.getSource('rep-route')) return;
   _repMap.addSource('rep-route', {
-    type: 'geojson',
+    type: 'geojson', lineMetrics: true,   // hace falta para el degradado
     data: { type: 'FeatureCollection', features: [] }
   });
 
-  // Glow line
+  /* v224 · La ruta se lee de un vistazo, no se adivina.
+     Antes era una línea naranja punteada de 3 px con un halo difuso: sobre
+     calles se perdía y no se sabía en qué sentido iba. Ahora:
+       · un CONTORNO oscuro debajo para que despegue del mapa
+       · la línea con DEGRADADO del inicio (claro) al final (oscuro), que es
+         lo que indica el sentido sin necesidad de flechas
+       · flechas encima, por si el degradado no basta */
+
+  // contorno: es lo que hace que la línea se vea sobre cualquier fondo
   _repMap.addLayer({
-    id: 'rep-glow', type: 'line', source: 'rep-route',
+    id: 'rep-casing', type: 'line', source: 'rep-route',
     filter: ['==', '$type', 'LineString'],
-    paint: { 'line-color': '#ff6a00', 'line-width': 12, 'line-opacity': 0.18, 'line-blur': 6 }
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#00121c', 'line-width': 11, 'line-opacity': 0.85 }
   });
-  // Main route line
+
   _repMap.addLayer({
     id: 'rep-line', type: 'line', source: 'rep-route',
     filter: ['==', '$type', 'LineString'],
-    paint: { 'line-color': '#ff8c00', 'line-width': 3, 'line-opacity': 0.92, 'line-dasharray': [4, 2] }
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-width': 6,
+      'line-gradient': ['interpolate', ['linear'], ['line-progress'],
+        0,   '#6fe9ff',     // arrancas aquí
+        0.5, '#22d3ee',
+        1,   '#0b6d86'],    // terminas aquí
+    }
   });
-  // Waypoint halos
+
+  // flechas de sentido, repetidas a lo largo de la línea
+  _repMap.addLayer({
+    id: 'rep-flechas', type: 'symbol', source: 'rep-route',
+    filter: ['==', '$type', 'LineString'],
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 70,
+      'text-field': '▶',
+      'text-size': 11,
+      'text-keep-upright': false,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: { 'text-color': '#00121c', 'text-halo-color': '#8ff0ff', 'text-halo-width': 1.2 }
+  });
+
+  /* Las paradas van NUMERADAS. Un punto sin número no dice nada cuando
+     tienes quince: lo que necesitas saber es el ORDEN. */
   _repMap.addLayer({
     id: 'rep-wp-halo', type: 'circle', source: 'rep-route',
     filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
-    paint: { 'circle-radius': 16, 'circle-color': '#f5a623', 'circle-opacity': 0.14 }
+    paint: { 'circle-radius': 19, 'circle-color': '#22d3ee', 'circle-opacity': 0.13 }
   });
-  // Waypoint dots
   _repMap.addLayer({
     id: 'rep-wp-dot', type: 'circle', source: 'rep-route',
     filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
-    paint: { 'circle-radius': 7, 'circle-color': '#f5a623', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff8', 'circle-opacity': 0.96 }
+    paint: {
+      'circle-radius': 13,
+      'circle-color': '#041c26',
+      'circle-stroke-width': 2.5,
+      'circle-stroke-color': '#3fdcf5',
+    }
+  });
+  _repMap.addLayer({
+    id: 'rep-wp-num', type: 'symbol', source: 'rep-route',
+    filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
+    layout: {
+      'text-field': ['to-string', ['+', ['get', 'i'], 1]],
+      'text-size': 13,
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      'text-allow-overlap': true,
+    },
+    paint: { 'text-color': '#d9f7ff' }
+  });
+  // el nombre de la parada, debajo del número
+  _repMap.addLayer({
+    id: 'rep-wp-nom', type: 'symbol', source: 'rep-route',
+    filter: ['all', ['==', '$type', 'Point'], ['==', ['get', 'type'], 'wp']],
+    layout: {
+      'text-field': ['get', 'nombre'],
+      'text-size': 11,
+      'text-offset': [0, 1.6],
+      'text-anchor': 'top',
+      'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+      'text-optional': true,          // si no cabe, se omite en vez de amontonarse
+    },
+    paint: { 'text-color': '#e8fbff', 'text-halo-color': '#001018', 'text-halo-width': 1.6 }
   });
 }
 
@@ -259,7 +321,9 @@ function _syncRepRoute() {
   const feats = _repWaypoints.map((wp, i) => ({
     type: 'Feature',
     geometry: { type: 'Point', coordinates: wp },
-    properties: { type: 'wp', index: i + 1 }
+    // v224: el número de orden y el nombre viajan con el punto, para que el
+    // mapa pueda dibujarlos encima sin volver a consultar nada
+    properties: { type: 'wp', i, index: i + 1, nombre: _wpNombre(wp) }
   }));
 
   // Show straight placeholder while waiting for OSRM
@@ -292,7 +356,9 @@ async function _fetchOSRMRoute(src) {
     const feats = _repWaypoints.map((wp, i) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: wp },
-      properties: { type: 'wp', index: i + 1 }
+      // v224: el número de orden y el nombre viajan con el punto, para que el
+    // mapa pueda dibujarlos encima sin volver a consultar nada
+    properties: { type: 'wp', i, index: i + 1, nombre: _wpNombre(wp) }
     }));
     feats.push({ type: 'Feature', geometry, properties: {} });
     currentSrc.setData({ type: 'FeatureCollection', features: feats });
@@ -890,35 +956,95 @@ window.repAgregarBusqueda = function (lat, lng, nombre) {
 /* ── v223 · CAPAS DEL MAPA ───────────────────────────────────────────────
    Tres vistas, todas de mosaicos gratuitos y sin clave. El satélite de ESRI
    sirve para reconocer una bodega o un portón que en el mapa plano no se ve. */
+/* Tres vistas. Las dos primeras son VECTORIALES (nítidas a cualquier zoom,
+   etiquetas como texto real); la de satélite no puede serlo porque no existe
+   imagen aérea en vectores — ahí sí son fotos. Todas gratuitas y sin clave. */
 const REP_CAPAS = [
-  { id: 'oscuro',   nombre: 'OSCURO',
-    tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'],
-    paint: { 'raster-opacity': 0.90, 'raster-hue-rotate': 160,
-             'raster-saturation': -0.55, 'raster-brightness-max': 0.52, 'raster-contrast': 0.15 } },
+  { id: 'oscuro', nombre: 'OSCURO',
+    estilo: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' },
+  { id: 'calles', nombre: 'CALLES',
+    estilo: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json' },
   { id: 'satelite', nombre: 'SATÉLITE',
-    tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-    paint: { 'raster-opacity': 1, 'raster-saturation': -0.15, 'raster-brightness-max': 0.85 } },
-  { id: 'calles',   nombre: 'CALLES',
-    tiles: ['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
-    paint: { 'raster-opacity': 0.95, 'raster-saturation': -0.25, 'raster-brightness-max': 0.78 } },
+    // Sin filtros: el satélite se lee por sus formas, y bajarle el brillo
+    // era justo lo que impedía reconocer un portón o una bodega.
+    estilo: { version: 8, sources: { sat: { type: 'raster', tileSize: 256, maxzoom: 19,
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        attribution: '© Esri, Maxar, Earthstar Geographics' } },
+      layers: [{ id: 'sat', type: 'raster', source: 'sat' }] } },
 ];
+
 let _repCapa = 0;
 
 window.repCapaMapa = function () {
   if (!_repMap) return;
   _repCapa = (_repCapa + 1) % REP_CAPAS.length;
   const c = REP_CAPAS[_repCapa];
+  // setStyle reemplaza el estilo entero, así que las capas propias (ruta,
+  // marcadores, tráfico) hay que volver a ponerlas cuando termine de cargar.
+  _repMap.once('styledata', () => {
+    try {
+      _addRepRouteLayer();
+      _syncRepRoute();
+      _addRepSucursalesMarkers();
+      _repTraficoAplicar();
+    } catch (e) { console.warn('[reparto] recomponer capas:', e); }
+  });
+  _repMap.setStyle(c.estilo);
+  const b = document.getElementById('rep-fab-capa');
+  if (b) { b.title = `Mapa: ${c.nombre}`;
+           b.classList.add('rep-fab-on'); setTimeout(() => b.classList.remove('rep-fab-on'), 800); }
+  window.logBitacora?.('reparto', `Mapa: ${c.nombre}`);
+};
+
+/* ── v224 · TRÁFICO EN TIEMPO REAL ───────────────────────────────────────
+   No existe ninguna fuente de tráfico gratuita y sin clave: ni Google, ni
+   Apple, ni OpenStreetMap publican el flujo de tráfico abierto. Es dato
+   comercial, se recoge de millones de teléfonos y nadie lo regala.
+
+   Lo más barato que hay es TomTom: 2.500 peticiones al día gratis con una
+   cuenta. Si algún día pones esa clave en /config como `tomtomKey`, el botón
+   de tráfico aparece solo y se enciende. Sin clave, ni se muestra — mejor no
+   tener el botón que tenerlo y que no haga nada.
+
+   Los colores del flujo los pone TomTom (verde fluido → rojo detenido) y no
+   se tocan: son el estándar que ya sabes leer de Google Maps. */
+function _repTraficoDisponible() {
+  return !!(window.AREX_CONFIG?.tomtomKey);
+}
+
+let _repTrafico = false;
+
+function _repTraficoAplicar() {
+  if (!_repMap || !_repTraficoDisponible()) return;
+  const key = window.AREX_CONFIG.tomtomKey;
   try {
-    _repMap.getSource('base').setTiles(c.tiles);
-    for (const [k, v] of Object.entries(c.paint)) _repMap.setPaintProperty('base', k, v);
-    const b = document.getElementById('rep-fab-capa');
-    if (b) { b.title = `Mapa: ${c.nombre}`; b.classList.add('rep-fab-on');
-             setTimeout(() => b.classList.remove('rep-fab-on'), 700); }
-    window.logBitacora?.('reparto', `Mapa cambiado a ${c.nombre}`);
-  } catch (e) { console.warn('[reparto] capa:', e); }
+    if (_repMap.getLayer('trafico')) _repMap.removeLayer('trafico');
+    if (_repMap.getSource('trafico')) _repMap.removeSource('trafico');
+    if (!_repTrafico) return;
+    _repMap.addSource('trafico', {
+      type: 'raster', tileSize: 256, maxzoom: 22,
+      tiles: [`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${key}`],
+      attribution: '© TomTom',
+    });
+    // debajo de las etiquetas para que los nombres de calle sigan leyéndose
+    const capas = _repMap.getStyle().layers || [];
+    const etiqueta = capas.find(l => l.type === 'symbol')?.id;
+    _repMap.addLayer({ id: 'trafico', type: 'raster', source: 'trafico',
+                       paint: { 'raster-opacity': 0.75 } }, etiqueta);
+  } catch (e) { console.warn('[reparto] tráfico:', e); }
+}
+
+window.repTrafico = function () {
+  if (!_repTraficoDisponible()) {
+    repAviso('El tráfico en tiempo real necesita una clave de TomTom.<br>'
+           + '<small>Son 2.500 consultas al día gratis. Créala en developer.tomtom.com '
+           + 'y añádela en /config como <b>tomtomKey</b>: el botón se enciende solo.</small>');
+    return;
+  }
+  _repTrafico = !_repTrafico;
+  _repTraficoAplicar();
+  document.getElementById('rep-fab-trafico')?.classList.toggle('rep-fab-on', _repTrafico);
+  window.logBitacora?.('reparto', `Tráfico ${_repTrafico ? 'encendido' : 'apagado'}`);
 };
 
 /* ── v223 · HOJA DESLIZABLE ──────────────────────────────────────────────

@@ -11,6 +11,10 @@ window.AREX_CONFIG = {
   groqKey:   'gsk_...',           // console.groq.com
   tavilyKey: 'tvly-...',          // app.tavily.com  (opcional)
   owmKey:    '',                  // openweathermap.org  (opcional — widget de clima)
+  tomtomKey: '',                  // developer.tomtom.com (opcional — TRÁFICO en el mapa
+                                  //   de Reparto. 2.500 consultas al día gratis. Sin
+                                  //   esta clave el botón de tráfico ni aparece: no
+                                  //   existe ninguna fuente de tráfico abierta.)
   firebase: {                     // console.firebase.google.com  (opcional)
     apiKey:            'AIza...',
     authDomain:        'tu-proyecto.firebaseapp.com',

@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v223';
+const AREX_VERSION = 'v224';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -121,6 +121,7 @@ function setupSaveHandler() {
       groqKey:   groq,
       tavilyKey: document.getElementById('cfg-tavily').value.trim() || '',
       owmKey:    document.getElementById('cfg-owm').value.trim()    || '',
+      tomtomKey: document.getElementById('cfg-tomtom')?.value.trim() || '',
       geminiKey: (document.getElementById('cfg-gemini')?.value || '').trim() || '',
       firebase:  fbKey ? { apiKey:fbKey, authDomain:fbDomain, projectId:fbProject,
                            storageBucket:fbBucket, messagingSenderId:fbSender, appId:fbApp,
@@ -3916,6 +3917,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
     groqKey:   groq,
     tavilyKey: document.getElementById('cfg2-tavily').value.trim() || '',
     owmKey:    document.getElementById('cfg2-owm').value.trim()    || '',
+    tomtomKey: document.getElementById('cfg2-tomtom')?.value.trim() || '',
     geminiKey: document.getElementById('cfg2-gemini').value.trim() || '',
     firebase:  fbKey ? {
       apiKey:            fbKey,
@@ -3942,6 +3944,7 @@ function abrirConfig() {
   set('cfg2-tavily',     AREX_CONFIG?.tavilyKey);
   set('cfg2-gemini',     AREX_CONFIG?.geminiKey);
   set('cfg2-owm',        AREX_CONFIG?.owmKey);
+  set('cfg2-tomtom',     AREX_CONFIG?.tomtomKey);
   set('cfg2-fb-key',     fb.apiKey);
   set('cfg2-fb-domain',  fb.authDomain);
   set('cfg2-fb-project', fb.projectId);
