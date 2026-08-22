@@ -1705,13 +1705,6 @@ footer {
   border-radius: 4px; padding: 5px 8px;
   font-size: 10px; color: #ff9944; letter-spacing: 0.5px;
 }
-
-/* ── Hitos en Metas ─────────────────────────────────── */
-.meta-hitos-section { margin-top: 8px; border-top: 1px solid rgba(34,211,238,0.08); padding-top: 6px; }
-.meta-hito-count { font-size: 9px; color: var(--cyan); letter-spacing: 1px; }
-.meta-hitos-list { display:flex; flex-direction:column; gap:3px; margin:4px 0; }
-.meta-hito { display:flex; align-items:center; gap:6px; }
-.meta-hito.hito-done .hito-text { text-decoration:line-through; opacity:0.45; }
 .hito-toggle {
   width:16px; height:16px; border-radius:2px; flex-shrink:0;
   border:1px solid rgba(34,211,238,0.3); background:transparent;
@@ -1721,17 +1714,7 @@ footer {
 .hito-toggle:hover { border-color:var(--cyan); background:rgba(34,211,238,0.1); }
 .hito-text { font-size:11px; color:var(--text-muted); flex:1; }
 .hito-del { opacity:0; font-size:9px; color:#ff4444; background:transparent; border:none; cursor:pointer; }
-.meta-hito:hover .hito-del { opacity:0.6; }
 .hito-del:hover { opacity:1 !important; }
-.meta-hito-add-row { margin-top:4px; }
-.meta-hito-input {
-  width:100%; background:transparent; border:none;
-  border-bottom:1px solid rgba(34,211,238,0.12);
-  color:var(--text-muted); font-family:var(--font); font-size:11px;
-  padding:3px 0; outline:none; letter-spacing:0.5px;
-}
-.meta-hito-input:focus { border-bottom-color:var(--cyan); }
-.meta-hito-input::placeholder { color:rgba(34,211,238,0.2); }
 
 /* Recordatorios */
 .rec-item {
@@ -2584,8 +2567,10 @@ header {
   .input-bar .btn svg { width: 20px; height: 20px; }
   /* Ocultar botones menos usados en móvil — siguen accesibles vía /buscar /voz */
   #btn-search, #btn-voice { display: none; }
-  /* 16px mínimo para evitar zoom en iOS */
-  #txt, .tarea-input, .cfg-input, .proj-input, .notas-search { font-size: 16px !important; }
+#txt,
+.tarea-input,
+.cfg-input,
+.notas-search { font-size: 16px !important; }
   /* Quick grid en móvil */
   .quick-grid { grid-template-columns: repeat(3,1fr); gap: 0.5rem; max-width:100%; }
   .quick-btn { padding: 12px 6px; min-height: 66px; }
@@ -2786,17 +2771,6 @@ body::before {
   background: rgba(0,5,18,0.92) !important;
   box-shadow: 0 0 12px rgba(34,211,238,0.07), 0 4px 20px rgba(0,0,0,0.5) !important;
 }
-
-/* Metas */
-.meta-card {
-  border-color: rgba(34,211,238,0.35) !important;
-  background: linear-gradient(135deg, rgba(0,6,22,0.96) 0%, rgba(0,3,14,0.99) 100%) !important;
-  box-shadow:
-    0 0 16px rgba(34,211,238,0.09),
-    0 4px 24px rgba(0,0,0,0.55),
-    inset 0 0 24px rgba(34,211,238,0.03) !important;
-}
-.meta-titulo { color: var(--text-main) !important; }
 [class*="neg-card"] {
   border-color: rgba(255,153,0,0.32) !important;
   background: rgba(0,5,16,0.92) !important;
@@ -2949,7 +2923,6 @@ body.holo-mode .hud-panel {
     inset 0 0 30px rgba(34,211,238,.04) !important;
 }
 body.holo-mode .diag-quad,
-body.holo-mode .meta-card,
 body.holo-mode .metric-card {
   box-shadow:
     0 20px 60px rgba(0,0,0,.7),
@@ -3001,13 +2974,11 @@ body.holo-mode .metric-card {
   border-right: 2px solid rgba(34,211,238,.65);
   pointer-events: none;
 }
-.meta-card,
 .resultado-card,
 .fin-card,
 .proyecto-card {
   position: relative;
 }
-.meta-card::before,
 .resultado-card::before {
   content: '';
   position: absolute; top: 0; left: 0;
@@ -3016,7 +2987,6 @@ body.holo-mode .metric-card {
   border-left: 1.5px solid rgba(34,211,238,.55);
   pointer-events: none; z-index: 1;
 }
-.meta-card::after,
 .resultado-card::after {
   content: '';
   position: absolute; bottom: 0; right: 0;
@@ -3918,7 +3888,6 @@ header::after {
 .fin-card,
 .deuda-card,
 .cuenta-card,
-.meta-card,
 .tarea-item,
 .note-item,
 .proyecto-card,
@@ -5037,12 +5006,6 @@ header::before {
   background: linear-gradient(135deg, var(--iron), var(--gold));
   box-shadow: 0 0 24px rgba(255,106,0,0.50);
 }
-
-
-/* v213 · Estos dos SÍ tienen regla propia en su módulo (cian) y así se ven,
-   pero el comodín les colaba además el recorte de esquina. Se conserva solo
-   eso y el halo, que es lo único que heredaban de él. */
-.proj-add-btn,
 .edit-save-btn {
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
   box-shadow: 0 0 14px rgba(255,106,0,0.30);
@@ -5267,7 +5230,6 @@ main#module-chat.module-panel.active { display: flex; }
   box-shadow: 0 0 6px currentColor;
 }
 .tarjeta-card,
-.meta-card,
 .hab-card,
 .ag-day-card {
   background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50));
@@ -5282,19 +5244,10 @@ main#module-chat.module-panel.active { display: flex; }
   border-bottom: 1px solid rgba(34,211,238,.15);
 }
 .tarjeta-card:hover,
-.meta-card:hover,
 .hab-card:hover,
 .ag-day-card:hover {
   border-color: rgba(34,211,238,.34);
   border-top-color: rgba(34,211,238,.58);
-}
-.ev-card, .proj-card {
-  background: linear-gradient(155deg, rgba(14,42,66,.62), rgba(10,30,52,.50));
-  border-top: 1px solid rgba(34,211,238,.38);
-  border-right: 1px solid rgba(34,211,238,.18);
-  border-bottom: 1px solid rgba(34,211,238,.15);
-  box-shadow: 0 4px 22px rgba(0,0,0,.50), inset 0 1px 0 rgba(34,211,238,.13);
-  backdrop-filter: none;
 }
 .tarjeta-list-item,
 .list-info-item,
@@ -5309,7 +5262,6 @@ main#module-chat.module-panel.active { display: flex; }
   border-color: rgba(34,211,238,.36);
   background: rgba(14,42,66,.55);
 }
-.gp-cat-row { background: rgba(14,42,66,.42); border-color: rgba(34,211,238,.18); }
 .ag-ev-row        { background: rgba(14,42,66,.38); }
 .ag-ev-row-cyan   { background: rgba(14,62,80,.42); }
 .ag-ev-row-orange { background: rgba(66,42,14,.40); }
@@ -5328,7 +5280,6 @@ main#module-chat.module-panel.active { display: flex; }
 .calendario-dia.hoy     { background: rgba(34,211,238,.18); border-color: rgba(34,211,238,.55); }
 .calendario-dia.tiene-pago { background: rgba(80,14,14,.40); }
 .alerta-pago { background: rgba(14,42,66,.45); border-color: rgba(34,211,238,.18); }
-.gp-alert-banner { background: rgba(14,42,66,.55); border-color: rgba(34,211,238,.22); }
 .stat-card, .wx-card {
   background: linear-gradient(155deg, rgba(14,42,66,.60), rgba(10,30,52,.48));
   border: 1px solid rgba(34,211,238,.20);
@@ -5774,7 +5725,6 @@ a,
 .tarea-item,
 .nota-card,
 .hab-card,
-.meta-card,
 .ag-day-card,
 .subnav-btn,
 #center-tabs button,

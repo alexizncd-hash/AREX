@@ -1,161 +1,117 @@
-/* ═══════════════════════════════════════════════
-   AREX — Evidencias Board
-   ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   AREX · EVIDENCIAS  (v227)
+   Reescrito sobre diseno.css. Los nombres de clase se conservan.
 
-#module-evidencias.module-panel.active {
+   La cabecera .ev-module-* la comparten Gastos, Metas y Proyectos: vive
+   en index.html y por eso aparecía en la lista de clases de los cuatro.
+   Se define UNA vez, aquí.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Cabecera compartida por varios módulos ──────────────────────────── */
+.ev-module-hdr {
   display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  width: 100%;
-  max-width: 960px;
-  align-self: center;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2);
+  padding: var(--e-3);
+  border-bottom: 1px solid var(--borde);
 }
+.ev-module-title {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+}
+.ev-module-count { font-size: var(--t-xs); color: var(--texto-3); }
 
+/* ── Tablero ─────────────────────────────────────────────────────────── */
 .ev-board {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+  display: grid;
+  gap: var(--e-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
+  padding: var(--e-3);
 }
 
-.ev-empty {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 1px;
-  line-height: 1.8;
-  padding: 1rem 0;
+.ev-search {
+  width: 100%;
+  min-height: var(--toque);
+  padding: var(--e-2) var(--e-3);
+  margin: var(--e-3);
+  inline-size: calc(100% - var(--e-5));
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--fondo) 70%, black);
+  color: var(--texto);
+  font: 400 var(--t-md)/1.4 var(--font);
+
+  &::placeholder { color: var(--texto-3); }
+  &:focus { outline: none; border-color: var(--acento); background: var(--fondo); }
 }
 
+/* ── Tarjeta de evidencia ────────────────────────────────────────────── */
 .ev-card {
-  background: linear-gradient(135deg, rgba(0,10,22,0.94) 0%, rgba(0,5,14,0.98) 100%);
-  border: 1px solid rgba(34,211,238,0.12);
-  border-left: 3px solid var(--ev-color, var(--cyan));
-  border-radius: 6px;
-  padding: 0.8rem 1rem;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.ev-card:hover {
-  border-color: rgba(34,211,238,0.3);
-  transform: translateX(2px);
+  background: var(--sup-1);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: var(--e-3);
+  container-type: inline-size;
+  transition: border-color var(--rapido);
+  &:hover { border-color: var(--borde-alto); }
 }
 
 .ev-card-head {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.3rem;
+  align-items: flex-start;
+  gap: var(--e-2);
+  margin-bottom: var(--e-2);
 }
-
-.ev-ico {
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
+.ev-ico { flex: 0 0 auto; font-size: var(--t-lg); line-height: 1.1; }
 .ev-titulo {
   flex: 1;
-  font-size: 11px;
-  color: var(--text-main);
-  letter-spacing: 1px;
-  font-weight: 600;
+  min-width: 0;
+  font-size: var(--t-md);
+  color: var(--texto);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
-
-.ev-ts {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 1px;
-}
+.ev-ts { font-size: var(--t-xs); color: var(--texto-3); white-space: nowrap; }
 
 .ev-body {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: var(--t-sm);
+  color: var(--texto-2);
   line-height: 1.6;
-  margin: 0.3rem 0;
-  overflow: hidden;
+  overflow-wrap: anywhere;
+  /* Se recorta a seis líneas: una evidencia puede ser una respuesta larga
+     de AREX y la tarjeta no debe crecer sin control. */
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
-}
-.ev-body.expanded {
-  -webkit-line-clamp: unset;
-  display: block;
+  overflow: hidden;
 }
 
-.ev-actions {
-  display: flex;
-  flex-direction: row;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-  justify-content: flex-end;
-}
-
+.ev-actions { display: flex; gap: var(--e-2); margin-top: var(--e-3); flex-wrap: wrap; }
 .ev-btn {
+  min-height: var(--toque);
+  padding-inline: var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
   background: transparent;
-  border: 1px solid rgba(34,211,238,0.2);
-  color: var(--text-muted);
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  padding: 3px 8px;
+  color: var(--texto-2);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .08em;
+  text-transform: uppercase;
   cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.2s;
-  font-family: var(--font);
+  transition: color var(--rapido), border-color var(--rapido);
+
+  &:hover { color: var(--texto); border-color: var(--borde-alto); }
 }
 
-.ev-btn:hover {
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
-
-.ev-btn.danger:hover {
-  border-color: #ff4444;
-  color: #ff4444;
-}
-
-/* ── Search bar ── */
-.ev-search {
-  width: 100%;
-  background: rgba(0,15,28,0.8);
-  border: 1px solid rgba(34,211,238,0.18);
-  border-radius: 3px;
-  color: var(--text-main);
-  font-family: var(--font);
-  font-size: 11px;
-  padding: 6px 10px;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-.ev-search:focus { border-color: rgba(34,211,238,0.45); }
-.ev-search::placeholder { color: var(--text-muted); }
-
-/* Module standalone header */
-.ev-module-hdr {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px 8px;
-  border-bottom: 1px solid rgba(34,211,238,0.12);
-}
-.ev-module-title {
-  font-family: var(--font);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--cyan);
-}
-.ev-module-count {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-#module-evidencias .ev-board {
-  padding: 12px 16px;
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
+.ev-empty {
+  grid-column: 1 / -1;
+  padding: var(--e-6) var(--e-4);
+  text-align: center;
+  color: var(--texto-3);
+  font-size: var(--t-sm);
+  text-wrap: balance;
 }

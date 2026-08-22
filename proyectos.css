@@ -1,165 +1,184 @@
-/* ── AREX Proyectos ──────────────────────────────────── */
-#module-proyectos.module-panel.active {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-  max-width: 960px;
-  align-self: center;
-}
+/* ═══════════════════════════════════════════════════════════════════════
+   AREX · PROYECTOS  (v227)
+   Reescrito sobre diseno.css. Los nombres de clase se conservan.
 
-.proj-wrap {
-  display:flex; flex-direction:column; gap:1rem;
-  padding:1rem 1rem 0; overflow-y:auto; flex:1;
-}
+   Nota: el vínculo proyecto ↔ tarea/meta/nota se LEE aquí pero ninguna
+   pantalla lo ESCRIBE — funciona por coincidencia de nombre. Está anotado
+   en la hoja de ruta del MANUAL; el diseño no lo arregla.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.proj-wrap { padding: var(--e-3) var(--e-3) var(--e-6); }
 
 .proj-header {
-  display:flex; align-items:center; gap:0.8rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2);
+  margin-bottom: var(--e-4);
 }
 .proj-title {
-  font-size:10px; letter-spacing:4px; color:var(--cyan);
-  font-weight:700; margin:0; font-family:var(--font-display);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--texto);
+  margin: 0;
 }
-.proj-count {
-  font-size:9px; letter-spacing:2px; color:var(--text-muted);
-  border:1px solid var(--border); padding:2px 8px; border-radius:2px;
-}
-
-.proj-nuevo {
-  display:flex; flex-direction:column; gap:0.4rem;
-}
-.proj-input {
-  background:rgba(0,20,35,0.6); border:1px solid var(--border);
-  color:var(--text-main); font-family:var(--font); font-size:11px;
-  padding:8px 12px; border-radius:2px; outline:none;
-  transition:border-color 0.2s;
-}
-.proj-input:focus { border-color:var(--cyan); }
-.proj-input::placeholder { color:var(--text-muted); }
-.proj-add-btn {
-  background:transparent; border:1px solid var(--cyan);
-  color:var(--cyan); font-family:var(--font); font-size:9px;
-  letter-spacing:2px; padding:8px; cursor:pointer;
-  border-radius:2px; transition:all 0.2s;
-}
-.proj-add-btn:hover { background:rgba(34,211,238,0.08); }
+.proj-count { font-size: var(--t-xs); color: var(--texto-3); letter-spacing: .06em; }
 
 .proj-section-label {
-  font-size:8px; letter-spacing:3px; color:var(--text-muted);
-  border-bottom:1px solid var(--border); padding-bottom:4px;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  padding-bottom: var(--e-2);
+  border-bottom: 1px solid var(--borde);
+  margin: var(--e-5) 0 var(--e-2);
 }
 
-.proj-list { display:flex; flex-direction:column; gap:0.5rem; }
+/* ── Alta de proyecto ────────────────────────────────────────────────── */
+.proj-nuevo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  margin-bottom: var(--e-4);
+}
+.proj-input {
+  min-height: var(--toque);
+  padding: var(--e-2) var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--fondo) 70%, black);
+  color: var(--texto);
+  font: 400 var(--t-md)/1.4 var(--font);
+
+  &::placeholder { color: var(--texto-3); }
+  &:focus { outline: none; border-color: var(--acento); background: var(--fondo); }
+}
+.proj-add-btn {
+  min-height: var(--toque);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde-alto);
+  background: color-mix(in oklch, var(--acento) 16%, transparent);
+  color: var(--acento-alto);
+  font: 600 var(--t-sm)/1 var(--font);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  &:hover { background: color-mix(in oklch, var(--acento) 26%, transparent); }
+}
+
+/* ── Tarjeta ─────────────────────────────────────────────────────────── */
+.proj-list { display: flex; flex-direction: column; gap: var(--e-3); }
 
 .proj-card {
-  background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
-  border: 1px solid rgba(34,211,238,0.1);
-  border-left: 3px solid var(--proj-color, var(--cyan));
-  padding: 0.9rem 1rem;
-  border-radius: 8px;
+  background: var(--sup-1);
+  border: 1px solid var(--borde);
+  /* El color del proyecto lo elige el propio proyecto: va en el filo, no
+     inundando la tarjeta. */
+  border-left: 2px solid var(--proj-color, var(--acento));
+  border-radius: var(--radio);
+  padding: var(--e-3) var(--e-3) var(--e-3) calc(var(--e-3) - 1px);
+  container-type: inline-size;
 
-  transition: all 0.3s ease;
-  position: relative;
+  &.proj-done { opacity: .6; }
 }
-.proj-card:hover {
-  border-color: rgba(34,211,238,0.28);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 14px rgba(34,211,238,0.05);
-  transform: translateX(3px);
-}
-.proj-card.proj-done { opacity:0.75; }
-.proj-done-label { text-decoration: line-through; opacity: 0.6; }
 
 .proj-card-top {
-  display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem;
-}
-.proj-color-dot {
-  width:7px; height:7px; border-radius:50%; flex-shrink:0;
-}
-.proj-nombre {
-  flex:1; font-size:12px; color:var(--text-main); letter-spacing:1px;
-  outline:none; min-height:18px; font-family:var(--font-body); font-weight:500;
-}
-.proj-nombre[contenteditable="true"] {
-  border-bottom:1px solid var(--cyan); padding-bottom:1px;
-}
-.proj-card-actions {
-  display:flex; gap:4px;
-}
-.proj-card-actions button {
-  background:transparent; border:none; color:var(--text-muted);
-  font-size:11px; cursor:pointer; padding:2px 5px;
-  border-radius:2px; transition:color 0.2s;
-}
-.proj-card-actions button:hover { color:var(--cyan); }
-
-.proj-desc {
-  font-size:10px; color:var(--text-muted); margin:0 0 0.4rem 1rem;
-  letter-spacing:0.5px; line-height:1.5;
-}
-
-.proj-stats {
-  display:flex; flex-wrap:wrap; gap:0.4rem; margin-left:1rem;
-}
-.proj-stat {
-  font-size:9px; letter-spacing:1px; color:var(--text-muted);
-  background:rgba(34,211,238,0.05);
-  border:1px solid rgba(34,211,238,0.12);
-  padding:2px 8px; border-radius:10px;
-}
-
-.proj-estado-badge {
-  font-size: 7px;
-  letter-spacing: 1px;
-  padding: 2px 7px;
-  border-radius: 10px;
-  border: 1px solid;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.proj-estado-badge.activo      { border-color: rgba(34,211,238,0.3); color: var(--cyan); }
-.proj-estado-badge.planeando   { border-color: rgba(255,153,0,0.3); color: var(--orange); }
-.proj-estado-badge.en-progreso { border-color: rgba(52,255,195,0.3); color: var(--green); }
-.proj-estado-badge.revision    { border-color: rgba(139,92,246,0.3); color: #8B5CF6; }
-.proj-estado-badge.completado  { border-color: rgba(52,255,195,0.25); color: var(--green); opacity: 0.75; }
-
-.proj-progress-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 0.2rem;
+  gap: var(--e-2);
+  margin-bottom: var(--e-2);
 }
+.proj-color-dot {
+  flex: 0 0 auto;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+}
+.proj-nombre {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-md);
+  color: var(--texto);
+  overflow-wrap: anywhere;
+}
+.proj-done-label { text-decoration: line-through; text-decoration-color: var(--texto-3); }
+
+.proj-estado-badge {
+  flex-shrink: 0;
+  padding: .25em .6em;
+  border-radius: var(--pastilla);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--acento) 8%, transparent);
+  color: var(--texto-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  white-space: nowrap;
+
+  &.completado { color: var(--ok); border-color: color-mix(in oklch, var(--ok) 35%, transparent); }
+}
+
+.proj-card-actions { display: flex; gap: var(--e-1); flex-shrink: 0; }
+.proj-card-actions button {
+  min-inline-size: var(--toque);
+  min-block-size: var(--toque);
+  display: grid;
+  place-items: center;
+  border-radius: var(--radio-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--texto-3);
+  cursor: pointer;
+  &:hover { color: var(--texto); border-color: var(--borde); }
+  &[title="Eliminar"]:hover { color: var(--alerta);
+                              border-color: color-mix(in oklch, var(--alerta) 40%, transparent); }
+}
+
+.proj-desc { font-size: var(--t-sm); color: var(--texto-3); line-height: 1.5; margin: 0 0 var(--e-2); }
+
+/* ── Progreso por tareas ─────────────────────────────────────────────── */
+.proj-progress-row { display: flex; align-items: center; gap: var(--e-2); margin-bottom: var(--e-2); }
 .proj-progress-track {
   flex: 1;
-  height: 3px;
-  background: rgba(34,211,238,0.08);
-  border-radius: 2px;
+  height: 5px;
+  border-radius: var(--pastilla);
+  background: var(--sup-2);
   overflow: hidden;
 }
 .proj-progress-fill {
   height: 100%;
-  background: var(--cyan);
-  border-radius: 2px;
-  transition: width 0.4s ease;
+  border-radius: var(--pastilla);
+  background: var(--proj-color, var(--acento));
+  transition: width var(--medio) var(--curva);
 }
 .proj-progress-pct {
-  font-size: 9px;
-  color: var(--text-muted);
-  min-width: 28px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--texto-2);
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 2.8em;
   text-align: right;
 }
 
+/* ── Lo que cuelga del proyecto ──────────────────────────────────────── */
+.proj-stats { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.proj-stat  { font-size: var(--t-xs); color: var(--texto-3); white-space: nowrap; }
+
 .proj-deadline {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
+  font-size: var(--t-xs);
+  color: var(--texto-3);
+  white-space: nowrap;
+  &.soon { color: var(--aviso); }
+  &.late { color: var(--alerta); }
 }
-.proj-deadline.soon { color: var(--orange); }
-.proj-deadline.late { color: #ff4444; }
 
 .proj-empty {
-  text-align:center; color:var(--text-muted);
-  font-size:11px; padding:2rem; line-height:1.8;
+  padding: var(--e-6) var(--e-4);
+  text-align: center;
+  color: var(--texto-3);
+  font-size: var(--t-sm);
+  text-wrap: balance;
+  & em { color: var(--texto-2); font-style: normal; }
 }
-.proj-empty em { color:var(--cyan); font-style:normal; }

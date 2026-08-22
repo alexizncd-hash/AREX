@@ -1,283 +1,181 @@
-/* ══════════════════════════════════════════════════════
-   AREX — Módulo Metas
-   ══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   AREX · METAS  (v227)
+   Reescrito sobre diseno.css. Los nombres de clase se conservan; metas.js
+   no se toca.
 
-/* Panel activo */
-#module-metas.module-panel.active {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-  max-width: 960px;
-  align-self: center;
-}
+   Nota de escalabilidad: metas.js dibuja TODAS las metas sin límite —es el
+   único módulo que no recorta— así que la lista puede crecer sin tope. El
+   estilo lo aguanta, pero el rendimiento no será gratis con cientos.
+   ═══════════════════════════════════════════════════════════════════════ */
 
-/* Vistas */
-#module-metas .neg-view { display: none; }
-#module-metas .neg-view.active { display: block; }
-
-/* ── Tarjeta de meta ── */
 .meta-card {
-  border: 1px solid rgba(34,211,238,0.1);
-  background: linear-gradient(135deg, rgba(0,10,22,0.92) 0%, rgba(0,5,14,0.97) 100%);
-  border-radius: 10px;
-  padding: 0.9rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  background: var(--sup-1);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: var(--e-4);
+  margin-bottom: var(--e-3);
+  container-type: inline-size;
 
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-.meta-card:hover {
-  border-color: rgba(34,211,238,0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 16px rgba(34,211,238,0.04);
+  /* :has() — la tarjeta se apaga sola cuando contiene la marca de lograda,
+     sin que el JS tenga que añadirle nada al padre. */
+  &:has(.meta-lograda-lbl) { opacity: .62; }
 }
 
-.meta-card.meta-done {
-  opacity: 0.7;
-}
-
-/* ── Cabecera ── */
 .meta-header {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
+  justify-content: space-between;
+  gap: var(--e-2);
+  margin-bottom: var(--e-2);
 }
-
 .meta-titulo {
-  font-size: 13px;
-  color: var(--text-main);
-  margin-top: 2px;
-  font-family: var(--font-body);
-  font-weight: 500;
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--texto);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.meta-desc {
+  font-size: var(--t-sm);
+  color: var(--texto-3);
+  line-height: 1.5;
+  margin-bottom: var(--e-3);
 }
 
 .meta-cat-badge {
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  border: 1px solid;
-  padding: 1px 6px;
-  border-radius: 2px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  padding: .25em .6em;
+  border-radius: var(--pastilla);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--acento) 8%, transparent);
+  color: var(--texto-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* ── Descripción ── */
-.meta-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-/* ── Barra de progreso ── */
+/* ── Progreso ────────────────────────────────────────────────────────── */
 .meta-progress-row {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
 }
-
 .meta-track {
   flex: 1;
-  height: 5px;
-  background: rgba(34,211,238,0.08);
-  border-radius: 3px;
+  height: 6px;
+  border-radius: var(--pastilla);
+  background: var(--sup-2);
   overflow: hidden;
 }
-
 .meta-fill {
   height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
-  box-shadow: 0 0 6px rgba(34,211,238,0.4);
-  transition: width 0.5s ease;
+  border-radius: var(--pastilla);
+  background: var(--acento);
+  transition: width var(--medio) var(--curva);
+  &.complete { background: var(--ok); }
 }
-
 .meta-pct {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  min-width: 32px;
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  color: var(--texto-2);
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 3.2em;
   text-align: right;
 }
+.meta-val {
+  font-family: var(--font-mono);
+  font-size: var(--t-lg);
+  color: var(--texto);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
 
-/* ── Pie de tarjeta ── */
+/* ── Pie de tarjeta ──────────────────────────────────────────────────── */
 .meta-footer {
   display: flex;
-  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  font-size: 10px;
+  gap: var(--e-2);
+  flex-wrap: wrap;
+  padding-top: var(--e-3);
+  border-top: 1px solid var(--borde);
 }
-
-.meta-val {
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-
+/* Los días restantes: ámbar si aprieta, rojo si ya venció. */
 .meta-dias {
-  color: var(--text-muted);
+  font-size: var(--t-xs);
+  color: var(--texto-3);
+  letter-spacing: .06em;
+  &.pronto  { color: var(--aviso); }
+  &.vencida { color: var(--alerta); }
 }
-
-/* ── Acciones ── */
-.meta-actions {
-  display: flex;
-  flex-direction: row;
-  gap: 6px;
-  align-items: center;
-  margin-top: 2px;
-}
-
-.meta-update-input {
-  flex: 1;
-}
-
-/* ── Botón LOGRADA ── */
-.meta-btn-done {
-  padding: 6px 12px;
-  background: rgba(52,255,195,0.08);
-  border: 1px solid #34ffc3;
-  color: #34ffc3;
-  font-family: var(--font);
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.18s;
-  white-space: nowrap;
-}
-.meta-btn-done:hover { background: rgba(52,255,195,0.18); }
-.meta-btn-done:active { transform: translateY(1px); }
-
-/* ── Etiqueta de lograda (vista completadas) ── */
+.meta-fecha-completada { font-size: var(--t-xs); color: var(--texto-3); }
 .meta-lograda-lbl {
-  font-size: 10px;
-  color: #34ffc3;
-  letter-spacing: 1px;
-}
-
-/* ── Responsive ── */
-@media (max-width: 600px) {
-  .meta-actions { flex-wrap: wrap; }
-}
-/* ── Etiqueta done reactivable ── */
-.meta-reactivar-btn {
-  padding: 4px 10px;
-  background: transparent;
-  border: 1px solid rgba(34,211,238,0.2);
-  color: var(--text-muted);
-  font-family: var(--font);
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.18s;
-}
-.meta-reactivar-btn:hover { border-color: var(--cyan); color: var(--cyan); }
-
-.meta-fecha-completada {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-}
-
-@media (max-width: 400px) {
-  .meta-card { padding: 0.75rem 0.85rem; }
-}
-
-/* ── Hitos (milestones) ── */
-.meta-hitos-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-}
-.meta-hito-count {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-}
-.meta-hitos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.meta-hito {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: rgba(34,211,238,0.04);
-  border: 1px solid rgba(34,211,238,0.08);
-  transition: background 0.15s;
+  gap: .3em;
+  color: var(--ok);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
-.meta-hito.hito-done {
-  opacity: 0.55;
-}
-.meta-hito.hito-done .hito-text {
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
-.hito-toggle {
-  min-width: 18px; height: 18px;
-  border: 1px solid rgba(34,211,238,0.4);
-  border-radius: 3px;
+.meta-done { text-decoration: line-through; text-decoration-color: var(--texto-3); }
+
+/* ── Acciones ────────────────────────────────────────────────────────── */
+.meta-actions { display: flex; gap: var(--e-2); flex-wrap: wrap; }
+
+.meta-btn-done,
+.meta-reactivar-btn {
+  min-height: var(--toque);
+  padding-inline: var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
   background: transparent;
-  color: var(--cyan);
-  font-size: 10px;
+  color: var(--texto-2);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .08em;
+  text-transform: uppercase;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
+  transition: color var(--rapido), border-color var(--rapido), background var(--rapido);
+
+  &:hover { color: var(--texto); border-color: var(--borde-alto); }
 }
-.hito-toggle:hover { background: rgba(34,211,238,0.15); }
-.meta-hito.hito-done .hito-toggle {
-  background: rgba(52,255,195,0.15);
-  border-color: var(--green);
-  color: var(--green);
+.meta-btn-done:hover {
+  color: var(--ok);
+  border-color: color-mix(in oklch, var(--ok) 40%, transparent);
+  background: color-mix(in oklch, var(--ok) 10%, transparent);
 }
-.hito-text {
-  flex: 1;
-  font-size: 10px;
-  color: var(--text-main);
-  word-break: break-word;
-}
-.hito-del {
-  background: transparent;
-  border: none;
-  color: rgba(255,68,85,0.4);
-  font-size: 11px;
-  cursor: pointer;
-  padding: 0 2px;
-  flex-shrink: 0;
-  transition: color 0.15s;
-}
-.hito-del:hover { color: #ff4455; }
-.meta-hito-add-row {
-  margin-top: 2px;
-}
+
+/* ── Campos ──────────────────────────────────────────────────────────── */
+.meta-update-input,
 .meta-hito-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(34,211,238,0.15);
-  color: var(--text-main);
-  font-family: var(--font);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  padding: 4px 2px;
-  outline: none;
-  transition: border-color 0.2s;
+  min-height: var(--toque);
+  padding: var(--e-2) var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid var(--borde);
+  background: color-mix(in oklch, var(--fondo) 70%, black);
+  color: var(--texto);
+  font: 400 var(--t-md)/1.4 var(--font);
+
+  &::placeholder { color: var(--texto-3); }
+  &:focus { outline: none; border-color: var(--acento); background: var(--fondo); }
 }
-.meta-hito-input:focus { border-color: rgba(34,211,238,0.4); }
-.meta-hito-input::placeholder { color: var(--text-muted); }
+.meta-update-input { inline-size: 6em; text-align: right; font-family: var(--font-mono); }
+.meta-hito-input   { flex: 1; min-width: 0; }
+
+/* ── Hitos ───────────────────────────────────────────────────────────── */
+.meta-hitos-section { margin-top: var(--e-3); padding-top: var(--e-3); border-top: 1px solid var(--borde); }
+.meta-hitos-list    { display: flex; flex-direction: column; }
+.meta-hito-add-row  { display: flex; gap: var(--e-2); margin-top: var(--e-2); }
+.meta-hito-count {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--texto-3);
+  font-variant-numeric: tabular-nums;
+}
