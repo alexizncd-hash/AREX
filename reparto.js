@@ -1001,8 +1001,8 @@ window.repCapaMapa = function () {
    Apple, ni OpenStreetMap publican el flujo de tráfico abierto. Es dato
    comercial, se recoge de millones de teléfonos y nadie lo regala.
 
-   Lo más barato que hay es TomTom: el plan gratuito trae cuota mensual de
-   sobra para un uso como éste. Si algún día pones esa clave en /config como `tomtomKey`, el botón
+   Lo más barato que hay es TomTom: 2.500 peticiones al día gratis con una
+   cuenta. Si algún día pones esa clave en /config como `tomtomKey`, el botón
    de tráfico aparece solo y se enciende. Sin clave, ni se muestra — mejor no
    tener el botón que tenerlo y que no haga nada.
 
@@ -1037,7 +1037,7 @@ function _repTraficoAplicar() {
 window.repTrafico = function () {
   if (!_repTraficoDisponible()) {
     repAviso('El tráfico en tiempo real necesita una clave de TomTom.<br>'
-           + '<small>El plan gratuito basta de sobra. Créala en developer.tomtom.com '
+           + '<small>Son 2.500 consultas al día gratis. Créala en developer.tomtom.com '
            + 'y añádela en /config como <b>tomtomKey</b>: el botón se enciende solo.</small>');
     return;
   }
