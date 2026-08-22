@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v228';
+const AREX_VERSION = 'v229';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -3939,6 +3939,30 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
+});
+
+/* ── Probar la clave de TomTom ────────────────────────────────────────────
+   Una clave incompleta no da error visible: el servicio responde 403 y el
+   tráfico simplemente no aparece, sin decir por qué. Este botón lo pregunta
+   de frente pidiendo un mosaico de tráfico y traduce la respuesta. */
+document.getElementById('cfg2-tomtom-probar')?.addEventListener('click', async (ev) => {
+  const btn = ev.currentTarget;
+  const k = (document.getElementById('cfg2-tomtom')?.value || '').trim();
+  if (!k) { tost('Pega o escribe la clave antes de probarla', 'error'); return; }
+  const antes = btn.textContent;
+  btn.disabled = true; btn.textContent = 'PROBANDO…';
+  try {
+    // Un mosaico sobre la Ciudad de México, el más barato que se puede pedir.
+    const r = await fetch('https://api.tomtom.com/traffic/map/4/tile/flow/relative0/'
+      + '12/920/1822.png?key=' + encodeURIComponent(k), { cache: 'no-store' });
+    if (r.ok) tost('La clave funciona · TomTom devolvió el mapa de tráfico', 'ok');
+    else if (r.status === 403) tost('TomTom rechaza la clave (403): repásala entera '
+      + 'y comprueba que el producto de tráfico esté activo', 'error');
+    else tost('TomTom respondió ' + r.status + ' · la clave no sirve todavía', 'error');
+  } catch (e) {
+    tost('Sin conexión ahora mismo: la clave se guarda igual y se prueba luego', 'error');
+  }
+  btn.disabled = false; btn.textContent = antes;
 });
 
 // ── Modal de ajustes (botón ⚙ del header, /config y Mission Control) ──
