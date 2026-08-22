@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v224';
+const AREX_VERSION = 'v225';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -5021,20 +5021,63 @@ window.abrirBusqueda  = abrirBusqueda;
 window.cerrarBusqueda = cerrarBusqueda;
 
 /* ── … → extraído a widgets.js (v219) ── */
-/* ── Performance profile: reduce blur on low-end devices ── */
-(function applyPerformanceProfile() {
-  const cores = navigator.hardwareConcurrency || 4;
-  const mem   = navigator.deviceMemory || 4;   // GB, Chrome only
-  const isLow = cores <= 4 || mem <= 2;
-  const root  = document.documentElement.style;
-  if (isLow) {
-    // Low-end: sin blur — Liquid Glass visual vía borders/shadows únicamente
+/* ── v225 · Perfil de rendimiento ────────────────────────────────────────
+   EL FALLO: la versión anterior decidía así si tu equipo era flojo:
+
+       const cores = navigator.hardwareConcurrency || 4;
+       const isLow = cores <= 4 || mem <= 2;
+
+   El valor por defecto cuando el navegador NO expone el dato es 4… y el
+   umbral es "4 o menos". O sea que **cualquier navegador que no publique
+   cuántos núcleos tiene quedaba clasificado como equipo flojo** y se
+   quedaba sin blur. Un iPhone 16 Pro Max podía estar entrando por esa
+   puerta sin que nadie lo notara: el sistema de cristal llevaba tiempo
+   apagado sin motivo.
+
+   Además deviceMemory solo existe en Chrome, así que en Safari `mem`
+   siempre valía 4 y esa mitad de la condición nunca decidía nada.
+
+   AHORA: desconocido ≠ flojo. Solo se apaga el cristal cuando el navegador
+   AFIRMA que el equipo es limitado, o cuando el propio sistema pide menos
+   efectos. Y se puede forzar a mano desde la configuración, porque quien
+   mejor sabe si va fluido eres tú mirando la pantalla. */
+(function aplicarPerfilRendimiento() {
+  const root = document.documentElement.style;
+  const forzado = localStorage.getItem('arex_efectos');   // 'on' | 'off' | null
+
+  if (forzado === 'off') { root.setProperty('--blur-sm','0px');
+                           root.setProperty('--blur-md','0px');
+                           root.setProperty('--blur-lg','0px'); return; }
+  if (forzado === 'on') return;   // los valores del CSS (3/6/10px) se quedan
+
+  // Solo cuenta lo que el navegador AFIRMA, no lo que se supone por su silencio
+  const nucleos  = navigator.hardwareConcurrency;         // undefined si no lo dice
+  const memoria  = navigator.deviceMemory;                // solo Chrome
+  const ahorro   = navigator.connection?.saveData === true;
+  const menosMov = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  const flojo = (typeof nucleos === 'number' && nucleos <= 2)
+             || (typeof memoria === 'number' && memoria <= 2)
+             || ahorro || menosMov;
+
+  if (flojo) {
     root.setProperty('--blur-sm', '0px');
     root.setProperty('--blur-md', '0px');
     root.setProperty('--blur-lg', '0px');
   }
-  // Mid/High: defaults v117 (3/6/10px) son ya eficientes — no override necesario
+  window.AREX_EFECTOS = { nucleos: nucleos ?? 'no lo dice',
+                          memoria: memoria ?? 'no lo dice',
+                          ahorroDatos: ahorro, menosMovimiento: menosMov,
+                          cristal: flojo ? 'apagado' : 'encendido' };
 })();
+
+/* Encender o apagar el cristal a mano. Lo expone /config y el módulo
+   Control; la decisión se guarda y sobrevive a recargas. */
+window.arexEfectos = function (estado) {
+  if (estado === 'auto') localStorage.removeItem('arex_efectos');
+  else localStorage.setItem('arex_efectos', estado === 'on' ? 'on' : 'off');
+  location.reload();
+};
 
 /* v215 · CAMPO DE ESTRELLAS — RETIRADO
    Era un canvas a pantalla completa (390×844 = 0,33 Mpx) repintando ~55

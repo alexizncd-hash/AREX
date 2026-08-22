@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v224';
-const VERSION = 'v224';
+const CACHE   = 'arex-v225';
+const VERSION = 'v225';
 const SHELL = [
   './index.html',
   './style.css',
@@ -39,6 +39,13 @@ const SHELL = [
   './search.js',
   './search.css',
   './orb.js',
+  './vendor/fuentes/fuentes.css',
+  './vendor/fuentes/rajdhani-latin-300-normal.woff2',
+  './vendor/fuentes/rajdhani-latin-400-normal.woff2',
+  './vendor/fuentes/rajdhani-latin-500-normal.woff2',
+  './vendor/fuentes/rajdhani-latin-600-normal.woff2',
+  './vendor/fuentes/rajdhani-latin-700-normal.woff2',
+  './vendor/fuentes/share-tech-mono-latin-400-normal.woff2',
   './vendor/marked.min.js',
   './vendor/purify.min.js',
   './manifest.json',

@@ -656,7 +656,7 @@
   flex-shrink: 0;
 }
 .vp-mhud-title {
-  font-family: var(--font-display, 'Exo 2', sans-serif);
+  font-family: var(--font-display, var(--font-display));
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -697,7 +697,7 @@
   color: rgba(34,211,238,0.7);
   letter-spacing: 0.05em;
   margin-bottom: 6px;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--font-mono, var(--font-mono));
 }
 .vp-mhud-item {
   font-size: 12px;

@@ -29,7 +29,7 @@
      desde v66 valen VERDE. El naranja original sobrevive solo en
      --lg-refract-iron y en literales rgba(255,106,0,…) del cristal.
    · --font-mono resuelve a 'Share Tech Mono', pero 36 reglas piden
-     'JetBrains Mono' a mano y 9 piden 'Exo 2' — ninguna de las dos se
+     var(--font-mono) a mano y 9 piden var(--font-display) — ninguna de las dos se
      descarga (index.html solo carga Rajdhani + Share Tech Mono), así
      que esas reglas caen a la monoespaciada del sistema.
    ════════════════════════════════════════════════════════════════════ */
@@ -4144,7 +4144,7 @@ main::before {
   border: 2px solid var(--iron);
   font-weight: 700;
   color: #fff;
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
   animation: arc-reactor-pulse 2s ease-in-out infinite;
   position: relative;
   background: radial-gradient(circle at 38% 32%,
@@ -4160,7 +4160,7 @@ main::before {
 #boot-lines {
   font-size: 11px;
   letter-spacing: 2.5px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 /* #boot-bar-wrap — 5 de las 5 declaraciones de este bloque seguían vivas (v213) */
 #boot-bar-wrap {
@@ -4221,7 +4221,7 @@ header::after {
 .hdr-pill-name {
   font-weight: 700;
   text-shadow: 0 0 8px var(--iron-glow);
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
 }
 /* .hdr-dot — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
 .hdr-dot {
@@ -4232,12 +4232,12 @@ header::after {
 .hdr-mode {
   color: var(--gold);
   letter-spacing: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* .hdr-clock — 3 de las 4 declaraciones de este bloque seguían vivas (v213) */
 .hdr-clock {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 3px;
   text-shadow: 0 0 6px var(--iron-glow);
 }
@@ -4247,7 +4247,7 @@ header::after {
   border: 1px solid rgba(255,106,0,0.35);
   letter-spacing: 2px;
   color: var(--iron);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   text-shadow: 0 0 8px var(--iron-glow);
   box-shadow: 0 0 16px rgba(255,106,0,0.12);
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
@@ -4362,14 +4362,14 @@ header::after {
 /* .status-float — 4 de las 4 declaraciones de este bloque seguían vivas (v213) */
 .status-float {
   letter-spacing: 4px;
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
   color: var(--iron);
   text-shadow: 0 0 10px var(--iron-glow);
 }
 /* .hud-ph — 4 de las 5 declaraciones de este bloque seguían vivas (v213) */
 .hud-ph {
   letter-spacing: 3px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   text-shadow: 0 0 6px var(--iron-glow);
   border-bottom-color: rgba(255,106,0,0.2);
 }
@@ -4403,7 +4403,7 @@ header::after {
 .module-tab,
 .ctrl-tab {
   color: rgba(255,106,0,0.55);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 2px;
   border-bottom: 2px solid transparent;
   transition: all 0.18s;
@@ -4422,7 +4422,7 @@ header::after {
 }
 
 .ctrl-title {
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--iron);
   text-shadow: 0 0 16px var(--iron-glow), 0 0 30px rgba(255,106,0,0.2);
@@ -4430,7 +4430,7 @@ header::after {
 }
 .diag-title-text {
   color: var(--iron);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   text-shadow: 0 0 10px var(--iron-glow);
 }
 .diag-title-line {
@@ -4451,12 +4451,12 @@ header::after {
 .diag-quad-hdr {
   color: var(--iron);
   border-bottom-color: rgba(255,106,0,0.18);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   text-shadow: 0 0 8px var(--iron-glow);
   letter-spacing: 2.5px;
 }
 .diag-ico { color: var(--gold); }
-.diag-k { color: rgba(255,106,0,0.60); font-family: 'JetBrains Mono', monospace; }
+.diag-k { color: rgba(255,106,0,0.60); font-family: var(--font-mono); }
 .diag-v.ok  { color: #34ffc3; }
 .diag-v.err { color: #ff4444; }
 .diag-v.warn{ color: var(--gold); }
@@ -4487,13 +4487,13 @@ header::after {
 }
 /* .agent-orb-name — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .agent-orb-name {
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
   letter-spacing: 4px;
   font-weight: 700;
 }
 /* .agent-run-btn — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .agent-run-btn {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 3px;
   clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
 }
@@ -4537,7 +4537,7 @@ header::after {
   color: #fff;
   box-shadow: 0 0 14px rgba(255,106,0,0.30);
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 2px;
 }
 .btn-primary:hover,
@@ -4558,7 +4558,7 @@ header::after {
 .bg-input {
   background: rgba(255,106,0,0.04);
   color: var(--gold);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   border-bottom-color: rgba(255,106,0,0.25);
   caret-color: var(--iron);
 }
@@ -4584,7 +4584,7 @@ header::after {
 pre, code {
   background: rgba(2,8,18,0.88);
   border: 1px solid rgba(255,106,0,0.12);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ── Progress bars / meters ──────────────────────────── */
@@ -4599,13 +4599,13 @@ pre, code {
   letter-spacing: 3px;
   color: var(--iron);
   background: rgba(255,106,0,0.06);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 /* .pomo-title — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .pomo-title {
   letter-spacing: 4px;
   color: var(--iron);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 /* .pomo-circle-progress — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
 .pomo-circle-progress {
@@ -4616,7 +4616,7 @@ pre, code {
 .pomo-time {
   color: var(--gold);
   text-shadow: 0 0 12px var(--gold-glow);
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
 }
 
 
@@ -4624,8 +4624,8 @@ pre, code {
 .ctrl-log-entry {
   border-bottom: 1px solid rgba(255,106,0,0.06);
 }
-.ctrl-log-ts  { color: rgba(255,106,0,0.45); font-family: 'JetBrains Mono', monospace; }
-.ctrl-log-mod { font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+.ctrl-log-ts  { color: rgba(255,106,0,0.45); font-family: var(--font-mono); }
+.ctrl-log-mod { font-family: var(--font-mono); letter-spacing: 1px; }
 
 /* ── Links and highlights ────────────────────────────── */
 a { color: var(--iron); text-decoration: none; }
@@ -5033,7 +5033,7 @@ header::before {
   background: linear-gradient(135deg, rgba(255,90,0,0.8), rgba(200,70,0,0.9));
   border: 1px solid rgba(255,106,0,0.45);
   color: #fff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 2px;
   box-shadow: 0 0 14px rgba(255,106,0,0.30);
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
@@ -6043,7 +6043,7 @@ header {
   border-top-color: rgba(255,255,255,0.13);
   border-radius: 5px;
   color: var(--iron);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 14px;
   width: 34px; height: 30px;
   display: flex; align-items: center; justify-content: center;
@@ -6057,7 +6057,7 @@ header {
 }
 
 .drawer-centro-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 3px;
   color: rgba(255,255,255,0.40);
@@ -6081,7 +6081,7 @@ header {
   border-top-color: rgba(255,255,255,0.08);
   border-radius: 4px;
   color: rgba(255,106,0,0.50);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 1.5px;
   padding: 5px 10px;

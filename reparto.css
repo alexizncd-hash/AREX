@@ -22,7 +22,7 @@
   overflow: hidden;
 }
 .rep-title {
-  font-family: 'Exo 2', monospace;
+  font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 4px;
@@ -33,7 +33,7 @@
   background: rgba(0,255,136,0.06);
   border: 1px solid rgba(0,255,136,0.20);
   color: #34ffc3;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 1.5px;
   padding: 5px 10px;
@@ -58,7 +58,7 @@
 .rep-empty {
   font-size: 8px;
   color: rgba(0,255,136,0.28);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.3px;
   padding: 3px 0;
 }
@@ -80,7 +80,7 @@
 .rep-suc-dot.warn { background: rgba(255,200,0,0.55); }
 .rep-suc-info { flex: 1; min-width: 0; }
 .rep-suc-name {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   color: rgba(200,255,230,0.88);
   letter-spacing: 0.3px;
@@ -121,7 +121,7 @@
   width: 18px; height: 18px;
   background: #34ffc3;
   color: #000;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
@@ -133,7 +133,7 @@
   font-size: 8px;
   color: rgba(0,255,136,0.50);
   letter-spacing: 0.2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ── Saved routes ────────────────────────────────────── */
@@ -146,7 +146,7 @@
 }
 .rep-saved-info { flex: 1; min-width: 0; }
 .rep-saved-name {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   color: rgba(200,255,230,0.85);
   white-space: nowrap;
@@ -192,7 +192,7 @@
   margin-bottom: 2px;
 }
 .rep-suc-tag {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   color: #ffd060;
   text-shadow: 0 0 3px rgba(0,0,0,1), 0 1px 4px rgba(0,0,0,0.9);
@@ -213,15 +213,15 @@
   box-shadow: 0 0 20px rgba(0,255,136,0.12) !important;
   min-width: 150px !important;
 }
-.rep-popup-body { font-family: 'JetBrains Mono', monospace; }
-.rep-popup-name { font-family: 'Exo 2', monospace; font-size: 11px; color: #00ff88; letter-spacing: 2px; margin-bottom: 3px; font-weight: 600; }
+.rep-popup-body { font-family: var(--font-mono); }
+.rep-popup-name { font-family: var(--font-display); font-size: 11px; color: #00ff88; letter-spacing: 2px; margin-bottom: 3px; font-weight: 600; }
 .rep-popup-coords { font-size: 8.5px; color: rgba(0,255,136,0.45); margin-bottom: 2px; }
 .rep-popup-state { font-size: 8px; letter-spacing: 1.5px; color: rgba(0,255,136,0.60); margin-bottom: 8px; }
 .rep-popup-btn {
   background: rgba(0,255,136,0.08);
   border: 1px solid rgba(0,255,136,0.28);
   color: #00ff88;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 1.5px;
   padding: 4px 10px;

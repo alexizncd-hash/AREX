@@ -665,7 +665,8 @@
 /* ── Los últimos botones naranjas ───────────────────────────────────────
    .btn-primary, .btn-add, .tarea-add-btn, .notas-add-btn y .qc-btn-save
    son lo que quedaba de la pasada "Iron Man": naranja duro, recorte
-   diagonal y 'JetBrains Mono' —una fuente que ni siquiera se descarga—.
+   diagonal y 'JetBrains Mono' —una fuente que ni siquiera se descargaba;
+   desde v225 las fuentes se alojan en el propio repositorio—.
    Eran el único acento naranja que sobrevivía en toda la app, chocando
    con el cian de todo lo demás. Pasan al botón primario del sistema. */
 .btn-primary,

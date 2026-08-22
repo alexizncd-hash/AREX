@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   AREX · FUENTES ALOJADAS AQUÍ  (v225)
+
+   Antes venían de fonts.googleapis.com. Dos problemas con eso:
+
+   1. Si Google Fonts va lento o está bloqueado, AREX se dibuja con las
+      fuentes del sistema y deja de parecerse a sí mismo. En una PWA que
+      tiene que arrancar sin internet, depender de un CDN para la
+      tipografía contradice la regla de "degradar, no reventar".
+   2. Cada arranque hacía dos viajes de red (la hoja de estilos y luego los
+      archivos), antes de poder pintar una sola letra.
+
+   Ahora viven en el repositorio y entran en la caché del service worker,
+   así que a partir del segundo arranque no se descargan nunca más.
+
+   Solo el subconjunto LATINO: los paquetes traen también devanagari, que
+   son 80 KB por peso y no se usan en español. Total: 100 KB por los seis
+   archivos, menos de lo que pesaba una sola imagen del diseño viejo.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* font-display: swap — el texto se ve enseguida con la fuente del sistema
+   y cambia cuando llega la propia, en vez de dejar la pantalla en blanco. */
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./rajdhani-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./rajdhani-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./rajdhani-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./rajdhani-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./rajdhani-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Share Tech Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./share-tech-mono-latin-400-normal.woff2') format('woff2');
+}
