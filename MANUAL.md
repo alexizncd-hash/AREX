@@ -248,20 +248,43 @@ Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 - [x] `diseno.css` — sistema de diseño en CSS moderno: oklch, anidamiento
       nativo, `@container`, `:has()`. INICIO migrado. *(v220)*
 
+### Hecho entre v221 y v228
+
+- [x] **Accesibilidad en los 14 módulos** — y el contrato de calidad que la
+      medía tenía **tres errores** que daban "limpio" cuando no lo estaba:
+      buscaba el panel visible por un selector que ya no se usaba, contaba
+      los `<path>` de los SVG como objetivos táctiles (141 en vez de 7) y
+      leía los números de `oklch(0.19 …)` como si fueran canales RGB. *(v221)*
+- [x] **AREX ve hábitos, notas fijadas y reparto** en su contexto. *(v222)*
+- [x] **Reparto: mapa a pantalla completa**, con los datos encima en vez de
+      pantalla partida, y exportación a Google Maps por tramos de 11 paradas
+      (el máximo que acepta la URL). *(v223)*
+- [x] **Mapa vectorial** — más nítido en la pantalla del iPhone que el mosaico
+      de imágenes, y capa de tráfico si hay clave de TomTom. *(v224)*
+- [x] **Las fuentes se alojan aquí** (nada de terceros al arrancar) y el
+      cristal **deja de apagarse solo**: `cores || 4` con umbral `<= 4`
+      marcaba como equipo flojo cualquier navegador que no expusiera el dato.
+      Desconocido ya no es lo mismo que flojo. *(v225)*
+- [x] **NEGOCIO al sistema de diseño**, borrando sus reglas viejas en el mismo
+      commit. 92% del módulo sobre `diseno.css`. *(v226)*
+- [x] **Gastos, Metas, Proyectos y Evidencias** al sistema, 94–96%. *(v227)*
+- [x] **Campos de clave.** Pegar una clave de API en el teléfono no daba
+      ninguna señal de si había entrado entera: ves puntitos, y una clave a
+      medias no da error —el servicio responde 403 y no sabes por qué—. Ahora
+      cada campo tiene botón de ver (que se vuelve a ocultar solo a los 12 s),
+      se limpian los espacios al pegar, y al guardar se confirma qué entró sin
+      enseñar la clave: *"TomTom 32 caracteres · 0WuO…0Msp"*. *(v228)*
+
 ### Lo siguiente, por orden
 
 - [ ] **[ALTA · uso diario]** El CHAT tiene **24 objetivos táctiles por debajo
       de 44 px** y desborde horizontal en la barra de entrada. Medido con el
       contrato de calidad. Es la pantalla que más usas.
-- [ ] **[ALTA · diseño]** Propagar `diseno.css` a los 13 módulos restantes.
+- [ ] **[ALTA · diseño]** Propagar `diseno.css` a los módulos que faltan:
+      Finanzas, Tareas, Notas, Agenda, Hábitos, Control y Chat, más el resto
+      de `style.css`.
       Cada uno borra sus reglas viejas al migrar: migrar borrando, no
       superponiendo.
-- [ ] **[MEDIA · decisión tuya]** El cristal está apagado:
-      `applyPerformanceProfile()` usa `cores || 4` con umbral `<= 4`, así que
-      cualquier navegador que no exponga el dato queda marcado como equipo
-      flojo. Probablemente lleva tiempo así en tu iPhone.
-- [ ] **[MEDIA · decisión tuya]** `Exo 2` y `JetBrains Mono` se piden en 45
-      reglas y **no se descargan nunca**. O se cargan, o se sustituyen.
 - [ ] **[MEDIA · conexión]** La agenda no muestra pagos de tarjeta, aunque
       `obtenerProximosPagos()` ya existe.
 - [ ] **[MEDIA · conexión]** Hábitos sigue siendo una isla: sin agente, sin

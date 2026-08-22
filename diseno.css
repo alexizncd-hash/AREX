@@ -704,3 +704,36 @@
     inset-block: -7px;
   }
 }
+
+/* ── Campos de clave (v228) ──────────────────────────────────────────────
+   El botón del ojo se apoya DENTRO del campo, sin robarle ancho al texto:
+   por eso el envoltorio es relative y el botón absolute. El padding
+   derecho del input le deja el hueco. */
+.nx-clave {
+  position: relative;
+  display: block;
+
+  & > input { padding-inline-end: calc(var(--toque) + var(--e-1)) !important; }
+}
+
+.nx-clave-ojo {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  inline-size: var(--toque);
+  block-size: var(--toque);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--texto-3);
+  font-size: var(--t-lg);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radio-sm);
+  transition: color var(--rapido);
+
+  &:hover { color: var(--acento); }
+  &:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+}

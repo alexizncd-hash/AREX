@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v227';
+const AREX_VERSION = 'v228';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -129,6 +129,10 @@ function setupSaveHandler() {
     };
     localStorage.setItem('arex_config', JSON.stringify(config));
     window.AREX_CONFIG = config;
+    // Confirmación de lo que entró: pegar una clave en el móvil no da ninguna
+    // señal de si llegó entera. El resumen enseña largo y extremos, nunca la
+    // clave completa.
+    window.avisarClavesGuardadas?.(config);
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('boot-screen').style.display = 'flex';
     initFirebase();
@@ -3931,6 +3935,7 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   };
   localStorage.setItem('arex_config', JSON.stringify(config));
   window.AREX_CONFIG = config;
+  window.avisarClavesGuardadas?.(config);
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';
@@ -3957,6 +3962,9 @@ function abrirConfig() {
   if (ok) ok.style.display = 'none';
   if (er) er.style.display = 'none';
   if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
+  // Los campos de /config viven en el HTML desde el arranque, pero el botón
+  // del ojo se les añade aquí por si el modal se pintó después del núcleo.
+  window.prepararClaves?.(document.getElementById('modal-config'));
   document.getElementById('modal-config')?.classList.remove('hidden');
 }
 window.abrirConfig = abrirConfig;

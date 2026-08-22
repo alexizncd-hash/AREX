@@ -214,6 +214,92 @@
     return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
   }
 
+  /* ════════════════════════════════════════════════════════════
+     5 · CAMPOS DE CLAVE
+
+     Las claves de API van en <input type="password">, y con razón: no
+     tienen por qué quedarse a la vista de quien mire tu pantalla. Pero eso
+     crea un problema real al pegarlas desde el teléfono — pegas una cadena
+     de 32 caracteres, ves puntitos, y no tienes forma de saber si entró
+     entera, si se coló un espacio al seleccionar, o si el portapapeles te
+     dio solo la mitad. Y una clave a medias no da error: simplemente el
+     servicio responde 403 y tú no sabes por qué.
+
+     Aquí se añade a cada campo de clave:
+       · un botón para verla mientras la escribes, que se vuelve a ocultar
+         solo a los 12 segundos por si dejas el teléfono en la mesa
+       · al guardar, un aviso con cuántos caracteres se guardaron y los
+         primeros y últimos cuatro, que basta para reconocer la tuya sin
+         enseñarla entera
+       · limpieza de espacios: al copiar en el móvil se arrastran mucho, y
+         una clave con un espacio delante falla sin decir por qué
+     ════════════════════════════════════════════════════════════ */
+
+  const OCULTAR_TRAS = 12000;
+
+  function _prepararCampoClave(inp) {
+    if (inp.dataset.nxClave) return;
+    inp.dataset.nxClave = '1';
+
+    const env = document.createElement('span');
+    env.className = 'nx-clave';
+    inp.parentNode.insertBefore(env, inp);
+    env.appendChild(inp);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nx-clave-ojo';
+    btn.setAttribute('aria-label', 'Mostrar la clave');
+    btn.textContent = '◡';
+    env.appendChild(btn);
+
+    let t = null;
+    const ocultar = () => { inp.type = 'password'; btn.textContent = '◡';
+                            btn.setAttribute('aria-label', 'Mostrar la clave');
+                            clearTimeout(t); };
+    btn.addEventListener('click', () => {
+      if (inp.type === 'password') {
+        inp.type = 'text'; btn.textContent = '◉';
+        btn.setAttribute('aria-label', 'Ocultar la clave');
+        clearTimeout(t); t = setTimeout(ocultar, OCULTAR_TRAS);
+      } else ocultar();
+    });
+
+    // Al pegar, quitar espacios y saltos de línea: se arrastran al copiar
+    // en el móvil y una clave con un espacio delante falla en silencio.
+    inp.addEventListener('paste', () => setTimeout(() => {
+      const limpio = inp.value.replace(/\s+/g, '');
+      if (limpio !== inp.value) {
+        inp.value = limpio;
+        tost('Se quitaron espacios de la clave pegada');
+      }
+    }, 0));
+  }
+
+  /** Prepara todos los campos de clave que haya en pantalla. */
+  function prepararClaves(raiz) {
+    (raiz || document).querySelectorAll('input.cfg-input[type="password"]')
+      .forEach(_prepararCampoClave);
+  }
+
+  /** Resumen seguro de una clave: cuántos caracteres y sus extremos. */
+  function resumenClave(v) {
+    const s = String(v || '').trim();
+    if (!s) return 'vacía';
+    if (s.length <= 10) return `${s.length} caracteres`;
+    return `${s.length} caracteres · ${s.slice(0, 4)}…${s.slice(-4)}`;
+  }
+
+  /** Aviso de lo que se guardó, sin enseñar ninguna clave entera. */
+  function avisarClavesGuardadas(cfg) {
+    const nombres = { groqKey:'Groq', tavilyKey:'Tavily', geminiKey:'Gemini',
+                      owmKey:'Clima', tomtomKey:'TomTom' };
+    const puestas = Object.entries(nombres)
+      .filter(([k]) => cfg?.[k])
+      .map(([k, n]) => `${n} ${resumenClave(cfg[k])}`);
+    tost(puestas.length ? 'Guardado · ' + puestas.join(' · ') : 'Guardado', 'ok');
+  }
+
   /* ── Se publican con nombres cortos, sin prefijo: son el vocabulario
         base del sistema y van a aparecer en todos los módulos. ── */
   Object.assign(window, {
@@ -221,7 +307,14 @@
     aviso, pregunta, pedirTexto, tost,
     leer, guardar,
     esc, escAttr, dinero,
+    prepararClaves, resumenClave, avisarClavesGuardadas,
   });
+
+  // Los campos de la primera pantalla ya están en el HTML; los de /config
+  // se preparan al abrirla (abrirConfig los vuelve a pedir).
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', () => prepararClaves())
+    : prepararClaves();
   window.AREXNucleo = { hoy, dia, mes, inicioMes, diasEntre, aviso, pregunta,
                         pedirTexto, tost, leer, guardar, esc, escAttr, dinero };
 })();
