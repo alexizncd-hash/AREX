@@ -19,6 +19,18 @@
 (function () {
   var mostrado = false, fallo = null;
 
+  /* v231 · El cristal se apaga ANTES de pintar nada.
+     Va aquí, y no en app.js, porque app.js llega tarde: para cuando se
+     ejecuta, el navegador ya intentó componer una pantalla llena de
+     backdrop-filter, que es justo lo que se sospecha que deja el iPhone en
+     negro. La clase apaga los 63 sitios de golpe, incluidos los que escriben
+     el blur a pelo y nunca obedecieron a arexEfectos(). */
+  try {
+    if (localStorage.getItem('arex_efectos') !== 'on') {
+      document.documentElement.classList.add('sin-cristal');
+    }
+  } catch (e) { document.documentElement.classList.add('sin-cristal'); }
+
   /* ¿Está AREX realmente parado? Mirar si el <body> tiene texto no sirve: el
      HTML trae mucho escrito de fábrica aunque nada se pinte. Las señales
      buenas son tres, y las tres significan "el arranque no terminó":
@@ -56,11 +68,54 @@
       var p = document.createElement('pre');
       p.setAttribute('style', 'white-space:pre-wrap;word-break:break-word;color:#90aab0;margin:0 0 18px');
       p.textContent = motivo + (fallo ? '\n\n' + fallo : '');
-      var b = document.createElement('button');
-      b.setAttribute('style', 'min-height:44px;padding:0 16px;background:rgba(0,212,255,.14);'
-        + 'border:1px solid rgba(0,212,255,.45);color:#22d3ee;font:600 12px/1 ui-monospace,monospace;'
-        + 'letter-spacing:2px;border-radius:4px');
-      b.textContent = 'BORRAR CACHÉ Y REINTENTAR';
+      var boton = function (txt) {
+        var x = document.createElement('button');
+        x.setAttribute('style', 'min-height:44px;padding:0 16px;margin:0 8px 8px 0;'
+          + 'background:rgba(0,212,255,.14);border:1px solid rgba(0,212,255,.45);color:#22d3ee;'
+          + 'font:600 12px/1 ui-monospace,monospace;letter-spacing:2px;border-radius:4px');
+        x.textContent = txt;
+        return x;
+      };
+      var b = boton('BORRAR CACHÉ Y REINTENTAR');
+
+      /* El cristal es el sospechoso número uno de la pantalla en negro, así
+         que desde aquí se puede apagar y encender sin tocar nada más. */
+      var efectosOn = false;
+      try { efectosOn = localStorage.getItem('arex_efectos') === 'on'; } catch (e) {}
+      var bef = boton(efectosOn ? 'APAGAR EL CRISTAL' : 'ENCENDER EL CRISTAL');
+      bef.onclick = function () {
+        try { localStorage.setItem('arex_efectos', efectosOn ? 'off' : 'on'); } catch (e) {}
+        location.replace(location.pathname + '?rescate=' + (new Date()).getTime());
+      };
+
+      /* Diagnóstico: lo que yo no puedo ver de su teléfono desde aquí. Se
+         rellena solo, y el texto se puede seleccionar para mandármelo. */
+      var diag = document.createElement('pre');
+      diag.setAttribute('style', 'white-space:pre-wrap;word-break:break-word;color:#5d7b85;'
+        + 'font-size:11px;margin:18px 0 0;border-top:1px solid #14303c;padding-top:12px');
+      diag.textContent = 'leyendo el estado…';
+      (function () {
+        var t = [];
+        try { t.push('versión app: ' + (window.AREX_VERSION || 'no llegó a ejecutarse')); } catch (e) {}
+        try { t.push('cristal: ' + (efectosOn ? 'encendido' : 'apagado')); } catch (e) {}
+        try { t.push('instalada: ' + (window.navigator.standalone ? 'sí (PWA)' : 'no (navegador)')); } catch (e) {}
+        try { t.push('online: ' + navigator.onLine); } catch (e) {}
+        try { t.push('navegador: ' + navigator.userAgent); } catch (e) {}
+        try { t.push('config guardada: ' + (localStorage.getItem('arex_config') ? 'sí' : 'no')); } catch (e) {}
+        var pinta = function () { diag.textContent = t.join('\n'); };
+        pinta();
+        try {
+          caches.keys().then(function (ks) { t.push('cachés: ' + (ks.join(', ') || 'ninguna')); pinta(); });
+        } catch (e) {}
+        try {
+          navigator.serviceWorker.getRegistrations().then(function (rs) {
+            t.push('service workers: ' + (rs.length
+              ? rs.map(function (r) { return (r.active ? 'activo' : (r.waiting ? 'esperando' : 'instalando')); }).join(', ')
+              : 'ninguno'));
+            pinta();
+          });
+        } catch (e) {}
+      })();
       b.onclick = function () {
         b.textContent = 'LIMPIANDO…';
         var tareas = [];
@@ -75,7 +130,8 @@
       var n = document.createElement('div');
       n.setAttribute('style', 'margin-top:16px;color:#5d7b85;font-size:11px');
       n.textContent = 'Tus datos (tareas, negocio, finanzas) NO se borran: viven aparte de la caché.';
-      d.appendChild(h); d.appendChild(p); d.appendChild(b); d.appendChild(n);
+      d.appendChild(h); d.appendChild(p); d.appendChild(b); d.appendChild(bef);
+      d.appendChild(n); d.appendChild(diag);
       document.body.appendChild(d);
     } catch (e) {}
   }
@@ -85,6 +141,23 @@
       + (ev && ev.filename ? '\n' + String(ev.filename).split('/').pop() + ':' + ev.lineno : '');
     setTimeout(function () { if (estaVacia()) mostrar('Algo falló antes de dibujar la interfaz.'); }, 3500);
   }, true);
+
+  /* ESCOTILLA DE DOS DEDOS.
+     Si la pantalla se queda negra pero la app "cree" que arrancó, el
+     vigilante de los 12 segundos no salta —y entonces no hay nada que
+     tocar—. Dos dedos apoyados dos segundos abren el rescate siempre. No
+     choca con nada: AREX no usa ningún gesto de dos dedos, y iOS tampoco
+     para seleccionar texto. */
+  (function () {
+    var t = null;
+    document.addEventListener('touchstart', function (ev) {
+      if (!ev.touches || ev.touches.length < 2) return;
+      clearTimeout(t);
+      t = setTimeout(function () { mostrado = false; mostrar('Rescate abierto a mano (dos dedos).'); }, 2000);
+    }, true);
+    document.addEventListener('touchend', function () { clearTimeout(t); }, true);
+    document.addEventListener('touchcancel', function () { clearTimeout(t); }, true);
+  })();
 
   window.addEventListener('load', function () {
     setTimeout(function () {

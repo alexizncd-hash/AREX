@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v230';
+const AREX_VERSION = 'v231';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -5045,30 +5045,34 @@ window.cerrarBusqueda = cerrarBusqueda;
   const root = document.documentElement.style;
   const forzado = localStorage.getItem('arex_efectos');   // 'on' | 'off' | null
 
-  if (forzado === 'off') { root.setProperty('--blur-sm','0px');
-                           root.setProperty('--blur-md','0px');
-                           root.setProperty('--blur-lg','0px'); return; }
-  if (forzado === 'on') return;   // los valores del CSS (3/6/10px) se quedan
+  /* v231 · EL CRISTAL VUELVE A NACER APAGADO, Y AHORA ES A PROPÓSITO.
 
-  // Solo cuenta lo que el navegador AFIRMA, no lo que se supone por su silencio
-  const nucleos  = navigator.hardwareConcurrency;         // undefined si no lo dice
-  const memoria  = navigator.deviceMemory;                // solo Chrome
-  const ahorro   = navigator.connection?.saveData === true;
-  const menosMov = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+     v225 lo encendió por primera vez en el iPhone —hasta entonces la
+     detección de "equipo flojo" lo apagaba en cualquier navegador que no
+     publicara sus núcleos, que es el caso de Safari—. Desde entonces AREX no
+     arranca en su teléfono: pantalla negra. Y sigue sin arrancar con el
+     código de v227, así que el sospechoso no es nada de v228/v229.
 
-  const flojo = (typeof nucleos === 'number' && nucleos <= 2)
-             || (typeof memoria === 'number' && memoria <= 2)
-             || ahorro || menosMov;
+     Hay 63 declaraciones de backdrop-filter repartidas por el CSS, muchas
+     apiladas unas sobre otras. En WebKit eso es un modo de fallo conocido:
+     el compositor se rinde y pinta negro. No lo puedo comprobar aquí —este
+     entorno solo tiene Chromium y el proxy no deja bajar WebKit—, así que no
+     lo voy a afirmar: lo que sí puedo hacer es dejar de encender por defecto
+     algo que no puedo probar donde de verdad corre.
 
-  if (flojo) {
-    root.setProperty('--blur-sm', '0px');
-    root.setProperty('--blur-md', '0px');
-    root.setProperty('--blur-lg', '0px');
+     Encendido: arexEfectos('on'). Se guarda y sobrevive a las recargas. */
+  if (forzado === 'on') {
+    window.AREX_EFECTOS = { cristal: 'encendido a mano' };
+    return;   // los valores del CSS (3/6/10px) se quedan
   }
-  window.AREX_EFECTOS = { nucleos: nucleos ?? 'no lo dice',
-                          memoria: memoria ?? 'no lo dice',
-                          ahorroDatos: ahorro, menosMovimiento: menosMov,
-                          cristal: flojo ? 'apagado' : 'encendido' };
+  root.setProperty('--blur-sm', '0px');
+  root.setProperty('--blur-md', '0px');
+  root.setProperty('--blur-lg', '0px');
+  window.AREX_EFECTOS = {
+    cristal: 'apagado (por defecto desde v231)',
+    nucleos: navigator.hardwareConcurrency ?? 'no lo dice',
+    comoEncenderlo: "arexEfectos('on')",
+  };
 })();
 
 /* Encender o apagar el cristal a mano. Lo expone /config y el módulo

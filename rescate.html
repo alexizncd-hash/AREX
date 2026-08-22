@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>AREX · Rescate</title>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PÁGINA DE RESCATE (v231)
+
+     Cuando AREX no arranca, todo lo que sirve para arreglarlo vive DENTRO de
+     AREX: el botón de forzar actualización, /config, la consola. Esta página
+     no depende de nada —ni CSS, ni JS, ni fuentes, ni service worker— así que
+     se dibuja aunque el resto esté roto, y desde ella se puede limpiar y ver
+     qué hay realmente instalado en el teléfono.
+
+     Ojo con iOS: la app instalada en la pantalla de inicio y Safari NO
+     comparten almacenamiento. Lo que se limpie aquí limpia lo de Safari. Para
+     la app instalada, el rescate se abre desde dentro con dos dedos apoyados
+     dos segundos.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:22px; background:#050b12; color:#e7f5f8;
+         font:14px/1.6 ui-monospace, Menlo, monospace; }
+  h1 { font-size:15px; letter-spacing:3px; color:#22d3ee; margin:0 0 4px; }
+  p.sub { color:#5d7b85; font-size:12px; margin:0 0 22px; }
+  button, a.btn { display:inline-block; min-height:44px; line-height:44px; padding:0 16px;
+    margin:0 8px 10px 0; background:rgba(0,212,255,.14); border:1px solid rgba(0,212,255,.45);
+    color:#22d3ee; font:600 12px/44px ui-monospace,monospace; letter-spacing:2px;
+    border-radius:4px; text-decoration:none; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#08131c; border:1px solid #14303c;
+        border-radius:4px; padding:12px; color:#90aab0; font-size:12px; }
+  .nota { color:#5d7b85; font-size:11px; margin-top:16px; }
+  .ok { color:#4ade80; }
+</style>
+</head>
+<body>
+<h1>AREX · RESCATE</h1>
+<p class="sub">Esta página no usa nada de AREX, así que se ve aunque AREX no arranque.</p>
+
+<button id="limpiar">BORRAR CACHÉ Y SERVICE WORKER</button>
+<button id="cristal">APAGAR EL CRISTAL</button>
+<a class="btn" href="./index.html">ABRIR AREX</a>
+
+<p id="estado"></p>
+<pre id="diag">leyendo…</pre>
+<p class="nota">Tus datos (tareas, negocio, finanzas) NO se borran: viven en el
+almacenamiento local, que es otra cosa distinta de la caché.</p>
+
+<script>
+(function () {
+  var diag = document.getElementById('diag');
+  var estado = document.getElementById('estado');
+  var lineas = [];
+  function pinta() { diag.textContent = lineas.join('\n'); }
+  function di(k, v) { lineas.push(k + ': ' + v); pinta(); }
+
+  try { di('instalada', window.navigator.standalone ? 'sí (pantalla de inicio)' : 'no (navegador)'); } catch (e) {}
+  try { di('online', navigator.onLine); } catch (e) {}
+  try { di('cristal', (localStorage.getItem('arex_efectos') || 'auto')); } catch (e) { di('cristal', 'no se pudo leer'); }
+  try { di('config guardada', localStorage.getItem('arex_config') ? 'sí' : 'no'); } catch (e) {}
+  try {
+    var n = 0, kb = 0;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k.indexOf('arex') === 0) { n++; kb += (localStorage.getItem(k) || '').length; }
+    }
+    di('datos de AREX', n + ' claves, ' + Math.round(kb / 1024) + ' KB');
+  } catch (e) {}
+  try { di('navegador', navigator.userAgent); } catch (e) {}
+
+  try {
+    caches.keys().then(function (ks) { di('cachés', ks.join(', ') || 'ninguna'); });
+  } catch (e) {}
+  try {
+    navigator.serviceWorker.getRegistrations().then(function (rs) {
+      di('service workers', rs.length
+        ? rs.map(function (r) { return r.active ? 'activo' : (r.waiting ? 'esperando' : 'instalando'); }).join(', ')
+        : 'ninguno');
+    });
+  } catch (e) {}
+  // Qué versión hay guardada en la caché, que no siempre es la publicada
+  try {
+    caches.keys().then(function (ks) {
+      if (!ks.length) return;
+      return caches.open(ks[0]).then(function (c) { return c.match('./app.js'); })
+        .then(function (r) { return r ? r.text() : ''; })
+        .then(function (t) {
+          var m = t.match(/AREX_VERSION\s*=\s*'([^']+)'/);
+          di('versión en la caché', m ? m[1] : 'no se pudo leer');
+        });
+    });
+  } catch (e) {}
+
+  document.getElementById('limpiar').onclick = function () {
+    estado.textContent = 'limpiando…';
+    var t = [];
+    try { t.push(caches.keys().then(function (ks) {
+      return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+    try { t.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+      return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+    Promise.all(t)['catch'](function () {})['then'](function () {
+      estado.innerHTML = '<span class="ok">Listo. Ahora abre AREX.</span>';
+    });
+  };
+
+  var btn = document.getElementById('cristal');
+  try {
+    if (localStorage.getItem('arex_efectos') === 'on') btn.textContent = 'APAGAR EL CRISTAL';
+    else btn.textContent = 'ENCENDER EL CRISTAL';
+  } catch (e) {}
+  btn.onclick = function () {
+    try {
+      var on = localStorage.getItem('arex_efectos') === 'on';
+      localStorage.setItem('arex_efectos', on ? 'off' : 'on');
+      btn.textContent = on ? 'ENCENDER EL CRISTAL' : 'APAGAR EL CRISTAL';
+      estado.innerHTML = '<span class="ok">Cambiado. Abre AREX para verlo.</span>';
+    } catch (e) { estado.textContent = 'no se pudo cambiar'; }
+  };
+})();
+</script>
+</body>
+</html>

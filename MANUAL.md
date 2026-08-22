@@ -248,6 +248,41 @@ Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 - [x] `diseno.css` — sistema de diseño en CSS moderno: oklch, anidamiento
       nativo, `@container`, `:has()`. INICIO migrado. *(v220)*
 
+### Hecho entre v221 y v231
+
+- [x] **Accesibilidad en los 14 módulos** — y el contrato que la medía tenía
+      **tres errores** que daban "limpio" cuando no lo estaba: selector del
+      panel visible obsoleto, los `<path>` de los SVG contados como objetivos
+      táctiles (141 en vez de 7), y los números de `oklch(0.19 …)` leídos como
+      canales RGB. *(v221)*
+- [x] AREX ve hábitos, notas fijadas y reparto en su contexto. *(v222)*
+- [x] Reparto: **mapa a pantalla completa** con los datos encima, y ruta a
+      Google Maps por tramos de 11 paradas. *(v223)*
+- [x] **Mapa vectorial** y capa de tráfico si hay clave de TomTom. *(v224)*
+- [x] Las fuentes se alojan aquí; nada de Google Fonts al arrancar. *(v225)*
+- [x] NEGOCIO, Gastos, Metas, Proyectos y Evidencias al sistema de diseño,
+      borrando sus reglas viejas en el mismo commit. *(v226, v227)*
+
+**Y la parte que salió mal, que también es historia**
+
+- [~] v228 y v229 añadían botón de ver, PEGAR y PROBAR a los campos de clave.
+      Todo verde en Chromium; **en su iPhone dejaron la pantalla en negro**.
+      Revertidos enteros. *(v230)*
+- [x] **Red de seguridad.** Una pantalla en negro era un callejón: el botón de
+      forzar actualización vive DENTRO de la app que no arranca. Ahora hay un
+      vigilante que avisa a los 15 s, una escotilla de **dos dedos apoyados
+      dos segundos** que abre el rescate aunque la app crea que arrancó, y
+      **`rescate.html`**, una página sin ninguna dependencia que se dibuja
+      pase lo que pase y enseña qué hay instalado de verdad. *(v230, v231)*
+- [x] **El cristal nace apagado.** v225 lo encendió por primera vez en su
+      iPhone —antes la detección de "equipo flojo" lo apagaba en todo
+      navegador que no publicara sus núcleos, que es el caso de Safari— y
+      desde entonces AREX no arranca ahí. Hay **63 declaraciones de
+      `backdrop-filter`** apiladas, y en WebKit eso es un modo de fallo
+      conocido. No se puede comprobar aquí: este entorno solo tiene Chromium.
+      Se deja de encender por defecto algo que no se puede probar donde
+      corre. Encendido: `arexEfectos('on')`. *(v231)*
+
 ### Lo siguiente, por orden
 
 - [ ] **[ALTA · uso diario]** El CHAT tiene **24 objetivos táctiles por debajo
