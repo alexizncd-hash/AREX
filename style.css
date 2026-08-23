@@ -2746,9 +2746,10 @@ body::before {
 .gastos-subnav,
 .proyectos-subnav,
 [class*="subnav"] {
-  background: rgba(0,3,12,0.97) !important;
+  /* v233: 0.97 → 1. Ese 3 % dejaba ver el fondo animado, y difuminarlo era
+     todo el trabajo del backdrop-filter que había aquí. Opaco cuesta cero. */
+  background: rgb(0,3,12) !important;
   border-bottom: 1px solid rgba(34,211,238,0.35) !important;
-  backdrop-filter: blur(var(--blur-md)) !important;
 }
 
 .subnav-btn, [class*="subnav-btn"] {
@@ -2810,7 +2811,6 @@ body::before {
 .notes-panel {
   background: rgba(0,3,12,0.99) !important;
   border-left: 1px solid rgba(34,211,238,0.2) !important;
-  backdrop-filter: blur(var(--blur-lg)) !important;
 }
 
 
@@ -3397,9 +3397,10 @@ footer {
 }
 /* #holo-sys-badge — 4 de las 4 declaraciones de este bloque seguían vivas (v213) */
 #holo-sys-badge {
-  background: rgba(0,8,20,0.95) !important;
+  /* v233: 0.95 → 1, por lo mismo. Es la insignia de arriba a la derecha, y
+     era la que más cambiaba al quitarle el desenfoque. */
+  background: rgb(0,8,20) !important;
   border: 1px solid rgba(34,211,238,0.25) !important;
-  backdrop-filter: blur(var(--blur-md)) !important;
   box-shadow: 0 0 20px rgba(34,211,238,0.1) !important;
 }
 
@@ -3832,8 +3833,6 @@ header::after {
 /* ── Universal Glass Translucency ──────────────────── */
 .module-panel {
   background: rgba(0,8,24,0.50);
-  backdrop-filter: blur(var(--blur-lg)) saturate(170%);
-  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(170%);
 }
 
 /* .chat — 7 de las 7 declaraciones de este bloque seguían vivas (v213) */
@@ -3906,7 +3905,6 @@ header::after {
 .gastos-subnav,
 .proyectos-subnav,
 [class*="subnav"] {
-  -webkit-backdrop-filter: blur(var(--blur-md));
 }
 
 
@@ -5755,7 +5753,10 @@ body::after {
 
 /* .module-panel — tramo 2: va después de la @media del mismo selector (v213) */
 .module-panel {
-  background: linear-gradient(160deg, rgba(0,6,18,0.97) 0%, rgba(0,2,10,0.99) 100%) !important;
+  /* v233: el degradado pasa a opaco. Antes dejaba pasar un 1-3 % del orbe y
+     del fondo, y ESO era lo único que el blur(10px) de pantalla completa
+     tenía que hacer: catorce capas de composición para difuminar un 2 %. */
+  background: linear-gradient(160deg, rgb(0,6,18) 0%, rgb(0,2,10) 100%) !important;
   border: 1px solid rgba(34,211,238,0.16) !important;
   box-shadow: 0 0 0 1px rgba(34,211,238,0.05),
     0 14px 55px rgba(0,0,0,0.78),
@@ -5763,8 +5764,6 @@ body::after {
     inset 0 0 60px rgba(34,211,238,0.015) !important;
   position: relative;
   overflow: hidden;
-  backdrop-filter: blur(var(--blur-lg)) saturate(130%);
-  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(130%);
   border-top: 1px solid rgba(255,255,255,0.11);
   border-left: 1px solid rgba(255,255,255,0.07);
   border-right: 1px solid rgba(255,106,0,0.09);
