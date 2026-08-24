@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v233';
+const AREX_VERSION = 'v234';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1005,9 +1005,35 @@ function renderMarkdown(text) {
   }
   return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR:['target','rel','class'] });
 }
+/* v234 · Highlight.js llega cuando hace falta, no al arrancar.
+   Estaba en el <head> como hoja de estilos externa —que BLOQUEA el primer
+   pintado hasta que el CDN responde— y como script diferido. AREX tiene que
+   arrancar sin internet: con la red caída o lenta eso es pantalla en blanco a
+   cambio de un resaltado que solo se usa si el chat devuelve código. Ahora se
+   pide la primera vez que aparece un bloque de código, y si no hay internet
+   el código se ve sin colores, que es degradar y no reventar. */
+const HLJS_JS  = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+const HLJS_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
+let _hljsPedido = null;
+function _traerHljs() {
+  if (_hljsPedido) return _hljsPedido;
+  window.arexCss?.(HLJS_CSS);
+  _hljsPedido = new Promise(res => {
+    const sc = document.createElement('script');
+    sc.src = HLJS_JS;
+    sc.onload = sc.onerror = () => res();
+    document.head.appendChild(sc);
+  });
+  return _hljsPedido;
+}
 function applyHighlight(el) {
-  if (typeof hljs === 'undefined') return;
-  el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+  if (!el.querySelector('pre code')) return;
+  const pintar = () => {
+    if (typeof hljs === 'undefined') return;   // sin internet: se queda sin color
+    el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+  };
+  if (typeof hljs !== 'undefined') pintar();
+  else _traerHljs().then(pintar);
 }
 
 /* ── PDF.js (lazy) ──────────────────────────────────── */
@@ -5002,6 +5028,7 @@ function renderBusquedaGlobal(q) {
 }
 
 function abrirBusqueda() {
+  window.arexCss?.('search.css');   // v234: su hoja ya no viene en el arranque
   // Usar el nuevo overlay de búsqueda global si está disponible
   if (typeof openSearch === 'function') { openSearch(); return; }
   // Fallback al overlay original

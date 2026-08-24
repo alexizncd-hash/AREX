@@ -7,16 +7,12 @@
 const _lazyLoaded = {};
 
 /* v218 · Carga diferida de una hoja de estilos.
-   Se añade al FINAL del <head> para que, a igualdad de especificidad, gane
-   sobre style.css — igual que si estuviera declarada la última en el HTML. */
+   v234: lo hace el núcleo, que la inserta ANTES de diseno.css. Añadirla al
+   final del <head> —como hacía esta función— la dejaba DESPUÉS del sistema de
+   diseño, y entonces le ganaba por orden de fuente: justo al revés de lo que
+   dice la cabecera de diseno.css. */
 function _lazyCSS(href) {
-  if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
-  return new Promise(res => {
-    const l = document.createElement('link');
-    l.rel = 'stylesheet'; l.href = href;
-    l.onload = l.onerror = () => res();
-    document.head.appendChild(l);
-  });
+  return window.arexCss ? window.arexCss(href) : Promise.resolve();
 }
 window._lazyCSS = _lazyCSS;
 function _lazyLoad(src, asModule = false) {
@@ -173,6 +169,15 @@ const DRAWER = {
 
   open(modulo, centro, instant = false) {
     if (window.speechSynthesis?.speaking) window.speechSynthesis.cancel();
+
+    /* v234 · La hoja del módulo se carga bajo demanda, así que puede no estar
+       todavía si tocas un módulo en el primer segundo. En ese caso se espera
+       a ELLA —no a las diez— y se vuelve a entrar. Sin esto se vería el
+       módulo un instante con los estilos a medias. */
+    if (window.cssModuloListo && !window.cssModuloListo(modulo)) {
+      window.cssModulo(modulo).then(() => DRAWER.open(modulo, centro, instant));
+      return;
+    }
 
     const prevModule = _drawerCurrent;
     const sameCentro = centro && centro === _drawerCentro;

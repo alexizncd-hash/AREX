@@ -175,19 +175,18 @@
 <!-- v225: las fuentes se alojan aquí. Ver vendor/fuentes/fuentes.css. -->
 <link rel="stylesheet" href="vendor/fuentes/fuentes.css"/>
 <link rel="stylesheet" href="style.css"/>
-<!-- Highlight.js CSS (en head para evitar FOUC) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
-<link rel="stylesheet" href="finanzas.css"/>
-<link rel="stylesheet" href="negocio.css"/>
-<link rel="stylesheet" href="gastos.css"/>
-<link rel="stylesheet" href="metas.css"/>
-<link rel="stylesheet" href="proyectos.css"/>
-<link rel="stylesheet" href="evidencias.css"/>
-<link rel="stylesheet" href="control.css"/>
-<link rel="stylesheet" href="reparto.css"/>
-<link rel="stylesheet" href="agenda.css"/>
-<link rel="stylesheet" href="habitos.css"/>
-<link rel="stylesheet" href="search.css"/>
+<!-- v234 · Highlight.js sale del <head>. Una hoja de estilos externa BLOQUEA
+     el primer pintado hasta que responde, y AREX tiene que arrancar sin
+     internet: con la red caída o lenta, esa espera es pantalla en blanco por
+     un resaltado de sintaxis que solo se usa si el chat devuelve código. Se
+     carga sola la primera vez que hay un bloque de código. -->
+<!-- v234 · Las hojas de los módulos ya NO se cargan al arrancar.
+     Eran 11 archivos y ~200 KB que el navegador tenía que descargar y analizar
+     antes de pintar la primera letra, para pantallas que quizá no abras. Ahora
+     las trae AREXCss (nucleo.js): en cuanto la app termina de arrancar se
+     precargan en segundo plano, y si abres un módulo antes de que llegue la
+     suya, se espera a ella y no a las demás. El <link> se inserta SIEMPRE
+     antes de diseno.css, que tiene que seguir siendo el último. -->
 <!-- diseno.css va EL ÚLTIMO a propósito: es el sistema nuevo y tiene que
      ganar al viejo por orden de fuente. Ver la nota de cascada dentro. -->
 <link rel="stylesheet" href="diseno.css"/>
@@ -1377,8 +1376,7 @@
      pieza de seguridad era el riesgo mayor. Copia local (21 KB) en el SHELL. -->
 <script defer src="vendor/purify.min.js"
         onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js';document.head.appendChild(s)"></script>
-<!-- Highlight.js (syntax highlight) -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<!-- Highlight.js: lo carga app.js bajo demanda (v234). -->
 <!-- AR HUD indicator -->
 <div id="ar-hud" aria-hidden="true">
   <span class="ar-hud-dot"></span>

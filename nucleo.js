@@ -216,7 +216,74 @@
 
   /* ── Se publican con nombres cortos, sin prefijo: son el vocabulario
         base del sistema y van a aparecer en todos los módulos. ── */
+  /* ════════════════════════════════════════════════════════════
+     5 · HOJAS DE ESTILO BAJO DEMANDA
+
+     EL PROBLEMA: index.html cargaba 16 hojas antes de pintar nada —388 KB,
+     2.158 reglas— y once de ellas son de un módulo concreto. La de reparto
+     no hace falta para ver el escritorio, y la de finanzas tampoco. Todo eso
+     se descargaba y se analizaba en el camino crítico del arranque.
+
+     LA REGLA QUE NO SE PUEDE ROMPER: `diseno.css` va el último. Si una hoja
+     de módulo se añade al final del <head> —que es lo que hacía el _lazyCSS
+     de v218— queda DESPUÉS y le gana al sistema de diseño por orden de
+     fuente. Por eso aquí se inserta siempre ANTES de diseno.css: el orden
+     del documento queda igual que si estuviera escrita en el HTML.
+     ════════════════════════════════════════════════════════════ */
+
+  const _hojas = new Map();   // href → Promise
+
+  /** Carga una hoja de estilos respetando el orden de la cascada. */
+  function arexCss(href) {
+    if (_hojas.has(href)) return _hojas.get(href);
+    const ya = document.querySelector(`link[rel="stylesheet"][href="${href}"]`);
+    if (ya) { const p = Promise.resolve(); _hojas.set(href, p); return p; }
+
+    const p = new Promise(res => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = l.onerror = () => res();
+      const ultima = document.querySelector('link[rel="stylesheet"][href$="diseno.css"]');
+      if (ultima) ultima.parentNode.insertBefore(l, ultima);
+      else document.head.appendChild(l);
+    });
+    _hojas.set(href, p);
+    return p;
+  }
+
+  /** ¿Ya está pedida esta hoja? (para no retrasar una apertura sin motivo) */
+  const cssListo = href => _hojas.has(href) && !!document
+    .querySelector(`link[rel="stylesheet"][href="${href}"]`)?.sheet;
+
+  const CSS_MODULOS = {
+    finanzas: 'finanzas.css', negocio: 'negocio.css', gastos: 'gastos.css',
+    metas: 'metas.css', proyectos: 'proyectos.css', evidencias: 'evidencias.css',
+    control: 'control.css', reparto: 'reparto.css', agenda: 'agenda.css',
+    habitos: 'habitos.css',
+  };
+
+  /** La hoja que necesita un módulo, o nada si no tiene. */
+  function cssModulo(mod) {
+    const h = CSS_MODULOS[mod];
+    return h ? arexCss(h) : Promise.resolve();
+  }
+  const cssModuloListo = mod => !CSS_MODULOS[mod] || cssListo(CSS_MODULOS[mod]);
+
+  /* En cuanto la app termina de arrancar se traen todas en segundo plano, así
+     que para cuando toques un módulo ya están. Y quedan en la caché del
+     service worker, que las guarda igual: sin internet siguen ahí. */
+  function precargarCSS() {
+    const todas = [...Object.values(CSS_MODULOS), 'search.css'];
+    const ocioso = window.requestIdleCallback || (f => setTimeout(f, 400));
+    ocioso(() => todas.forEach(h => arexCss(h)));
+  }
+  if (document.readyState === 'complete') precargarCSS();
+  else window.addEventListener('load', precargarCSS);
+
+
   Object.assign(window, {
+    arexCss, cssModulo, cssModuloListo,
     hoy, dia, mes, inicioMes, diasEntre,
     aviso, pregunta, pedirTexto, tost,
     leer, guardar,
