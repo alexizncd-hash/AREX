@@ -459,6 +459,9 @@ const FinanzasModule = {
 
   _calcFrijol() {
     const g  = id => parseFloat(document.getElementById(id)?.value) || 0;
+    // v237: aquí el dinero va POR UNIDAD y son cifras de un dígito: con
+    // pesos enteros, 4,83 de ganancia por medio litro se leía "$5".
+
     const precio   = g('cf-precio');
     const costoKg  = g('cf-costo-kg');
     const rendim   = g('cf-rendimiento') || 1.8;
@@ -471,7 +474,7 @@ const FinanzasModule = {
       out.innerHTML = '<p class="cr-error">Ingresa precio de venta y costo por kg</p>'; return;
     }
     const R  = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
-    const $  = v => formatearMoneda(v);
+    const $  = v => formatearMoneda(v, 2);
     const costoML      = R(costoKg / rendim + empaque);
     const gananciaPML  = R(precio - costoML);
     const margenPML    = precio > 0 ? R(gananciaPML / precio * 100, 1) : 0;
@@ -600,9 +603,24 @@ const FinanzasModule = {
         totalInt    = R(totalInt + intMes);
         mes++;
       }
+      /* v237 · El bucle se corta a los 360 meses. Si al llegar ahí queda
+         saldo, es que ese pago NO liquida nada: el interés del mes es mayor
+         que el abono y la deuda CRECE. Enseñarlo como "360 meses" y una
+         fecha libre a treinta años es peor que no decir nada, porque parece
+         un plan. Con una tarjeta al 120% anual —como la Plata— eso pasaba
+         con cualquier pago por debajo de los intereses. */
+      const _noBaja = mes >= 360 && saldo > 0.01;
+      const _intPrimerMes = R(monto * rMes);
       const fechaLib = new Date();
       fechaLib.setMonth(fechaLib.getMonth() + mes);
-      html += `
+      html += _noBaja ? `
+      <div class="cr-block cr-highlight">
+        <div class="cr-title">Pagando ${$(minimo)}/mes</div>
+        <div class="cr-row cr-total"><span>Resultado</span><strong class="cr-neg cr-big">La deuda no baja</strong></div>
+        <div class="cr-row"><span>Interés del primer mes</span><strong class="cr-neg">${$(_intPrimerMes)}</strong></div>
+        <div class="cr-row"><span>Tu pago</span><strong>${$(minimo)}</strong></div>
+        <div class="cr-row"><span>Falta cada mes</span><strong class="cr-neg">${$(R(_intPrimerMes - minimo))}</strong></div>
+      </div>` : `
       <div class="cr-block cr-highlight">
         <div class="cr-title">Pagando ${$(minimo)}/mes hasta liquidar</div>
         <div class="cr-row"><span>Meses para liquidar</span><strong>${mes} meses</strong></div>

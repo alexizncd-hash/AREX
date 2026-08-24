@@ -16,36 +16,6 @@ const FINANZAS_DATA = {
   // 💳 TARJETAS DE CRÉDITO
   tarjetas: [
     {
-      id: 'plata-card',
-      nombre: 'Plata Card',
-      banco: 'Banco Plata',
-      numero: '****9892',
-      saldo: 2564.19,
-      limite: 2000,
-      disponible: 0,
-      tasaAnual: 119.90,
-      cat: 228.07,
-      interesMensual: 256,
-      pagoMinimo: 650,
-      pagoMSI: 0,
-      fechaCorte: 8,
-      fechaLimite: 8,
-      mesLimiteSiguiente: true,
-      prioridad: 1,
-      color: '#dc2626',
-      notas: [
-        'CAT 228% - USURA total',
-        'Cancelar Plata+ ($45/mes)',
-        'Cancelar seguro ($23/mes)',
-        'Liquidar en 1-2 meses',
-        'CANCELAR tarjeta después'
-      ],
-      alertas: {
-        cancelarSuscripciones: true,
-        liquidarUrgente: true
-      }
-    },
-    {
       id: 'bbva-crea',
       nombre: 'BBVA Crea',
       banco: 'BBVA',
@@ -131,8 +101,13 @@ const FINANZAS_DATA = {
   gastos: [
     {
       id: 'tarjetas',
+      // v237: este monto ya NO se escribe a mano. Lo recalcula getFinanzasData()
+      // sumando el mínimo + MSI de cada tarjeta. Antes eran dos sitios con el
+      // mismo dato: liquidar una tarjeta bajaba la deuda pero el gasto fijo
+      // seguía diciendo lo de antes, y el margen salía peor de lo que era.
+      // Este valor es solo el de arranque por si algo falla.
       categoria: 'Tarjetas (mínimos)',
-      monto: 6672,
+      monto: 6022,
       tipo: 'deuda',
       esencial: true,
       color: '#ef4444',
@@ -320,11 +295,27 @@ const FINANZAS_DATA = {
 // CAPA DE PERSISTENCIA — sobreescrituras en localStorage
 // ═══════════════════════════════════════════════════════════
 
+/* v237 · El gasto fijo "Tarjetas (mínimos)" se calcula, no se escribe.
+   Estaba puesto a mano (6.672) al lado de las tarjetas, que ya traen su
+   pagoMinimo y su pagoMSI. Dos sitios con el mismo dato es una promesa de
+   que un día dejen de coincidir: al liquidar la Plata Card la deuda bajaba
+   pero el gasto fijo seguía cobrando sus 650, y el margen salía 650 pesos
+   peor de lo que es. Ahora sale de las tarjetas que haya en ese momento. */
+function _conMinimosDerivados(d) {
+  const suma = d.tarjetas.reduce((s, t) => s + (t.pagoMinimo || 0) + (t.pagoMSI || 0), 0);
+  return {
+    ...d,
+    gastos: d.gastos.map(g => g.id === 'tarjetas'
+      ? { ...g, monto: Math.round(suma) }
+      : g),
+  };
+}
+
 function getFinanzasData() {
   const ov = leer('arex_finanzas_overrides', null);
-  if (!ov || typeof ov !== 'object') return FINANZAS_DATA;
+  if (!ov || typeof ov !== 'object') return _conMinimosDerivados(FINANZAS_DATA);
   {
-    return {
+    return _conMinimosDerivados({
       ...FINANZAS_DATA,
       config: { ...FINANZAS_DATA.config, ...ov.config },
       tarjetas: FINANZAS_DATA.tarjetas.map(t => {
@@ -335,7 +326,7 @@ function getFinanzasData() {
         const o = (ov.gastos || []).find(x => x.id === g.id);
         return o ? { ...g, ...o } : g;
       })
-    };
+    });
   }
 }
 
@@ -506,12 +497,18 @@ function simularLiquidacion(pagoExtra, estrategia = 'avalancha') {
   return { meses: mes, proyeccion: proyeccion, tarjetas: tarjetasSimulacion };
 }
 
-function formatearMoneda(cantidad) {
+/* v237 · Los centavos importan cuando la cifra es pequeña.
+   Esta función redondeaba SIEMPRE a pesos enteros. Para una deuda de 48.552
+   está bien. Para la calculadora del frijol no: una ganancia de 4,83 por
+   medio litro se enseñaba como "$5" —un 3,5 % de error en el número con el
+   que pone el precio— y un costo de 16,67 por ML como "$17". Ahora se le
+   pueden pedir decimales donde el dato es por unidad. */
+function formatearMoneda(cantidad, decimales = 0) {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales
   }).format(cantidad);
 }
 
