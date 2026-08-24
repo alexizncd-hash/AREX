@@ -398,8 +398,11 @@ function calcularMargenEstatico() {
 
 function calcularPorcentajeGastos() {
   // v209: dividía entre el ingreso ESTÁTICO ignorando las ventas del negocio
+  // v236: y arriba usaba el total con los variables duplicados, así que daba
+  // un porcentaje más alto que el real. Ahora usa la misma cuenta que el margen.
   const ingreso = calcularIngresoReal() || 1;
-  return ((calcularGastosTotal() / ingreso) * 100).toFixed(1);
+  const salidas = calcularGastosFijos() + calcularVariablesDelMes() + calcularGastosNegocio();
+  return ((salidas / ingreso) * 100).toFixed(1);
 }
 
 function obtenerProximosPagos(dias = 30) {
@@ -577,11 +580,69 @@ function calcularGastosNegocio() {
   } catch { return 0; }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   v236 · EL MARGEN RESTABA DOS VECES EL MISMO DINERO
+
+   La lista de gastos de FINANZAS tiene tres tipos: `deuda` (mínimos de las
+   tarjetas, 6.672), `fijo` (escuela, calistenia, teléfono, 3.629) y
+   `variable` (salidas 1.250, gasolina 1.200, comida 750 = 3.200). Los
+   variables son un PRESUPUESTO: lo que calculas gastar al mes.
+
+   Y el módulo GASTOS registra lo que gastas DE VERDAD en esas mismas
+   categorías: comida, transporte, entretenimiento…
+
+   El margen restaba las dos cosas. Cada peso de comida que anotabas se
+   descontaba dos veces: una como presupuesto y otra como gasto real.
+   Comprobado en el navegador con datos sembrados: con 500 anotados, AREX
+   decía −2.171 cuando el número sin duplicar es −1.671.
+
+   No es cosmético: ése es el número con el que HERMES y el VIGÍA deciden
+   "¿te alcanza para el pago de la tarjeta?".
+
+   La regla ahora: los fijos y la deuda se restan siempre; de los variables
+   se resta el PRESUPUESTO o lo REALMENTE GASTADO, lo que sea mayor —nunca
+   los dos—. Se queda con el mayor a propósito: es dinero, y de dos cifras
+   posibles conviene creerse la peor.
+
+   Efecto secundario buscado: si un mes no anotas nada en GASTOS, el número
+   sale exactamente igual que antes. Solo cambia cuando sí anotas, que es
+   justo donde estaba el error.
+   ═══════════════════════════════════════════════════════════ */
+
+/** Los que no se negocian: mínimos de tarjeta y gastos fijos. */
+function calcularGastosFijos() {
+  return getFinanzasData().gastos
+    .filter(g => g.tipo === 'deuda' || g.tipo === 'fijo')
+    .reduce((s, g) => s + g.monto, 0);
+}
+
+/** Lo presupuestado para los variables (salidas, gasolina, comida). */
+function calcularPresupuestoVariable() {
+  return getFinanzasData().gastos
+    .filter(g => g.tipo === 'variable')
+    .reduce((s, g) => s + g.monto, 0);
+}
+
+/** Lo variable que cuenta este mes: el presupuesto o lo real, el mayor. */
+function calcularVariablesDelMes() {
+  return Math.max(calcularPresupuestoVariable(), calcularGastosPers());
+}
+
 // Margen real y ÚNICO del sistema:
-//   (salario + ventas del negocio) − fijos − gastos personales − gastos del negocio
+//   (salario + ventas) − fijos y deuda − variables (presupuesto o real) − gastos del negocio
 function calcularMargenReal() {
   return calcularIngresoReal()
-       - calcularGastosTotal()
+       - calcularGastosFijos()
+       - calcularVariablesDelMes()
+       - calcularGastosNegocio();
+}
+
+/** El dinero que REALMENTE ha entrado y salido en lo que va del mes.
+    Sin presupuestos: solo hechos. Sirve para ver cómo vas, no para decidir
+    si te alcanza —a principio de mes siempre se ve bien—. */
+function calcularMargenHoy() {
+  return calcularIngresoReal()
+       - calcularGastosFijos()
        - calcularGastosPers()
        - calcularGastosNegocio();
 }
@@ -595,4 +656,8 @@ window.calcularGastosNegocio  = calcularGastosNegocio;
 window.calcularIngresoReal    = calcularIngresoReal;
 window.calcularGastosPers     = calcularGastosPers;
 window.calcularGastosTotal   = calcularGastosTotal;
+window.calcularGastosFijos   = calcularGastosFijos;
+window.calcularPresupuestoVariable = calcularPresupuestoVariable;
+window.calcularVariablesDelMes = calcularVariablesDelMes;
+window.calcularMargenHoy     = calcularMargenHoy;
 window.obtenerProximosPagos  = obtenerProximosPagos;

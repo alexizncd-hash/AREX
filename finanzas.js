@@ -667,12 +667,20 @@ const FinanzasModule = {
     const simAlt      = simularLiquidacion(this.pagoExtraActual,
       this.estrategiaActual === 'avalancha' ? 'bola-nieve' : 'avalancha');
 
-    document.getElementById('resultado-meses').textContent = `${simulacion.meses} meses`;
+    /* v236 · La simulación se corta a los 120 meses. Si al llegar ahí quedan
+       tarjetas vivas es que con esos pagos la deuda NO baja —el interés se
+       come el abono— y la pantalla lo estaba enseñando como si fuera un plan:
+       "120 meses" y una fecha de libertad a diez años vista. Eso no es un
+       plan, es una advertencia. */
+    const _noSeLiquida = simulacion.meses >= 120 && simulacion.tarjetas.some(t => !t.liquidada);
+    document.getElementById('resultado-meses').textContent =
+      _noSeLiquida ? 'no se liquida' : `${simulacion.meses} meses`;
 
     const fechaLibertad = new Date();
     fechaLibertad.setMonth(fechaLibertad.getMonth() + simulacion.meses);
-    document.getElementById('resultado-fecha').textContent =
-      fechaLibertad.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+    document.getElementById('resultado-fecha').textContent = _noSeLiquida
+      ? 'con esos pagos la deuda no baja'
+      : fechaLibertad.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
 
     const pagoTotal = getFinanzasData().tarjetas.reduce((s, t) => s + t.pagoMinimo + t.pagoMSI, 0) + this.pagoExtraActual;
     document.getElementById('resultado-pago').textContent = formatearMoneda(pagoTotal);
@@ -682,7 +690,10 @@ const FinanzasModule = {
     const altDiff  = simAlt.meses - simulacion.meses;
     const altEl    = document.getElementById('resultado-alt-estrategia');
     if (altEl) {
-      altEl.innerHTML = altDiff !== 0
+      const _altNunca = simAlt.meses >= 120 && simAlt.tarjetas.some(t => !t.liquidada);
+      altEl.innerHTML = _altNunca
+        ? `${altLabel}: <strong>tampoco se liquida</strong>`
+        : altDiff !== 0
         ? `${altLabel}: <strong>${simAlt.meses} meses</strong> <span style="color:${altDiff > 0 ? '#ff6644' : '#34ffc3'};font-size:10px;">(${altDiff > 0 ? '+' : ''}${altDiff} meses)</span>`
         : `${altLabel}: misma duración`;
     }
