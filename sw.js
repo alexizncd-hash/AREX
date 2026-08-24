@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v234';
-const VERSION = 'v234';
+const CACHE   = 'arex-v235';
+const VERSION = 'v235';
 const SHELL = [
   './index.html',
   './rescate.html',
@@ -120,18 +120,41 @@ self.addEventListener('fetch', e => {
                   url.endsWith('/') || url.endsWith('/AREX/') || url.includes('index.html');
 
   if (isShell) {
-    e.respondWith(
-      fetch(e.request).then(res => {
+    /* v235 · PRIMERO LA COPIA, LUEGO LA RED.
+
+       ANTES era al revés: cada uno de los ~50 archivos del arranque esperaba
+       a la red, y solo si fallaba se usaba la copia guardada. Con cobertura
+       buena no se nota. Con cobertura de móvil —o con una red que no falla
+       pero tarda, que es lo peor— el arranque se queda esperando a que
+       contesten cincuenta peticiones que ya tenía guardadas en el teléfono.
+       Ésa es la razón de "le cuesta iniciar, tarda".
+
+       Y era incoherente: el HTML llegaba nuevo mientras el service worker
+       seguía siendo el viejo, porque el nuevo espera a que toques el banner.
+       Media versión nueva y media vieja a la vez.
+
+       AHORA: si hay copia, se sirve YA —arranque instantáneo, igual con
+       internet que sin él— y por detrás se pide la versión nueva para la
+       próxima vez. La versión nueva sigue llegando por el camino de siempre:
+       el service worker se actualiza aparte y avisa con el banner. */
+    e.respondWith((async () => {
+      const c = await caches.open(CACHE);
+      const guardada = await c.match(e.request);
+
+      const red = fetch(e.request).then(res => {
         // v211: solo cachear respuestas BUENAS. Antes se guardaba cualquier
         // cosa: una página 404 de GitHub Pages podía sobrescribir la copia
         // buena de un archivo y quedarse congelada ahí para el modo offline.
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
+        if (res.ok) c.put(e.request, res.clone());
         return res;
-      }).catch(() => caches.match(e.request))
-    );
+      });
+
+      if (guardada) {
+        e.waitUntil(red.catch(() => {}));   // se actualiza sola, por detrás
+        return guardada;
+      }
+      return red;                            // primera vez: no hay más remedio
+    })());
     return;
   }
 

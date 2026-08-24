@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v234';
+const AREX_VERSION = 'v235';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -4144,6 +4144,35 @@ window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(
 if ('serviceWorker' in navigator) {
   let _swReg = null;
   let _ultimoChequeo = 0;
+  const _abiertaEn = Date.now();
+
+  /* v235 · La actualización se aplica sola CUANDO NO PUEDE PERDER NADA.
+
+     El banner lo puso v211 por una razón buena: antes la página se recargaba
+     sola a los 800 ms y podías perder lo que estabas escribiendo. Pero el
+     efecto de lado es que cada versión nueva te obliga a tocar el banner —o a
+     "forzar actualización" cuando no lo ves—, y eso pasa a diario.
+
+     El punto medio: si acabas de abrir AREX (menos de 8 segundos), no tienes
+     el teclado abierto y no hay texto a medio escribir, no hay NADA que
+     perder, así que se aplica sola y te ahorra el paso. En cualquier otro
+     momento sigue apareciendo el banner y decides tú. */
+  function _ofrecerActualizacion() {
+    try {
+      const recien = Date.now() - _abiertaEn < 8000;
+      const foco = document.activeElement;
+      const escribiendo = foco && (foco.tagName === 'INPUT' || foco.tagName === 'TEXTAREA'
+                                   || foco.isContentEditable);
+      const aMedias = ['txt', 'tarea-input', 'notas-input', 'busqueda-input']
+        .some(id => (document.getElementById(id)?.value || '').trim().length > 0);
+      if (recien && !escribiendo && !aMedias) {
+        console.info('AREX: versión nueva aplicada sola (recién abierta, nada que perder)');
+        window._aplicarActualizacion();
+        return;
+      }
+    } catch {}
+    _showUpdateBanner();
+  }
 
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
     _swReg = reg;
@@ -4151,14 +4180,14 @@ if ('serviceWorker' in navigator) {
     _ultimoChequeo = Date.now();
 
     // Si ya hay un SW esperando de una visita anterior, avisar de una vez
-    if (reg.waiting && navigator.serviceWorker.controller) _showUpdateBanner();
+    if (reg.waiting && navigator.serviceWorker.controller) _ofrecerActualizacion();
 
     reg.addEventListener('updatefound', () => {
       const nuevo = reg.installing;
       nuevo?.addEventListener('statechange', () => {
         // controller != null ⇒ NO es la primera instalación: es una actualización
         if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
-          _showUpdateBanner();
+          _ofrecerActualizacion();
         }
       });
     });
