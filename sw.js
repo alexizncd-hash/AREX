@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v238';
-const VERSION = 'v238';
+const CACHE   = 'arex-v239';
+const VERSION = 'v239';
 const SHELL = [
   './index.html',
   './rescate.html',
@@ -39,7 +39,6 @@ const SHELL = [
   './habitos.css',
   './search.js',
   './search.css',
-  './orb.js',
   './vendor/fuentes/fuentes.css',
   './vendor/fuentes/rajdhani-latin-300-normal.woff2',
   './vendor/fuentes/rajdhani-latin-400-normal.woff2',
@@ -52,7 +51,8 @@ const SHELL = [
   './manifest.json',
   './icon.svg',
   // Lazy-loaded on demand (not in initial shell):
-  // reparto.js, vision.js, vision-orb.js, holo.js, parallax.js, gesture.js, neural-orb.js
+  // reparto.js, vision.js, vision-orb.js, gesture.js
+  // (v239: orb.js, holo.js, parallax.js y neural-orb.js retirados del sistema)
 ];
 
 /* v211 · INSTALACIÓN RESILIENTE

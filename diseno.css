@@ -770,3 +770,22 @@ html.sin-cristal :is(*, #cristal)::after {
   display: grid;
   place-items: center;
 }
+
+
+/* ── El estado del orbe, sin lienzo y sin animación (v239) ───────────────
+   Los colores de estado del orbe no estaban en el CSS: los pintaba el lienzo
+   de orb.js, con un tono distinto por estado. Al retirar el lienzo, el orbe
+   se quedaba igual pensando que hablando —solo lo decía el texto de abajo—.
+   Aquí vuelven como color de borde y un resplandor fijo: el mismo aviso, sin
+   un solo fotograma de trabajo. */
+#orb {
+  transition: border-color var(--medio) var(--curva), box-shadow var(--medio) var(--curva);
+
+  /* Los !important no son capricho: el orbe lo pintan varias reglas de
+     style.css marcadas así, herencia de las siete pasadas de rediseño. Sin
+     esto, el color de estado no llega a verse. */
+  &.thinking  { border-color: rgb(0 160 255)   !important; box-shadow: 0 0 22px rgb(0 160 255 / .45) !important; }
+  &.searching { border-color: rgb(255 140 0)   !important; box-shadow: 0 0 22px rgb(255 140 0 / .45) !important; }
+  &.speaking  { border-color: rgb(180 240 255) !important; box-shadow: 0 0 26px rgb(180 240 255 / .55) !important; }
+  &.listening { border-color: rgb(0 255 160)   !important; box-shadow: 0 0 22px rgb(0 255 160 / .45) !important; }
+}

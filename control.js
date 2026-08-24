@@ -260,11 +260,6 @@ function _renderAgentes(el) {
         <div class="orb-space" style="--oc:${a.color}">
           <span class="orb-orbita o1"><i class="orb-sat s1"></i></span>
           <span class="orb-orbita o2"><i class="orb-sat s2"></i></span>
-          <canvas class="neural-orb-canvas"
-                  data-neural-orb="${a.id}"
-                  data-color="${a.color}"
-                  data-state="${orbState}"
-                  width="180" height="180"></canvas>
         </div>
         <div class="agent-orb-name" style="color:${a.color};text-shadow:0 0 12px ${a.color}88">${a.nombre}</div>
         <div class="agent-orb-desc">${a.desc}</div>
@@ -278,7 +273,12 @@ function _renderAgentes(el) {
   }).join('');
 
   // Init canvas orbs after DOM is painted
-  setTimeout(() => window.initNeuralOrbs?.(), 60);
+  /* v239 · Los orbes neuronales de los agentes se retiran. Eran CINCO
+     bucles de requestAnimationFrame a 60 fps —uno por agente— que no
+     comprobaban si la pestaña estaba oculta y que solo se detenían al
+     re-dibujar la vista: abrir CONTROL › Agentes una vez los dejaba
+     corriendo el resto de la sesión, en todos los módulos y con la pantalla
+     apagada. Es la fuga de batería más grande que quedaba. */
   window._renderVigia?.();
   window._renderViernes?.();
 }
@@ -852,16 +852,6 @@ function renderControlModule() {
   } else if (_ctrlView === 'agentes') {
     const ag = document.getElementById('ctrl-agents-body');
     if (ag) {
-      if (typeof window.initNeuralOrbs !== 'function') {
-        const _s = document.createElement('script');
-        _s.src = './neural-orb.js';
-        _s.onload  = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
-        _s.onerror = () => { _renderAgentes(ag); _autoRunStaleAgents(); };
-        document.body.appendChild(_s);
-      } else {
-        _renderAgentes(ag);
-        _autoRunStaleAgents();
-      }
     }
   } else if (_ctrlView === 'datos') {
     const dt = document.getElementById('ctrl-datos-body');

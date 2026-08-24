@@ -1362,7 +1362,12 @@
 <!-- widgets.js: clima, globo, insignias de urgencia, pomodoro y tipo de
      cambio. Salió de app.js sin una sola dependencia cruzada (v219). -->
 <script defer src="widgets.js"></script>
-<script defer src="orb.js"></script>
+<!-- v239 · orb.js FUERA. Medido en Chromium: su bucle de partículas se comía
+     2,02 segundos de CPU de cada 10 estando quieto en CHAT — el 69 % de todo
+     el trabajo del hilo principal— y su lienzo reservaba 4,5 MB de memoria de
+     vídeo aunque estuvieras en otro módulo. El orbe sigue ahí: su aro y su
+     color siguen diciendo si AREX está pensando o hablando. Lo que se va es
+     la esfera de partículas de dentro. -->
 <!-- Módulos lazy-loaded por jarvis.js al abrirse: negocio, gastos, metas, proyectos,
      evidencias, control, agenda, habitos, reparto, holo, parallax, vision-orb, vision -->
 
@@ -1384,8 +1389,6 @@
 </div>
 <!-- Config (gitignored) -->
 <!-- Matrix code rain — decoración ambiental -->
-<canvas id="matrix-l" class="matrix-cv" aria-hidden="true"></canvas>
-<canvas id="matrix-r" class="matrix-cv matrix-cv-r" aria-hidden="true"></canvas>
 
 <script defer src="firebase-config.js"></script>
 <!-- config.js está en .gitignore: NO existe en el despliegue público, así que
@@ -1396,7 +1399,7 @@
 <script type="module" src="app.js"></script>
 <!-- WebXR AR Panels (Fase 3) -->
 <script type="module" src="webxr.js"></script>
-<!-- reparto.js, vision-orb.js, vision.js, holo.js, parallax.js, gesture.js → lazy-loaded on demand -->
+<!-- reparto.js, vision-orb.js, vision.js, gesture.js → carga diferida -->
 
 <!-- FAB: Analizar módulo con AREX IA -->
 <button id="fab-analizar" title="AREX analiza este módulo con IA"

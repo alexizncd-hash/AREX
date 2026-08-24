@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v238';
+const AREX_VERSION = 'v239';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1661,41 +1661,11 @@ function renderHudPanels() {
 window.renderHudPanels = renderHudPanels;
 
 /* ── Matrix code rain ───────────────────────────────── */
-function initMatrixRain() {
-  const FRAGS = ['def','if','else','return','const','let','class','=>','{}','[]','()',
-    'true','false','null','async','await','for','while','try','catch','new',
-    'import','export','fn','var','===','&&','||','0x','str','int','arr',
-    '.js','.py','++','--','obj','map','get','set','use','run'];
-
-  ['matrix-l','matrix-r'].forEach(id => {
-    const c = document.getElementById(id);
-    if (!c || window.innerWidth < 780) return;   // skip on narrow screens
-    const ctx2 = c.getContext('2d');
-    const W = 48, H = window.innerHeight;
-    c.width = W; c.height = H;
-    const COLS = 4;
-    const drops = Array.from({ length: COLS }, () => ({
-      y: -Math.random() * H, speed: 6 + Math.random() * 10,
-      frag: FRAGS[Math.floor(Math.random() * FRAGS.length)]
-    }));
-    function tick() {
-      if (document.hidden || window._arexVisionOpen) return;
-      ctx2.fillStyle = 'rgba(0,0,0,0.04)';
-      ctx2.fillRect(0, 0, W, H);
-      drops.forEach((d, i) => {
-        ctx2.fillStyle = `rgba(0,212,255,${0.08 + Math.random() * 0.1})`;
-        ctx2.font = '8px "Courier New"';
-        ctx2.fillText(d.frag, i * 12, d.y);
-        d.y += d.speed;
-        if (d.y > H) {
-          d.y = -20 - Math.random() * 80;
-          d.frag = FRAGS[Math.floor(Math.random() * FRAGS.length)];
-        }
-      });
-    }
-    setInterval(tick, 90);
-  });
-}
+/* v239 · LLUVIA MATRIX RETIRADA.
+   Dos lienzos a pantalla completa repintando 22 veces por segundo con un
+   setInterval que no se cancelaba nunca ni miraba si la pestaña estaba
+   oculta. Solo se dibujaba en pantallas de 780 px o más: invisible en el
+   iPhone, visible y cobrando batería en el Quest. */
 
 /* ── City / weather badge below orb ────────────────── */
 function updateCityBadge(city, temp, icon) {
@@ -4514,7 +4484,6 @@ async function boot() {
   paso('tareas',                   () => renderTareas());
   paso('recordatorios',            () => restoreReminders());
   paso('paneles HUD',              () => renderHudPanels());
-  paso('lluvia matrix',            () => initMatrixRain());
   paso('búsqueda global',          () => { if (typeof initSearch === 'function') initSearch(); });
 
   paso('preferencias de sesión', () => {
@@ -4564,7 +4533,11 @@ async function boot() {
     let done = false;
     return () => {
       if (done) return; done = true;
-      ['holo.js', 'parallax.js', 'vision-orb.js', 'vision.js'].forEach(src => {
+      /* v239 · holo.js y parallax.js fuera: partículas, parallax por
+         giroscopio y streams SVG del MODO CINE. 18 KB que se descargaban en
+         cada arranque para algo que está apagado por defecto. Visión sigue
+         entera: vision.js y su orbe se quedan porque el módulo los usa. */
+      ['vision-orb.js', 'vision.js'].forEach(src => {
         if (document.querySelector(`script[src="${src}"]`)) return;
         const s = document.createElement('script');
         if (src === 'vision.js') s.type = 'module';

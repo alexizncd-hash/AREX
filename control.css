@@ -434,12 +434,6 @@
   background: rgba(0,6,18,0.95);
 }
 
-.neural-orb-canvas {
-  width: 90px;
-  height: 90px;
-  display: block;
-}
-
 .agent-orb-name {
   font-size: 10px;
   font-weight: 700;
@@ -555,7 +549,6 @@
   align-items: center;
   justify-content: center;
 }
-.orb-space .neural-orb-canvas { width: 88px; height: 88px; }
 .orb-orbita {
   position: absolute;
   top: 50%; left: 50%;
@@ -586,18 +579,11 @@
 }
 .orb-orbita.o1 .orb-sat {
   offset-path: ellipse(58px 21px at 0px 0px);
-  animation: orb-sat-mv 7s linear infinite;
 }
 .orb-orbita.o2 .orb-sat {
   width: 3.5px; height: 3.5px; margin: -1.75px;
   offset-path: ellipse(50px 17px at 0px 0px);
-  animation: orb-sat-mv 11s linear infinite reverse;
 }
-@keyframes orb-sat-mv {
-  from { offset-distance: 0%; }
-  to   { offset-distance: 100%; }
-}
-
 /* ── v204: panel del VIGÍA (vigilancia proactiva) ── */
 #ctrl-vigia {
   grid-column: 1 / -1;

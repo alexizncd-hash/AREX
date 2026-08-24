@@ -214,16 +214,12 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 .dock-sys-label {
   font-size:0.55rem; color:#1e4a40; letter-spacing:0.5px;
   max-width:56px; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; text-align:center; cursor:default;
-}
-@keyframes pulse-dot {
-  0%,100%{ opacity:1; } 50%{ opacity:0.4; }
 }
 /* #workspace — 6 de las 6 declaraciones de este bloque seguían vivas (v213) */
 #workspace {
@@ -279,10 +275,8 @@ body {
 }
 /* .ss-dot.on-line — 1 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .ss-dot.on-line {
-  animation: dotpulse 2s ease-in-out infinite;
 }
 
-@keyframes dotpulse { 0%,100%{opacity:1;} 50%{opacity:0.45;} }
 /* .ss-name — 3 de las 4 declaraciones de este bloque seguían vivas (v213) */
 .ss-name {
   flex: 1;
@@ -420,7 +414,6 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  animation: scan 7s linear infinite;
   z-index: 1;
   pointer-events: none;
 }
@@ -452,7 +445,6 @@ body {
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 
@@ -487,7 +479,6 @@ body {
   border:2px solid var(--cyan);
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 0 20px var(--cyan-pulse), inset 0 0 16px var(--cyan-glow);
-  animation:logo-pulse 3s ease-in-out infinite;
 }
 /* @keyframes logo-pulse — definición anterior, la pisaba la de más abajo (v218) */
 
@@ -515,17 +506,13 @@ main {
 .reactor-ring.outer {
   width: 116px;
   height: 116px;
-  animation: spin 22s linear infinite;
   border-style: dashed;
 }
 /* .reactor-ring.mid — 3 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .reactor-ring.mid {
   width: 94px;
   height: 94px;
-  animation: spin 14s linear infinite reverse;
 }
-
-@keyframes spin { to{ transform:rotate(360deg); } }
 
 /* .orb-core is removed by orb.js at runtime — kept here as no-op fallback */
 .orb-core { display:none; }
@@ -838,13 +825,8 @@ main {
   white-space: nowrap;
   margin-bottom: 10px;
   transition: all 0.3s;
-  animation: status-float-glow 3s ease-in-out infinite;
 }
 
-@keyframes status-float-glow {
-  0%,100%{ box-shadow:0 0 6px rgba(34,211,238,0.1); }
-  50%    { box-shadow:0 0 14px rgba(34,211,238,0.25); }
-}
 /* keep .status-txt as alias for JS compatibility */
 .status-txt { display:none; }
 
@@ -884,7 +866,6 @@ main {
 .exam-badge {
   font-size:9px; letter-spacing:3px; color:var(--orange);
   border:1px solid var(--orange); padding:3px 10px; border-radius:2px;
-  animation:badge-glow 2s ease-in-out infinite;
 }
 @keyframes badge-glow {
   0%,100%{ box-shadow:0 0 4px rgba(255,153,0,0.3); }
@@ -1341,17 +1322,11 @@ footer {
   color:var(--cyan); font-family:var(--font);
   font-size:10px; letter-spacing:2px; cursor:pointer;
   border-radius:3px; transition:all 0.2s;
-  animation:run-btn-glow 2s ease-in-out infinite;
   box-shadow:0 0 10px rgba(34,211,238,0.15);
 }
 .run-btn svg { flex-shrink:0; }
 .run-btn:hover { background:rgba(34,211,238,0.18); box-shadow:0 0 20px rgba(34,211,238,0.3); transform:translateY(-1px); }
 .run-btn:active { transform:translateY(0); }
-@keyframes run-btn-glow {
-  0%,100% { box-shadow:0 0 8px rgba(34,211,238,0.15); }
-  50%      { box-shadow:0 0 16px rgba(34,211,238,0.35); }
-}
-
 /* ── Notas: categorías y filtros ────────────────────── */
 .notes-filter-bar {
   display:flex; gap:4px; padding:6px 10px;
@@ -2259,23 +2234,16 @@ header {
 /* @keyframes sos-pulse — sin uso, retirado (v218) */
 
 /* ── Progress bars: shimmer ─────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
 .bar-fill, .dhp-fill, .dash-mes-fill {
   background: linear-gradient(90deg, var(--cyan) 30%, rgba(0,255,255,0.8) 50%, var(--cyan) 70%);
   background-size: 200% auto;
-  animation: shimmer 3s linear infinite;
 }
 
 /* ── Dock badge: pulso de alerta ────────────────────── */
 .dock-badge:not(.hidden) {
-  animation: badge-pulse 2s ease-in-out infinite;
 }
 /* @keyframes badge-pulse — definición anterior, la pisaba la de más abajo (v218) */
 .dock-badge.urgente:not(.hidden) {
-  animation: badge-pulse 1s ease-in-out infinite;
 }
 
 /* ── Header: botones icono derecha ──────────────────── */
@@ -2654,7 +2622,6 @@ body::before {
   height: 182px;
   margin-left: -91px;
   margin-top: -91px;
-  animation: orb-orbit-r1 8s linear infinite;
 }
 /* .orb-ring.r2 — 5 de las 7 declaraciones de este bloque seguían vivas (v213) */
 .orb-ring.r2 {
@@ -2662,7 +2629,6 @@ body::before {
   height: 224px;
   margin-left: -112px;
   margin-top: -112px;
-  animation: orb-orbit-r2 13s linear infinite reverse;
 }
 /* .orb-ring.r3 — 5 de las 7 declaraciones de este bloque seguían vivas (v213) */
 .orb-ring.r3 {
@@ -2670,22 +2636,8 @@ body::before {
   height: 150px;
   margin-left: -75px;
   margin-top: -75px;
-  animation: orb-orbit-r3 5.5s linear infinite;
 }
 
-
-@keyframes orb-orbit-r1 {
-  from { transform: rotateX(68deg) rotateZ(0deg);   }
-  to   { transform: rotateX(68deg) rotateZ(360deg); }
-}
-@keyframes orb-orbit-r2 {
-  from { transform: rotateX(72deg) rotateZ(40deg);  }
-  to   { transform: rotateX(72deg) rotateZ(400deg); }
-}
-@keyframes orb-orbit-r3 {
-  from { transform: rotateX(62deg) rotateZ(-15deg); }
-  to   { transform: rotateX(62deg) rotateZ(345deg); }
-}
 
 @media (max-width:400px) {
   .orb { width:104px !important; height:104px !important; }
@@ -2887,7 +2839,6 @@ body::before {
   width: 5px; height: 5px; border-radius: 50%;
   background: var(--green);
   box-shadow: 0 0 6px var(--green);
-  animation: pulse 2.2s ease-in-out infinite;
 }
 .hsb-text { color: rgba(34,211,238,.55); }
 .hsb-ver  { color: rgba(34,211,238,.28); font-size: 6px; }
@@ -3126,11 +3077,6 @@ footer {
   pointer-events: none;
 }
 
-@keyframes badge-pulse {
-  0%,100% { box-shadow: 0 0 8px rgba(255,68,85,0.7); }
-  50%      { box-shadow: 0 0 14px rgba(255,68,85,0.9); }
-}
-
 /* ── Module entrance animation (enhanced) ────────────── */
 /* @keyframes module-slide-in — sin uso, retirado (v218) */
 
@@ -3344,17 +3290,12 @@ footer {
 
 
 /* ── Animated trace line on active dock item ─────────── */
-@keyframes cyan-trace {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
 /* #dock .nav-btn.active::before — 10 de las 10 declaraciones de este bloque seguían vivas (v213) */
 #dock .nav-btn.active::before {
   inset: unset !important;
   border-radius: 0 !important;
   background: linear-gradient(90deg, transparent, var(--cyan), transparent) !important;
   background-size: 200% 100% !important;
-  animation: cyan-trace 2.4s linear infinite !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
@@ -3430,12 +3371,6 @@ textarea:focus {
 /* .nav-urg-badge — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
 .nav-urg-badge {
   box-shadow: 0 0 8px rgba(255,60,80,0.65) !important;
-  animation: urg-pulse 1.3s ease-in-out infinite !important;
-}
-
-@keyframes urg-pulse {
-  0%,100% { transform:scale(1);    box-shadow:0 0 6px rgba(255,60,80,0.5); }
-  50%     { transform:scale(1.22); box-shadow:0 0 16px rgba(255,60,80,0.85); }
 }
 
 .vp-module-hud.visible {
@@ -3613,16 +3548,10 @@ header::after {
     rgba(34,211,238,0.7) 65%,
     transparent 100%);
   background-size: 200% 100%;
-  animation: panel-shimmer 3.5s linear infinite;
   z-index: 2;
   pointer-events: none;
 }
 
-@keyframes panel-shimmer {
-  0%   { background-position:-100% 0; opacity:0.45; }
-  50%  { opacity:1; }
-  100% { background-position: 250% 0; opacity:0.45; }
-}
 /* .input-bar:focus-within — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
 .input-bar:focus-within {
   border-color: rgba(34,211,238,0.52) !important;
@@ -3698,23 +3627,16 @@ header::after {
 }
 /* .dao-hermes — 1 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .dao-hermes {
-  animation: dao-pulse 2.2s ease-in-out infinite;
 }
 /* .dao-atlas — 1 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .dao-atlas {
-  animation: dao-pulse 2.8s ease-in-out infinite;
 }
 /* .dao-sentinel — 1 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .dao-sentinel {
-  animation: dao-pulse 3.4s ease-in-out infinite;
 }
 /* .dao-scribe — 1 de las 3 declaraciones de este bloque seguían vivas (v213) */
 .dao-scribe {
-  animation: dao-pulse 1.8s ease-in-out infinite;
 }
-@keyframes dao-pulse { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
-
-
 #vis-workspace.vw-active { display:flex; animation:wk-slide-in 0.38s cubic-bezier(0.34,1.2,0.64,1); }
 @keyframes wk-slide-in {
   from { transform:translateX(80px); opacity:0; }
@@ -3952,7 +3874,6 @@ header::after {
 .dao-orb {
   width: 10px;
   height: 10px;
-  animation: dao-pulse 2.5s ease-in-out infinite;
 }
 
 /* .ctrl-agents — 5 de las 5 declaraciones de este bloque seguían vivas (v213) */
@@ -3981,14 +3902,6 @@ header::after {
 }
  /* hide old CSS orb stage */
 
-.neural-orb-canvas {
-  width: 180px;
-  height: 180px;
-  display: block;
-  border-radius: 50%;
-  cursor: pointer;
-  filter: drop-shadow(0 0 18px currentColor);
-}
 /* .agent-orb-name — 2 de las 4 declaraciones de este bloque seguían vivas (v213) */
 .agent-orb-name {
   font-size: 11px;
@@ -4096,11 +4009,7 @@ main::before {
     transparent 360deg
   );
   border-radius: 50%;
-  animation: boot-conic-spin 8s linear infinite;
   pointer-events: none;
-}
-@keyframes boot-conic-spin {
-  to { transform: translate(-50%,-50%) rotate(360deg); }
 }
 /* .boot-logo — 8 de las 10 declaraciones de este bloque seguían vivas (v213) */
 .boot-logo {
@@ -4108,7 +4017,6 @@ main::before {
   font-weight: 700;
   color: #fff;
   font-family: var(--font-display);
-  animation: arc-reactor-pulse 2s ease-in-out infinite;
   position: relative;
   background: radial-gradient(circle at 38% 32%,
     rgba(255,255,255,0.22) 0%,
@@ -4153,13 +4061,8 @@ header::before {
   left: 0;
   right: 0;
   height: 1px;
-  animation: hdr-iron-sweep 4s ease-in-out infinite;
 }
 
-@keyframes hdr-iron-sweep {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
 /* header::after — 5 de las 5 declaraciones de este bloque seguían vivas (v213) */
 header::after {
   content: '';
@@ -4229,18 +4132,12 @@ header::after {
   top: 0;
   right: 0;
   width: 1px;
-  animation: dock-iron-pillar 3s ease-in-out infinite;
   bottom: 0;
 }
 
-@keyframes dock-iron-pillar {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1.0; }
-}
 /* .dock-logo-ring — 4 de las 5 declaraciones de este bloque seguían vivas (v213) */
 .dock-logo-ring {
   color: var(--iron);
-  animation: arc-reactor-pulse 3s ease-in-out infinite;
   background: radial-gradient(circle at 35% 30%, rgba(255,106,0,0.15), transparent 70%);
   border-color: var(--iron);
 }
@@ -4316,7 +4213,6 @@ header::after {
     0 0 40px var(--iron-pulse),
     0 0 80px rgba(255,106,0,0.20),
     inset 0 0 30px rgba(255,106,0,0.08);
-  animation: arc-reactor-pulse 2.5s ease-in-out infinite;
   background: radial-gradient(circle at 38% 32%,
     rgba(255,255,255,0.14) 0%,
     rgba(255,106,0,0.08) 35%,
@@ -4626,13 +4522,7 @@ a:hover { color: var(--gold); text-shadow: 0 0 6px var(--gold-glow); }
     var(--gold) 50%,
     var(--iron) 65%,
     transparent 100%);
-  animation: panel-iron-shimmer 3s ease-in-out infinite;
   z-index: 2;
-}
-@keyframes panel-iron-shimmer {
-  0%   { background-position: -100% 0; opacity: 0.6; }
-  50%  { opacity: 1; }
-  100% { background-position: 200% 0; opacity: 0.6; }
 }
 /* #module-chat — 1 de las 1 declaraciones de este bloque seguían vivas (v213) */
 #module-chat {
@@ -4679,25 +4569,6 @@ a:hover { color: var(--gold); text-shadow: 0 0 6px var(--gold-glow); }
   border-color: var(--iron);
 }
 
-@keyframes arc-reactor-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 8px rgba(0,255,136,0.05),
-      0 0 0 18px rgba(0,255,136,0.025),
-      0 0 50px rgba(0,255,136,0.48),
-      inset 0 0 24px rgba(34,211,238,0.10);
-    border-color: var(--iron);
-  }
-  50% {
-    box-shadow:
-      0 0 0 12px rgba(0,255,136,0.09),
-      0 0 0 28px rgba(0,255,136,0.045),
-      0 0 70px rgba(0,255,136,0.68),
-      0 0 130px rgba(0,255,136,0.28),
-      inset 0 0 32px rgba(0,229,204,0.15);
-    border-color: var(--gold);
-  }
-}
 /* #boot-bar — 2 de las 2 declaraciones de este bloque seguían vivas (v213) */
 #boot-bar {
   background: linear-gradient(90deg, var(--iron-dim), var(--iron), var(--gold));
@@ -4725,17 +4596,6 @@ header::before {
 
 
 /* Logo ring pulse: verde */
-@keyframes logo-pulse {
-  0%, 100% {
-    box-shadow: 0 0 14px rgba(0,255,136,0.50), inset 0 0 10px rgba(0,255,136,0.12);
-    border-color: var(--iron);
-  }
-  50% {
-    box-shadow: 0 0 28px rgba(0,255,136,0.72), inset 0 0 18px rgba(0,255,136,0.18);
-    border-color: var(--gold);
-  }
-}
-
 /* ── Tareas recurrentes badge ─────────────────────────── */
 .tarea-rep-badge {
   font-size: 8px;
@@ -5052,15 +4912,10 @@ body:has(#vision-panel) .qc-fab { display: none; }
   border-radius: 50%;
   background: #22d3ee;
   box-shadow: 0 0 6px #22d3ee;
-  animation: dot-pulse 2s ease-in-out infinite;
 }
 .status-dot.green  { background: #34ffc3; box-shadow: 0 0 6px #34ffc3; }
 .status-dot.amber  { background: #ffb84d; box-shadow: 0 0 6px #ffb84d; }
 .status-dot.violet { background: #a98bff; box-shadow: 0 0 6px #a98bff; }
-@keyframes dot-pulse {
-  0%,100% { opacity:1; transform:scale(1); }
-  50%      { opacity:.5; transform:scale(.8); }
-}
 /* v213 · PENDIENTE PARA LA FASE 2, no se toca aquí.
    Esta regla en `*` anula toda herencia tipográfica: si un panel pide
    monoespaciada, sus hijos vuelven a Rajdhani salvo que se les repita la regla.
