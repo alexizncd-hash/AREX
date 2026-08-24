@@ -90,15 +90,51 @@ function toggleTarea(id) {
   renderTareas();
 }
 
+/* v238 · DOS DEFECTOS EN LA REPETICIÓN.
+
+   ① setMonth(+1) sobre un día 29-31 DESBORDA al mes siguiente: el 31 de
+      enero se convertía en el 3 de marzo, así que la tarea de febrero no
+      se generaba nunca. Igual el 31 de marzo → 1 de mayo, y el 29 de
+      febrero de un año bisiesto → 1 de marzo. Ahora el día se recorta al
+      último día del mes destino, que es lo que uno espera: "el 31 de cada
+      mes" en febrero significa el 28.
+
+   ② La fecha siguiente se calculaba desde la fecha VIEJA, no desde hoy. Una
+      tarea diaria atrasada desde junio, al marcarla hecha en agosto, paría
+      otra fechada en junio: nacía vencida, y una más por cada toque. Ahora
+      se avanza hasta pasar de hoy. */
 function _nextFechaRepetir(fechaActual, repetir) {
   const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
-  const next  = new Date(base);
-  if (repetir === 'diaria')   next.setDate(next.getDate() + 1);
-  else if (repetir === 'semanal')  next.setDate(next.getDate() + 7);
-  else if (repetir === 'mensual')  next.setMonth(next.getMonth() + 1);
-  else if (repetir === 'anual')    next.setFullYear(next.getFullYear() + 1);
-  else return null;
+  if (isNaN(base)) return null;
+  const diaOriginal = base.getDate();
+  const hoyStr = window.hoy();
+
+  const avanzar = d => {
+    if (repetir === 'diaria')        d.setDate(d.getDate() + 1);
+    else if (repetir === 'semanal')  d.setDate(d.getDate() + 7);
+    else if (repetir === 'mensual')  _sumarMeses(d, 1, diaOriginal);
+    else if (repetir === 'anual')    _sumarMeses(d, 12, diaOriginal);
+    else return false;
+    return true;
+  };
+
+  const next = new Date(base);
+  if (!avanzar(next)) return null;
+  // hasta superar hoy, con tope por si algo se descontrola
+  let vueltas = 0;
+  while (window.dia(next) <= hoyStr && vueltas < 400) {
+    if (!avanzar(next)) break;
+    vueltas++;
+  }
   return window.dia(next);   // v216: era UTC
+}
+
+/** Suma meses sin desbordar: el día se recorta al último del mes destino. */
+function _sumarMeses(d, meses, diaOriginal) {
+  const y = d.getFullYear();
+  const m = d.getMonth() + meses;
+  const ultimoDia = new Date(y, m + 1, 0).getDate();
+  d.setFullYear(y, m, Math.min(diaOriginal, ultimoDia));
 }
 function deleteTarea(id) {
   saveTareasData(getTareas().filter(t => t.id !== id));

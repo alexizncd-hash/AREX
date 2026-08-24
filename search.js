@@ -80,8 +80,14 @@ function _doSearch(query) {
           if (String(item[f] || '').toLowerCase().includes(q)) { matched = true; break; }
         }
         if (matched) {
-          const title = item.texto || item.titulo || item.nombre || item.concepto || item.accion || '—';
-          const sub   = item.descripcion || item.cuerpo || item.categoria || item.fecha || '';
+          // v238: faltaba `text`, que es como guardan las tareas su contenido
+          // desde v208. Encontraba la tarea y luego la enseñaba como "—", sin
+          // decir cuál era. Y una nota sin título (addNota las crea así) caía
+          // en lo mismo, teniendo el cuerpo al lado.
+          const title = item.texto || item.text || item.titulo || item.nombre
+                     || item.concepto || item.accion || item.cuerpo || item.msg || '—';
+          const sub   = item.descripcion || (item.titulo ? item.cuerpo : '')
+                     || item.categoria || item.fecha || '';
           results.push({ src, title: String(title), sub: String(sub) });
         }
       }

@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v237';
+const AREX_VERSION = 'v238';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -2099,16 +2099,33 @@ function _showTaskNotif(t, label) {
   n.onclick = () => { window.focus(); AREXNav?.cambiarModulo('tareas'); n.close(); };
 }
 
+/* v238 · NOTIFICACIONES FALSAS "MAÑANA VENCE" EN EL ACTO.
+
+   setTimeout guarda el retardo en un entero de 32 bits: por encima de
+   2.147.483.647 ms (24,8 días) desborda y el temporizador se dispara
+   INMEDIATAMENTE. Una tarea fechada a dos meses armaba un aviso que sonaba
+   al instante — y como esto se vuelve a armar en cada renderTareas() (abrir
+   TAREAS, marcar una, editar, o que llegue un cambio de la nube), sonaba una
+   y otra vez.
+
+   Ahora no se arma nada más allá del tope; se reprograma al volver a primer
+   plano, que es cuando esta misma función se vuelve a llamar. */
+const _TOPE_TIMER = 2147483000;
+
 function scheduleTaskNotifications() {
   _notifTimers.forEach(id => clearTimeout(id));
   _notifTimers.clear();
   if (Notification.permission !== 'granted') return;
   const now = Date.now();
+  const armar = (clave, retardo, fn) => {
+    if (retardo <= 0 || retardo > _TOPE_TIMER) return;   // fuera de alcance: ya se rearmará
+    _notifTimers.set(clave, setTimeout(fn, retardo));
+  };
   getTareas().filter(t => !t.done && t.fecha).forEach(t => {
     const due    = new Date(t.fecha + 'T09:00:00').getTime();
     const before = due - 86400000;
-    if (before > now) _notifTimers.set(t.id + 'b', setTimeout(() => _showTaskNotif(t, 'MAÑANA VENCE'), before - now));
-    if (due    > now) _notifTimers.set(t.id + 'd', setTimeout(() => _showTaskNotif(t, 'VENCE HOY'),    due    - now));
+    armar(t.id + 'b', before - now, () => _showTaskNotif(t, 'MAÑANA VENCE'));
+    armar(t.id + 'd', due    - now, () => _showTaskNotif(t, 'VENCE HOY'));
   });
 }
 window.scheduleTaskNotifications = scheduleTaskNotifications;   // usada por tareas.js
@@ -4467,19 +4484,40 @@ async function boot() {
   // Wrap all init work — any error must NOT block the boot screen from hiding
   // Firebase pulls (pullConfigFromFirestore, pullAllModuleData, loadHistory)
   // se ejecutan en el callback de onAuthStateChanged, no aquí.
-  try {
-    // Acotado a 3s: si el prompt de permisos se cuelga (Quest/iOS raros),
-    // el arranque NO puede quedarse esperando eternamente
-    await Promise.race([requestNotifPerm(), new Promise(r => setTimeout(r, 3000))]);
-    updateCtxBadge();
-    updateSidebarAll();
-    renderTareas();
-    restoreReminders();
-    renderHudPanels();
-    initMatrixRain();
-    if (typeof initSearch === 'function') initSearch();
+  /* v238 · EL ARRANQUE ERA TODO O NADA.
 
-    // Restaurar preferencias de sesión anterior
+     Quince pasos independientes vivían dentro de UN SOLO try. Si el tercero
+     fallaba, los doce siguientes no se ejecutaban —ni tareas dibujadas, ni
+     recordatorios restaurados, ni paneles, ni búsqueda— y el catch se lo
+     tragaba con un console.warn que en un iPhone no ve nadie. Y la pantalla
+     de arranque SÍ se quitaba después, así que quedaba una AREX "arrancada"
+     y vacía. Eso se ve exactamente igual que "no arranca".
+
+     Y el primer paso era el peor candidato posible: pedir permiso de
+     notificaciones. Safari solo lo concede desde un gesto del usuario; fuera
+     de uno, RECHAZA la promesa. Estaba en el camino crítico del arranque.
+
+     Ahora cada paso va en su propio try, deja rastro en la bitácora si
+     falla, y el permiso de notificaciones se pide desde /config —con el dedo
+     del usuario encima, que es la única forma en que iOS lo concede—. */
+  const paso = (nombre, fn) => {
+    try { fn(); }
+    catch (e) {
+      console.warn(`AREX arranque · falló "${nombre}":`, e);
+      try { logBitacora?.('alerta', `Arranque: falló ${nombre} — ${e.message}`); } catch {}
+    }
+  };
+
+  paso('estado de notificaciones', () => _updateNotifStatus?.());
+  paso('insignia de contexto',     () => updateCtxBadge());
+  paso('barra lateral',            () => updateSidebarAll());
+  paso('tareas',                   () => renderTareas());
+  paso('recordatorios',            () => restoreReminders());
+  paso('paneles HUD',              () => renderHudPanels());
+  paso('lluvia matrix',            () => initMatrixRain());
+  paso('búsqueda global',          () => { if (typeof initSearch === 'function') initSearch(); });
+
+  paso('preferencias de sesión', () => {
     if (localStorage.getItem('arex_voiceOn') === '1') {
       voiceOn = true;
       btnVoice?.classList.add('active');
@@ -4489,7 +4527,9 @@ async function boot() {
       btnSearch?.classList.add('active');
     }
     updateSidebarModes();
+  });
 
+  try {
     // Sub-agentes: verificar alertas de pagos urgentes al arrancar
     setTimeout(() => {
       if (typeof window.checkFinanzasAlerts === 'function') window.checkFinanzasAlerts();

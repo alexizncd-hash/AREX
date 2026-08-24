@@ -126,6 +126,7 @@ const AREXNav = {
 };
 
 // ── DRAWER ───────────────────────────────────────────────
+const _cssIntentado = new Set();   // v238: un solo reintento por módulo
 let _drawerCurrent = null;
 let _drawerCentro  = null;
 
@@ -174,7 +175,17 @@ const DRAWER = {
        todavía si tocas un módulo en el primer segundo. En ese caso se espera
        a ELLA —no a las diez— y se vuelve a entrar. Sin esto se vería el
        módulo un instante con los estilos a medias. */
-    if (window.cssModuloListo && !window.cssModuloListo(modulo)) {
+    /* v238 · Y ESTA ESPERA PODÍA CONGELAR EL APARATO ENTERO.
+       arexCss resuelve su promesa tanto si la hoja carga como si FALLA, pero
+       cssModuloListo exige que el <link> tenga hoja de verdad. Si la hoja no
+       llegó nunca —404, o sin red y sin copia en la caché— la promesa ya
+       resuelta volvía a entrar aquí, que volvía a esperarla, que volvía a
+       entrar… un bucle de microtareas que el navegador drena sin ceder nunca
+       el hilo: pantalla congelada, sin responder a nada, ni siquiera a la
+       escotilla de rescate. Ahora se espera UNA vez y, si la hoja no llega,
+       el módulo se abre igual sin ella: mal peinado es mejor que muerto. */
+    if (window.cssModuloListo && !window.cssModuloListo(modulo) && !_cssIntentado.has(modulo)) {
+      _cssIntentado.add(modulo);
       window.cssModulo(modulo).then(() => DRAWER.open(modulo, centro, instant));
       return;
     }

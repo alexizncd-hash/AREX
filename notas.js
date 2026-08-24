@@ -7,7 +7,41 @@
 //  sigue en app.js: usa imports dinámicos privados del módulo.)
 
 // ── Módulo Notas ────────────────────────────────────────
-function getNotas() { return leer('arex_notas', []); }
+/* v238 · UNA NOTA CREADA DESDE VISIÓN ROMPÍA EL MÓDULO ENTERO.
+
+   vision.js guarda sus notas como {id, texto, categoria, creadaEn}: sin
+   `titulo` ni `cuerpo`. Aquí se hacía n.titulo.replace(...) sin defensa, así
+   que renderNotas lanzaba TypeError a media lista y NOTAS se quedaba en
+   blanco —las notas seguían en el teléfono, pero no se veía ninguna—. El
+   aviso de visión decía "Nota guardada" porque su try/catch se tragaba el
+   error. Escribir en el buscador de notas reventaba igual.
+
+   Se normaliza al LEER, que es el único sitio por donde pasan todas. */
+function getNotas() {
+  const arr = leer('arex_notas', []);
+  if (!Array.isArray(arr)) return [];
+  let reparadas = 0;
+  const out = arr.map(n => {
+    if (!n || typeof n !== 'object') return null;
+    const falta = typeof n.titulo !== 'string' || typeof n.cuerpo !== 'string'
+               || typeof n.updatedAt !== 'number';
+    if (!falta) return n;
+    reparadas++;
+    return {
+      ...n,
+      titulo:    typeof n.titulo === 'string' ? n.titulo : '',
+      cuerpo:    typeof n.cuerpo === 'string' ? n.cuerpo : (typeof n.texto === 'string' ? n.texto : ''),
+      pinned:    !!n.pinned,
+      color:     typeof n.color === 'string' ? n.color : '',
+      createdAt: Number(n.createdAt) || Number(n.creadaEn) || Date.now(),
+      updatedAt: Number(n.updatedAt) || Number(n.creadaEn) || Number(n.createdAt) || Date.now(),
+    };
+  }).filter(Boolean);
+  // Se dejan reparadas en disco: si no, cada lectura las arregla otra vez y
+  // la nota de visión seguiría rota para quien la lea sin pasar por aquí.
+  if (reparadas) guardar('arex_notas', out);
+  return out;
+}
 function saveNotas(arr) {
   guardar('arex_notas', arr);
   // Sin esto las notas bajaban de Firestore pero nunca subían: cualquier
@@ -35,6 +69,23 @@ function deleteNota(id) {
   renderNotas();
   renderDashboard();
 }
+
+/* v238 · LO ÚLTIMO ESCRITO SE PERDÍA AL CAMBIAR DE APP.
+   El guardado espera 700 ms desde la última tecla. Si en ese hueco sales de
+   AREX, iOS congela la pestaña y el temporizador no llega a correr: esa
+   frase no se guarda ni sube a la nube. Aquí se registran los guardados
+   pendientes y se vuelcan cuando la app se va a segundo plano. */
+const _notasPendientes = new Map();   // id → función que guarda
+function _apuntarPendiente(id, fn) { _notasPendientes.set(id, fn); }
+function _volcarNotasPendientes() {
+  if (!_notasPendientes.size) return;
+  _notasPendientes.forEach(fn => { try { fn(); } catch {} });
+  _notasPendientes.clear();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _volcarNotasPendientes();
+});
+window.addEventListener('pagehide', _volcarNotasPendientes);
 
 function renderNotas() {
   const el = document.getElementById('notas-list');
@@ -76,12 +127,19 @@ function renderNotas() {
       </div>`;
 
     const ti = card.querySelector('.nota-titulo');
-    let tt; ti.addEventListener('input', () => { clearTimeout(tt); tt = setTimeout(() => updateNota(n.id, { titulo: ti.value }), 700); });
+    let tt; ti.addEventListener('input', () => {
+      clearTimeout(tt);
+      const guardarTitulo = () => { clearTimeout(tt); updateNota(n.id, { titulo: ti.value }); };
+      _apuntarPendiente(n.id + ':t', guardarTitulo);
+      tt = setTimeout(() => { _notasPendientes.delete(n.id + ':t'); updateNota(n.id, { titulo: ti.value }); }, 700);
+    });
 
     const ta = card.querySelector('.nota-cuerpo');
     let ct; ta.addEventListener('input', () => {
       clearTimeout(ct);
-      ct = setTimeout(() => updateNota(n.id, { cuerpo: ta.value }), 700);
+      const guardarCuerpo = () => { clearTimeout(ct); updateNota(n.id, { cuerpo: ta.value }); };
+      _apuntarPendiente(n.id + ':c', guardarCuerpo);
+      ct = setTimeout(() => { _notasPendientes.delete(n.id + ':c'); updateNota(n.id, { cuerpo: ta.value }); }, 700);
       const wc = card.querySelector('.nota-wc');
       if (wc) wc.textContent = ta.value.trim() ? ta.value.trim().split(/\s+/).length + ' pal' : '';
     });

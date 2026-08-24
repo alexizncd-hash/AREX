@@ -726,3 +726,47 @@ html.sin-cristal :is(*, #cristal)::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+
+/* ── NOTAS · objetivos táctiles (v238) ───────────────────────────────────
+   Hasta ahora el contrato de calidad no los medía porque una nota rota
+   dejaba el módulo vacío y no había nada que medir. Con NOTAS dibujándose,
+   salieron seis controles por debajo de 44 px: el título (17 px de alto),
+   el pin y la papelera (24×18 y 19×18) y los tres puntos de color (12 px).
+   Los puntos de color se dejan pequeños a la vista —son una paleta— pero se
+   les amplía el área de toque con un ::before, como se hizo con los chips
+   de la agenda en v222. */
+.nota-titulo { min-block-size: var(--toque); }
+
+.nota-pin-btn,
+.nota-del-btn {
+  min-inline-size: var(--toque);
+  min-block-size: var(--toque);
+  display: grid;
+  place-items: center;
+}
+
+.nota-colors { display: flex; gap: var(--e-3); align-items: center; }
+
+.ncolor {
+  position: relative;
+  &::before {
+    /* 44 exactos, centrados en el punto. Con `inset` negativo salían 42:
+       el punto mide 12 de contenido más 1,5 de borde a cada lado, y esa
+       cuenta es fácil de fallar. Mejor decir el tamaño y centrarlo. */
+    content: '';
+    position: absolute;
+    inset-inline-start: 50%;
+    inset-block-start: 50%;
+    translate: -50% -50%;
+    inline-size: var(--toque);
+    block-size: var(--toque);
+  }
+}
+
+.nota-export-btn {
+  min-inline-size: var(--toque);
+  min-block-size: var(--toque);
+  display: grid;
+  place-items: center;
+}

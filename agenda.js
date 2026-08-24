@@ -38,8 +38,14 @@ function _agGetEvents() {
   // Recordatorios
   const recs = _safeAgJSON(localStorage.getItem('arex_recordatorios'), []);
   for (const r of recs) {
-    if (!r.disparado && r.when) {
-      const d = new Date(r.when);
+    // v238: leía r.when, y los recordatorios se guardan con `disparaEn`
+    // (app.js:3238). `when` no se escribe en NINGÚN archivo del repo: la
+    // condición era siempre falsa, así que la AGENDA no ha enseñado un solo
+    // recordatorio desde que existe. Se acepta el nombre viejo por si quedó
+    // alguno guardado de una versión anterior.
+    const cuando = r.disparaEn ?? r.when;
+    if (!r.disparado && cuando) {
+      const d = new Date(cuando);
       addEv(_agKey(d), {
         type: 'recordatorio', id: r.id, title: r.msg,
         hora: d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
@@ -210,7 +216,7 @@ function _agRenderMes(events, today) {
 function _agEventChip(ev) {
   const icons = { tarea:'✓', recordatorio:'⏰', meta:'🎯' };
   const prioMap = { alta:'!', media:'', baja:'' };
-  return `<div class="ag-chip ag-chip-${ev.color}" data-evtype="${ev.type}" data-evid="${ev.id}" title="${ev.title}">
+  return `<div class="ag-chip ag-chip-${ev.color}" data-evtype="${ev.type}" data-evid="${ev.id}" title="${window.escAttr ? escAttr(ev.title) : _h(ev.title)}">
     <span class="ag-chip-ico">${icons[ev.type]||'•'}</span>
     <span class="ag-chip-txt">${_h((ev.title||'').slice(0,28))}${(ev.title||'').length>28?'…':''}</span>
     ${ev.hora ? `<span class="ag-chip-time">${ev.hora}</span>` : ''}
