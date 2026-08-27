@@ -17,11 +17,14 @@ const METAS_CATS = {
 const _escA = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ── Persistencia ────────────────────────────────────
+/* v241 · Única lectura cruda de los módulos: si arex_metas llegara a
+   contener algo que no sea un array —la cadena "null", o un objeto tras un
+   pull de la nube desde una versión con otro formato— el .filter de más
+   abajo lanzaba TypeError y METAS se quedaba en blanco. leer() del núcleo ya
+   trae esa guarda; solo faltaba usarla. */
 function getMetas() {
-  try {
-    const raw = localStorage.getItem(METAS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  const v = leer(METAS_KEY, []);
+  return Array.isArray(v) ? v : [];
 }
 
 function saveMetas(arr) {

@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v240';
+const AREX_VERSION = 'v241';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -1772,7 +1772,7 @@ function addMsg(role, text, sources) {
   let srcHTML = '';
   if (sources?.length) {
     srcHTML = `<div class="sources">FUENTES: ${
-      sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')
+      sources.map((s,i) => `<a href="${escAttr(s.url)}" target="_blank" rel="noopener noreferrer">[${i+1}] ${esc(s.title||s.url)}</a>`).join(' · ')
     }</div>`;
   }
   const actionsHTML = role !== 'user'
@@ -2651,7 +2651,7 @@ async function handleURL(url) {
 
     hideThinking();
     const safeTitle = extracted.title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const srcHTML = `<div class="sources">FUENTE: <a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
+    const srcHTML = `<div class="sources">FUENTE: <a href="${escAttr(url)}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
     if (voiceOn) arexSpeak(reply); else setOrb(null, 'En espera de instrucciones');
@@ -2719,7 +2719,7 @@ async function handleMultipleURLs(urls, question) {
 
     hideThinking();
     const srcHTML = `<div class="sources">FUENTES: ${valid.map((r, i) =>
-      `<a href="${r.url}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${r.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</a>`
+      `<a href="${escAttr(r.url)}" target="_blank" rel="noopener noreferrer">[${i + 1}] ${esc(r.title)}</a>`
     ).join(' · ')}</div>`;
     const wrap = makeArexWrap(srcHTML);
     await renderArexReply(wrap, reply);
@@ -3197,6 +3197,13 @@ function saveRecordatorios(arr) {
   localStorage.setItem('arex_recordatorios', JSON.stringify(arr));
   if (typeof arexSyncData === 'function') arexSyncData('arex_recordatorios');
 }
+
+/* v241 · Las FUENTES de una búsqueda web llevaban la URL y el título tal
+   como los devuelve Tavily, sin escapar, DENTRO de href="…". Un título o una
+   URL con una comilla doble cierra el atributo e inyecta lo que quiera en la
+   misma página que guarda las claves de API y todo el dinero de FINANZAS. No
+   es texto tuyo: lo devuelve un buscador externo. escAttr() y esc() estaban
+   en el núcleo justo para esto. */
 
 /* v240 · UNA RED QUE NO FALLA PERO SE CUELGA DEJABA EL CHAT MUERTO.
    De las ocho llamadas de red de AREX solo una tenía tiempo límite. Con
@@ -3745,7 +3752,7 @@ async function handleSend() {
     const sources = webCtx?.results?.slice(0, 3) || null;
     let srcHTML = '';
     if (sources?.length) {
-      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i) => `<a href="${s.url}" target="_blank" rel="noopener noreferrer">[${i+1}] ${s.title||s.url}</a>`).join(' · ')}</div>`;
+      srcHTML = `<div class="sources">FUENTES: ${sources.map((s,i) => `<a href="${escAttr(s.url)}" target="_blank" rel="noopener noreferrer">[${i+1}] ${esc(s.title||s.url)}</a>`).join(' · ')}</div>`;
     }
     const wrap = makeArexWrap(srcHTML);
     hideThinking();
@@ -4549,7 +4556,13 @@ async function boot() {
     // Sub-agentes: verificar alertas de pagos urgentes al arrancar
     setTimeout(() => {
       if (typeof window.checkFinanzasAlerts === 'function') window.checkFinanzasAlerts();
+      /* v241: checkMetasAlerts NUNCA se ejecutaba. metas.js es de carga
+         diferida —llega cuando abres METAS—, así que en el arranque la
+         función todavía no existe y nadie reintentaba. Una meta con fecha
+         límite mañana no avisaba jamás. Se le da el mismo reintento que ya
+         tenía el VIGÍA unas líneas más abajo. */
       if (typeof window.checkMetasAlerts === 'function') window.checkMetasAlerts();
+      else setTimeout(() => window.checkMetasAlerts?.(), 12000);
       // VIGÍA (v204): vigilancia proactiva cruzando módulos. control.js es
       // lazy — si aún no cargó, se reintenta una vez más adelante.
       if (typeof window._vigilancia === 'function') window._vigilancia();

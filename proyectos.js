@@ -142,7 +142,12 @@ function _renderCard(p) {
     deadlineHTML = `<span class="proj-deadline${cls ? ' ' + cls : ''}">📅 ${txt}</span>`;
   }
 
-  const estadoLabel = PROJ_ESTADO_LABELS[p.estado] || p.estado.toUpperCase();
+  // v241: p.estado.toUpperCase() sin guarda. Un proyecto sin estado —de una
+  // versión anterior o traído de la nube— lanzaba TypeError DENTRO del
+  // template, así que la asignación de innerHTML no llegaba a ocurrir: el
+  // panel se quedaba con el contenido viejo y PROYECTOS dejaba de
+  // actualizarse, sin ningún error visible.
+  const estadoLabel = PROJ_ESTADO_LABELS[p.estado] || String(p.estado || 'activo').toUpperCase();
   const nextEstado = PROJ_ESTADOS[(PROJ_ESTADOS.indexOf(p.estado) + 1) % PROJ_ESTADOS.length];
 
   return `
@@ -176,27 +181,52 @@ function _renderCard(p) {
   `;
 }
 
+/* v241 · LAS COSAS SE ASOCIABAN A UN PROYECTO POR PARECIDO DE NOMBRE.
+
+   Bastaba con que el texto CONTUVIERA el nombre del proyecto. Con un
+   proyecto llamado "Casa", la tarea "Comprar casaca para Sofi" y la nota
+   "regresar a casa antes de las 8" contaban como suyas — y la barra de
+   progreso sale de esa muestra: con una tarea real hecha y tres coladas sin
+   hacer, el proyecto decía 25 %. Un proyecto llamado "Ver", "Pan" o "Sol" se
+   tragaba medio sistema.
+
+   Ahora manda el vínculo explícito (`proyecto === nombre`). La coincidencia
+   por texto sigue existiendo, pero solo como SUGERENCIA: se enseña aparte y
+   no entra en el progreso. */
+function _porNombreExacto(lista, nombre) {
+  return lista.filter(x => x.proyecto === nombre);
+}
+function _porTexto(lista, nombre, campos) {
+  const n = nombre.toLowerCase();
+  if (n.length < 4) return [];   // "Ver", "Pan", "Sol" enganchan cualquier cosa
+  return lista.filter(x => x.proyecto !== nombre &&
+    campos.some(c => x[c]?.toLowerCase().includes(n)));
+}
+
 function _getTareasProyecto(nombre) {
   try {
     if (typeof getTareas !== 'function') return [];
-    const n = nombre.toLowerCase();
-    return getTareas().filter(t => t.text?.toLowerCase().includes(n) || t.proyecto === nombre);
+    return _porNombreExacto(getTareas(), nombre);
+  } catch(_) { return []; }
+}
+function _getTareasSugeridas(nombre) {
+  try {
+    if (typeof getTareas !== 'function') return [];
+    return _porTexto(getTareas(), nombre, ['text', 'texto']);
   } catch(_) { return []; }
 }
 
 function _getMetasProyecto(nombre) {
   try {
     if (typeof getMetas !== 'function') return [];
-    const n = nombre.toLowerCase();
-    return getMetas().filter(m => m.titulo?.toLowerCase().includes(n) || m.proyecto === nombre);
+    return _porNombreExacto(getMetas(), nombre);
   } catch(_) { return []; }
 }
 
 function _getNotasProyecto(nombre) {
   try {
     if (typeof getNotas !== 'function') return [];
-    const n = nombre.toLowerCase();
-    return getNotas().filter(nt => nt.titulo?.toLowerCase().includes(n) || nt.cuerpo?.toLowerCase().includes(n));
+    return _porNombreExacto(getNotas(), nombre);
   } catch(_) { return []; }
 }
 

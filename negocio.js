@@ -182,18 +182,48 @@ function _mesAnterior() {
   return { s, e };
 }
 
+/* v241 · LA FLECHA SE INVERTÍA CUANDO EL MES ANTERIOR CERRÓ EN PÉRDIDA.
+
+   Dividir entre `prev` a secas da la vuelta al signo si prev es negativo — y
+   GANANCIA MES es negativa cualquier mes en que compres materia prima.
+
+     mes pasado −1.000, este mes +500  →  (500 −(−1000)) / −1000 = −150
+       el panel pintaba "GANANCIA MES ↓150%" EN ROJO habiendo remontado 1.500
+     mes pasado −1.000, este mes −2.000 →  (−2000 +1000) / −1000 = +100
+       pintaba "↑100%" EN VERDE con la pérdida duplicada
+
+   Se divide entre el valor absoluto, y el color lo decide si de verdad
+   subió, no el signo del porcentaje. */
 function _diffPct(curr, prev) {
   if (prev === 0) return curr > 0 ? '100' : null;
-  return ((curr - prev) / prev * 100).toFixed(0);
+  return ((curr - prev) / Math.abs(prev) * 100).toFixed(0);
 }
 
 function _trend(curr, prev) {
   if (prev == null || curr == null) return '';
   const pct = _diffPct(curr, prev);
   if (pct === null) return '';
-  const up = Number(pct) >= 0;
-  return `<span class="neg-kpi-trend ${up ? 'neg-profit' : 'neg-loss'}">${up ? '↑' : '↓'}${Math.abs(pct)}%</span>`;
+  const subio = curr >= prev;                 // el hecho, no el signo del cociente
+  return `<span class="neg-kpi-trend ${subio ? 'neg-profit' : 'neg-loss'}">${subio ? '↑' : '↓'}${Math.abs(pct)}%</span>`;
 }
+
+/* v241 · El botón COPIAR del resumen mensual no funcionó NUNCA.
+   El texto se metía en el onclick con JSON.stringify, que envuelve en
+   comillas DOBLES… dentro de un atributo delimitado por comillas dobles. El
+   atributo se cerraba en la primera comilla, el navegador intentaba compilar
+   `navigator.clipboard?.writeText(` y eso es un error de sintaxis: el onclick
+   quedaba en nulo. Pulsarlo no hacía absolutamente nada. */
+let _negResumenTxt = '';
+let _negStockBajoAvisado = false;   // v241
+async function negCopiarResumen(btn) {
+  try {
+    await navigator.clipboard.writeText(_negResumenTxt);
+    if (btn) { btn.textContent = '✓ COPIADO'; setTimeout(() => (btn.textContent = 'COPIAR'), 1500); }
+  } catch {
+    tost('El navegador no dejó copiar. Mantén pulsado el texto y cópialo a mano.', 'error');
+  }
+}
+window.negCopiarResumen = negCopiarResumen;
 
 function renderNegDashboard() {
   const data = getNegocioData();
@@ -260,7 +290,15 @@ function renderNegDashboard() {
 
   const stockMin = data.config.stockMinimo || 5;
   const stockBajo = data.inventario.stockKg < stockMin;
-  if (stockBajo && typeof logBitacora === 'function') {
+  /* v241: esto corría en CADA repintado del dashboard —abrir el módulo,
+     volver a la pestaña, cambiar el periodo del gráfico— sin desduplicar. La
+     bitácora se corta en 500 entradas: unas semanas con el stock bajo la
+     llenaban de líneas idénticas y empujaban fuera los errores de JS y los
+     desfases de versión, que es para lo que sirve. Ahora se anota cuando el
+     estado CAMBIA, que es cuando es noticia. */
+  if (!stockBajo) _negStockBajoAvisado = false;
+  if (stockBajo && !_negStockBajoAvisado && typeof logBitacora === 'function') {
+    _negStockBajoAvisado = true;
     logBitacora('negocio', `⚠ Stock bajo: ${$KG(data.inventario.stockKg)} (mín: ${$KG(stockMin)})`);
   }
 
@@ -368,13 +406,14 @@ function negExportarMes() {
     `─────────────────────────────`,
     `Generado por AREX · ${new Date().toLocaleString('es-MX')}`
   ].join('\n');
+  _negResumenTxt = txt;   // v241: lo copia negCopiarResumen()
 
   const box = document.getElementById('neg-export-box');
   if (!box) return;
   box.style.display = 'block';
   box.innerHTML = `
     <pre class="neg-export-txt">${txt}</pre>
-    <button class="neg-btn-primary" style="margin-top:6px;font-size:9px" onclick="navigator.clipboard?.writeText(${JSON.stringify(txt)}).then(()=>{this.textContent='✓ COPIADO';setTimeout(()=>this.textContent='COPIAR',1500)})">COPIAR</button>
+    <button class="neg-btn-primary" style="margin-top:6px;font-size:9px" onclick="negCopiarResumen(this)">COPIAR</button>
   `;
 }
 
@@ -730,12 +769,41 @@ function negToggleSucursal(id) {
   renderNegSucursales();
 }
 
+/* v241 · Borrar un punto de venta se llevaba producto por delante.
+   Solo se quitaba de la lista. Sus ventas y entregas se quedaban colgadas —el
+   dashboard las agrupaba bajo "Sin sucursal"— y, en consignación, el producto
+   que ya le habías dejado había SALIDO del inventario central y no volvía
+   jamás: desaparecía del valor de "producto en la calle" sin dejar rastro.
+   Ahora se dice qué hay de por medio y el producto no vendido regresa. */
 async function negEliminarSucursal(id) {
-  if (!await pregunta('¿Eliminar este punto de venta?')) return;   // v216: confirm() se suprime en la PWA de iOS
   const data = getNegocioData();
+  const suc  = data.sucursales.find(s => s.id === id);
+  if (!suc) return;
+
+  const ventas   = data.ventas.filter(v => v.sucursalId === id);
+  const entregas = data.entregas.filter(e => (e.sucursalId ?? e.sucId) === id);
+  const mlEnTienda = Math.max(0,
+    entregas.reduce((n, e) => n + (e.cantidadML || 0), 0) -
+    ventas.reduce((n, v) => n + (v.cantidad || 0), 0));
+  const kgVuelven = mlEnTienda / (data.config.rendimiento || 1);
+
+  const detalle = [
+    ventas.length   ? `${ventas.length} venta(s) registrada(s) se quedan en el historial sin tienda` : '',
+    mlEnTienda      ? `${mlEnTienda} ML sin vender (${kgVuelven.toFixed(1)} kg) vuelven al inventario central` : '',
+  ].filter(Boolean).join('\n');
+
+  if (!await pregunta(`¿Eliminar "${suc.nombre}"?` + (detalle ? '\n\n' + detalle : ''))) return;
+
+  if (kgVuelven > 0) {
+    data.inventario.stockKg += kgVuelven;
+    data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(), tipo: 'entrada',
+      kg: kgVuelven, nota: `Cierre de ${suc.nombre} (${mlEnTienda} ML devueltos)` });
+  }
+  data.entregas   = data.entregas.filter(e => (e.sucursalId ?? e.sucId) !== id);
   data.sucursales = data.sucursales.filter(s => s.id !== id);
   saveNegocioData(data);
   renderNegSucursales();
+  if (kgVuelven > 0) tost(`${kgVuelven.toFixed(1)} kg devueltos al inventario`, 'ok');
 }
 
 function negEditarSucursal(id) {
@@ -981,15 +1049,35 @@ async function negPonerACero() {
 }
 window.negPonerACero = negPonerACero;
 
+/* v241 · Un valor negativo aquí ponía el negocio del revés.
+   `parseFloat(...) || anterior` solo filtra el 0 y el NaN: nunca el signo. Y
+   el min="0.1" del formulario es decoración, .value devuelve "-1" tal cual.
+   Con un rendimiento de −1,8 —el signo está pegado al teclado numérico de
+   iOS— cada venta SUBÍA el stock en vez de bajarlo, y el costo por medio
+   litro salía negativo con un margen de más del 100 %.
+   Y `?? 0` tampoco atrapaba el NaN de un campo vacío: parseFloat('') es NaN,
+   y NaN ?? 0 sigue siendo NaN, así que el margen se quedaba en "$NaN". */
 function negGuardarConfig() {
   const data = getNegocioData();
   const get  = id => parseFloat(document.getElementById(id).value);
-  data.config.precioVenta  = get('neg-c-pventa')   || data.config.precioVenta;
-  data.config.costoKg      = get('neg-c-costokg')  || data.config.costoKg;
-  data.config.rendimiento  = get('neg-c-rend')     || data.config.rendimiento;
-  data.config.costoEmpaque = get('neg-c-empaque')  ?? 0;
-  data.config.metaMensual  = get('neg-c-meta')     || 0;
-  data.config.stockMinimo  = get('neg-c-stockmin') ?? 5;
+  const positivo = (id, anterior, nombre) => {
+    const v = get(id);
+    if (!isFinite(v) || v <= 0) {
+      if (document.getElementById(id)?.value.trim()) tost(`${nombre} tiene que ser mayor que 0`, 'error');
+      return anterior;
+    }
+    return v;
+  };
+  const noNegativo = (id, porDefecto) => {
+    const v = get(id);
+    return (isFinite(v) && v >= 0) ? v : porDefecto;
+  };
+  data.config.precioVenta  = positivo('neg-c-pventa',  data.config.precioVenta, 'El precio de venta');
+  data.config.costoKg      = positivo('neg-c-costokg', data.config.costoKg,     'El costo por kg');
+  data.config.rendimiento  = positivo('neg-c-rend',    data.config.rendimiento, 'El rendimiento');
+  data.config.costoEmpaque = noNegativo('neg-c-empaque',  0);
+  data.config.metaMensual  = noNegativo('neg-c-meta',     0);
+  data.config.stockMinimo  = noNegativo('neg-c-stockmin', 5);
   saveNegocioData(data);
   renderNegConfig();
 }

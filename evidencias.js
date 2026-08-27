@@ -25,7 +25,13 @@ function addEvidencia(tipo, titulo, contenido) {
   return arr[0];
 }
 
-function deleteEvidencia(id) {
+/* v241 · Era el único borrado del sistema sin confirmación: un roce del
+   pulgar sobre ELIMINAR y la evidencia se iba, sin diálogo y sin deshacer.
+   Todos los demás módulos ya preguntaban. */
+async function deleteEvidencia(id) {
+  const ev = getEvidencias().find(e => e.id === id);
+  const nombre = ev?.titulo ? `"${String(ev.titulo).slice(0, 40)}"` : 'esta evidencia';
+  if (!await pregunta(`¿Eliminar ${nombre}? No se puede deshacer.`)) return;
   saveEvidencias(getEvidencias().filter(e => e.id !== id));
   renderEvidenciasWidget();
 }
@@ -40,6 +46,20 @@ function saveEvidenciaAsNota(id) {
 }
 
 let _evSearchQ = '';
+let _evBuscando = false;   // v241: distingue repintar de teclear
+
+/** Se llama en cada tecla del buscador. Repinta la lista sin tocar el campo. */
+function _evBuscar(inp) {
+  _evSearchQ = inp.value;
+  const pos = inp.selectionStart;
+  _evBuscando = true;
+  renderEvidenciasWidget();
+  _evBuscando = false;
+  const nuevo = document.getElementById('ev-search-input');
+  if (nuevo && nuevo !== inp) { nuevo.focus(); try { nuevo.setSelectionRange(pos, pos); } catch {} }
+  else if (inp.isConnected) { inp.focus(); try { inp.setSelectionRange(pos, pos); } catch {} }
+}
+window._evBuscar = _evBuscar;
 
 function renderEvidenciasWidget() {
   const allArr = getEvidencias();
@@ -57,7 +77,14 @@ function renderEvidenciasWidget() {
     (ev.contenido || '').toLowerCase().includes(q)
   ) : allArr;
 
-  const searchHTML = `<input class="ev-search" id="ev-search-input" placeholder="Buscar evidencias..." value="${_evSearchQ.replace(/"/g,'&quot;')}" oninput="_evSearchQ=this.value;renderEvidenciasWidget()" />`;
+  /* v241 · El buscador solo aceptaba UNA letra.
+     El input iba DENTRO del bloque que se repinta, y cada tecla llamaba a
+     renderEvidenciasWidget(), que reemplaza el innerHTML: el nodo del campo
+     se destruía a media escritura, se perdía el foco y el teclado de iOS se
+     cerraba. Escribías "recibo" y solo llegaba la "r".
+     Ahora se repinta solo la lista y el campo se queda quieto, conservando
+     el foco y la posición del cursor. */
+  const searchHTML = `<input class="ev-search" id="ev-search-input" placeholder="Buscar evidencias..." value="${_evSearchQ.replace(/"/g,'&quot;')}" oninput="_evBuscar(this)" />`;
 
   const _ts = ms => {
     const d = new Date(ms);
