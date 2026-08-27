@@ -464,3 +464,37 @@
 }
 
 .neg-view { display: none; &.active { display: block; } }
+
+
+/* ── Empezar de cero (v240) ──────────────────────────────────────────────
+   Es el único botón del módulo que destruye datos reales, así que se ve
+   distinto de todo lo demás: rojo, apartado, y con la letra pequeña que
+   dice qué se lleva. */
+.neg-form-peligro {
+  border-color: color-mix(in oklch, var(--alerta) 40%, transparent);
+  margin-top: var(--e-5);
+
+  & .neg-form-title { color: var(--alerta); }
+}
+
+.neg-cero-nota {
+  font-size: var(--t-xs);
+  color: var(--texto-3);
+  line-height: 1.6;
+  margin: 0 0 var(--e-3);
+}
+
+.neg-btn-peligro {
+  inline-size: 100%;
+  min-height: var(--toque);
+  border-radius: var(--radio-sm);
+  border: 1px solid color-mix(in oklch, var(--alerta) 55%, transparent);
+  background: color-mix(in oklch, var(--alerta) 12%, transparent);
+  color: var(--alerta);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .12em;
+  cursor: pointer;
+
+  &:hover  { background: color-mix(in oklch, var(--alerta) 22%, transparent); }
+  &:active { scale: .98; }
+}

@@ -6,6 +6,37 @@ let _negChartPeriod = '7d';
 
 const NEGOCIO_KEY = 'arex_negocio';
 
+/* v240 · Una fecha en blanco convertía el movimiento en dinero invisible.
+   new Date('' + 'T12:00:00') es NaN; al guardarlo se vuelve null, y como
+   null no es >= el inicio del mes, ese importe deja de contar en los totales
+   PARA SIEMPRE — pero sigue apareciendo en el historial con "Invalid Date",
+   así que parece registrado. El selector de fecha de iOS tiene botón de
+   borrar, o sea que no es un caso raro. */
+/* v240 · Se fabricaba frijol de la nada.
+   Al descontar, el stock se corta en 0 (Math.max) — correcto, no hay stock
+   negativo. Pero al devolver se sumaba el kilaje RECALCULADO, no el que de
+   verdad se llegó a descontar. Con 2 kg en bodega, registrar por error una
+   venta de 50 ML descontaba hasta 0; borrar esa venta devolvía 27,8 kg.
+   Partías de 2 y acababas con 27,8 kg que no existen, con su asiento de
+   entrada en el historial. Ahora cada movimiento anota los kg que REALMENTE
+   salieron y se devuelven esos. */
+function _descontarStock(data, kg) {
+  const antes = data.inventario.stockKg;
+  const aplicado = Math.min(kg, antes);          // lo que de verdad salió
+  data.inventario.stockKg = Math.max(0, antes - kg);
+  if (aplicado < kg - 1e-9) {
+    tost(`Ojo: solo había ${antes.toFixed(1)} kg en bodega`, 'error');
+  }
+  return aplicado;
+}
+
+function _fechaValida(str, campo = 'la fecha') {
+  if (!str) { tost(`Falta ${campo}`, 'error'); return null; }
+  const t = new Date(str + 'T12:00:00').getTime();
+  if (!isFinite(t)) { tost(`${campo} no es válida`, 'error'); return null; }
+  return t;
+}
+
 function getNegocioData() {
   const defaults = {
     config: {
@@ -91,8 +122,9 @@ function negRegistrarEntrega(sucId, cantidadML, fechaTs) {
   data.entregas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidadML: cant });
   // El producto sale del inventario central: ahora está en la tienda
   const kg = cant / data.config.rendimiento;
-  data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kg);
-  data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg, nota: `Entrega ${cant} ML → ${suc.nombre}` });
+  const kgAplicados = _descontarStock(data, kg);
+  data.entregas[data.entregas.length - 1].kgAplicados = kgAplicados;
+  data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgAplicados, nota: `Entrega ${cant} ML → ${suc.nombre}` });
   saveNegocioData(data);
   window.logBitacora?.('negocio', `Entrega: ${cant} ML → ${suc.nombre}`);
   return true;
@@ -104,7 +136,7 @@ async function negEliminarEntrega(id) {
   const e = data.entregas.find(x => x.id === id);
   if (!e) return;
   data.entregas = data.entregas.filter(x => x.id !== id);
-  const kg = e.cantidadML / data.config.rendimiento;
+  const kg = e.kgAplicados ?? (e.cantidadML / data.config.rendimiento);   // v240
   data.inventario.stockKg += kg;
   data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(), tipo: 'entrada', kg, nota: `Entrega eliminada (${e.cantidadML} ML devueltos)` });
   saveNegocioData(data);
@@ -411,7 +443,8 @@ function negRegistrarVenta() {
   if (!sucId)               { tost('Selecciona una sucursal', 'error');  return; }
   if (!cantidad || cantidad < 1) { tost('Ingresa la cantidad', 'error');  return; }
 
-  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  const fecha = _fechaValida(fechaStr);
+  if (fecha === null) return;
   const total = cantidad * precio;
 
   data.ventas.push({ id: String(Date.now()), fecha, sucursalId: sucId, cantidad, precioUnitario: precio, total });
@@ -421,8 +454,9 @@ function negRegistrarVenta() {
   const sucVenta = data.sucursales.find(s => s.id === sucId);
   if (sucVenta?.modo !== 'consignacion') {
     const kgUsados = cantidad / data.config.rendimiento;
-    data.inventario.stockKg = Math.max(0, data.inventario.stockKg - kgUsados);
-    data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgUsados, nota: `Venta ${cantidad} ML` });
+    const kgAplicados = _descontarStock(data, kgUsados);
+    data.ventas[data.ventas.length - 1].kgAplicados = kgAplicados;
+    data.inventario.historial.push({ id: String(Date.now() + 1), fecha, tipo: 'salida', kg: kgAplicados, nota: `Venta ${cantidad} ML` });
   }
 
   saveNegocioData(data);
@@ -441,7 +475,8 @@ async function negEliminarVenta(id) {
   // (Consignación no toca inventario aquí: salió con la entrega.)
   const suc = data.sucursales.find(s => s.id === v.sucursalId);
   if (suc?.modo !== 'consignacion') {
-    const kg = (v.cantidad || 0) / data.config.rendimiento;
+    // v240: se devuelve lo que REALMENTE salió, no lo recalculado
+    const kg = v.kgAplicados ?? ((v.cantidad || 0) / data.config.rendimiento);
     data.inventario.stockKg += kg;
     data.inventario.historial.push({ id: String(Date.now()), fecha: Date.now(), tipo: 'entrada', kg,
       nota: `Venta eliminada (${v.cantidad} ML devueltos)` });
@@ -493,7 +528,8 @@ function negGuardarEditVenta(id) {
   const rend    = data.config.rendimiento || 1;
   const sucOld  = data.sucursales.find(s => s.id === v.sucursalId);
   const sucNew  = data.sucursales.find(s => s.id === sucId);
-  const kgOld   = (sucOld?.modo !== 'consignacion') ? (v.cantidad || 0) / rend : 0;
+  const kgOld   = (sucOld?.modo !== 'consignacion')
+    ? (v.kgAplicados ?? (v.cantidad || 0) / rend) : 0;   // v240: lo que salió
   const kgNew   = (sucNew?.modo !== 'consignacion') ? cantidad / rend : 0;
   const delta   = kgOld - kgNew;                      // + devuelve, − descuenta
   if (Math.abs(delta) > 1e-9) {
@@ -507,7 +543,9 @@ function negGuardarEditVenta(id) {
   v.cantidad      = cantidad;
   v.precioUnitario = precio;
   v.total         = cantidad * precio;
-  v.fecha         = new Date(fechaStr + 'T12:00:00').getTime();
+  const _f = _fechaValida(fechaStr);
+  if (_f === null) return;
+  v.fecha         = _f;
   saveNegocioData(data);
   renderNegVentas();
 }
@@ -573,7 +611,8 @@ function negAgregarStock() {
 
   if (!kg || kg <= 0) { tost('Ingresa los kilogramos', 'error'); return; }
 
-  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  const fecha = _fechaValida(fechaStr);
+  if (fecha === null) return;
   data.inventario.stockKg += kg;
   data.inventario.historial.push({
     id: String(Date.now()), fecha, tipo: 'entrada', kg,
@@ -799,7 +838,8 @@ function negRegistrarGasto() {
 
   if (!monto || monto <= 0) { tost('Ingresa el monto', 'error'); return; }
 
-  const fecha = new Date(fechaStr + 'T12:00:00').getTime();
+  const fecha = _fechaValida(fechaStr);
+  if (fecha === null) return;
   data.gastos.push({ id: String(Date.now()), fecha, tipo, concepto, monto });
   saveNegocioData(data);
   renderNegGastos();
@@ -848,7 +888,7 @@ function negGuardarEditGasto(id) {
   g.monto     = monto;
   g.concepto  = document.getElementById(`neg-ge-concepto-${id}`)?.value.trim() || g.concepto;
   const fs    = document.getElementById(`neg-ge-fecha-${id}`)?.value;
-  if (fs) g.fecha = new Date(fs + 'T12:00:00').getTime();
+  if (fs) { const _fg = _fechaValida(fs); if (_fg === null) return; g.fecha = _fg; }
   saveNegocioData(data);
   renderNegGastos();
 }
@@ -898,8 +938,48 @@ function renderNegConfig() {
       <div class="neg-calc-row neg-calc-divider"><span>Ganancia por ML</span><span class="${ganML >= 0 ? 'neg-profit' : 'neg-loss'}">${$MXN(ganML)}</span></div>
       <div class="neg-calc-row"><span>Margen de ganancia</span><span class="${ganML >= 0 ? 'neg-profit' : 'neg-loss'}">${margenPct}%</span></div>
     </div>
+
+    <div class="neg-form neg-form-peligro">
+      <div class="neg-form-title">EMPEZAR DE CERO</div>
+      <p class="neg-cero-nota">
+        Borra ${data.ventas.length} venta(s), ${data.gastos.length} gasto(s),
+        ${data.entregas.length} entrega(s) y el movimiento del inventario, y deja
+        el stock en 0 kg. Se quedan tus ${data.sucursales.length} punto(s) de venta
+        y los precios de aquí arriba.
+      </p>
+      <button class="neg-btn-peligro" onclick="negPonerACero()">PONER EL NEGOCIO A CERO</button>
+    </div>
   `;
 }
+
+/* v240 · Empezar de cero, a petición del dueño.
+   Va con confirmación y diciendo exactamente qué se lleva por delante: son
+   sus ventas reales, no datos de prueba. Se conservan los puntos de venta y
+   los precios, que son ajustes y no movimientos. */
+async function negPonerACero() {
+  const data = getNegocioData();
+  const cuantos = data.ventas.length + data.gastos.length + data.entregas.length;
+  const ok = await pregunta(
+    `Se van a borrar ${data.ventas.length} venta(s), ${data.gastos.length} gasto(s) y ` +
+    `${data.entregas.length} entrega(s), y el stock quedará en 0 kg.\n\n` +
+    `Tus ${data.sucursales.length} punto(s) de venta y los precios se conservan.\n\n` +
+    `Esto no se puede deshacer. ¿Seguimos?`);
+  if (!ok) return;
+
+  data.ventas   = [];
+  data.gastos   = [];
+  data.entregas = [];
+  data.inventario.stockKg   = 0;
+  data.inventario.historial = [];
+  // la existencia guardada de cada tienda, si la hubiera
+  data.sucursales = data.sucursales.map(s => ({ ...s, existencia: 0, entregado: 0 }));
+
+  saveNegocioData(data);
+  switchNegocioView('config');
+  tost(cuantos ? `Negocio a cero · ${cuantos} movimiento(s) borrados` : 'Negocio a cero', 'ok');
+  try { logBitacora?.('accion', `Negocio puesto a cero (${cuantos} movimientos)`); } catch {}
+}
+window.negPonerACero = negPonerACero;
 
 function negGuardarConfig() {
   const data = getNegocioData();

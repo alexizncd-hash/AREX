@@ -9,7 +9,15 @@ const SEARCH_SOURCES = [
   { id:'notas',      key:'arex_notas',           fields:['texto','titulo','cuerpo'],      icon:'📝', label:'NOTAS',       mod:'notas'      },
   { id:'metas',      key:'arex_metas',           fields:['titulo','nombre','descripcion'],icon:'🎯', label:'METAS',       mod:'metas'      },
   { id:'proyectos',  key:'arex_proyectos',       fields:['nombre','descripcion'],         icon:'⚡', label:'PROYECTOS',   mod:'proyectos'  },
-  { id:'gastos',     key:'arex_gastos_pers',     fields:['concepto','categoria','notas'], icon:'💸', label:'GASTOS',      mod:'gastos'     },
+  /* v240: dos motivos por los que GASTOS no aparecía NUNCA en la búsqueda.
+     Uno, arex_gastos_pers no es un array sino {presupuesto, gastos}, y la
+     búsqueda descarta lo que no sea array antes de mirar nada. Dos, los
+     campos declarados eran 'concepto' y 'notas', que gastos.js no escribe:
+     usa 'descripcion'. El mismo patrón del bug texto/text, otra vez. */
+  { id:'gastos',     key:'arex_gastos_pers',     fields:['descripcion','concepto','categoria'], icon:'💸', label:'GASTOS',      mod:'gastos',
+    saca: d => d?.gastos },
+  { id:'habitos',    key:'arex_habitos',         fields:['nombre'],                       icon:'✅', label:'HÁBITOS',     mod:'habitos'    },
+  { id:'recordator', key:'arex_recordatorios',   fields:['msg'],                          icon:'⏰', label:'RECORDATORIOS', mod:'agenda'   },
   { id:'evidencias', key:'arex_evidencias',      fields:['titulo','descripcion'],         icon:'🔍', label:'EVIDENCIAS',  mod:'evidencias' },
   { id:'hechos',     key:'arex_hechos',          fields:['texto'],                        icon:'🧠', label:'MEMORIA',     mod:'chat'       },
   { id:'bitacora',   key:'arex_bitacora',        fields:['accion'],                       icon:'📋', label:'BITÁCORA',    mod:'control'    },
@@ -72,7 +80,10 @@ function _doSearch(query) {
     try {
       const raw = localStorage.getItem(src.key);
       if (!raw) continue;
-      const items = JSON.parse(raw);
+      const crudo = JSON.parse(raw);
+      // v240: hay fuentes que no son un array sino un objeto con el array
+      // dentro (gastos personales). `saca` dice de dónde tomarlo.
+      const items = src.saca ? src.saca(crudo) : crudo;
       if (!Array.isArray(items)) continue;
       for (const item of items) {
         let matched = false;

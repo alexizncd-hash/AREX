@@ -444,6 +444,9 @@ window._runAgent = async function (agentId, area) {
           }).filter(Boolean);
           if (recientes.length) {
             const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              // v240: sin esto, un agente con la red colgada se queda
+              // "trabajando" para siempre y bloquea su tarjeta
+              signal: window.conLimite?.() ,
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

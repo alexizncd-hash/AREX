@@ -16,30 +16,33 @@ const FINANZAS_DATA = {
   // 💳 TARJETAS DE CRÉDITO
   tarjetas: [
     {
-      id: 'bbva-crea',
-      nombre: 'BBVA Crea',
-      banco: 'BBVA',
-      numero: '****5537',
-      saldo: 2502.97,
-      limite: 4600,
-      disponible: 2097.03,
-      tasaAnual: 67.53,
-      cat: 112.4,
-      interesMensual: 141,
-      pagoMinimo: 363,
+      id: 'plata-card',
+      nombre: 'Plata Card',
+      banco: 'Banco Plata',
+      numero: '****9892',
+      saldo: 2564.19,
+      limite: 2000,
+      disponible: 0,
+      tasaAnual: 119.90,
+      cat: 228.07,
+      interesMensual: 256,
+      pagoMinimo: 650,
       pagoMSI: 0,
-      fechaCorte: 1,
-      fechaLimite: 21,
-      mesLimiteSiguiente: false,
-      prioridad: 2,
-      color: '#fb923c',
+      fechaCorte: 8,
+      fechaLimite: 8,
+      mesLimiteSiguiente: true,
+      prioridad: 1,
+      color: '#dc2626',
       notas: [
-        'Segunda prioridad',
-        'Liquidar después de Plata Card',
-        'Evitar penalizaciones ($308)'
+        'CAT 228% - USURA total',
+        'Cancelar Plata+ ($45/mes)',
+        'Cancelar seguro ($23/mes)',
+        'Liquidar en 1-2 meses',
+        'CANCELAR tarjeta después'
       ],
       alertas: {
-        penalizacionesAnteriores: true
+        cancelarSuscripciones: true,
+        liquidarUrgente: true
       }
     },
     {
@@ -107,7 +110,7 @@ const FINANZAS_DATA = {
       // seguía diciendo lo de antes, y el margen salía peor de lo que era.
       // Este valor es solo el de arranque por si algo falla.
       categoria: 'Tarjetas (mínimos)',
-      monto: 6022,
+      monto: 6309,
       tipo: 'deuda',
       esencial: true,
       color: '#ef4444',

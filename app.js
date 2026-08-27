@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v239';
+const AREX_VERSION = 'v240';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -868,6 +868,20 @@ function _setSyncTs(key, ts) {
 }
 
 async function arexSyncData(lsKey) {
+  /* v240 · EL TRABAJO HECHO SIN INTERNET SE PERDÍA EN EL SIGUIENTE ARRANQUE.
+
+     Esta función salía por la puerta de atrás cuando no había Firebase
+     —`if (!db) return`— ANTES de sellar la marca de tiempo local. Y quien
+     resuelve conflictos al volver la red compara esa marca contra la del
+     documento remoto; sin marca, localTs = 0 y CUALQUIER copia remota gana.
+
+     Escenario real: modo avión, registras seis ventas y cuatro tareas;
+     vuelves a casa, abres AREX, y lo que dejó el Quest la semana pasada se
+     lo lleva todo por delante. Sin aviso.
+
+     El sello se pone SIEMPRE: es local y no cuesta nada. Lo que depende de
+     la red es la subida, y esa sí puede esperar. */
+  try { _setSyncTs(lsKey, Date.now()); } catch {}
   if (!db || !window._arexUid) return;
   try {
     const raw = localStorage.getItem(lsKey);
@@ -898,7 +912,14 @@ function initRealtimeSync() {
   if (!db || !onSnapshot || !window._arexUid) return;
   _rtUnsubs.forEach(u => u()); _rtUnsubs.length = 0;
   const watchKeys = ['arex_tareas', 'arex_metas', 'arex_notas', 'arex_recordatorios'];
+  /* v240 · El PRIMER aviso de Firestore pisaba lo local sin comparar nada.
+     _rtLastTs arranca vacío en cada carga, así que el primer onSnapshot de
+     cada clave entraba siempre y escribía en localStorage sin mirar la marca
+     local — y encima esto se suscribe ANTES de que corra la lógica que sí
+     resuelve conflictos, así que cuando llega la parte lista el daño está
+     hecho. Sembrar la marca local cierra esa puerta. */
   for (const key of watchKeys) {
+    _rtLastTs[key] = Math.max(_rtLastTs[key] || 0, _getSyncTs(key) || 0);
     const unsub = onSnapshot(_userDoc('arex_data', key), snap => {
       if (!snap.exists()) return;
       const data = snap.data();
@@ -2534,6 +2555,7 @@ async function webSearch(q) {
   if (!AREX_CONFIG.tavilyKey) return null;
   try {
     const res = await fetch('https://api.tavily.com/search', {
+      signal: conLimite(),
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ api_key: AREX_CONFIG.tavilyKey, query: q, search_depth:'basic', max_results:4, include_answer:true })
@@ -2558,6 +2580,7 @@ async function extractURL(url) {
   // Intento 1: Tavily extract (extrae contenido directo de la URL)
   try {
     const res = await fetch('https://api.tavily.com/extract', {
+      signal: conLimite(),
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ api_key: AREX_CONFIG.tavilyKey, urls: [url] })
@@ -2575,6 +2598,7 @@ async function extractURL(url) {
   // Intento 2: Tavily search con la URL como query
   try {
     const res = await fetch('https://api.tavily.com/search', {
+      signal: conLimite(),
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ api_key: AREX_CONFIG.tavilyKey, query: url,
@@ -2834,6 +2858,7 @@ async function _groqFetch(tier, bodyWithoutModel, key) {
   for (const model of list) {
     if (_groqBad.has(model)) continue;
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      signal: conLimite(),
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({ ...bodyWithoutModel, model }),
@@ -2874,6 +2899,7 @@ async function callBrain(tipo, mensajes, opts = {}) {
   };
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      signal: conLimite(),
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
       body: JSON.stringify(body),
@@ -2978,6 +3004,7 @@ async function _analyzeWithGemini(dataURL, question) {
   const [meta, b64] = dataURL.split(',');
   const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+    signal: conLimite(),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -3170,6 +3197,19 @@ function saveRecordatorios(arr) {
   localStorage.setItem('arex_recordatorios', JSON.stringify(arr));
   if (typeof arexSyncData === 'function') arexSyncData('arex_recordatorios');
 }
+
+/* v240 · UNA RED QUE NO FALLA PERO SE CUELGA DEJABA EL CHAT MUERTO.
+   De las ocho llamadas de red de AREX solo una tenía tiempo límite. Con
+   cobertura de una raya o un portal cautivo de hotel, fetch se queda
+   esperando indefinidamente: isBusy se queda en true, el botón de enviar
+   deshabilitado, el orbe en "Procesando…", y la única salida es recargar.
+   Es el mismo caso que ya arreglamos en el service worker (v235), pero
+   aplicado a las llamadas de IA. 45 s es de sobra: Groq contesta en 2-8. */
+const _MS_ESPERA_IA = 45000;
+function conLimite(ms = _MS_ESPERA_IA) {
+  try { return AbortSignal.timeout(ms); } catch { return undefined; }
+}
+window.conLimite = conLimite;   // control.js lo usa para sus agentes
 
 function fmtCountdown(disparaEn) {
   const ms = disparaEn - Date.now();
@@ -4390,7 +4430,14 @@ function _showUpdateBanner() {
           } else if (monto > 0) {
             const gpData = _safeJSON(localStorage.getItem('arex_gastos_pers'), { gastos: [], presupuesto: {} });
             if (!Array.isArray(gpData.gastos)) gpData.gastos = [];
-            gpData.gastos.unshift({ id: String(Date.now()), concepto: text, monto, categoria: cat, fecha: window.hoy() });   // v216: era UTC
+            /* v240: escribía `concepto` y el módulo GASTOS lee `descripcion`
+               (y `cat`, no `categoria`). El gasto entraba en los totales pero
+               salía en el historial sin texto —solo el emoji y el importe— y
+               al editarlo se guardaba la descripción vacía, dejando el
+               concepto huérfano. Mismo patrón que el bug texto/text de v217.
+               Se escriben los dos nombres para no romper lo ya guardado. */
+            gpData.gastos.unshift({ id: String(Date.now()), descripcion: text, concepto: text,
+                                    monto, cat, categoria: cat, fecha: window.hoy() });   // v216: era UTC
             localStorage.setItem('arex_gastos_pers', JSON.stringify(gpData));
             if (typeof arexSyncData === 'function') arexSyncData('arex_gastos_pers');
           }
