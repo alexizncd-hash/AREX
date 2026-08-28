@@ -52,18 +52,38 @@ function saveGastosData(data) {
   _checkGastosAlerts(data);
 }
 
+/* v242 · DOS DEFECTOS EN LAS ALERTAS DE PRESUPUESTO.
+
+   ① Se disparaban en CADA guardado y sin desduplicar: con dos categorías
+      pasadas, registrar cuatro gastos seguidos metía OCHO mensajes en el
+      chat, cuatro palabra por palabra iguales — y los leía en voz alta si
+      tenías el modo voz puesto. Guardar el presupuesto disparaba otra tanda.
+   ② Miraban el mes que estás NAVEGANDO, no el actual. Revisando marzo y
+      registrando un gasto, la alerta comparaba contra los gastos de marzo. Y
+      como el módulo cambia de mes DESPUÉS de guardar, la alerta del gasto
+      recién metido se calculaba siempre contra el mes anterior al suyo.
+
+   Ahora se avisa una vez por categoría y mes, y siempre sobre el mes real. */
+const _gpAvisado = new Set();   // "categoria:2026-08"
+
 function _checkGastosAlerts(data) {
   if (typeof window.arexAlert !== 'function') return;
-  const now  = new Date();
-  const mes  = _gastosDelMes(data.gastos);
+  const mesReal = window.mes ? window.mes() : new Date().toISOString().slice(0, 7);
+  const delMesReal = (data.gastos || []).filter(g =>
+    String(g.fecha || '').slice(0, 7) === mesReal);
   for (const [k, cat] of Object.entries(GP_CATS)) {
     const pres  = data.presupuesto[k] || 0;
     if (!pres) continue;
-    const gasto = mes.filter(g => g.categoria === k).reduce((a, g) => a + g.monto, 0);
+    const gasto = delMesReal.filter(g => g.categoria === k).reduce((a, g) => a + g.monto, 0);
+    const marca = `${k}:${mesReal}`;
     if (gasto > pres) {
+      if (_gpAvisado.has(marca)) continue;    // ya te lo dije este mes
+      _gpAvisado.add(marca);
       window.arexAlert('GASTOS',
         `${cat.e} ${cat.l} excedida: gastaste ${_$MXN(gasto)} de ${_$MXN(pres)} (+${_$MXN(gasto - pres)})`,
         'warn');
+    } else {
+      _gpAvisado.delete(marca);               // si vuelves a estar dentro, se rearma
     }
   }
 }

@@ -166,7 +166,22 @@ function mejorDia() {
     porDia[d.getDay()].ml += v.cantidad || 0;
     porDia[d.getDay()].dias.add(_vDia(v.fecha));
   });
-  const prom = porDia.map((p,i) => ({ dia: nombres[i], promML: p.dias.size ? p.ml/p.dias.size : 0 }))
+  /* v242 · El promedio se hacía dividiendo entre los días en que HUBO venta,
+     no entre las veces que ese día de la semana cayó dentro del periodo
+     observado. Con seis viernes vendiendo 20 ML y UN domingo suelto de 40,
+     declaraba "tu mejor día es el domingo, 2× lo que vendes el viernes" —y
+     sobre eso decides dónde surtir—. Ahora se divide entre las veces que ese
+     día ocurrió de verdad en la ventana. */
+  const primera = new Date(Math.min(...ventas.map(v => v.fecha)));
+  const ultima  = new Date(Math.max(...ventas.map(v => v.fecha)));
+  const vecesDelDia = Array.from({length:7}, () => 0);
+  for (const d = new Date(primera); d <= ultima; d.setDate(d.getDate() + 1)) {
+    vecesDelDia[d.getDay()]++;
+  }
+  const prom = porDia.map((p,i) => ({
+                       dia: nombres[i],
+                       promML: vecesDelDia[i] ? p.ml / vecesDelDia[i] : 0,
+                       veces: vecesDelDia[i], dias: p.dias.size }))
                      .filter(p => p.promML > 0).sort((a,b)=>b.promML-a.promML);
   if (prom.length < 3) return _vFalta('necesito ventas en al menos 3 días distintos de la semana');
   const mejor = prom[0], peor = prom[prom.length-1];
@@ -186,19 +201,33 @@ function ritmoGasto() {
   const gastos = Array.isArray(raw) ? raw : (raw.gastos || []);
   if (gastos.length < 20) return _vFalta(`necesito al menos 20 gastos registrados (llevo ${gastos.length})`);
 
+  /* v242 · Esta cuenta dividía entre días que no existen y metía el mes en
+     curso —que va a medias— en la muestra. Los días 23 en adelante son 9 en
+     un mes de 31, 8 en uno de 30 y solo 6 en febrero; dividir siempre entre
+     8 subestimaba febrero un 25 %. Y el mes actual, en su día 10, aporta
+     `fin = 0`, o sea ratio 0: bastaba para que VIERNES afirmara "tus gastos
+     BAJAN un 23 % la última semana del mes, patrón consistente en 3 meses"
+     cuando pasaba justo lo contrario. Ahora se excluye el mes en curso y se
+     divide entre los días reales de cada tramo. */
+  const mesActual = window.mes ? window.mes() : new Date().toISOString().slice(0, 7);
   const meses = {};
   gastos.forEach(g => {
     if (!g.fecha) return;
     const mes = g.fecha.slice(0,7), dia = +g.fecha.slice(8,10);
     if (!mes || !dia) return;
+    if (mes >= mesActual) return;              // el mes en curso está a medias
     (meses[mes] = meses[mes] || { fin: 0, resto: 0 })[dia >= 23 ? 'fin' : 'resto'] += (g.monto||0);
   });
   const keys = Object.keys(meses);
-  if (keys.length < 2) return _vFalta(`necesito 2 meses de gastos (llevo ${keys.length})`);
+  if (keys.length < 2) return _vFalta(`necesito 2 meses COMPLETOS de gastos (llevo ${keys.length})`);
 
   const ratios = keys.map(m => {
     const { fin, resto } = meses[m];
-    const promDiaResto = resto / 22, promDiaFin = fin / 8;
+    const [y, mm] = m.split('-').map(Number);
+    const diasDelMes = new Date(y, mm, 0).getDate();      // 28, 29, 30 o 31
+    const diasFin    = Math.max(1, diasDelMes - 22);      // del 23 al último
+    const diasResto  = 22;
+    const promDiaResto = resto / diasResto, promDiaFin = fin / diasFin;
     return promDiaResto > 0 ? promDiaFin / promDiaResto : null;
   }).filter(x => x !== null && isFinite(x));
   if (!ratios.length) return _vFalta('sin gastos suficientes en las primeras semanas del mes');

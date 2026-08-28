@@ -68,33 +68,74 @@ function deleteHabito(id) {
   saveHabitos(arr);
 }
 
-/* ─── Streak ───────────────────────────────────────────────────── */
+/* ─── Racha ─────────────────────────────────────────────────────
+   v242 · LA RACHA IGNORABA LA FRECUENCIA, Y ESO LA HACÍA INÚTIL.
+
+   Contaba días naturales seguidos. Un hábito de Lun-Vie no tiene sábado ni
+   domingo en `completados`, así que la racha se cortaba CADA FIN DE SEMANA:
+   comprobado con cuatro semanas perfectas, el viernes decía 5 y el lunes
+   decía 0. Cuatro semanas impecables se leían como "🔥 1 día" — y como la
+   racha solo se pinta si es mayor que cero, el lunes no aparecía nada.
+
+   Ahora se saltan los días que ese hábito no exige: fin de semana en
+   Lun-Vie, y en el semanal se cuenta por semanas. */
+
+/** ¿Toca este hábito en esta fecha? */
+function _habExigido(hab, d) {
+  const f = hab?.frecuencia || 'diaria';
+  const dow = d.getDay();                    // 0 domingo … 6 sábado
+  if (f === 'lunes-viernes') return dow >= 1 && dow <= 5;
+  return true;                               // diaria y semanal: ver abajo
+}
+
 function getHabitoStreak(habito) {
   if (!habito || !habito.completados) return 0;
+  const frec = habito.frecuencia || 'diaria';
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  let streak = 0;
-  let d = new Date(hoy);
 
-  // If today not done yet, start checking from yesterday
-  const todayStr = _habFecha(hoy);
-  if (!habito.completados[todayStr]) {
-    d.setDate(d.getDate() - 1);
+  /* SEMANAL: la unidad es la semana, no el día. Se cuentan semanas
+     consecutivas (de lunes a domingo) con al menos un día marcado. */
+  if (frec === 'semanal') {
+    const lunesDe = fecha => {
+      const d = new Date(fecha);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));   // la semana empieza el lunes
+      return d;
+    };
+    const hayEnSemana = lunes => {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(lunes); d.setDate(d.getDate() + i);
+        if (habito.completados[_habFecha(d)]) return true;
+      }
+      return false;
+    };
+    let semana = lunesDe(hoy), racha = 0;
+    if (!hayEnSemana(semana)) semana.setDate(semana.getDate() - 7);   // la de en curso aún puede cumplirse
+    while (hayEnSemana(semana) && racha < 520) {
+      racha++;
+      semana.setDate(semana.getDate() - 7);
+    }
+    return racha;
   }
 
-  while (true) {
-    const key = _habFecha(d);
-    if (habito.completados[key]) {
+  /* DIARIA y LUN-VIE: días exigidos consecutivos. */
+  let streak = 0;
+  let d = new Date(hoy);
+  if (!habito.completados[_habFecha(hoy)]) d.setDate(d.getDate() - 1);
+
+  let vueltas = 0;
+  while (vueltas++ < 3700) {
+    if (!_habExigido(habito, d)) { d.setDate(d.getDate() - 1); continue; }   // el finde no rompe nada
+    if (habito.completados[_habFecha(d)]) {
       streak++;
       d.setDate(d.getDate() - 1);
-    } else {
-      break;
-    }
-    // Safety limit
-    if (streak > 3650) break;
+    } else break;
   }
   return streak;
 }
+window.getHabitoStreak = getHabitoStreak;
+window._habExigido     = _habExigido;
 
 /* ─── Mini calendar dots (7 days: Mon-Sun of current week) ──────── */
 function _habWeekDots(hab) {

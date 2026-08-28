@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v241';
+const AREX_VERSION = 'v242';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -308,6 +308,25 @@ REGLAS DE ACCIONES:
 }
 
 /* ── Contexto de módulos (data real de Alexiz) ──────── */
+/* Racha sin depender de habitos.js (que es de carga diferida). Misma regla:
+   se saltan los días que el hábito no exige. */
+function _rachaSimple(hab) {
+  try {
+    const comp = hab?.completados || {};
+    const exigido = d => (hab?.frecuencia === 'lunes-viernes')
+      ? (d.getDay() >= 1 && d.getDay() <= 5) : true;
+    const clave = d => window.dia(d);
+    const hoyD = new Date(); hoyD.setHours(0,0,0,0);
+    let d = new Date(hoyD), n = 0;
+    if (!comp[clave(hoyD)]) d.setDate(d.getDate() - 1);
+    for (let i = 0; i < 3700; i++) {
+      if (!exigido(d)) { d.setDate(d.getDate() - 1); continue; }
+      if (comp[clave(d)]) { n++; d.setDate(d.getDate() - 1); } else break;
+    }
+    return n;
+  } catch { return 0; }
+}
+
 function buildModuleContext() {
   const parts = [];
   try {
@@ -379,9 +398,18 @@ function buildModuleContext() {
     const hab = leer('arex_habitos', []);
     if (hab.length) {
       const h = window.hoy();
+      /* v242: aquí se leía `x.racha`, un campo que habitos.js NO guarda —la
+         calcula al vuelo con getHabitoStreak— y `x.hechos`, que tampoco
+         existe. Resultado: llevaras los días que llevaras, AREX contestaba
+         siempre "racha 0d". Ahora se le pregunta al módulo si está cargado,
+         y si no, se cuenta aquí con la misma regla. */
       parts.push('HÁBITOS: ' + hab.slice(0, 6).map(x => {
-        const hecho = x.completados?.[h] || x.hechos?.[h];
-        return `${x.nombre} (racha ${x.racha || 0}d, ${hecho ? 'HECHO hoy' : 'pendiente hoy'})`;
+        const hecho = !!x.completados?.[h];
+        const racha = typeof window.getHabitoStreak === 'function'
+          ? window.getHabitoStreak(x)
+          : _rachaSimple(x);
+        const frec = x.frecuencia && x.frecuencia !== 'diaria' ? `, ${x.frecuencia}` : '';
+        return `${x.nombre} (racha ${racha}d${frec}, ${hecho ? 'HECHO hoy' : 'pendiente hoy'})`;
       }).join(', '));
     }
   } catch(e) { console.warn('AREX ctx hábitos:', e); }
@@ -4808,7 +4836,15 @@ async function generarBriefing() {
   let habitosStr = '';
   try {
     const habs = _safeJSON(localStorage.getItem('arex_habitos'), []);
-    const pendientes = habs.filter(h => !h.completados?.[hoy]).map(h => h.nombre);
+    /* v242: listaba TODOS los no marcados, incluidos los de Lun-Vie en
+       domingo. El briefing y el VIGÍA te reprochaban un hábito que hoy no
+       toca. */
+    const tocaHoy = h => {
+      if ((h?.frecuencia || 'diaria') !== 'lunes-viernes') return true;
+      const dow = new Date().getDay();
+      return dow >= 1 && dow <= 5;
+    };
+    const pendientes = habs.filter(h => tocaHoy(h) && !h.completados?.[hoy]).map(h => h.nombre);
     if (pendientes.length) habitosStr = pendientes.slice(0, 3).join(', ');
   } catch {}
 

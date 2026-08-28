@@ -55,19 +55,40 @@ function proyectoToggleEstado(id) {
   renderProyectosModule();
 }
 
+/* v242 · RENOMBRAR UN PROYECTO SE PERDÍA EN SILENCIO.
+   El guardado colgaba de un `blur` con {once:true}. Cualquier repintado del
+   módulo —crear otro proyecto, cambiar un estado, o que llegue un cambio de
+   la nube— reemplaza el nodo: el blur no llega a dispararse nunca y el
+   nombre nuevo se descarta sin decir nada. Ahora también se guarda con Enter
+   y se vuelca lo escrito poco después de dejar de teclear, así que aunque el
+   nodo desaparezca el nombre ya está en disco. */
 function proyectoEditar(id) {
   const p = getProyectos().find(p => p.id === id);
   if (!p) return;
   const el = document.getElementById(`proj-${id}`);
-  if (!el) return;
-  el.querySelector('.proj-nombre').contentEditable = 'true';
-  el.querySelector('.proj-nombre').focus();
-  el.querySelector('.proj-nombre').addEventListener('blur', () => {
-    const nuevo = el.querySelector('.proj-nombre').textContent.trim();
-    if (nuevo) {
-      saveProyectos(getProyectos().map(p => p.id === id ? { ...p, nombre: nuevo } : p));
-    }
-    el.querySelector('.proj-nombre').contentEditable = 'false';
+  const campo = el?.querySelector('.proj-nombre');
+  if (!campo) return;
+
+  campo.contentEditable = 'true';
+  campo.focus();
+
+  let guardado = false;
+  const guardar = () => {
+    const nuevo = campo.textContent.trim();
+    if (!nuevo || guardado) return;
+    guardado = true;
+    saveProyectos(getProyectos().map(x => x.id === id ? { ...x, nombre: nuevo } : x));
+  };
+
+  let t;
+  campo.addEventListener('input', () => { clearTimeout(t); guardado = false; t = setTimeout(guardar, 600); });
+  campo.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(t); guardar(); campo.blur(); }
+    if (e.key === 'Escape') { guardado = true; campo.textContent = p.nombre; campo.blur(); }
+  });
+  campo.addEventListener('blur', () => {
+    clearTimeout(t); guardar();
+    campo.contentEditable = 'false';
   }, { once: true });
 }
 
