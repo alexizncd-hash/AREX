@@ -789,3 +789,65 @@ html.sin-cristal :is(*, #cristal)::after {
   &.speaking  { border-color: rgb(180 240 255) !important; box-shadow: 0 0 26px rgb(180 240 255 / .55) !important; }
   &.listening { border-color: rgb(0 255 160)   !important; box-shadow: 0 0 22px rgb(0 255 160 / .45) !important; }
 }
+
+
+/* ── Campos de clave (v243) ──────────────────────────────────────────────
+   El botón del ojo se apoya DENTRO del campo, sin robarle ancho al texto:
+   por eso el envoltorio es relative y el botón absolute. El padding
+   derecho del input le deja el hueco. */
+.nx-clave {
+  position: relative;
+  display: block;
+
+  /* Sin ojo (dominio, ids de Firebase) solo hay que dejar sitio a PEGAR;
+     con ojo, a los dos. */
+  & > input { padding-inline-end: 5.2rem !important; }
+  &.con-ojo > input { padding-inline-end: calc(5.2rem + var(--toque)) !important; }
+}
+
+.nx-clave-pegar {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  min-inline-size: 5rem;
+  block-size: var(--toque);
+  padding-inline: var(--e-2);
+  background: color-mix(in oklch, var(--acento) 14%, transparent);
+  border: 1px solid color-mix(in oklch, var(--acento) 40%, transparent);
+  border-radius: var(--radio-sm);
+  color: var(--acento);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: background var(--rapido);
+
+  &:hover  { background: color-mix(in oklch, var(--acento) 26%, transparent); }
+  &:active { scale: .96; }
+  &:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+}
+
+.nx-clave.con-ojo > .nx-clave-ojo { inset-inline-end: 5.2rem; }
+
+.nx-clave-ojo {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  inline-size: var(--toque);
+  block-size: var(--toque);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--texto-3);
+  font-size: var(--t-lg);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radio-sm);
+  transition: color var(--rapido);
+
+  & svg { display: block; }
+  &:hover { color: var(--acento); }
+  &:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+}

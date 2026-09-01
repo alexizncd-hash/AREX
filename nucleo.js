@@ -282,13 +282,159 @@
   else window.addEventListener('load', precargarCSS);
 
 
+
+
+  /* ════════════════════════════════════════════════════════════
+     6 · CAMPOS DE CLAVE
+
+     Las claves de API van en <input type="password">, y con razón. Pero eso
+     hace que pegarlas desde el teléfono sea a ciegas: solo ves puntitos, y
+     una clave a medias no da error —el servicio contesta 403 y el módulo no
+     funciona, sin decir por qué—. Además, el menú "Pegar" de iOS a veces no
+     aparece, y entonces no hay forma de meterla.
+
+     Esto ya existió en v228/v229 y lo quité en v230 porque sospechaba que
+     era la causa de la pantalla negra. NO lo era: las causas reales
+     resultaron ser el arranque que moría entero por un solo paso (v238) y un
+     bucle de microtareas al cargar el CSS de un módulo (v238). Vuelve, pero
+     ahora cada pieza va dentro de su propio try: si algo falla aquí te
+     quedas sin botón, nunca sin app.
+     ════════════════════════════════════════════════════════════ */
+
+  const OCULTAR_TRAS = 12000;
+
+  const OJO = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" ' +
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/>' +
+    '<circle cx="12" cy="12" r="2.8"/></svg>';
+  const OJO_TACHADO = OJO.replace('</svg>', '<path d="M4 20 20 4"/></svg>');
+
+  function _prepararCampoClave(inp) {
+   try {
+    if (inp.dataset.nxClave) return;
+    inp.dataset.nxClave = '1';
+    const esClave = inp.type === 'password';
+
+    // El teclado de iOS pone mayúscula a la primera letra y "corrige" lo que
+    // escribes. Una clave escrita a mano llegaba alterada sin avisar.
+    inp.setAttribute('autocapitalize', 'off');
+    inp.setAttribute('autocorrect', 'off');
+    inp.setAttribute('autocomplete', 'off');
+    inp.setAttribute('spellcheck', 'false');
+
+    const env = document.createElement('span');
+    env.className = 'nx-clave' + (esClave ? ' con-ojo' : '');
+    inp.parentNode.insertBefore(env, inp);
+    env.appendChild(inp);
+
+    /* ── Botón PEGAR ──────────────────────────────────────────────────────
+       El menú de "Pegar" de iOS aparece al mantener pulsado, pero solo si el
+       portapapeles tiene algo Y el sistema quiere: en la práctica desaparece
+       a menudo y no hay forma de saber por qué. Este botón lee el
+       portapapeles directamente; en iOS sale la confirmación del sistema y
+       ya está. Y cuando falla, lo dice en vez de no hacer nada. */
+    const pegar = document.createElement('button');
+    pegar.type = 'button';
+    pegar.className = 'nx-clave-pegar';
+    pegar.textContent = 'PEGAR';
+    pegar.setAttribute('aria-label', 'Pegar desde el portapapeles');
+    env.appendChild(pegar);
+
+    pegar.addEventListener('click', async () => {
+      let txt = '';
+      try { txt = await navigator.clipboard.readText(); }
+      catch (e) {
+        tost('El navegador no dejó leer el portapapeles. Mantén pulsado el campo y elige Pegar.', 'error');
+        return;
+      }
+      txt = String(txt || '').replace(/\s+/g, '');
+      if (!txt) { tost('El portapapeles está vacío: copia primero la clave', 'error'); return; }
+      inp.value = txt;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+      tost('Pegado · ' + resumenClave(txt), 'ok');
+    });
+
+    // Al pegar, quitar espacios y saltos de línea: se arrastran al copiar
+    // en el móvil y una clave con un espacio delante falla en silencio.
+    inp.addEventListener('paste', () => setTimeout(() => {
+      const limpio = inp.value.replace(/\s+/g, '');
+      if (limpio !== inp.value) {
+        inp.value = limpio;
+        tost('Se quitaron espacios de la clave pegada');
+      }
+    }, 0));
+
+    if (!esClave) return;   // los que no son secretos se quedan sin ojo
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nx-clave-ojo';
+    btn.setAttribute('aria-label', 'Mostrar la clave');
+    btn.innerHTML = OJO;
+    env.appendChild(btn);
+
+    let t = null;
+    const ocultar = () => { inp.type = 'password'; btn.innerHTML = OJO;
+                            btn.setAttribute('aria-label', 'Mostrar la clave');
+                            clearTimeout(t); };
+    btn.addEventListener('click', () => {
+      if (inp.type === 'password') {
+        inp.type = 'text'; btn.innerHTML = OJO_TACHADO;
+        btn.setAttribute('aria-label', 'Ocultar la clave');
+        clearTimeout(t); t = setTimeout(ocultar, OCULTAR_TRAS);
+      } else ocultar();
+    });
+   } catch (e) { console.warn('[núcleo] campo de clave:', e); }
+  }
+
+  /** Prepara todos los campos de configuración que haya en pantalla. */
+  function prepararClaves(raiz) {
+    try {
+      (raiz || document).querySelectorAll('input.cfg-input').forEach(_prepararCampoClave);
+    } catch (e) { console.warn('[núcleo] prepararClaves:', e); }
+  }
+
+  /** Resumen seguro de una clave: cuántos caracteres y sus extremos. */
+  function resumenClave(v) {
+    const s = String(v || '').trim();
+    if (!s) return 'vacía';
+    if (s.length <= 10) return `${s.length} caracteres`;
+    return `${s.length} caracteres · ${s.slice(0, 4)}…${s.slice(-4)}`;
+  }
+
+  /** Aviso de lo que se guardó, sin enseñar ninguna clave entera. */
+  function avisarClavesGuardadas(cfg) {
+    const nombres = { groqKey:'Groq', tavilyKey:'Tavily', geminiKey:'Gemini',
+                      owmKey:'Clima', tomtomKey:'TomTom' };
+    const puestas = Object.entries(nombres)
+      .filter(([k]) => cfg?.[k])
+      .map(([k, n]) => `${n} ${resumenClave(cfg[k])}`);
+    tost(puestas.length ? 'Guardado · ' + puestas.join(' · ') : 'Guardado', 'ok');
+  }
+
+  /* ── Se publican con nombres cortos, sin prefijo: son el vocabulario
+        base del sistema y van a aparecer en todos los módulos. ── */
   Object.assign(window, {
     arexCss, cssModulo, cssModuloListo,
+    prepararClaves, resumenClave, avisarClavesGuardadas,
     hoy, dia, mes, inicioMes, diasEntre,
     aviso, pregunta, pedirTexto, tost,
     leer, guardar,
     esc, escAttr, dinero,
   });
+
+  /* Los campos de clave se preparan AQUÍ, al final, y no allá arriba:
+     nucleo.js se carga con defer, así que cuando corre el DOM ya está listo
+     y la llamada se hacía en el acto… desde un punto del archivo anterior a
+     la declaración de las constantes del icono. Resultado: ReferenceError por
+     zona muerta temporal, el ojo no se montaba, y solo se veía porque el try
+     lo dejó escrito en la consola. */
+  try {
+    if (document.readyState === 'loading')
+      document.addEventListener('DOMContentLoaded', () => prepararClaves());
+    else prepararClaves();
+  } catch (e) { console.warn('[núcleo] claves:', e); }
   window.AREXNucleo = { hoy, dia, mes, inicioMes, diasEntre, aviso, pregunta,
                         pedirTexto, tost, leer, guardar, esc, escAttr, dinero };
 })();
