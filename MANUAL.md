@@ -208,6 +208,20 @@ datos de verdad se quedan cortos.
 
 Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 
+### v244 · Hologramas 3D en el modo AR
+
+- [x] **Tres hologramas volumétricos** junto a los paneles AR del Quest
+      (`hologramas.js`, cargado bajo demanda desde `webxr.js`): el núcleo de
+      AREX proyectado desde una base de luz, las **ventas del negocio de los
+      últimos 7 días** en barras 3D, y las **metas activas** como anillos de
+      progreso. Se agarran con el gatillo o pellizco y se mueven. Si el
+      archivo falla, los paneles siguen funcionando.
+- [x] **El panel de Metas del AR nunca mostró porcentajes**: leía
+      `m.progreso`, un campo que Metas nunca guardó. Ahora usa
+      `valorActual / valorObjetivo`, igual que el módulo.
+- [ ] Probado en navegador con datos sembrados (alturas y % contra cálculo a
+      mano). **Falta probarlo dentro de una sesión AR real en el Quest.**
+
 ### Hecho entre v213 y v220
 
 **Bugs de datos, cerrados de raíz**

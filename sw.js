@@ -1,5 +1,5 @@
-const CACHE   = 'arex-v243';
-const VERSION = 'v243';
+const CACHE   = 'arex-v244';
+const VERSION = 'v244';
 const SHELL = [
   './index.html',
   './rescate.html',
@@ -24,6 +24,7 @@ const SHELL = [
   './metas.js',
   './metas.css',
   './webxr.js',
+  './hologramas.js',
   './proyectos.js',
   './proyectos.css',
   './evidencias.js',

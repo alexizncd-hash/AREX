@@ -38,6 +38,8 @@ let _timer       = null;
 let _grabbed     = null;
 let _ctrls       = [];
 let _panelHashes = {};  // smart cache: solo redibuja si los datos cambian
+let _holo        = null;  // hologramas 3D (hologramas.js) — opcional
+let _t0          = 0;
 
 /* ─── Public ──────────────────────────────────────────── */
 export async function enterAR() {
@@ -66,6 +68,7 @@ export async function enterAR() {
 
   await _initThree(_session);
   _buildPanels();
+  await _buildHolos();
   _buildControllers();
   _session.addEventListener('end', _onEnd);
   _renderer.setAnimationLoop(_tick);
@@ -127,6 +130,21 @@ function _buildPanels() {
   });
 }
 
+/* ─── Hologramas 3D ───────────────────────────────────── */
+/* Se importan aparte y bajo demanda: si hologramas.js falla, los paneles AR siguen
+   funcionando igual y solo se avisa en consola. */
+async function _buildHolos() {
+  try {
+    const { crearHologramas } = await import('./hologramas.js');
+    _holo = crearHologramas(THREE, _scene, EH);
+    _holo.targets.forEach(g => { g.userData.grabY = 0.25; });
+    _t0 = performance.now();
+  } catch (e) {
+    _holo = null;
+    console.warn('WebXR: hologramas no disponibles —', e.message);
+  }
+}
+
 /* ─── Controllers ─────────────────────────────────────── */
 function _buildControllers() {
   for (let i = 0; i < 2; i++) {
@@ -148,7 +166,15 @@ function _buildControllers() {
 function _grabStart(ctrl) {
   for (const p of _panels) {
     if (ctrl.position.distanceTo(p.mesh.position) < 0.40) {
-      _grabbed = { panel: p, ctrl, offset: p.mesh.position.clone().sub(ctrl.position) };
+      _grabbed = { obj: p.mesh, face: true, ctrl, offset: p.mesh.position.clone().sub(ctrl.position) };
+      return;
+    }
+  }
+  // Hologramas: el punto de agarre está sobre la base, donde se ve el objeto
+  for (const g of (_holo?.targets || [])) {
+    const centro = g.position.clone(); centro.y += g.userData.grabY || 0;
+    if (ctrl.position.distanceTo(centro) < 0.35) {
+      _grabbed = { obj: g, face: false, ctrl, offset: g.position.clone().sub(ctrl.position) };
       return;
     }
   }
@@ -158,8 +184,12 @@ function _grabEnd() { _grabbed = null; }
 /* ─── Render Loop ─────────────────────────────────────── */
 function _tick() {
   if (_grabbed) {
-    _grabbed.panel.mesh.position.copy(_grabbed.ctrl.position.clone().add(_grabbed.offset));
-    _grabbed.panel.mesh.lookAt(_camera.position);
+    _grabbed.obj.position.copy(_grabbed.ctrl.position.clone().add(_grabbed.offset));
+    if (_grabbed.face) _grabbed.obj.lookAt(_camera.position);
+  }
+  if (_holo) {
+    try { _holo.tick((performance.now() - _t0) / 1000); }
+    catch (e) { console.warn('WebXR: holograma tick —', e.message); _holo = null; }
   }
   _renderer.render(_scene, _camera);
 }
@@ -168,6 +198,8 @@ function _tick() {
 function _onEnd() {
   clearInterval(_timer); _timer = null;
   _renderer.setAnimationLoop(null);
+  try { _holo?.dispose(); } catch {}
+  _holo = null;
   _renderer.dispose();
   document.getElementById('ar-canvas-wrap')?.remove();
   _session = null; _renderer = null; _scene = null;
@@ -177,6 +209,7 @@ function _onEnd() {
 
 /* ─── Data Refresh ────────────────────────────────────── */
 function _refreshAll() {
+  try { _holo?.refresh(); } catch (e) { console.warn('WebXR: holograma refresh —', e.message); }
   _panels.forEach(p => {
     const rows = _getData(p.def.id);
     const hash = JSON.stringify(rows);
@@ -239,8 +272,9 @@ function _getData(id) {
       const metas   = _lsJSON('arex_metas');
       const activas = metas.filter(m => !m.completada);
       if (!activas.length) return [['Sin metas activas', '']];
+      // v244: antes leía m.progreso, campo que Metas nunca guardó → siempre "meta"
       return activas.slice(0, 5).map(m => [
-        m.progreso != null ? `${m.progreso}%` : 'meta',
+        m.valorObjetivo > 0 ? `${Math.min(100, Math.round((m.valorActual / m.valorObjetivo) * 100))}%` : 'meta',
         (m.titulo || m.texto || 'Meta').slice(0, 30)
       ]);
     }
