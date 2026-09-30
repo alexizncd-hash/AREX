@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v247';
+const AREX_VERSION = 'v248';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -468,8 +468,32 @@ const SESSION = Date.now().toString();
 function _userDoc(...segs) { return doc(db, 'users', window._arexUid, ...segs); }
 function _userCol(...segs) { return collection(db, 'users', window._arexUid, ...segs); }
 
+/* v248 · EL DOMINIO DE AUTENTICACIÓN SE AJUSTA AL SITIO QUE SIRVE AREX.
+
+   El login de Google se rompe cuando la app y el dominio donde Firebase
+   autentica son sitios distintos: iOS separa el almacenamiento de cada uno y
+   la página auxiliar no encuentra el estado que la app dejó ("missing
+   initial state"). Es lo que pasa hoy sirviendo desde github.io con
+   authDomain en …firebaseapp.com.
+
+   Al mover AREX a Firebase Hosting el problema desaparece — pero solo si
+   coinciden de verdad: `web.app` y `firebaseapp.com` son dominios DISTINTOS
+   aunque los sirva el mismo proyecto, así que abrir la app en uno con el
+   authDomain apuntando al otro seguiría partido. Esta función evita esa
+   trampa: si AREX se está sirviendo desde un dominio de Firebase, el
+   authDomain pasa a ser ESE mismo. Fuera de ahí no toca nada. */
+function _authDomainDelSitio(cfg) {
+  try {
+    const host = location.hostname;
+    if (!/\.(web\.app|firebaseapp\.com)$/.test(host)) return cfg;
+    if (cfg.authDomain === host) return cfg;
+    console.info(`AREX: authDomain ajustado a ${host} (la app se sirve desde ahí)`);
+    return { ...cfg, authDomain: host };
+  } catch { return cfg; }
+}
+
 async function initFirebase() {
-  const fbConfig = window.AREX_FIREBASE_CONFIG || AREX_CONFIG?.firebase;
+  const fbConfig = _authDomainDelSitio(window.AREX_FIREBASE_CONFIG || AREX_CONFIG?.firebase || {});
   if (fbInitialized || !fbConfig?.apiKey) return;
   try {
     ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js"));
@@ -1072,7 +1096,13 @@ async function initFCM() {
         }
       });
     }
-  } catch(e) { console.warn('initFCM:', e); }
+  } catch(e) {
+    // v248: antes esto moría en silencio y no había forma de saber que las
+    // notificaciones con la app cerrada no iban a llegar nunca.
+    window.AREX_FCM_ERROR = (e?.code || e?.message || 'error').toString().slice(0, 60);
+    console.warn('initFCM:', e);
+    try { _updatePushStatus(); } catch {}
+  }
 }
 
 /* ── Modo offline ────────────────────────────────────── */
@@ -2183,7 +2213,43 @@ function _updateNotifStatus() {
   const colors  = { granted: '#22d3ee', denied: '#ff4444', default: '#4a7a96', unsupported: '#4a7a96' };
   el.textContent = labels[perm] || perm;
   el.style.color  = colors[perm]  || '#4a7a96';
+  _updatePushStatus();
 }
+
+/* v248 · ¿LLEGAN LAS NOTIFICACIONES CON AREX CERRADA?
+
+   Hasta ahora eso era invisible. initFCM() sale por la puerta de atrás si
+   falta la VAPID key, y si la clave está mal Firebase lanza y el error se
+   traga un catch con console.warn — en un iPhone no lo ve nadie. Resultado:
+   crees que tienes avisos con la app cerrada y no los tienes, sin ninguna
+   señal. Aquí se dice en la propia pantalla de ajustes. */
+function _estadoPush() {
+  const v = (window.AREX_CONFIG?.firebase?.vapidKey || '').trim();
+  if (!window.AREX_CONFIG?.firebase?.apiKey) return ['—  (requiere Firebase)', '#4a7a96'];
+  if (!v)                          return ['FALTA LA VAPID KEY', '#ff9944'];
+  if (!_vapidPareceValida(v))      return ['LA VAPID KEY NO TIENE LA FORMA ESPERADA', '#ff9944'];
+  if (window.AREX_FCM_ERROR)       return ['FIREBASE RECHAZÓ LA CLAVE: ' + window.AREX_FCM_ERROR, '#ff4444'];
+  if (localStorage.getItem('arex_fcm_token')) return ['✓ ACTIVAS (app cerrada)', '#22d3ee'];
+  if (Notification?.permission !== 'granted') return ['FALTA CONCEDER EL PERMISO ARRIBA', '#4a7a96'];
+  return ['CONECTANDO…', '#4a7a96'];
+}
+
+/* La clave pública VAPID es base64url: empieza por 'B' y mide 87-88
+   caracteres. Comprobarlo evita el caso más común —pegar media clave, o
+   pegar la privada— que si no solo se nota porque los avisos no llegan. */
+function _vapidPareceValida(v) {
+  return /^B[A-Za-z0-9_-]{85,87}$/.test(String(v || '').trim());
+}
+window._vapidPareceValida = _vapidPareceValida;
+
+function _updatePushStatus() {
+  const el = document.getElementById('push-status');
+  if (!el) return;
+  const [txt, color] = _estadoPush();
+  el.textContent = txt;
+  el.style.color = color;
+}
+window._updatePushStatus = _updatePushStatus;
 
 function _showTaskNotif(t, label) {
   if (Notification.permission !== 'granted') return;
@@ -4095,6 +4161,12 @@ document.getElementById('cfg2-save').addEventListener('click', () => {
   localStorage.setItem('arex_config', JSON.stringify(config));
   window.AREX_CONFIG = config;
   try { window.avisarClavesGuardadas?.(config); } catch {}
+  // v248: la VAPID key mal pegada no da error en ningún sitio; solo deja de
+  // haber notificaciones con la app cerrada. Más vale decirlo al guardar.
+  const _vp = config.firebase?.vapidKey;
+  if (_vp && !_vapidPareceValida(_vp)) {
+    tost('La VAPID key no tiene la forma esperada (empieza por B y mide 87 caracteres)', 'error');
+  }
   initFirebase();
   syncConfigToFirestore();
   document.getElementById('cfg2-ok').style.display = 'block';

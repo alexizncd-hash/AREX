@@ -1,0 +1,56 @@
+# Publica AREX también en Firebase Hosting (arex-96aab.web.app).
+#
+# POR QUÉ EXISTE: en GitHub Pages el login de Google no puede completarse en
+# la app instalada del iPhone. Firebase autentica en un dominio suyo y AREX
+# vive en otro, así que iOS separa el almacenamiento de cada uno y la página
+# auxiliar no encuentra el estado — el "missing initial state". Sirviendo
+# AREX desde el mismo proyecto de Firebase, app y autenticación comparten
+# dominio y el problema desaparece.
+#
+# QUÉ HACE FALTA UNA SOLA VEZ (lo hace Alexiz, no se puede automatizar):
+#   1. Consola de Firebase → ⚙ Configuración del proyecto → Cuentas de
+#      servicio → "Generar nueva clave privada". Descarga un archivo .json.
+#   2. GitHub → repositorio AREX → Settings → Secrets and variables →
+#      Actions → New repository secret:
+#        nombre:  FIREBASE_SERVICE_ACCOUNT
+#        valor:   el contenido COMPLETO de ese .json
+#   3. Listo. Cada push a main publica en las dos partes.
+#
+# Mientras el secreto no exista, este flujo se salta solo y GitHub Pages
+# sigue funcionando igual: no rompe nada.
+
+name: Deploy AREX to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ¿Hay credenciales?
+        id: check
+        run: |
+          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
+            echo "listo=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::Falta el secreto FIREBASE_SERVICE_ACCOUNT. Se omite el despliegue a Firebase Hosting; GitHub Pages no se ve afectado."
+          fi
+
+      - name: Deploy
+        if: steps.check.outputs.listo == 'si'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: arex-96aab

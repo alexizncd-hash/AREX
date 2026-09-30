@@ -348,6 +348,25 @@ credenciales de despliegue del dueño.
       con `proyecto:'Casa'` escrito a mano, datos que la app no puede
       producir. Probar con datos imposibles es no probar.)*
 
+### v248 · Preparado el traslado a Firebase Hosting, y la VAPID key deja de ser invisible
+
+- [x] **`firebase.json`, `.firebaserc` y un flujo de GitHub Actions** que
+      publica AREX también en `arex-96aab.web.app`. Mientras no exista el
+      secreto `FIREBASE_SERVICE_ACCOUNT`, el flujo se salta solo y GitHub
+      Pages sigue igual: no rompe nada.
+- [x] **El `authDomain` se ajusta al sitio que sirve AREX.** `web.app` y
+      `firebaseapp.com` son dominios distintos aunque los sirva el mismo
+      proyecto; abrir la app en uno con el `authDomain` apuntando al otro
+      dejaría el login igual de partido. Si AREX se sirve desde un dominio de
+      Firebase, el `authDomain` pasa a ser ese mismo.
+- [x] **Las notificaciones con la app cerrada eran una caja negra.**
+      `initFCM()` sale por la puerta de atrás si falta la VAPID key, y si la
+      clave está mal, Firebase lanza y el error muere en un `console.warn`
+      que en un iPhone no ve nadie: creías tener avisos y no los tenías.
+      Ahora `/config` dice el estado real (falta la clave · no tiene la forma
+      esperada · Firebase la rechazó · activas), se valida el formato al
+      guardar (`B` + 87 caracteres base64url) y el fallo de FCM se enseña.
+
 ### Lo siguiente, por orden
 
 Medido hoy en el navegador, no heredado de la hoja anterior:
