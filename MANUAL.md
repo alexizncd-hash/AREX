@@ -208,6 +208,20 @@ datos de verdad se quedan cortos.
 
 Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 
+### v245 · Configurar el Quest con un enlace
+
+- [x] **En el Quest nunca se podía pasar de la pantalla de claves.** Había que
+      escribir `gsk_…` y siete campos de Firebase con el teclado virtual, o
+      pegar un código copiado en otro dispositivo — y el iPhone y el Quest no
+      comparten portapapeles. Ahora: iPhone → `/config` → **ENVIAR ENLACE AL
+      QUEST** → te lo mandas por correo o WhatsApp → en el Quest solo se toca.
+      El código viaja en el fragmento `#arex=` (nunca llega al servidor) y se
+      borra de la barra al leerse. El cuadro de importar acepta también el
+      enlace pegado.
+- [x] Un enlace dañado deja la pantalla de claves con un aviso claro, sin
+      tumbar el arranque (`history` es el historial del chat en `app.js`;
+      se usa `window.history`).
+
 ### v244 · Hologramas 3D en el modo AR
 
 - [x] **Tres hologramas volumétricos** junto a los paneles AR del Quest

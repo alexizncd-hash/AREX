@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v244';
+const AREX_VERSION = 'v245';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -4122,6 +4122,25 @@ function copiarCodigoConfig() {
 }
 window.copiarCodigoConfig = copiarCodigoConfig;
 
+// v245 · Enlace para configurar otro dispositivo (pensado para el Quest).
+// Solo lleva las claves: tus datos bajan solos al iniciar sesión con Google.
+function enviarEnlaceConfig() {
+  const cfg = window.AREX_CONFIG;
+  if (!cfg?.groqKey) { tost('No hay configuración cargada para enviar.', 'error'); return; }
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  const url  = `${location.origin}${location.pathname}#arex=${encodeURIComponent(code)}`;
+  const aviso2 = cfg.firebase?.apiKey ? ''
+    : '\n\nOjo: no tienes Firebase configurado, así que en el otro dispositivo tendrás las claves pero no tus datos.';
+  if (navigator.share) {
+    navigator.share({ title: 'AREX · configuración', text: 'Abre este enlace en el Quest para configurar AREX. Es privado: contiene tus claves.', url })
+      .then(() => aviso('Enlace enviado. Ábrelo en el navegador del Quest y AREX se configura solo.' + aviso2))
+      .catch(e => { if (e?.name !== 'AbortError') _mostrarCodigoManual(url, '◈ ENLACE DE CONFIGURACIÓN'); });
+  } else {
+    _mostrarCodigoManual(url, '◈ ENLACE DE CONFIGURACIÓN');
+  }
+}
+window.enviarEnlaceConfig = enviarEnlaceConfig;
+
 // Código COMPLETO: keys + todos los datos (tarjetas, negocio, tareas, notas...)
 // Pensado para el Quest: un solo copy/paste deja el dispositivo idéntico,
 // sin andar pasando archivos de backup.
@@ -4151,7 +4170,8 @@ function importarCodigoConfig() {
   if (!raw) { tost('Pega primero el código de transferencia.', 'error'); return; }
   let cfg;
   try {
-    const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    const dec    = _decodificarCodigoConfig(raw);   // acepta código o enlace
+    const parsed = dec.data ? dec : dec.config;
     if (parsed?.__arex === 'full-v1') {
       // Código completo: restaurar también todos los datos
       if (!parsed.config?.groqKey) { tost('El código no contiene una Groq API Key válida.', 'error'); return; }
@@ -4807,6 +4827,42 @@ window.addEventListener('unhandledrejection', e => {
     setTimeout(() => { t.style.display = 'none'; }, 6000);
   } catch {}
 });
+
+/* v245 · ENLACE DE CONFIGURACIÓN
+   Qué se rompía: en el Quest nunca se podía pasar de la pantalla de claves.
+   Las dos salidas eran escribir gsk_… y siete campos de Firebase con el
+   teclado virtual, o pegar un código copiado en OTRO dispositivo — y el
+   iPhone y el Quest no comparten portapapeles. Ahora el iPhone genera un
+   enlace (/config → ENVIAR ENLACE AL QUEST), te lo mandas por correo o
+   WhatsApp, y en el Quest solo se toca.
+   El código va en el fragmento (#arex=…): el navegador NUNCA lo envía al
+   servidor, y se borra de la barra de direcciones en cuanto se lee. */
+function _decodificarCodigoConfig(raw) {
+  let code = String(raw || '').trim();
+  const i = code.indexOf('#arex=');
+  if (i > -1) code = code.slice(i + 6);
+  try { code = decodeURIComponent(code); } catch {}
+  const parsed = JSON.parse(decodeURIComponent(escape(atob(code))));
+  return parsed?.__arex === 'full-v1' ? parsed : { config: parsed, data: null };
+}
+function _importarDesdeEnlace() {
+  if (!location.hash.startsWith('#arex=')) return;
+  const raw = location.hash;
+  try {
+    // window.history, no `history`: en este módulo `history` es el historial del chat
+    try { window.history.replaceState(null, '', location.pathname + location.search); }
+    catch { location.hash = ''; }
+    const { config } = _decodificarCodigoConfig(raw);
+    if (!config?.groqKey) throw new Error('sin Groq key');
+    localStorage.setItem('arex_config', JSON.stringify(config));
+    window.AREX_CONFIG = config;
+    setTimeout(() => window.tost?.('Configuración importada desde el enlace ✓', 'ok'), 1500);
+  } catch (e) {
+    console.warn('AREX enlace de configuración:', e.message);
+    setTimeout(() => window.tost?.('El enlace de configuración está incompleto o dañado. Genera uno nuevo en /config.', 'error'), 1500);
+  }
+}
+_importarDesdeEnlace();
 
 if (loadConfig()) {
   initFirebase();
