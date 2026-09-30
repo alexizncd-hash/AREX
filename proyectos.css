@@ -182,3 +182,53 @@
   text-wrap: balance;
   & em { color: var(--texto-2); font-style: normal; }
 }
+
+
+/* ── Sugerencias de vínculo (v247) ───────────────────────────────────────
+   Lo que SE PARECE al nombre del proyecto se enseña aparte y no cuenta para
+   el progreso: solo cuenta lo que tú vinculas con el botón. Así el parecido
+   de nombre sirve de atajo sin volver a contaminar las cuentas. */
+.proj-sug {
+  margin-top: var(--e-3);
+  padding-top: var(--e-3);
+  border-top: 1px dashed var(--borde);
+}
+
+.proj-sug-tit {
+  font-size: var(--t-xs);
+  letter-spacing: .12em;
+  color: var(--texto-3);
+  margin-bottom: var(--e-2);
+}
+
+.proj-sug-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: var(--toque);
+}
+
+.proj-sug-txt {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-sm);
+  color: var(--texto-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proj-sug-btn {
+  flex: 0 0 auto;
+  min-height: var(--toque);
+  padding-inline: var(--e-3);
+  border-radius: var(--radio-sm);
+  border: 1px solid color-mix(in oklch, var(--acento) 40%, transparent);
+  background: color-mix(in oklch, var(--acento) 10%, transparent);
+  color: var(--acento);
+  font: 600 var(--t-xs)/1 var(--font);
+  letter-spacing: .1em;
+  cursor: pointer;
+
+  &:hover { background: color-mix(in oklch, var(--acento) 20%, transparent); }
+}

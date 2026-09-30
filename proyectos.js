@@ -146,6 +146,7 @@ function _renderCard(p) {
   const tareas = _getTareasProyecto(p.nombre);
   const metas  = _getMetasProyecto(p.nombre);
   const notas  = _getNotasProyecto(p.nombre);
+  const sugeridas = _getTareasSugeridas(p.nombre);   // v247: solo sugerencia
   const done   = p.estado === 'completado';
 
   // Task-based progress
@@ -198,9 +199,48 @@ function _renderCard(p) {
         ${notas.length   ? `<span class="proj-stat">📝 ${notas.length} nota${notas.length>1?'s':''}</span>` : ''}
         ${!tareas.length && !metas.length && !notas.length && !deadlineHTML ? `<span class="proj-stat" style="opacity:0.4">Sin elementos relacionados</span>` : ''}
       </div>
+      ${sugeridas.length ? `
+      <div class="proj-sug">
+        <div class="proj-sug-tit">¿SON DE ESTE PROYECTO?</div>
+        ${sugeridas.slice(0, 5).map(t => `
+          <div class="proj-sug-fila">
+            <span class="proj-sug-txt">${esc(t.text || t.texto || '')}</span>
+            <button class="proj-sug-btn" onclick="proyectoVincularTarea('${p.id}','${t.id}')">VINCULAR</button>
+          </div>`).join('')}
+      </div>` : ''}
     </div>
   `;
 }
+
+/* v247 · EL VÍNCULO HABÍA QUEDADO SIN FORMA DE CREARSE.
+
+   En v241 se quitó la asociación por parecido de nombre, que era un
+   desastre: con un proyecto llamado "Casa", la tarea "Comprar casaca" y la
+   nota "regresar a casa" contaban como suyas y ensuciaban el progreso. Se
+   dejó mandando el vínculo explícito `tarea.proyecto === nombre`.
+
+   El problema: NINGUNA pantalla escribe ese campo. Comprobado con grep en
+   todo el repo. O sea que desde v241 todos los proyectos salen con cero
+   tareas y 0 % de progreso. Cambié un problema por otro.
+
+   (Y mi prueba de entonces no lo vio porque sembraba una tarea con
+   `proyecto:'Casa'` a mano — datos que la app no puede producir. Probar con
+   datos imposibles es no probar.)
+
+   Ahora el parecido de nombre vuelve, pero como SUGERENCIA: se enseña
+   aparte, no cuenta para el progreso, y con un toque en VINCULAR pasa a ser
+   explícito para siempre. */
+function proyectoVincularTarea(idProyecto, idTarea) {
+  const proy = getProyectos().find(x => x.id === idProyecto);
+  if (!proy || typeof getTareas !== 'function') return;
+  const arr = getTareas().map(t => t.id === idTarea ? { ...t, proyecto: proy.nombre } : t);
+  if (typeof saveTareasData === 'function') saveTareasData(arr);
+  else guardar('arex_tareas', arr);
+  try { tost(`Vinculada a ${proy.nombre}`, 'ok'); } catch {}
+  renderProyectosModule();
+  if (typeof renderTareas === 'function') renderTareas();
+}
+window.proyectoVincularTarea = proyectoVincularTarea;
 
 /* v241 · LAS COSAS SE ASOCIABAN A UN PROYECTO POR PARECIDO DE NOMBRE.
 

@@ -335,33 +335,51 @@ AREX y el dominio de autenticación sean el mismo — es decir, servirla desde
 Firebase Hosting (`arex-96aab.web.app`) en vez de GitHub Pages. Requiere
 credenciales de despliegue del dueño.
 
+### v247 · El vínculo proyecto ↔ tarea vuelve a existir
+
+- [x] **Desde v241 todos los proyectos salían con cero tareas.** Aquella
+      versión quitó la asociación por parecido de nombre —con razón: un
+      proyecto llamado "Casa" se tragaba "Comprar casaca"— y dejó mandando el
+      vínculo explícito `tarea.proyecto`. Pero **ninguna pantalla escribía ese
+      campo**, así que el progreso quedó en 0 % para todos. Ahora el parecido
+      vuelve como **sugerencia**: se enseña aparte, no cuenta, y con un toque
+      en VINCULAR pasa a explícito para siempre.
+- [x] *(Lección de método: la prueba de v241 pasó porque sembraba una tarea
+      con `proyecto:'Casa'` escrito a mano, datos que la app no puede
+      producir. Probar con datos imposibles es no probar.)*
+
 ### Lo siguiente, por orden
 
-- [ ] **[ALTA · uso diario]** El CHAT tiene **24 objetivos táctiles por debajo
-      de 44 px** y desborde horizontal en la barra de entrada. Medido con el
-      contrato de calidad. Es la pantalla que más usas.
-- [ ] **[ALTA · diseño]** Propagar `diseno.css` a los 13 módulos restantes.
-      Cada uno borra sus reglas viejas al migrar: migrar borrando, no
-      superponiendo.
-- [ ] **[MEDIA · decisión tuya]** El cristal está apagado:
-      `applyPerformanceProfile()` usa `cores || 4` con umbral `<= 4`, así que
-      cualquier navegador que no exponga el dato queda marcado como equipo
-      flojo. Probablemente lleva tiempo así en tu iPhone.
-- [ ] **[MEDIA · decisión tuya]** `Exo 2` y `JetBrains Mono` se piden en 45
-      reglas y **no se descargan nunca**. O se cargan, o se sustituyen.
-- [ ] **[MEDIA · conexión]** La agenda no muestra pagos de tarjeta, aunque
-      `obtenerProximosPagos()` ya existe.
-- [ ] **[MEDIA · conexión]** Hábitos sigue siendo una isla: sin agente, sin
-      búsqueda, sin agenda.
-- [ ] **[MEDIA · función]** El vínculo proyecto ↔ tarea se **lee** en
-      `proyectos.js` pero ninguna pantalla lo **escribe**. Funciona solo por
-      coincidencia de nombre.
-- [ ] **[BAJA · función]** La búsqueda global no indexa negocio, reparto,
-      hábitos ni recordatorios.
-- [ ] **[BAJA · estructura]** `app.js` sigue con 5.029 líneas. Lo que queda
-      —motor de chat, comandos, arranque, sesión— está entrelazado de verdad:
-      seguir partiéndolo con globales de `window` (ya hay 222) empeoraría el
-      acoplamiento. El camino es convertirlo a módulos ES con `import`.
+Medido hoy en el navegador, no heredado de la hoja anterior:
+
+- [ ] **[ALTA · decisión del dueño]** El login de Google **no puede
+      completarse en la app instalada del iPhone**: Firebase autentica en
+      `…firebaseapp.com` y AREX vive en `github.io`, así que iOS separa el
+      almacenamiento y la página auxiliar no encuentra el estado. Desde v246
+      hay salida (SEGUIR SIN CUENTA), pero la cura de raíz es servir AREX
+      desde **Firebase Hosting**, donde app y dominio de autenticación
+      coinciden. Requiere credenciales de despliegue del dueño.
+- [ ] **[ALTA · diseño]** Propagar `diseno.css` a lo que falta: **Finanzas,
+      Tareas, Notas, Agenda, Hábitos, Control y Chat**, más el grueso de
+      `style.css` (6.048 líneas, siete pasadas de rediseño apiladas). Ya
+      migrados: Inicio, Negocio, Gastos, Metas, Proyectos, Evidencias.
+- [ ] **[MEDIA · conexión]** La agenda no muestra los pagos de tarjeta,
+      aunque `obtenerProximosPagos()` existe y funciona.
+- [ ] **[MEDIA · conexión]** La búsqueda global no indexa **negocio** ni
+      **reparto** —los dos módulos con más datos— ni las subtareas.
+      (Tareas, notas, metas, proyectos, gastos, hábitos, recordatorios,
+      evidencias, memoria y bitácora sí, desde v240.)
+- [ ] **[BAJA · estructura]** `app.js` son 5.441 líneas. Lo que queda —motor
+      de chat, comandos, arranque, sesión— está entrelazado de verdad;
+      seguir partiéndolo con globales de `window` empeoraría el acoplamiento.
+      El camino es convertirlo a módulos ES con `import`.
+
+**Cerrados desde la hoja anterior, comprobados hoy:** los objetivos táctiles
+por debajo de 44 px (medidos: **0 en los 14 módulos**), los desbordes
+horizontales (**0 reales**; los nueve que aparecían eran tiras de pestañas
+deslizables, un patrón válido), el cristal que se apagaba solo (v225) y luego
+se retiró por costoso (v239), y las fuentes fantasma `Exo 2` / `JetBrains
+Mono` (v225).
 
 ---
 
