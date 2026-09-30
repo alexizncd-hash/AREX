@@ -311,6 +311,30 @@ Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
       Se deja de encender por defecto algo que no se puede probar donde
       corre. Encendido: `arexEfectos('on')`. *(v231)*
 
+### v246 · La pantalla de cuenta deja de ser un callejón
+
+- [x] **Si el login de Google no podía completarse, quedabas fuera de tu
+      propia app.** Esa pantalla solo tenía el botón de Google: sin salida,
+      con todos tus datos intactos en el teléfono y sin forma de verlos. Y en
+      la app instalada del iPhone ese login **no puede completarse**: Firebase
+      hace el login en una página suya (`…firebaseapp.com`) y AREX vive en
+      otro dominio, así que iOS separa el almacenamiento de cada uno y la
+      página auxiliar no encuentra el dato que AREX dejó — el "missing initial
+      state" de la captura. Ahora hay **SEGUIR SIN CUENTA**: AREX funciona
+      entera, los datos se guardan en el dispositivo, y la cuenta se vincula
+      después desde `/config`. La elección se recuerda.
+- [x] La salida se cablea **aparte de Firebase**. El botón de Google se
+      conecta dentro de `initFirebase()`, que es justo lo que falla sin red;
+      si en ese estado algo enseñaba la pantalla, ningún botón respondía.
+- [x] El error de Firebase salía crudo (`auth/internal-error: Unable to
+      process request…`). Ahora se traduce y apunta a las dos salidas reales:
+      entrar desde Safari o seguir sin cuenta.
+
+**Pendiente de decisión (no es código):** la solución de raíz al login es que
+AREX y el dominio de autenticación sean el mismo — es decir, servirla desde
+Firebase Hosting (`arex-96aab.web.app`) en vez de GitHub Pages. Requiere
+credenciales de despliegue del dueño.
+
 ### Lo siguiente, por orden
 
 - [ ] **[ALTA · uso diario]** El CHAT tiene **24 objetivos táctiles por debajo

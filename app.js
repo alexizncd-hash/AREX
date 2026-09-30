@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v245';
+const AREX_VERSION = 'v246';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -503,6 +503,9 @@ async function initFirebase() {
         window._arexUser = { uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL };
         localStorage.setItem('arex_offline_uid', user.uid);
         localStorage.setItem('arex_offline_name', user.displayName || '');
+        // v246: si entró de verdad, deja de estar en modo local
+        try { localStorage.removeItem('arex_sin_cuenta'); } catch {}
+        window.AREX_SIN_CUENTA = false;
         _hideLoginOverlay();
         try {
           await _initUserSession();
@@ -523,7 +526,13 @@ async function initFirebase() {
           window._arexUid  = cachedUid;
           window._arexUser = { uid: cachedUid, displayName: localStorage.getItem('arex_offline_name') || 'Usuario', email: '', photoURL: null };
           _hideLoginOverlay();
+          try { localStorage.removeItem('arex_sin_cuenta'); } catch {}
           try { await _initUserSession(); } catch(e) { console.error('AREX offline session:', e); }
+        } else if (localStorage.getItem('arex_sin_cuenta') === '1') {
+          // v246: ya eligió usar AREX sin cuenta. No se vuelve a bloquear el
+          // arranque; la cuenta se vincula cuando él quiera desde /config.
+          window.AREX_SIN_CUENTA = true;
+          _hideLoginOverlay();
         } else {
           if (cachedUid) localStorage.removeItem('arex_offline_uid');
           _showLoginOverlay();
@@ -561,10 +570,54 @@ function _isMobile() {
 // app.js es module, las funciones no son globales)
 function _setupLoginButton() {
   const btn = document.getElementById('btn-google-signin');
-  if (!btn) return;
-  btn.onclick = null; // remover posible inline handler residual
-  btn.addEventListener('click', _doGoogleSignIn);
+  if (btn && !btn.dataset.arexWired) {
+    btn.dataset.arexWired = '1';
+    btn.onclick = null; // remover posible inline handler residual
+    btn.addEventListener('click', _doGoogleSignIn);
+  }
+  _cablearSalidaSinCuenta();
 }
+
+/* v246 · La salida se cablea aparte y SIEMPRE.
+   El botón de Google se conecta dentro de initFirebase(), que es justo lo
+   que puede fallar: sin red, el SDK no llega, ese try se rompe y nadie
+   cablea nada. Si en ese estado algo enseña la pantalla de cuenta, los
+   botones no responden y el callejón vuelve. La salida de emergencia no
+   puede depender de la pieza que falla. */
+function _cablearSalidaSinCuenta() {
+  const sin = document.getElementById('btn-sin-cuenta');
+  if (!sin || sin.dataset.arexWired) return;
+  sin.dataset.arexWired = '1';
+  sin.addEventListener('click', _seguirSinCuenta);
+}
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', _cablearSalidaSinCuenta);
+else _cablearSalidaSinCuenta();
+
+/* v246 · SEGUIR SIN CUENTA.
+
+   La pantalla de cuenta era un callejón sin salida: solo tenía el botón de
+   Google. Si ese login no puede completarse te quedabas FUERA de tu propia
+   app, con todos tus datos intactos en el teléfono y sin manera de verlos.
+
+   Y en la app instalada del iPhone no puede completarse: Firebase hace el
+   login en una página suya (arex-96aab.firebaseapp.com) y AREX vive en otro
+   dominio, así que iOS separa el almacenamiento de cada uno y la página
+   auxiliar no encuentra el dato que AREX dejó. Eso es el "missing initial
+   state" que sale en pantalla.
+
+   AREX funciona ENTERA sin cuenta —los datos viven en el dispositivo—; lo
+   único que se pierde es la copia en la nube y la sincronización con el
+   Quest. La decisión se recuerda para no volver a bloquear el arranque, y se
+   deshace vinculando la cuenta desde /config. */
+function _seguirSinCuenta() {
+  try { localStorage.setItem('arex_sin_cuenta', '1'); } catch {}
+  window.AREX_SIN_CUENTA = true;
+  _hideLoginOverlay();
+  try { tost('Modo local · tus datos se guardan en este dispositivo', 'ok'); } catch {}
+  try { logBitacora?.('accion', 'Sesión local: se continuó sin cuenta'); } catch {}
+}
+window._seguirSinCuenta = _seguirSinCuenta;
 
 async function _doGoogleSignIn() {
   const auth = window._arexAuth;
@@ -588,14 +641,14 @@ async function _doGoogleSignIn() {
       try {
         await signInWithRedirect(auth, provider);
       } catch(e2) {
-        _loginError(`${e2.code || 'Error'}: ${e2.message}`);
+        _loginError(`${e2.code || 'Error'}: ${e2.message}`, e2.code);
         if (btn) btn.disabled = false;
       }
     } else if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
       // El usuario cerró el popup — no es un error
       if (btn) btn.disabled = false;
     } else {
-      _loginError(`${e.code || 'Error'}: ${e.message}`);
+      _loginError(`${e.code || 'Error'}: ${e.message}`, e.code);
       if (btn) btn.disabled = false;
     }
   }
@@ -604,10 +657,29 @@ async function _doGoogleSignIn() {
 // Exponer globalmente por si hay llamadas legacy desde HTML
 window._doGoogleSignIn = _doGoogleSignIn;
 
-function _loginError(msg) {
+/* v246 · El error de Firebase salía crudo ("auth/internal-error: Unable to
+   process request due to missing initial state…"), que no le dice nada a
+   nadie y encima suena a que AREX está rota. Se traduce el caso que de
+   verdad ocurre en el iPhone y se apunta a la salida. */
+const _LOGIN_EXPLICADO = {
+  'auth/missing-initial-state':
+    'iOS no deja que la página de Google guarde el paso intermedio, porque vive en otro dominio que AREX. '
+    + 'Prueba a entrar desde Safari en vez de desde el icono, o toca SEGUIR SIN CUENTA: AREX funciona igual, '
+    + 'solo sin copia en la nube.',
+  'auth/internal-error':
+    'El login de Google no pudo completarse en este navegador. '
+    + 'Prueba desde Safari, o toca SEGUIR SIN CUENTA y vincula la cuenta más tarde desde /config.',
+  'auth/network-request-failed':
+    'Sin conexión para validar la cuenta. Toca SEGUIR SIN CUENTA: tus datos siguen guardándose en el dispositivo.',
+  'auth/unauthorized-domain':
+    'Este dominio no está autorizado en tu proyecto de Firebase. Añádelo en Authentication → Settings → Dominios autorizados.',
+};
+
+function _loginError(msg, codigo) {
   const err = document.getElementById('login-error');
-  if (err) { err.textContent = msg; err.style.display = 'block'; }
-  console.error('AREX login error:', msg);
+  const claro = codigo && _LOGIN_EXPLICADO[codigo];
+  if (err) { err.textContent = claro || msg; err.style.display = 'block'; }
+  console.error('AREX login error:', codigo || '', msg);
 }
 
 // Sign-out global

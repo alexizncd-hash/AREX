@@ -1458,8 +1458,23 @@
     <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#ea4335" d="M5.27 9.77A7.26 7.26 0 0 1 12 4.75c1.77 0 3.37.64 4.62 1.69l3.45-3.45A12 12 0 0 0 0 12c0 1.98.48 3.85 1.32 5.5z"/><path fill="#34a853" d="M12 24c3.24 0 5.95-1.07 7.93-2.91l-3.67-2.84A7.21 7.21 0 0 1 12 19.25a7.26 7.26 0 0 1-6.71-4.48L1.32 17.5A12 12 0 0 0 12 24z"/><path fill="#4a90d9" d="M23.74 12.27c0-.84-.07-1.65-.2-2.43H12v4.6h6.59a5.63 5.63 0 0 1-2.45 3.7l3.67 2.83c2.14-1.97 3.37-4.88 3.93-8.7z"/><path fill="#fbbc05" d="M5.29 14.77A7.3 7.3 0 0 1 4.75 12c0-.97.17-1.9.46-2.77L1.32 6.5A12 12 0 0 0 0 12c0 1.98.48 3.85 1.32 5.5z"/></svg>
     VINCULAR CUENTA GOOGLE
   </button>
-  <div id="login-error" style="display:none;font-size:10px;color:#ff5555;letter-spacing:1px;max-width:300px;text-align:center;"></div>
-  <div style="font-size:9px;color:#2a4558;letter-spacing:2px;">SINCRONIZACIÓN EN LA NUBE</div>
+  <div id="login-error" style="display:none;font-size:10px;color:#ff5555;letter-spacing:1px;max-width:320px;text-align:center;line-height:1.6;"></div>
+
+  <!-- v246 · Salida sin cuenta. Antes esta pantalla era un callejón: si el
+       login de Google no podía completarse —y en la app instalada de iPhone
+       NO puede, por el dominio partido— te quedabas fuera de tu propia app,
+       con todos tus datos intactos en el teléfono y sin forma de verlos.
+       AREX funciona entera sin cuenta; lo único que se pierde es la copia en
+       la nube. La cuenta se puede vincular después desde /config. -->
+  <button id="btn-sin-cuenta"
+    style="background:transparent;border:1px solid rgba(127,168,189,.35);
+           color:#7fa8bd;font-family:var(--font);font-size:10px;letter-spacing:3px;
+           padding:11px 26px;cursor:pointer;border-radius:6px;min-height:44px;">
+    SEGUIR SIN CUENTA
+  </button>
+  <div style="font-size:9px;color:#2a4558;letter-spacing:2px;max-width:300px;text-align:center;line-height:1.7;">
+    SIN CUENTA, TUS DATOS SE GUARDAN SOLO EN ESTE DISPOSITIVO
+  </div>
 </div>
 
 <!-- ── Onboarding (primer login sin perfil) ────────────────────── -->
