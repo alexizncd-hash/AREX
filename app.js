@@ -12,7 +12,7 @@ let initializeApp, getFirestore, collection, addDoc, getDocs,
 /* v211: versión que ESTA build de la app espera. Se compara contra la que
    reporta el service worker para detectar desajustes (HTML nuevo + JS viejo)
    y para sellar los datos que se sincronizan entre dispositivos. */
-const AREX_VERSION = 'v248';
+const AREX_VERSION = 'v249';
 window.AREX_VERSION = AREX_VERSION;
 
 /* ── Carga de configuración ─────────────────────────── */
@@ -3009,21 +3009,46 @@ async function handleFile(file) {
    El estado se guarda en sesión — no vuelve a intentar un
    modelo que ya falló hasta que el usuario recarga la app.
 ─────────────────────────────────────────────────────── */
+/* Preferencias, no certezas: _groqFetch las filtra contra lo que Groq
+   publica de verdad (window.modelosFiltrados). Los llama-4 que estaban aquí
+   llevaban meses retirados — maverick desde el 09/03/2026 y scout desde el
+   17/07/2026 — y la visión por Groq estaba muerta sin que nada lo dijera.
+   Groq ya no publica modelos con visión: ese tier queda vacío a propósito y
+   la visión se va a Gemini sin gastar una petición fallida. */
 const _GROQ_MODELS = {
-  // chat: GPT-OSS 120B — Groq DIO DE BAJA kimi-k2-instruct (y su -0905), y el
-  // reemplazo vigente recomendado es gpt-oss-120b. Cascada a llama-3.3 →
-  // llama-3.1-8b (siempre disponibles). _groqFetch salta modelos retirados
-  // aunque Groq los reporte con 400 model_decommissioned, no solo 404.
-  chat:   ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-  fast:   ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.1-8b-instant'],
-  // vision necesita modelo con visión — scout (llama-4) la soporta y sigue vigente
-  vision: ['meta-llama/llama-4-scout-17b-16e-instruct', 'meta-llama/llama-4-maverick-17b-128e-instruct'],
+  chat:   ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+  fast:   ['openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+  vision: [],
 };
+const _GROQ_PISTA  = /gpt-oss|llama|qwen|mixtral|gemma|kimi/i;
+const _GEMINI_PREF = {
+  flash: ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+  pro:   ['gemini-3.1-pro-preview', 'gemini-2.5-pro'],
+};
+window.AREX_MODELOS_USO = {};   // qué modelo contestó, para la pantalla /config
+
+/* Resuelve el modelo de Gemini del nivel pedido. 'pro' dejó de estar en el
+   plan gratuito, así que si la cuenta no tiene ninguno, cae a flash en vez de
+   fallar. */
+async function _geminiModelo(tier = 'flash') {
+  const key = AREX_CONFIG?.geminiKey;
+  const pick = async (t, pista) =>
+    (await (window.modeloVivo?.('gemini', _GEMINI_PREF[t], key, pista) ?? null));
+  let m = await pick(tier, tier === 'pro' ? /pro/i : /flash/i);
+  if (!m && tier === 'pro') m = await pick('flash', /flash/i);
+  m = m || _GEMINI_PREF[tier][0];
+  window.AREX_MODELOS_USO['gemini.' + tier] = m;
+  return m;
+}
 const _groqBad = new Set(); // modelos con 404 en esta sesión
 
 async function _groqFetch(tier, bodyWithoutModel, key) {
-  const list = _GROQ_MODELS[tier] || _GROQ_MODELS.chat;
-  let lastErr = 'Ningún modelo Groq disponible. Verifica tu API key.';
+  const base = _GROQ_MODELS[tier] || _GROQ_MODELS.chat;
+  const list = await (window.modelosFiltrados?.('groq', base, key, _GROQ_PISTA)
+                      ?? Promise.resolve(base));
+  let lastErr = list.length
+    ? 'Ningún modelo Groq disponible. Verifica tu API key.'
+    : `Groq no publica ningún modelo para "${tier}".`;
   for (const model of list) {
     if (_groqBad.has(model)) continue;
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -3032,7 +3057,7 @@ async function _groqFetch(tier, bodyWithoutModel, key) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({ ...bodyWithoutModel, model }),
     });
-    if (res.ok) return res;
+    if (res.ok) { window.AREX_MODELOS_USO['groq.' + tier] = model; return res; }
     // Modelo retirado por Groq: puede venir como 404 O como 400
     // "model_decommissioned"/"model_not_found". En ambos casos hay que
     // MARCARLO muerto y caer al siguiente de la cascada (antes solo 404 →
@@ -3054,26 +3079,17 @@ async function _groqFetch(tier, bodyWithoutModel, key) {
 
 // ── callBrain: router de cerebros IA ─────────────────────
 async function callBrain(tipo, mensajes, opts = {}) {
-  const modelos = {
-    core:   'llama-3.3-70b-versatile',
-    rapido: 'llama-3.1-8b-instant',
-  };
-  const modelo = modelos[tipo] || modelos.core;
+  /* Antes fijaba llama-3.3-70b-versatile, que Groq ya retiró, y se saltaba
+     la cascada de _groqFetch: cualquier baja de Groq lo dejaba muerto. */
+  const tier = tipo === 'rapido' ? 'fast' : 'chat';
   const body = {
-    model: modelo,
     messages: mensajes,
     max_tokens: opts.maxTokens || 512,
     temperature: opts.temperature ?? 0.7,
     stream: false,
   };
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      signal: conLimite(),
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AREX_CONFIG.groqKey}` },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`Groq ${res.status}`);
+    const res = await _groqFetch(tier, body, AREX_CONFIG.groqKey);
     const data = await res.json();
     return data.choices?.[0]?.message?.content?.trim() || '';
   } catch(e) {
@@ -3172,7 +3188,7 @@ async function _analyzeWithGemini(dataURL, question) {
   // Extract base64 data from dataURL
   const [meta, b64] = dataURL.split(',');
   const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${await _geminiModelo('flash')}:generateContent?key=${key}`, {
     signal: conLimite(),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -3206,7 +3222,7 @@ async function _callGeminiPro(question) {
   const sys = buildSystemBase() + buildContextSection() + buildMemoriaSection()
             + buildSessionMemorySection() + buildModuleContext();
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${AREX_CONFIG.geminiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${await _geminiModelo('pro')}:generateContent?key=${AREX_CONFIG.geminiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4197,6 +4213,45 @@ document.getElementById('cfg2-tomtom-probar')?.addEventListener('click', async (
 });
 
 // ── Modal de ajustes (botón ⚙ del header, /config y Mission Control) ──
+/* Qué modelo de IA está contestando de verdad. Existe porque la visión por
+   Groq llevaba meses caída —los dos modelos de su cascada retirados— y nada
+   en la pantalla lo decía: solo se veía "no se pudo analizar". */
+async function _updateModelosStatus() {
+  const el = document.getElementById('modelos-status');
+  if (!el) return;
+  const linea = (t, v) => `${t}: <b style="color:#22d3ee">${v}</b>`;
+  const partes = [];
+  try {
+    const gq = AREX_CONFIG?.groqKey, gm = AREX_CONFIG?.geminiKey;
+    if (!gq && !gm) { el.innerHTML = 'Sin claves de IA configuradas.'; return; }
+    el.textContent = 'consultando a los proveedores…';
+    /* Sin red no se puede saber: antes esta línea afirmaba estar usando
+       llama-4-scout, que está retirado. Decir "no sé" es la única respuesta
+       honesta cuando el proveedor no contestó. */
+    const vivosGq = gq ? await (window.modelosVivos?.('groq', gq) ?? null) : null;
+    const vivosGm = gm ? await (window.modelosVivos?.('gemini', gm) ?? null) : null;
+    if (gq && !vivosGq) partes.push('Groq: <b style="color:#ff9900">no se pudo consultar</b> (sin red o clave inválida)');
+    if (gm && !vivosGm) partes.push('Gemini: <b style="color:#ff9900">no se pudo consultar</b> (sin red o clave inválida)');
+    if (gq && vivosGq) {
+      const chat = await (window.modelosFiltrados?.('groq', _GROQ_MODELS.chat, gq, _GROQ_PISTA) ?? []);
+      partes.push(linea('Chat (Groq)', chat[0] || 'ninguno disponible'));
+    }
+    if (gm && vivosGm) {
+      partes.push(linea('Imagen (Gemini)', await _geminiModelo('flash')));
+      partes.push(linea('Razonamiento', await _geminiModelo('pro')));
+    }
+    if (gq && vivosGq) {
+      const vis = await (window.modelosFiltrados?.('groq', ['meta-llama/llama-4-scout-17b-16e-instruct'], gq, /vision|scout|maverick|llava/i) ?? []);
+      partes.push(`Visión por Groq: <b style="color:${vis.length ? '#22d3ee' : '#ff9900'}">${vis.length ? vis[0] : 'retirada — se usa Gemini'}</b>`);
+    }
+    el.innerHTML = partes.join('<br>');
+  } catch (e) {
+    el.textContent = 'No se pudo consultar: ' + e.message;
+  }
+}
+window._updateModelosStatus = _updateModelosStatus;
+window._geminiModelo = _geminiModelo;   // para la pantalla y las pruebas
+
 function abrirConfig() {
   const fb = AREX_CONFIG?.firebase || {};
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
@@ -4217,6 +4272,7 @@ function abrirConfig() {
   if (ok) ok.style.display = 'none';
   if (er) er.style.display = 'none';
   if (typeof _updateNotifStatus === 'function') _updateNotifStatus();
+  _updateModelosStatus();
   try { window.prepararClaves?.(document.getElementById('modal-config')); } catch {}
   document.getElementById('modal-config')?.classList.remove('hidden');
 }

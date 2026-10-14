@@ -214,6 +214,93 @@
     return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('es-MX', { maximumFractionDigits: 0 });
   }
 
+
+  /* ── 7 · Qué modelos de IA están vivos ────────────────────────────────
+     Los nombres de modelo caducan y no avisan: Groq retiró
+     llama-4-maverick el 09/03/2026 y llama-4-scout el 17/07/2026, y Google
+     retira la familia gemini-2.5 en octubre de 2026. AREX los tenía escritos
+     a mano en CATORCE puntos del código, así que cada baja de un proveedor
+     rompía la visión, CONTROL o el chat — y arreglarlo exigía un commit.
+
+     Aquí se le PREGUNTA al proveedor qué tiene publicado y se filtra la lista
+     de preferencia contra esa respuesta. Una petición por sesión, en caché.
+     Sin red, con la clave mal puesta o si la consulta falla, se devuelve la
+     preferencia tal cual: degrada, no revienta. */
+
+  const MODELOS_TTL = 6 * 60 * 60 * 1000;
+  const _modEnVuelo  = {};
+
+  function _modCache(prov) {
+    try {
+      const { ids, ts } = JSON.parse(sessionStorage.getItem('arex_modelos_' + prov) || 'null') || {};
+      if (!Array.isArray(ids) || !ids.length || Date.now() - ts > MODELOS_TTL) return null;
+      return ids;
+    } catch { return null; }
+  }
+
+  async function _modPedir(prov, key) {
+    const opt = { method: 'GET' };
+    let url;
+    if (prov === 'groq') {
+      url = 'https://api.groq.com/openai/v1/models';
+      opt.headers = { Authorization: 'Bearer ' + key };
+    } else {
+      url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key);
+    }
+    try { opt.signal = AbortSignal.timeout(8000); } catch {}
+    const res = await fetch(url, opt);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    if (prov === 'groq') return (j.data || []).map(m => m && m.id).filter(Boolean);
+    return (j.models || [])
+      .filter(m => !m.supportedGenerationMethods ||
+                    m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => String(m.name || '').replace(/^models\//, ''))
+      .filter(Boolean);
+  }
+
+  function modelosVivos(prov, key) {
+    if (!key) return Promise.resolve(null);
+    const c = _modCache(prov);
+    if (c) return Promise.resolve(c);
+    if (!_modEnVuelo[prov]) {
+      _modEnVuelo[prov] = _modPedir(prov, key)
+        .then(ids => {
+          if (!ids.length) return null;
+          try { sessionStorage.setItem('arex_modelos_' + prov,
+                JSON.stringify({ ids, ts: Date.now() })); } catch {}
+          return ids;
+        })
+        .catch(e => { console.warn('[núcleo] modelos ' + prov + ':', e.message); return null; });
+      _modEnVuelo[prov].finally(() => { delete _modEnVuelo[prov]; });
+    }
+    return _modEnVuelo[prov];
+  }
+
+  /* Devuelve los preferidos que SÍ existen. Si el proveedor contestó y no
+     tiene ninguno, busca por pista (/flash/, /gpt-oss|llama/...) y si tampoco
+     hay nada devuelve [] — lista vacía significa "este proveedor no sirve
+     para esto", y quien llama puede irse al otro sin gastar una petición.
+     Si el proveedor NO contestó, devuelve la preferencia sin tocarla. */
+  async function modelosFiltrados(prov, preferencia, key, pista) {
+    const lista = (preferencia || []).filter(Boolean);
+    const vivos = await modelosVivos(prov, key);
+    if (!vivos) return lista;
+    const exactos = lista.filter(m => vivos.includes(m));
+    if (exactos.length) return exactos;
+    if (pista) {
+      const c = vivos.filter(m => pista.test(m))
+        .sort((a, b) => (/preview|exp|lite/.test(a) - /preview|exp|lite/.test(b)) || a.length - b.length);
+      if (c.length) return c.slice(0, 3);
+    }
+    return [];
+  }
+
+  async function modeloVivo(prov, preferencia, key, pista) {
+    const l = await modelosFiltrados(prov, preferencia, key, pista);
+    return l[0] || null;
+  }
+
   /* ── Se publican con nombres cortos, sin prefijo: son el vocabulario
         base del sistema y van a aparecer en todos los módulos. ── */
   /* ════════════════════════════════════════════════════════════
@@ -422,6 +509,7 @@
     aviso, pregunta, pedirTexto, tost,
     leer, guardar,
     esc, escAttr, dinero,
+    modelosVivos, modelosFiltrados, modeloVivo,
   });
 
   /* Los campos de clave se preparan AQUÍ, al final, y no allá arriba:

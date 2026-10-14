@@ -208,6 +208,37 @@ datos de verdad se quedan cortos.
 
 Estado real, verificado en el navegador. Lo tachado se comprobó, no se supone.
 
+### v249 · Los modelos de IA dejan de estar escritos en el código
+
+- [x] **La visión por Groq llevaba meses muerta y nada lo decía.** Los dos
+      modelos de su cascada están retirados —`llama-4-maverick` el 09/03/2026 y
+      `llama-4-scout` el 17/07/2026— así que cada análisis de imagen gastaba dos
+      peticiones condenadas y devolvía "no se pudo analizar". `control.js` tenía
+      `scout` escrito a mano sin cascada: también muerto. `callBrain` fijaba
+      `llama-3.3-70b-versatile`, retirado igual, y se saltaba la cascada.
+- [x] **Gemini se caía esta semana.** `gemini-2.5-flash` y `gemini-2.5-pro`
+      estaban en tres URL escritas a mano y la familia 2.5 se retira entre el 16
+      y el 20 de octubre de 2026.
+- [x] **El arreglo no es cambiar un nombre muerto por otro.** Los nombres
+      estaban en **catorce** puntos del código, así que cada baja de un
+      proveedor exigía un commit. Ahora `nucleo.js` le pregunta al proveedor qué
+      publica (`/v1/models` en Groq, `/v1beta/models` en Gemini), una vez por
+      sesión y en caché, y filtra la lista de preferencia contra esa respuesta.
+      Sin red o con la clave mal, devuelve la preferencia sin tocarla: degrada,
+      no revienta.
+- [x] Cuando un proveedor no sirve para algo, la lista vuelve vacía y quien
+      llama se va al otro **sin gastar la petición**. Es el caso de la visión
+      por Groq: ahora cae a Gemini de inmediato.
+- [x] `/config` → **MODELOS DE IA** dice qué modelo está contestando de verdad.
+      Y cuando no se pudo consultar lo dice así, en vez de afirmar que usa uno
+      retirado — la primera versión de esta pantalla mentía y lo encontró su
+      propia prueba.
+- [x] Verificado con Chromium offline en dos escenarios: sin red (degrada a la
+      preferencia, cero errores de página) y con un catálogo inventado que no
+      contiene ninguno de los preferidos (descubre `gemini-3.5-flash` sin
+      conocerlo, corta la visión de Groq, y `pro` cae a flash porque ya no está
+      en el plan gratuito). En ninguno de los dos se pidió un modelo retirado.
+
 ### v245 · Configurar el Quest con un enlace
 
 - [x] **En el Quest nunca se podía pasar de la pantalla de claves.** Había que

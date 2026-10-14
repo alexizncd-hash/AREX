@@ -1000,7 +1000,12 @@ async function _analyze(mode, extra = '') {
 
 async function _callGemini(frame, prompt, key) {
   const [, b64] = frame.split(',');
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  /* gemini-2.5-* se retira en octubre de 2026 y 2.0-flash ya se retiró: la
+     lista es una preferencia que se filtra contra lo que la cuenta publica. */
+  const pref   = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const models = (await (window.modelosFiltrados?.('gemini', pref, key, /flash/i)
+                         ?? Promise.resolve(pref)));
+  if (!models.length) throw new Error('Tu cuenta de Gemini no publica ningún modelo flash.');
   let lastErr;
   for (const model of models) {
     const body = { contents: [{ parts: [
@@ -1033,12 +1038,15 @@ async function _callGemini(frame, prompt, key) {
 }
 
 async function _callGroq(frame, prompt, key, fast = false) {
-  const models = [
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    // maverick también acepta imágenes — el fallback anterior
-    // (llama-3.2-11b-vision-preview) ya fue retirado de Groq
-    'meta-llama/llama-4-maverick-17b-128e-instruct',
-  ];
+  /* Los dos llama-4 que vivían aquí están retirados (maverick 09/03/2026,
+     scout 17/07/2026) y Groq no publica ningún modelo con visión. Se pregunta
+     antes de pedir: si no hay nada, se corta en seco y quien llama se va a
+     Gemini sin esperar dos peticiones condenadas. */
+  const pref   = ['meta-llama/llama-4-scout-17b-16e-instruct',
+                  'meta-llama/llama-4-maverick-17b-128e-instruct'];
+  const models = (await (window.modelosFiltrados?.('groq', pref, key, /vision|scout|maverick|llava/i)
+                         ?? Promise.resolve(pref)));
+  if (!models.length) throw new Error('Groq ya no tiene modelos con visión.');
   for (const model of models) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -2208,9 +2216,10 @@ async function _charla(texto) {
   _setStatus('CHARLANDO...');
   window.VisionOrb?.setState('analyzing');
   try {
-    // gpt-oss-120b: Groq dio de baja kimi-k2. Cascada a llama-3.3 → 3.1-8b,
-    // saltando cualquier modelo retirado (404 o 400 model_decommissioned)
-    const models = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    // llama-3.3-70b-versatile, que era el respaldo, también está retirado.
+    const pref   = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'];
+    const models = (await (window.modelosFiltrados?.('groq', pref, key, /gpt-oss|llama|qwen/i)
+                           ?? Promise.resolve(pref)));
     let reply = null;
     for (const model of models) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

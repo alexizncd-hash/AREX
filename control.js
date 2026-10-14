@@ -453,7 +453,10 @@ window._runAgent = async function (agentId, area) {
                 'Authorization': `Bearer ${groqKey}`,
               },
               body: JSON.stringify({
-                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                // v249: scout está retirado desde el 17/07/2026 — sin cascada,
+                // esto dejaba a CONTROL muerto en silencio.
+                model: (window.AREX_MODELOS_USO && window.AREX_MODELOS_USO['groq.chat'])
+                       || 'openai/gpt-oss-120b',
                 max_tokens: 120,
                 messages: [
                   {
